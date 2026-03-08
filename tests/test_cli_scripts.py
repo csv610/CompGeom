@@ -49,6 +49,16 @@ class CliRegressionTests(unittest.TestCase):
         self.assertIn("Polygons:", completed.stdout)
         self.assertIn("(1.000000, 1.000000)", completed.stdout)
 
+    def test_polygon_visibility_cli_reports_subdivided_segments(self):
+        completed = self.run_script(
+            "polygon_visibility.py",
+            "1 2.5\n0 0\n5 0\n5 1\n2 1\n2 4\n5 4\n5 5\n0 5\n",
+        )
+        self.assertEqual(completed.returncode, 0, msg=completed.stderr)
+        self.assertIn("Visible Segments:", completed.stdout)
+        self.assertIn("(2.666667, 0.000000)", completed.stdout)
+        self.assertIn("(2.000000, 1.000000) -> (2.000000, 4.000000)", completed.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

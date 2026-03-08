@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import heapq
 import math
 import random
 from collections import deque
 
-from .geometry import Point, contains_point, cross_product, is_on_segment, sub
+from .geometry import EPSILON, Point, contains_point, cross_product, is_on_segment, length, sub
 
 
 class _TriangleView:
@@ -24,6 +25,106 @@ def _signed_area_twice(polygon: list[Point]) -> float:
 
 def _ensure_ccw(polygon: list[Point]) -> list[Point]:
     return polygon if _signed_area_twice(polygon) >= 0 else list(reversed(polygon))
+
+
+def _ensure_cw(polygon: list[Point]) -> list[Point]:
+    return polygon if _signed_area_twice(polygon) <= 0 else list(reversed(polygon))
+
+
+def _distance(a: Point, b: Point) -> float:
+    return length(sub(a, b))
+
+
+def _same_point(a: Point, b: Point, tolerance: float = 1e-7) -> bool:
+    return abs(a.x - b.x) <= tolerance and abs(a.y - b.y) <= tolerance
+
+
+def _point_on_boundary(point: Point, polygon: list[Point]) -> bool:
+    return any(is_on_segment(point, polygon[i], polygon[(i + 1) % len(polygon)]) for i in range(len(polygon)))
+
+
+def _proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool:
+    o1 = cross_product(a, b, c)
+    o2 = cross_product(a, b, d)
+    o3 = cross_product(c, d, a)
+    o4 = cross_product(c, d, b)
+
+    if abs(o1) <= EPSILON and is_on_segment(c, a, b):
+        return False
+    if abs(o2) <= EPSILON and is_on_segment(d, a, b):
+        return False
+    if abs(o3) <= EPSILON and is_on_segment(a, c, d):
+        return False
+    if abs(o4) <= EPSILON and is_on_segment(b, c, d):
+        return False
+    return (o1 > EPSILON) != (o2 > EPSILON) and (o3 > EPSILON) != (o4 > EPSILON)
+
+
+def _segment_inside_polygon(polygon: list[Point], start: Point, end: Point) -> bool:
+    midpoint = Point((start.x + end.x) / 2.0, (start.y + end.y) / 2.0)
+    if not is_point_in_polygon(midpoint, polygon) and not _point_on_boundary(midpoint, polygon):
+        return False
+
+    for index, edge_start in enumerate(polygon):
+        edge_end = polygon[(index + 1) % len(polygon)]
+        shared_endpoint = start == edge_start or start == edge_end or end == edge_start or end == edge_end
+        if shared_endpoint:
+            continue
+        if _proper_segment_intersection(start, end, edge_start, edge_end):
+            return False
+    return True
+
+
+def _ray_segment_intersection(origin: Point, angle: float, start: Point, end: Point) -> tuple[float, Point] | None:
+    direction = Point(math.cos(angle), math.sin(angle))
+    edge = sub(end, start)
+    delta = sub(start, origin)
+    denominator = direction.x * edge.y - direction.y * edge.x
+    if abs(denominator) <= EPSILON:
+        return None
+
+    ray_t = (delta.x * edge.y - delta.y * edge.x) / denominator
+    edge_u = (delta.x * direction.y - delta.y * direction.x) / denominator
+    if ray_t < -EPSILON or edge_u < -EPSILON or edge_u > 1 + EPSILON:
+        return None
+
+    intersection = Point(origin.x + ray_t * direction.x, origin.y + ray_t * direction.y)
+    if _distance(intersection, start) <= 1e-6:
+        intersection = start
+    elif _distance(intersection, end) <= 1e-6:
+        intersection = end
+    return ray_t, intersection
+
+
+def _cleanup_polygon(points: list[Point]) -> list[Point]:
+    if not points:
+        return []
+
+    cleaned: list[Point] = []
+    for point in points:
+        if cleaned and _same_point(point, cleaned[-1]):
+            continue
+        cleaned.append(point)
+
+    if len(cleaned) > 1 and _same_point(cleaned[0], cleaned[-1]):
+        cleaned.pop()
+
+    simplified: list[Point] = []
+    for point in cleaned:
+        if len(simplified) < 2:
+            simplified.append(point)
+            continue
+        if abs(cross_product(simplified[-2], simplified[-1], point)) <= 1e-7 and is_on_segment(
+            simplified[-1], simplified[-2], point
+        ):
+            simplified[-1] = point
+            continue
+        simplified.append(point)
+
+    if len(simplified) >= 3 and abs(cross_product(simplified[-2], simplified[-1], simplified[0])) <= 1e-7:
+        if is_on_segment(simplified[-1], simplified[-2], simplified[0]):
+            simplified.pop()
+    return simplified
 
 
 def get_polygon_properties(polygon: list[Point]):
@@ -94,6 +195,147 @@ def triangulate_polygon(polygon: list[Point]):
         triangles.append(tuple(remaining_indices))
 
     return triangles, polygon
+
+
+def visibility_polygon(viewpoint: Point, polygon: list[Point]) -> list[Point]:
+    if not is_point_in_polygon(viewpoint, polygon):
+        raise ValueError("Viewpoint must lie inside or on the boundary of the polygon.")
+
+    intersections: list[tuple[float, float, Point]] = []
+    perturbation = 1e-7
+    for vertex in polygon:
+        base_angle = math.atan2(vertex.y - viewpoint.y, vertex.x - viewpoint.x)
+        for angle in (base_angle - perturbation, base_angle, base_angle + perturbation):
+            best: tuple[float, Point] | None = None
+            for index, start in enumerate(polygon):
+                end = polygon[(index + 1) % len(polygon)]
+                hit = _ray_segment_intersection(viewpoint, angle, start, end)
+                if hit is None:
+                    continue
+                distance, point = hit
+                if distance < -EPSILON:
+                    continue
+                if best is None or distance < best[0]:
+                    best = (distance, point)
+            if best is not None:
+                intersections.append((angle, best[0], best[1]))
+
+    intersections.sort(key=lambda item: (item[0], item[1]))
+    return _cleanup_polygon([point for _, _, point in intersections])
+
+
+def shortest_path_in_polygon(polygon: list[Point], source: Point, target: Point) -> tuple[list[Point], float]:
+    if not is_point_in_polygon(source, polygon):
+        raise ValueError("Source point must lie inside or on the boundary of the polygon.")
+    if not is_point_in_polygon(target, polygon):
+        raise ValueError("Target point must lie inside or on the boundary of the polygon.")
+
+    nodes = [source, target, *polygon]
+    graph: dict[int, list[tuple[int, float]]] = {index: [] for index in range(len(nodes))}
+    for left in range(len(nodes)):
+        for right in range(left + 1, len(nodes)):
+            if not _segment_inside_polygon(polygon, nodes[left], nodes[right]):
+                continue
+            weight = _distance(nodes[left], nodes[right])
+            graph[left].append((right, weight))
+            graph[right].append((left, weight))
+
+    distances = {0: 0.0}
+    previous: dict[int, int] = {}
+    queue = [(0.0, 0)]
+    while queue:
+        current_distance, node = heapq.heappop(queue)
+        if current_distance > distances.get(node, float("inf")) + EPSILON:
+            continue
+        if node == 1:
+            break
+        for neighbor, weight in graph[node]:
+            candidate = current_distance + weight
+            if candidate + EPSILON < distances.get(neighbor, float("inf")):
+                distances[neighbor] = candidate
+                previous[neighbor] = node
+                heapq.heappush(queue, (candidate, neighbor))
+
+    if 1 not in distances:
+        raise ValueError("No path found inside the polygon.")
+
+    path_indices = [1]
+    while path_indices[-1] != 0:
+        path_indices.append(previous[path_indices[-1]])
+    path_indices.reverse()
+    path = [nodes[index] for index in path_indices]
+    return path, distances[1]
+
+
+def _domain_contains_point(point: Point, outer: list[Point], holes: list[list[Point]]) -> bool:
+    if not is_point_in_polygon(point, outer):
+        return False
+    return not any(is_point_in_polygon(point, hole) and not _point_on_boundary(point, hole) for hole in holes)
+
+
+def _segment_inside_domain(
+    start: Point,
+    end: Point,
+    outer: list[Point],
+    holes: list[list[Point]],
+    allow_hole_endpoint: Point | None = None,
+) -> bool:
+    midpoint = Point((start.x + end.x) / 2.0, (start.y + end.y) / 2.0)
+    if not _domain_contains_point(midpoint, outer, holes):
+        return False
+
+    boundaries = [outer, *holes]
+    for boundary in boundaries:
+        for index, edge_start in enumerate(boundary):
+            edge_end = boundary[(index + 1) % len(boundary)]
+            shared_endpoint = start == edge_start or start == edge_end or end == edge_start or end == edge_end
+            if shared_endpoint:
+                continue
+            if allow_hole_endpoint is not None and (edge_start == allow_hole_endpoint or edge_end == allow_hole_endpoint):
+                continue
+            if _proper_segment_intersection(start, end, edge_start, edge_end):
+                return False
+    return True
+
+
+def _splice_hole_into_polygon(outer: list[Point], hole: list[Point]) -> list[Point]:
+    hole_vertex_index = max(range(len(hole)), key=lambda index: (hole[index].x, -hole[index].y))
+    hole_vertex = hole[hole_vertex_index]
+
+    candidates = []
+    for outer_index, outer_vertex in enumerate(outer):
+        if not _segment_inside_domain(hole_vertex, outer_vertex, outer, [hole], allow_hole_endpoint=hole_vertex):
+            continue
+        candidates.append((_distance(hole_vertex, outer_vertex), outer_index))
+    if not candidates:
+        raise ValueError("Failed to connect hole to outer boundary.")
+
+    _, outer_index = min(candidates)
+    outer_vertex = outer[outer_index]
+
+    rotated_hole = hole[hole_vertex_index:] + hole[:hole_vertex_index]
+    merged: list[Point] = []
+    merged.extend(outer[: outer_index + 1])
+    merged.append(hole_vertex)
+    merged.extend(rotated_hole[1:])
+    merged.append(hole_vertex)
+    merged.append(outer_vertex)
+    merged.extend(outer[outer_index + 1 :])
+    return merged
+
+
+def triangulate_polygon_with_holes(
+    outer_boundary: list[Point],
+    holes: list[list[Point]] | None = None,
+) -> tuple[list[tuple[Point, Point, Point]], list[Point]]:
+    holes = holes or []
+    merged_polygon = _ensure_ccw(list(outer_boundary))
+    for hole in holes:
+        merged_polygon = _splice_hole_into_polygon(merged_polygon, _ensure_cw(list(hole)))
+
+    triangle_indices, merged_polygon = triangulate_polygon(merged_polygon)
+    triangles = [tuple(merged_polygon[index] for index in triangle) for triangle in triangle_indices]
+    return triangles, merged_polygon
 
 
 def solve_art_gallery(polygon_input: list[Point]) -> list[Point]:
@@ -302,6 +544,9 @@ __all__ = [
     "is_ear",
     "is_point_in_polygon",
     "monotone_chain",
+    "shortest_path_in_polygon",
     "solve_art_gallery",
     "triangulate_polygon",
+    "triangulate_polygon_with_holes",
+    "visibility_polygon",
 ]

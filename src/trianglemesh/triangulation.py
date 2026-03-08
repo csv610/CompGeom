@@ -11,9 +11,13 @@ from .geometry import (
     clip_polygon,
     contains_point,
     cross_product,
+    incircle_sign,
     in_circle,
+    is_on_segment,
+    orientation_sign,
     sub,
 )
+from .polygon import is_point_in_polygon, triangulate_polygon_with_holes
 
 
 class Triangle:
@@ -345,11 +349,148 @@ def get_circle_boundary(radius=50, center=(50, 50), n_segments=64):
     ]
 
 
+def _point_key(point: Point):
+    return (round(point.x / EPSILON), round(point.y / EPSILON), point.id)
+
+
+def _edge_key(a: Point, b: Point):
+    return tuple(sorted((_point_key(a), _point_key(b))))
+
+
+def _make_ccw_triangle(a: Point, b: Point, c: Point):
+    return (a, b, c) if orientation_sign(a, b, c) >= 0 else (a, c, b)
+
+
+def _build_edge_map(triangles):
+    edge_map = {}
+    for triangle_index, triangle in enumerate(triangles):
+        for edge_index, edge in enumerate(((triangle[0], triangle[1]), (triangle[1], triangle[2]), (triangle[2], triangle[0]))):
+            edge_map.setdefault(_edge_key(*edge), []).append((triangle_index, edge_index, edge))
+    return edge_map
+
+
+def _quadrilateral_for_edge(first, second, shared_edge_key):
+    shared_keys = set(shared_edge_key)
+    first_opposite = next(vertex for vertex in first if _point_key(vertex) not in shared_keys)
+    second_opposite = next(vertex for vertex in second if _point_key(vertex) not in shared_keys)
+    shared_vertices = [vertex for vertex in first if _point_key(vertex) in shared_keys]
+    a, b = shared_vertices
+    return a, b, first_opposite, second_opposite
+
+
+def _should_flip_constrained_edge(a: Point, b: Point, c: Point, d: Point) -> bool:
+    if orientation_sign(c, a, d) == 0 or orientation_sign(c, d, b) == 0:
+        return False
+    if orientation_sign(c, a, b) == 0 or orientation_sign(d, a, b) == 0:
+        return False
+    if orientation_sign(c, a, d) < 0:
+        a, d = d, a
+    if orientation_sign(c, d, b) < 0:
+        c, b = b, c
+    if orientation_sign(c, d, a) == 0 or orientation_sign(c, d, b) == 0:
+        return False
+    return incircle_sign(c, a, d, b) > 0 or incircle_sign(c, d, b, a) > 0
+
+
+def _point_on_boundary(point: Point, boundary: list[Point]) -> bool:
+    return any(is_on_segment(point, boundary[index], boundary[(index + 1) % len(boundary)]) for index in range(len(boundary)))
+
+
+def _proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool:
+    o1 = orientation_sign(a, b, c)
+    o2 = orientation_sign(a, b, d)
+    o3 = orientation_sign(c, d, a)
+    o4 = orientation_sign(c, d, b)
+
+    if o1 == 0 and is_on_segment(c, a, b):
+        return False
+    if o2 == 0 and is_on_segment(d, a, b):
+        return False
+    if o3 == 0 and is_on_segment(a, c, d):
+        return False
+    if o4 == 0 and is_on_segment(b, c, d):
+        return False
+    return o1 != o2 and o3 != o4
+
+
+def _point_in_domain(point: Point, outer_boundary: list[Point], holes: list[list[Point]]) -> bool:
+    if not is_point_in_polygon(point, outer_boundary):
+        return False
+    for hole in holes:
+        if is_point_in_polygon(point, hole) and not _point_on_boundary(point, hole):
+            return False
+    return True
+
+
+def _segment_valid_in_domain(
+    start: Point,
+    end: Point,
+    outer_boundary: list[Point],
+    holes: list[list[Point]],
+    constrained_segments: set[tuple[tuple[int, int, int], tuple[int, int, int]]],
+) -> bool:
+    midpoint = Point((start.x + end.x) / 2.0, (start.y + end.y) / 2.0)
+    if not _point_in_domain(midpoint, outer_boundary, holes):
+        return False
+
+    for boundary in [outer_boundary, *holes]:
+        for index, edge_start in enumerate(boundary):
+            edge_end = boundary[(index + 1) % len(boundary)]
+            if start == edge_start or start == edge_end or end == edge_start or end == edge_end:
+                continue
+            if _proper_segment_intersection(start, end, edge_start, edge_end):
+                return False
+
+    for edge in constrained_segments:
+        if edge == _edge_key(start, end):
+            continue
+    return True
+
+
+def constrained_delaunay_triangulation(outer_boundary: list[Point], holes: list[list[Point]] | None = None):
+    holes = holes or []
+    triangles, merged_polygon = triangulate_polygon_with_holes(outer_boundary, holes)
+    constrained_edges = {
+        _edge_key(merged_polygon[index], merged_polygon[(index + 1) % len(merged_polygon)])
+        for index in range(len(merged_polygon))
+    }
+
+    changed = True
+    while changed:
+        changed = False
+        edge_map = _build_edge_map(triangles)
+        for edge_key, owners in edge_map.items():
+            if edge_key in constrained_edges or len(owners) != 2:
+                continue
+
+            first_index, _, _ = owners[0]
+            second_index, _, _ = owners[1]
+            first = triangles[first_index]
+            second = triangles[second_index]
+            a, b, c, d = _quadrilateral_for_edge(first, second, edge_key)
+            if orientation_sign(c, d, a) == 0 or orientation_sign(c, d, b) == 0:
+                continue
+            if not _segment_valid_in_domain(c, d, outer_boundary, holes, constrained_edges):
+                continue
+            if not _should_flip_constrained_edge(a, b, c, d):
+                continue
+
+            replacement_one = _make_ccw_triangle(c, d, a)
+            replacement_two = _make_ccw_triangle(c, b, d)
+            triangles[first_index] = replacement_one
+            triangles[second_index] = replacement_two
+            changed = True
+            break
+
+    return triangles, constrained_edges
+
+
 __all__ = [
     "DTriangle",
     "DynamicDelaunay",
     "MeshTriangle",
     "Triangle",
+    "constrained_delaunay_triangulation",
     "build_topology",
     "delaunay_flip",
     "get_circle_boundary",

@@ -10,12 +10,17 @@ if str(SRC) not in sys.path:
 
 from geometry_utils import Point
 from cli.line_arrangement import analyze_arrangement
+from cli.polygon_visibility import parse_input as parse_visibility_input, visible_boundary_segments
+from cli.reflection_polygon import parse_input, simulate_reflections
 from cli.polygon_boolean_operations import apply_boolean_operation
 from trianglemesh.bounding import minimum_bounding_box, minimum_enclosing_circle
+from trianglemesh.geometry import incircle_sign, orientation_sign
 from trianglemesh.medial_axis import approximate_medial_axis
 from trianglemesh.mesh import mesh_neighbors
 from trianglemesh.path import shortest_path
-from trianglemesh.triangulation import triangulate
+from trianglemesh.planar import build_polygon_dcel, locate_face
+from trianglemesh.polygon import shortest_path_in_polygon, triangulate_polygon_with_holes, visibility_polygon
+from trianglemesh.triangulation import constrained_delaunay_triangulation, triangulate
 
 
 class BoundingShapeTests(unittest.TestCase):
@@ -32,6 +37,24 @@ class BoundingShapeTests(unittest.TestCase):
         self.assertAlmostEqual(box["area"], 2.0, places=6)
         self.assertAlmostEqual(box["width"], math.sqrt(2.0), places=6)
         self.assertAlmostEqual(box["height"], math.sqrt(2.0), places=6)
+
+
+class PredicateRobustnessTests(unittest.TestCase):
+    def test_orientation_sign_handles_nearly_collinear_points(self):
+        a = Point(0.0, 0.0)
+        b = Point(1e-12, 1e-12)
+        c = Point(2e-12, 3e-12)
+        self.assertEqual(orientation_sign(a, b, c), 1)
+
+    def test_incircle_sign_is_orientation_aware(self):
+        a = Point(0, 0)
+        b = Point(1, 0)
+        c = Point(0, 1)
+        inside = Point(0.2, 0.2)
+        outside = Point(2, 2)
+        self.assertEqual(incircle_sign(a, b, c, inside), 1)
+        self.assertEqual(incircle_sign(c, b, a, inside), 1)
+        self.assertEqual(incircle_sign(a, b, c, outside), -1)
 
 
 class PolygonBooleanTests(unittest.TestCase):
@@ -116,6 +139,148 @@ class ArrangementTests(unittest.TestCase):
         self.assertEqual(len(polygons[0]), 4)
 
 
+class ReflectionPolygonTests(unittest.TestCase):
+    def test_parse_input_normalizes_direction_and_preserves_polygon(self):
+        origin, direction, polygon = parse_input(
+            [
+                "1 1\n",
+                "3 4\n",
+                "0 0\n",
+                "5 0\n",
+                "5 5\n",
+                "0 5\n",
+            ]
+        )
+        self.assertEqual(origin, Point(1, 1))
+        self.assertAlmostEqual(direction.x, 0.6, places=6)
+        self.assertAlmostEqual(direction.y, 0.8, places=6)
+        self.assertEqual(len(polygon), 4)
+
+    def test_reflection_path_bounces_between_parallel_walls(self):
+        polygon = [Point(0, 0), Point(4, 0), Point(4, 2), Point(0, 2)]
+        path = simulate_reflections(
+            origin=Point(1, 1),
+            direction=Point(1, 0.25),
+            polygon=polygon,
+            steps=4,
+        )
+        self.assertEqual(len(path), 5)
+        self.assertAlmostEqual(path[1].x, 4.0, places=6)
+        self.assertAlmostEqual(path[1].y, 1.75, places=6)
+        self.assertAlmostEqual(path[2].x, 3.0, places=6)
+        self.assertAlmostEqual(path[2].y, 2.0, places=6)
+        self.assertAlmostEqual(path[3].x, 0.0, places=6)
+        self.assertAlmostEqual(path[3].y, 1.25, places=6)
+        self.assertAlmostEqual(path[4].x, 4.0, places=6)
+        self.assertAlmostEqual(path[4].y, 0.25, places=6)
+
+    def test_parse_input_rejects_origin_outside_polygon(self):
+        with self.assertRaisesRegex(ValueError, "inside or on the boundary"):
+            parse_input(
+                [
+                    "10 10\n",
+                    "1 0\n",
+                    "0 0\n",
+                    "4 0\n",
+                    "4 4\n",
+                    "0 4\n",
+                ]
+            )
+
+
+class PolygonVisibilityTests(unittest.TestCase):
+    def test_visibility_parser_accepts_query_and_polygon(self):
+        query, polygon = parse_visibility_input(
+            [
+                "1 2\n",
+                "0 0\n",
+                "4 0\n",
+                "4 3\n",
+                "0 3\n",
+            ]
+        )
+        self.assertEqual(query, Point(1, 2))
+        self.assertEqual(len(polygon), 4)
+
+    def test_visible_segments_are_subdivided_for_concave_polygon(self):
+        polygon = [
+            Point(0, 0),
+            Point(5, 0),
+            Point(5, 1),
+            Point(2, 1),
+            Point(2, 4),
+            Point(5, 4),
+            Point(5, 5),
+            Point(0, 5),
+        ]
+        segments = visible_boundary_segments(Point(1, 2.5), polygon)
+        self.assertEqual(len(segments), 4)
+        self.assertAlmostEqual(segments[0][0].x, 0.0, places=6)
+        self.assertAlmostEqual(segments[0][0].y, 0.0, places=6)
+        self.assertAlmostEqual(segments[0][1].x, 8.0 / 3.0, places=6)
+        self.assertAlmostEqual(segments[0][1].y, 0.0, places=6)
+        self.assertEqual(segments[1], (Point(2, 1), Point(2, 4)))
+        self.assertAlmostEqual(segments[2][0].x, 8.0 / 3.0, places=6)
+        self.assertAlmostEqual(segments[2][0].y, 5.0, places=6)
+        self.assertAlmostEqual(segments[2][1].x, 0.0, places=6)
+        self.assertAlmostEqual(segments[2][1].y, 5.0, places=6)
+        self.assertEqual(segments[3], (Point(0, 5), Point(0, 0)))
+
+    def test_outside_query_sees_only_exposed_boundary(self):
+        polygon = [Point(0, 0), Point(4, 0), Point(4, 4), Point(2, 2), Point(0, 4)]
+        segments = visible_boundary_segments(Point(5, 2), polygon)
+        self.assertEqual(segments, [(Point(4, 0), Point(4, 4))])
+
+
+class AdvancedPolygonAlgorithmTests(unittest.TestCase):
+    def test_visibility_polygon_matches_convex_square(self):
+        polygon = [Point(0, 0), Point(4, 0), Point(4, 4), Point(0, 4)]
+        visible = visibility_polygon(Point(2, 2), polygon)
+        self.assertEqual(len(visible), 4)
+        expected = [(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0)]
+        actual = [(round(point.x, 6), round(point.y, 6)) for point in visible]
+        self.assertEqual(actual, expected)
+
+    def test_shortest_path_in_concave_polygon_uses_reflex_vertex(self):
+        polygon = [Point(0, 0), Point(4, 0), Point(4, 4), Point(2, 2), Point(0, 4)]
+        path, total_length = shortest_path_in_polygon(polygon, Point(1, 3), Point(3, 3))
+        self.assertEqual(path, [Point(1, 3), Point(2, 2), Point(3, 3)])
+        self.assertAlmostEqual(total_length, 2.0 * math.sqrt(2.0), places=6)
+
+    def test_triangulate_polygon_with_holes_preserves_area(self):
+        outer = [Point(0, 0), Point(6, 0), Point(6, 6), Point(0, 6)]
+        holes = [[Point(2, 2), Point(4, 2), Point(4, 4), Point(2, 4)]]
+        triangles, merged = triangulate_polygon_with_holes(outer, holes)
+        self.assertEqual(len(triangles), 8)
+        self.assertEqual(len(merged), 10)
+        covered_area = 0.0
+        for a, b, c in triangles:
+            covered_area += abs(
+                (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)) / 2.0
+            )
+        self.assertAlmostEqual(covered_area, 32.0, places=6)
+
+
+class PlanarSubdivisionTests(unittest.TestCase):
+    def test_locate_face_for_polygon_with_hole(self):
+        dcel = build_polygon_dcel(
+            [Point(0, 0), Point(6, 0), Point(6, 6), Point(0, 6)],
+            holes=[[Point(2, 2), Point(4, 2), Point(4, 4), Point(2, 4)]],
+        )
+        interior = locate_face(dcel, Point(1, 1))
+        hole_region = locate_face(dcel, Point(3, 3))
+        exterior = locate_face(dcel, Point(7, 3))
+        self.assertFalse(interior.is_exterior)
+        self.assertTrue(hole_region.is_exterior)
+        self.assertTrue(exterior.is_exterior)
+
+    def test_polygon_dcel_has_expected_primitives(self):
+        dcel = build_polygon_dcel([Point(0, 0), Point(3, 0), Point(0, 2)])
+        self.assertEqual(len(dcel.vertices), 3)
+        self.assertEqual(len(dcel.half_edges), 6)
+        self.assertEqual(len(dcel.faces), 2)
+
+
 class TriangulationTests(unittest.TestCase):
     def test_square_triangulates_into_two_faces(self):
         points = [Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2), Point(1, 1, 3)]
@@ -124,6 +289,47 @@ class TriangulationTests(unittest.TestCase):
         self.assertEqual(len(triangles), 2)
         vertex_ids = sorted(sorted(vertex.id for vertex in triangle) for triangle in triangles)
         self.assertEqual(vertex_ids, [[0, 1, 2], [1, 2, 3]])
+
+    def test_constrained_delaunay_preserves_domain_edges_and_area(self):
+        outer = [Point(0, 0), Point(6, 0), Point(6, 6), Point(0, 6)]
+        holes = [[Point(2, 2), Point(4, 2), Point(4, 4), Point(2, 4)]]
+        triangles, constrained_edges = constrained_delaunay_triangulation(outer, holes)
+        self.assertEqual(len(triangles), 8)
+        self.assertGreaterEqual(len(constrained_edges), 8)
+
+        covered_area = 0.0
+        for a, b, c in triangles:
+            covered_area += abs(
+                (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)) / 2.0
+            )
+        self.assertAlmostEqual(covered_area, 32.0, places=6)
+
+    def test_constrained_delaunay_is_locally_delaunay_on_unconstrained_edges(self):
+        outer = [Point(0, 0), Point(5, 0), Point(5, 5), Point(0, 5)]
+        triangles, constrained_edges = constrained_delaunay_triangulation(outer)
+
+        def point_key(point):
+            return (round(point.x, 6), round(point.y, 6), point.id)
+
+        def edge_key(a, b):
+            return tuple(sorted((point_key(a), point_key(b))))
+
+        edge_map = {}
+        for index, triangle in enumerate(triangles):
+            for edge in ((triangle[0], triangle[1]), (triangle[1], triangle[2]), (triangle[2], triangle[0])):
+                edge_map.setdefault(edge_key(*edge), []).append(index)
+
+        for edge, owners in edge_map.items():
+            if edge in constrained_edges or len(owners) != 2:
+                continue
+            first = triangles[owners[0]]
+            second = triangles[owners[1]]
+            shared = set(edge)
+            a = next(vertex for vertex in first if point_key(vertex) not in shared)
+            b = next(vertex for vertex in second if point_key(vertex) not in shared)
+            shared_vertices = [vertex for vertex in first if point_key(vertex) in shared]
+            c, d = shared_vertices
+            self.assertLessEqual(incircle_sign(a, c, d, b), 0)
 
 
 class MedialAxisTests(unittest.TestCase):

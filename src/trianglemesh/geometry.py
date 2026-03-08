@@ -2,10 +2,37 @@
 
 from __future__ import annotations
 
+from decimal import Decimal, getcontext
 from dataclasses import dataclass
 from typing import Optional
 
 EPSILON = 1e-9
+
+
+def _decimal_orientation(a: Point, b: Point, c: Point) -> Decimal:
+    getcontext().prec = 50
+    ax = Decimal(str(a.x))
+    ay = Decimal(str(a.y))
+    bx = Decimal(str(b.x))
+    by = Decimal(str(b.y))
+    cx = Decimal(str(c.x))
+    cy = Decimal(str(c.y))
+    return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+
+
+def _decimal_incircle(a: Point, b: Point, c: Point, d: Point) -> Decimal:
+    getcontext().prec = 50
+    adx_d = Decimal(str(a.x)) - Decimal(str(d.x))
+    ady_d = Decimal(str(a.y)) - Decimal(str(d.y))
+    bdx_d = Decimal(str(b.x)) - Decimal(str(d.x))
+    bdy_d = Decimal(str(b.y)) - Decimal(str(d.y))
+    cdx_d = Decimal(str(c.x)) - Decimal(str(d.x))
+    cdy_d = Decimal(str(c.y)) - Decimal(str(d.y))
+    return (
+        (adx_d * adx_d + ady_d * ady_d) * (bdx_d * cdy_d - cdx_d * bdy_d)
+        - (bdx_d * bdx_d + bdy_d * bdy_d) * (adx_d * cdy_d - cdx_d * ady_d)
+        + (cdx_d * cdx_d + cdy_d * cdy_d) * (adx_d * bdy_d - bdx_d * ady_d)
+    )
 
 
 @dataclass(frozen=True, eq=False)
@@ -31,6 +58,28 @@ class Point:
 def cross_product(origin: Point, a: Point, b: Point) -> float:
     """Return the signed area of OA x OB."""
     return (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x)
+
+
+def orientation(a: Point, b: Point, c: Point) -> float:
+    """Return the signed orientation determinant of the triangle ABC."""
+    value = cross_product(a, b, c)
+    if abs(value) > EPSILON:
+        return value
+    return float(_decimal_orientation(a, b, c))
+
+
+def orientation_sign(a: Point, b: Point, c: Point) -> int:
+    value = orientation(a, b, c)
+    if value > EPSILON:
+        return 1
+    if value < -EPSILON:
+        return -1
+    exact = _decimal_orientation(a, b, c)
+    if exact > 0:
+        return 1
+    if exact < 0:
+        return -1
+    return 0
 
 
 def dot_product(a: Point, b: Point) -> float:
@@ -140,9 +189,9 @@ def is_on_segment(point: Point, start: Point, end: Point) -> bool:
 
 def contains_point(triangle, point: Point) -> bool:
     a, b, c = triangle.vertices
-    cp1 = cross_product(a, b, point)
-    cp2 = cross_product(b, c, point)
-    cp3 = cross_product(c, a, point)
+    cp1 = orientation(a, b, point)
+    cp2 = orientation(b, c, point)
+    cp3 = orientation(c, a, point)
     return (
         cp1 >= -EPSILON and cp2 >= -EPSILON and cp3 >= -EPSILON
     ) or (
@@ -150,7 +199,7 @@ def contains_point(triangle, point: Point) -> bool:
     )
 
 
-def in_circle(a: Point, b: Point, c: Point, d: Point) -> bool:
+def incircle_det(a: Point, b: Point, c: Point, d: Point) -> float:
     adx, ady = a.x - d.x, a.y - d.y
     bdx, bdy = b.x - d.x, b.y - d.y
     cdx, cdy = c.x - d.x, c.y - d.y
@@ -160,7 +209,31 @@ def in_circle(a: Point, b: Point, c: Point, d: Point) -> bool:
         - (bdx * bdx + bdy * bdy) * (adx * cdy - cdx * ady)
         + (cdx * cdx + cdy * cdy) * (adx * bdy - bdx * ady)
     )
-    return determinant > EPSILON
+    if abs(determinant) > EPSILON:
+        return determinant
+    return float(_decimal_incircle(a, b, c, d))
+
+
+def incircle_sign(a: Point, b: Point, c: Point, d: Point) -> int:
+    determinant = incircle_det(a, b, c, d)
+    orient = orientation_sign(a, b, c)
+    adjusted = determinant * orient
+    if adjusted > EPSILON:
+        return 1
+    if adjusted < -EPSILON:
+        return -1
+    exact = _decimal_incircle(a, b, c, d)
+    if orient < 0:
+        exact = -exact
+    if exact > 0:
+        return 1
+    if exact < 0:
+        return -1
+    return 0
+
+
+def in_circle(a: Point, b: Point, c: Point, d: Point) -> bool:
+    return incircle_sign(a, b, c, d) > 0
 
 
 __all__ = [
@@ -172,10 +245,14 @@ __all__ = [
     "dist_point_to_segment",
     "dot_product",
     "get_circumcenter",
+    "incircle_det",
+    "incircle_sign",
     "in_circle",
     "intersect_lines",
     "is_on_segment",
     "length",
     "length_sq",
+    "orientation",
+    "orientation_sign",
     "sub",
 ]
