@@ -1,9 +1,16 @@
 import math
 import unittest
+from pathlib import Path
+import sys
+
+
+SRC = Path(__file__).resolve().parents[1] / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 from geometry_utils import Point
-from line_arrangement import analyze_arrangement
-from polygon_boolean_operations import apply_boolean_operation
+from cli.line_arrangement import analyze_arrangement
+from cli.polygon_boolean_operations import apply_boolean_operation
 from trianglemesh.bounding import minimum_bounding_box, minimum_enclosing_circle
 from trianglemesh.medial_axis import approximate_medial_axis
 from trianglemesh.mesh import mesh_neighbors

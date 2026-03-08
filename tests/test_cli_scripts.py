@@ -5,12 +5,14 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+SCRIPTS = ROOT / "scripts"
 
 
 class CliRegressionTests(unittest.TestCase):
     def run_script(self, script_name, stdin_text):
         completed = subprocess.run(
-            [sys.executable, str(ROOT / script_name)],
+            [sys.executable, str(SCRIPTS / script_name)],
             input=stdin_text,
             text=True,
             capture_output=True,

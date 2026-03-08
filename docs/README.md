@@ -3,9 +3,10 @@
 This directory contains one `README.md` per Python module in the repository.
 
 Layout:
-- `cli/` contains the concrete command-line entry point implementations.
-- root-level CLI files are thin compatibility stubs that delegate into `cli/`.
-- `trianglemesh/` contains the reusable implementation package.
+- `scripts/` contains runnable command-line entry points.
+- `src/cli/` contains the command implementations used by those scripts.
+- `src/trianglemesh/` contains the reusable implementation package.
+- `src/geometry_utils.py`, `src/polygon_utils.py`, and similar files are compatibility shims for legacy imports.
 - `docs/<module_name>/README.md` documents root-level scripts and compatibility modules.
 - `docs/trianglemesh_<module_name>/README.md` documents implementation modules under `trianglemesh/`.
 
