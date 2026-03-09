@@ -50,6 +50,11 @@ The package exposes a unified command-line tool. You can invoke it using the `co
 compgeom identify_concave_parts --poly 0 0 10 0 10 10 5 5 0 10 --output concave.png
 ```
 
+**Identify Concave Parts of a Polygon:** 
+```bash 
+compgeom identify_concave_parts --poly 0 0 10 0 10 10 5 5 0 10 --output concave.png 
+``` 
+
 **Decompose a Polygon into Convex Pieces:**
 ```bash
 compgeom convex_decomposition --poly 0 0 10 0 10 10 5 5 0 10 --output pieces.png
@@ -191,6 +196,7 @@ centers = CirclePacker.pack(polygon_vertices, radius=0.1)
         - `mesh_reordering.py`: `CuthillMcKee` class.
         - `voxelization.py`: `MeshVoxelizer` class (Native & OpenVDB).
         - `triangulation.py`: Delaunay and Voronoi algorithms.
+        - `quadmesh/`: QuadMesh specific algorithms (e.g., Triangle to Quad conversion).
         - `quadmesh/`: QuadMesh specific algorithms (e.g., Triangle to Quad conversion).
     - `spatial.py`: Spatial indexing and `PointSimplifier`.
     - `points_sampling.py`: `PointSampler` class.
