@@ -12,8 +12,9 @@ A comprehensive Python library and command-line tool for computational geometry,
 - **Core Geometry:** Points (2D and 3D), vectors, primitive intersections, geometric predicates (orientation, incircle).
 - **Mathematical Utilities:** High-precision orientation and incircle tests, coordinate conversions for space-filling curves, 2D/3D distances, and 2D rotations.
 - **Polygon Smoothing:** Transform arbitrary polygons towards a circular shape using discrete Mean Curvature Flow with perimeter preservation.
+- **Convex Decomposition:** Decompose simple polygons into convex pieces using the Hertel-Mehlhorn algorithm.
 - **Distance Maps:** Solve the Eikonal equation (|grad u| = 1) using the Fast Sweeping Method to generate distance fields from boundaries.
-- **Polygons:** Boolean operations, properties (area, diameter, centroid, orientation), visibility, triangulation (ear-clipping, CDT), and shortest paths.
+- **Polygons:** Boolean operations, properties (area, diameter, centroid, orientation, **reflex vertices**), visibility, triangulation (ear-clipping, CDT), and shortest paths.
 - **Proximity & Bounding:** Closest/farthest pair, Graham scan, monotone chain, minimum bounding box, minimum enclosing circle (Welzl's algorithm), and **Largest Empty Circle**.
 - **Davenport-Schinzel Sequences:** Compute the lower envelope of line segments and extract the combinatorial sequence.
 - **Space-Filling Curves:** Hilbert, Peano, Morton (Z-order), ZigZag, and Sweep curves with grid cell index output.
@@ -41,6 +42,16 @@ This will also install the `compgeom` command-line utility.
 ### Command-Line Interface
 
 The package exposes a unified command-line tool. You can invoke it using the `compgeom` command.
+
+**Identify Concave Parts of a Polygon:**
+```bash
+compgeom identify_concave_parts --poly 0 0 10 0 10 10 5 5 0 10 --output concave.png
+```
+
+**Decompose a Polygon into Convex Pieces:**
+```bash
+compgeom convex_decomposition --poly 0 0 10 0 10 10 5 5 0 10 --output pieces.png
+```
 
 **Smooth a Polygon (MCF):**
 ```bash
@@ -86,6 +97,22 @@ compgeom mesh_voxelization --voxel_size 0.1 --method native
 
 You can use the high-level classes directly in your Python code:
 
+**Reflex Vertices (Concave Parts):**
+```python
+from compgeom.polygon import get_reflex_vertices
+
+# Returns a list of Points that are reflex (interior angle > 180)
+concave_points = get_reflex_vertices(my_polygon)
+```
+
+**Convex Decomposition:**
+```python
+from compgeom.polygon import ConvexDecomposer
+
+# Returns a list of polygons (list of points)
+convex_pieces = ConvexDecomposer.hertel_mehlhorn(my_polygon)
+```
+
 **Polygon Smoothing:**
 ```python
 from compgeom.polygon import PolygonalMeanCurvatureFlow
@@ -127,14 +154,6 @@ from compgeom.polygon import CirclePacker
 centers = CirclePacker.pack(polygon_vertices, radius=0.1)
 ```
 
-**Mesh Voxelization:**
-```python
-from compgeom.mesh import MeshVoxelizer
-
-# Using native surface sampling
-voxels = MeshVoxelizer.voxelize_native(vertices, faces, voxel_size=0.1)
-```
-
 ## Project Structure
 
 - `src/compgeom/` - Core library modules:
@@ -142,7 +161,8 @@ voxels = MeshVoxelizer.voxelize_native(vertices, faces, voxel_size=0.1)
     - `math_utils.py`: Low-level mathematical functions.
     - `shapes.py`: High-level shape classes.
     - `polygon/`: Polygon sub-package:
-        - `polygon.py`: Core polygon algorithms.
+        - `polygon.py`: Core polygon algorithms and reflex vertex detection.
+        - `convex_decomposition.py`: `ConvexDecomposer` class.
         - `circle_packing.py`: `CirclePacker` class.
         - `polygon_smoothing.py`: `PolygonalMeanCurvatureFlow` class.
         - `distance_map.py`: `DistanceMapSolver` class.

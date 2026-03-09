@@ -513,6 +513,28 @@ def generate_simple_polygon(
     return [Point(point.x, point.y, index) for index, point in enumerate(ordered)]
 
 
+def get_reflex_vertices(polygon: list[Point]) -> list[Point]:
+    """Returns the vertices of the polygon that form concave parts (interior angle > 180 degrees)."""
+    if len(polygon) < 3:
+        return []
+
+    # Ensure CCW for consistent turn check
+    poly = _ensure_ccw(list(polygon))
+    n = len(poly)
+    reflex = []
+
+    for i in range(n):
+        p_prev = poly[i - 1]
+        p_curr = poly[i]
+        p_next = poly[(i + 1) % n]
+
+        # For CCW polygon, a right turn (cross product < 0) indicates a reflex vertex
+        if cross_product(p_prev, p_curr, p_next) < -1e-9:
+            reflex.append(p_curr)
+
+    return reflex
+
+
 def generate_points_in_triangle(
     a: Union[Point, Point3D], 
     b: Union[Point, Point3D], 
@@ -580,6 +602,7 @@ __all__ = [
     "generate_simple_polygon",
     "get_convex_diameter",
     "get_polygon_properties",
+    "get_reflex_vertices",
     "get_triangulation_with_diagonals",
     "graham_scan",
     "hertel_mehlhorn",
