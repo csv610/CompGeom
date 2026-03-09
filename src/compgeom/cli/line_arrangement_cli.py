@@ -1,14 +1,14 @@
 import math
-import sys
 
 from compgeom import EPSILON, Point, cross_product, is_on_segment, length, sub
+from ._shared import read_stdin_lines
 
 
-def point_key(point):
+def point_key(point: Point) -> tuple[int, int]:
     return (round(point.x / EPSILON), round(point.y / EPSILON))
 
 
-def polygon_key(polygon):
+def polygon_key(polygon: list[Point]) -> tuple[tuple[int, int], ...]:
     keys = [point_key(point) for point in polygon]
     if not keys:
         return ()
@@ -20,7 +20,7 @@ def polygon_key(polygon):
     return min(candidates)
 
 
-def segment_parameter(point, start, end):
+def segment_parameter(point: Point, start: Point, end: Point) -> float:
     dx = end.x - start.x
     dy = end.y - start.y
     if abs(dx) >= abs(dy):
@@ -28,7 +28,7 @@ def segment_parameter(point, start, end):
     return 0.0 if abs(dy) < EPSILON else (point.y - start.y) / dy
 
 
-def signed_polygon_area(polygon):
+def signed_polygon_area(polygon: list[Point]) -> float:
     return 0.5 * sum(
         polygon[i].x * polygon[(i + 1) % len(polygon)].y
         - polygon[(i + 1) % len(polygon)].x * polygon[i].y
@@ -36,12 +36,14 @@ def signed_polygon_area(polygon):
     )
 
 
-def canonical_segment(segment):
+def canonical_segment(segment: tuple[Point, Point]) -> tuple[Point, Point]:
     start, end = segment
     return (start, end) if point_key(start) <= point_key(end) else (end, start)
 
 
-def segment_intersection_points(seg1, seg2):
+def segment_intersection_points(
+    seg1: tuple[Point, Point], seg2: tuple[Point, Point]
+) -> list[Point]:
     a, b = seg1
     c, d = seg2
     ab = sub(b, a)
@@ -70,7 +72,7 @@ def segment_intersection_points(seg1, seg2):
     return list(unique.values())
 
 
-def find_intersection_points(segments):
+def find_intersection_points(segments: list[tuple[Point, Point]]) -> list[Point]:
     intersections = {}
     for i in range(len(segments)):
         for j in range(i + 1, len(segments)):
@@ -79,7 +81,7 @@ def find_intersection_points(segments):
     return list(intersections.values())
 
 
-def split_segments(segments):
+def split_segments(segments: list[tuple[Point, Point]]) -> list[tuple[Point, Point]]:
     split_points = []
     for start, end in segments:
         split_points.append({point_key(start): start, point_key(end): end})
@@ -105,7 +107,7 @@ def split_segments(segments):
     return list(result.values())
 
 
-def build_graph(segments):
+def build_graph(segments: list[tuple[Point, Point]]):
     vertices = {}
     adjacency = {}
 
@@ -131,7 +133,7 @@ def build_graph(segments):
     return vertices, ordered_neighbors
 
 
-def trace_faces(vertices, ordered_neighbors):
+def trace_faces(vertices, ordered_neighbors) -> list[list[Point]]:
     visited = set()
     polygons = []
 
@@ -172,7 +174,9 @@ def trace_faces(vertices, ordered_neighbors):
     return list(unique.values())
 
 
-def analyze_arrangement(segments):
+def analyze_arrangement(
+    segments: list[tuple[Point, Point]]
+) -> tuple[list[Point], list[tuple[Point, Point]], list[list[Point]]]:
     intersection_points = find_intersection_points(segments)
     split = split_segments(segments)
     vertices, ordered_neighbors = build_graph(split)
@@ -180,7 +184,7 @@ def analyze_arrangement(segments):
     return intersection_points, split, polygons
 
 
-def parse_segments(lines):
+def parse_segments(lines: list[str]) -> list[tuple[Point, Point]]:
     segments = []
     for line_number, line in enumerate(lines, start=1):
         parts = line.split()
@@ -198,16 +202,16 @@ def parse_segments(lines):
     return segments
 
 
-def format_point(point):
+def format_point(point: Point) -> str:
     return f"({point.x:.6f}, {point.y:.6f})"
 
 
-def main():
+def main() -> int:
     try:
-        segments = parse_segments(sys.stdin.readlines())
+        segments = parse_segments(read_stdin_lines())
     except ValueError as exc:
         print(f"Invalid input: {exc}")
-        return
+        return 1
 
     intersection_points, split, polygons = analyze_arrangement(segments)
 
@@ -228,12 +232,13 @@ def main():
     print("\nPolygons:")
     if not polygons:
         print("  None")
-        return
+        return 0
 
     for index, polygon in enumerate(polygons, start=1):
         vertices = ", ".join(format_point(point) for point in polygon)
         print(f"  {index:3}: {vertices}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

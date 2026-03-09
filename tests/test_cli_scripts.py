@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import unittest
@@ -12,12 +13,18 @@ SCRIPTS = ROOT / "scripts"
 class CliRegressionTests(unittest.TestCase):
     def run_script(self, script_name, stdin_text):
         module_name = script_name.replace('.py', '')
+        pythonpath = str(SRC)
+        existing_pythonpath = os.environ.get("PYTHONPATH")
+        if existing_pythonpath:
+            pythonpath = f"{pythonpath}{os.pathsep}{existing_pythonpath}"
+        env = dict(os.environ, PYTHONPATH=pythonpath)
         completed = subprocess.run(
             [sys.executable, "-m", "compgeom.cli.main", module_name],
             input=stdin_text,
             text=True,
             capture_output=True,
             check=False,
+            env=env,
         )
         return completed
 

@@ -98,7 +98,7 @@ smoothed = PolygonalMeanCurvatureFlow.smooth(resampled, iterations=200)
 **Objective:** Reduce a massive point set while protecting specific points from removal.
 
 ```python
-from compgeom.spatial import PointSimplifier
+from compgeom import PointSimplifier
 
 # Protect critical boundary or landmark points
 protected = {0, 10, 50}
@@ -170,29 +170,14 @@ voxels = MeshVoxelizer.voxelize(mesh, voxel_size=0.01, fill_interior=True)
 
 ## Project Structure
 
-- `src/compgeom/` - Core library modules:
-    - `geometry.py`: Primitives and types (Point, Point3D).
-    - `math_utils.py`: Low-level mathematical functions.
-    - `shapes.py`: High-level shape classes.
-    - `polygon/`: Polygon sub-package (Smoothing, Packing, Decomposition, DCEL).
-    - `mesh/`: Mesh sub-package:
-        - `mesh.py`: Mesh classes and `MeshTopology` helper.
-        - `mesh_io.py`: `OBJFileHandler` class.
-        - `mesh_coloring.py`: `MeshColoring` class.
-        - `mesh_refinement.py`: `TriMeshRefiner` class.
-        - `mesh_reordering.py`: `CuthillMcKee` class.
-        - `mesh_transfer.py`: `MeshTransfer` class (Harmonic Mapping).
-        - `voxelization.py`: `MeshVoxelizer` class (Native & OpenVDB).
-        - `triangulation.py`: Delaunay and Voronoi algorithms.
-        - `quadmesh/`: QuadMesh specific algorithms.
-    - `spatial.py`: Spatial indexing and `PointSimplifier`.
-    - `points_sampling.py`: `PointSampler` class.
-    - `sequences.py`: `DavenportSchinzel` class.
-    - `space_filling_curves.py`: `SpaceFillingCurves` class.
-    - `rectangle_packing.py`: `RectanglePacker` class.
-    - `visualization.py`: SVG/PNG export utilities.
+- `src/compgeom/` - Core package:
+    - `geo_math/`: geometric primitives and numeric helpers.
+    - `polygon/`: polygon algorithms, decomposition, smoothing, medial axis, and DCEL helpers.
+    - `mesh/`: mesh data structures, topology, I/O, refinement, transfer, voxelization, and triangulation helpers.
+    - `algo/`: higher-level algorithms such as `PointSimplifier`, `PointSampler`, `DavenportSchinzel`, `RectanglePacker`, and `SpaceFillingCurves`.
+    - `graphics/`: SVG/PNG export utilities.
 - `src/compgeom/cli/` - CLI script implementations.
-- `tests/` - Comprehensive unit test suite.
+- `tests/` - Unit and CLI regression tests for a subset of the library surface.
 
 ## Development & Testing
 

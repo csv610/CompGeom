@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import math
-import sys
 
 from compgeom import EPSILON, Point, cross_product, is_on_segment
 from compgeom import is_point_in_polygon
+from ._shared import print_lines, read_stdin_lines
 
 
 def _dot(a: Point, b: Point) -> float:
@@ -203,26 +203,31 @@ def format_point(point: Point) -> str:
     return f"({point.x:.6f}, {point.y:.6f})"
 
 
-def main() -> None:
+def main() -> int:
     try:
-        query, polygon = parse_input(sys.stdin.readlines())
+        query, polygon = parse_input(read_stdin_lines())
     except ValueError as exc:
-        print(f"Invalid input: {exc}")
-        print("Input format:")
-        print("  line 1: query_x query_y")
-        print("  line 2+: polygon vertices x y")
-        return
+        print_lines(
+            [
+                f"Invalid input: {exc}",
+                "Input format:",
+                "  line 1: query_x query_y",
+                "  line 2+: polygon vertices x y",
+            ]
+        )
+        return 1
 
     segments = visible_boundary_segments(query, polygon)
     if not segments:
         print("Visible Segments:")
         print("  None")
-        return
+        return 0
 
     print("Visible Segments:")
     for index, (start, end) in enumerate(segments, start=1):
         print(f"  {index:3}: {format_point(start)} -> {format_point(end)}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

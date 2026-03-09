@@ -1,10 +1,11 @@
-import sys
+from __future__ import annotations
 
 from compgeom import Point
 from compgeom import mesh_neighbors
+from ._shared import read_stdin_lines
 
 
-def parse_mesh_query(lines):
+def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point, Point, Point]], int | None, int | None]:
     points_map = {}
     triangles = []
     reading_points = True
@@ -61,11 +62,11 @@ def parse_mesh_query(lines):
     return triangles, query_vertex, query_triangle
 
 
-def main():
-    triangles, query_vertex, query_triangle = parse_mesh_query(sys.stdin.readlines())
+def main() -> int:
+    triangles, query_vertex, query_triangle = parse_mesh_query(read_stdin_lines())
     if not triangles:
         print("No triangles found in input.")
-        return
+        return 1
 
     neighbors = mesh_neighbors(triangles)
 
@@ -82,7 +83,8 @@ def main():
         print("Triangle neighbors:")
         for triangle_id in sorted(neighbors["triangle_neighbors"]):
             print(f"  {triangle_id}: {neighbors['triangle_neighbors'][triangle_id]}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
