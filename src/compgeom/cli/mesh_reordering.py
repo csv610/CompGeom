@@ -1,9 +1,7 @@
 import argparse
 import sys
 from compgeom.geometry import Point
-from compgeom.mesh import TriangleMesh
-from compgeom.mesh import CuthillMcKee
-from compgeom.mesh import OBJFileHandler
+from compgeom.mesh import TriangleMesh, CuthillMcKee, OBJFileHandler
 
 def calculate_dual_bandwidth(mesh: TriangleMesh):
     adj = {i: mesh.topology.shared_edge_neighbors(i) for i in range(len(mesh.faces))}
@@ -32,9 +30,7 @@ def main():
     
     if args.input:
         print(f"Reading mesh from {args.input}...")
-        vertices, faces = OBJFileHandler.read(args.input)
-        faces = OBJFileHandler.triangulate_faces(faces)
-        mesh = TriangleMesh(vertices, faces)
+        mesh = TriangleMesh.from_file(args.input)
     else:
         # Create a shuffled grid
         import random
@@ -46,7 +42,6 @@ def main():
                 faces.extend([(v0, v1, v3), (v0, v3, v2)])
         random.seed(42)
         random.shuffle(faces)
-        # Note: we should also shuffle vertices to show nodal bandwidth reduction
         v_map = list(range(len(vertices)))
         random.shuffle(v_map)
         shuffled_vertices = [vertices[i] for i in v_map]
@@ -70,7 +65,6 @@ def main():
         new_order = CuthillMcKee.reorder_vertices(mesh, reverse=not args.no_reverse)
         # Reorder vertices
         reordered_vertices = [mesh.vertices[i] for i in new_order]
-        # Update face indices to point to new vertex locations
         inv_map = {old: new for new, old in enumerate(new_order)}
         updated_faces = [tuple(inv_map[v] for v in f) for f in mesh.faces]
         new_mesh = TriangleMesh(reordered_vertices, updated_faces)

@@ -1,9 +1,7 @@
 import argparse
 import sys
 from compgeom.geometry import Point
-from compgeom.mesh import TriangleMesh
-from compgeom.mesh import MeshColoring
-from compgeom.mesh import OBJFileHandler
+from compgeom.mesh import TriangleMesh, MeshColoring, OBJFileHandler
 
 def main():
     parser = argparse.ArgumentParser(description="Color mesh elements or vertices using a greedy algorithm.")
@@ -14,9 +12,7 @@ def main():
     
     if args.input:
         print(f"Reading mesh from {args.input}...")
-        vertices, faces = OBJFileHandler.read(args.input)
-        faces = OBJFileHandler.triangulate_faces(faces)
-        mesh = TriangleMesh(vertices, faces)
+        mesh = TriangleMesh.from_file(args.input)
     else:
         # Create a simple 2D triangulation: 2 triangles sharing an edge
         vertices = [Point(0,0), Point(1,0), Point(1,1), Point(0,1)]

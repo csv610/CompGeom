@@ -1,9 +1,7 @@
 import argparse
 import sys
 from compgeom.geometry import Point
-from compgeom.mesh import TriangleMesh
-from compgeom.mesh import TriMeshRefiner
-from compgeom.mesh import OBJFileHandler
+from compgeom.mesh import TriangleMesh, OBJFileHandler
 
 def main():
     parser = argparse.ArgumentParser(description="Refine a triangular mesh.")
@@ -16,9 +14,7 @@ def main():
     
     if args.input:
         print(f"Reading mesh from {args.input}...")
-        vertices, faces = OBJFileHandler.read(args.input)
-        faces = OBJFileHandler.triangulate_faces(faces)
-        mesh = TriangleMesh(vertices, faces)
+        mesh = TriangleMesh.from_file(args.input)
     else:
         # Single triangle with area ~0.433
         vertices = [Point(0,0), Point(1,0), Point(0.5, 0.866)]
@@ -28,6 +24,7 @@ def main():
         
     print(f"Initial Mesh: {len(mesh.vertices)} vertices, {len(mesh.faces)} triangles.")
     
+    from compgeom.mesh import TriMeshRefiner
     if args.max_area is not None:
         print(f"Refining uniformly until every triangle area <= {args.max_area * 100:.2f}% of total area...")
         refined_mesh = TriMeshRefiner.refine_uniform(mesh, args.max_area)

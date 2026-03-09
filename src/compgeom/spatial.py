@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from .geometry import Point, Point3D
 from .math_utils import distance, distance_3d
@@ -118,15 +118,22 @@ class PointSimplifier:
         return (min_x, max_x, min_y, max_y, min_z, max_z), True
 
     @staticmethod
-    def simplify(points: List[Union[Point, Point3D]], ratio: float) -> List[Union[Point, Point3D]]:
+    def simplify(
+        points: List[Union[Point, Point3D]], 
+        ratio: float,
+        protected_ids: Optional[Set[int]] = None
+    ) -> List[Union[Point, Point3D]]:
         """
         Simplifies points by keeping only one point per grid cell.
         Also checks neighboring cells to ensure Euclidean distance > threshold.
         Grid size is determined by ratio * bounding_box_diagonal.
+        
+        Points with IDs in protected_ids are never removed.
         """
         if not points:
             return []
 
+        protected = protected_ids or set()
         bbox, is_3d = PointSimplifier.get_bounding_box(points)
         
         if is_3d:
@@ -151,6 +158,17 @@ class PointSimplifier:
             neighbor_indices = [(dx, dy) for dx in offsets for dy in offsets]
 
         for p in points:
+            # Always keep protected points
+            if p.id in protected:
+                simplified_points.append(p)
+                # Register in grid so others don't get too close
+                if is_3d:
+                    key = (int(p.x / threshold), int(p.y / threshold), int(p.z / threshold))
+                else:
+                    key = (int(p.x / threshold), int(p.y / threshold))
+                grid[key] = p
+                continue
+
             if is_3d:
                 gx, gy, gz = int(p.x / threshold), int(p.y / threshold), int(p.z / threshold)
                 key = (gx, gy, gz)
