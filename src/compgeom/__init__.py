@@ -34,6 +34,8 @@ from .mesh import (
     TetMesh,
     TriangleMesh,
 )
+from .mesh_refinement import TriMeshRefiner
+from .mesh_coloring import MeshColoring
 
 __all__ = [
     "Circle",
@@ -51,6 +53,7 @@ __all__ = [
     "LargestEmptyCircle",
     "LineSegment",
     "Mesh",
+    "MeshColoring",
     "MeshTopology",
     "MeshVoxelizer",
     "OBJFileHandler",
@@ -67,6 +70,7 @@ __all__ = [
     "Square",
     "TetMesh",
     "Tetrahedron",
+    "TriMeshRefiner",
     "Triangle",
     "TriangleMesh",
     "build_polygon_dcel",

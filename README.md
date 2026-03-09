@@ -4,6 +4,9 @@ A comprehensive Python library and command-line tool for computational geometry,
 
 ## Features
 
+- **Mesh Structures:** Support for TriangleMesh, QuadMesh, TetMesh, and HexMesh with topological query support (vertex/element adjacency) via `MeshTopology`.
+- **Mesh Refinement:** Subdivide triangular meshes using linear subdivision (midpoint splitting) or uniform refinement (area-ratio based) to increase resolution.
+- **Mesh Coloring:** Assign colors to mesh elements (faces/cells) or vertices using a greedy graph coloring algorithm (minimum colors for adjacent components).
 - **Geometric Shapes:** Object-oriented representations of Triangle, Square, Rectangle, Circle, Sphere, Cube, Cuboid, Plane, LineSegment, Ray, Tetrahedron, and Hexahedron with properties like area, volume, and centroid.
 - **Core Geometry:** Points (2D and 3D), vectors, primitive intersections, geometric predicates (orientation, incircle).
 - **Mathematical Utilities:** High-precision orientation and incircle tests, coordinate conversions for space-filling curves, 2D/3D distances, and 2D rotations.
@@ -36,6 +39,17 @@ This will also install the `compgeom` command-line utility.
 
 The package exposes a unified command-line tool. You can invoke it using the `compgeom` command.
 
+**Refine a Mesh (Uniformly):**
+```bash
+# Refine until no triangle is larger than 1% of total area
+compgeom mesh_refinement --input model.obj --max_area 0.01 --output refined.obj
+```
+
+**Color Mesh Vertices:**
+```bash
+compgeom mesh_coloring --input model.obj --target vertices
+```
+
 **Find the Largest Empty Circle:**
 ```bash
 # Find the LEC for a set of points and save visualization
@@ -65,14 +79,31 @@ compgeom point_simplification --n 1000000 --ratio 0.001 --dim 3d
 compgeom visualize_curve hilbert --level 3 --output path.png
 ```
 
-**Pack Rectangles into a Square:**
-```bash
-compgeom rectangle_packer --dims 10 10 20 5 5 15 --shape square --output packed.png
-```
-
 ### Python API
 
 You can use the high-level classes directly in your Python code:
+
+**Mesh Refinement:**
+```python
+from compgeom.mesh_refinement import TriMeshRefiner
+
+# Linear subdivision (1 triangle -> 4 triangles)
+refined_mesh = TriMeshRefiner.subdivide_linear(my_mesh)
+
+# Uniform refinement (ratio-based)
+refined_mesh = TriMeshRefiner.refine_uniform(my_mesh, max_area_ratio=0.01)
+```
+
+**Mesh Coloring:**
+```python
+from compgeom.mesh_coloring import MeshColoring
+
+# Color faces (ensures adjacent faces have different colors)
+face_colors = MeshColoring.color_elements(my_mesh)
+
+# Color vertices
+vert_colors = MeshColoring.color_vertices(my_mesh)
+```
 
 **Largest Empty Circle:**
 ```python
@@ -93,15 +124,6 @@ from compgeom.circle_packing import CirclePacker
 square = [Point(0, 0), Point(10, 0), Point(10, 10), Point(0, 10)]
 centers = CirclePacker.pack(square, radius=0.1)
 efficiency = CirclePacker.calculate_efficiency(square, centers, radius=0.1)
-
-# 2. Packing into a Circle (approximated as a high-res polygon)
-container_radius = 10.0
-polygon = [
-    Point(container_radius * math.cos(2 * math.pi * i / 128),
-          container_radius * math.sin(2 * math.pi * i / 128))
-    for i in range(128)
-]
-centers_in_circle = CirclePacker.pack(polygon, radius=0.1)
 ```
 
 **Mesh Voxelization:**
@@ -110,28 +132,6 @@ from compgeom.voxelization import MeshVoxelizer
 
 # Using native surface sampling
 voxels = MeshVoxelizer.voxelize_native(vertices, faces, voxel_size=0.1)
-
-# Using OpenVDB (requires pyopenvdb)
-grid = MeshVoxelizer.voxelize_openvdb(vertices, faces, voxel_size=0.1)
-```
-
-**Point Cloud Simplification:**
-```python
-from compgeom.spatial import PointSimplifier
-from compgeom.geometry import Point3D
-
-# Simplify a list of 3D points
-# Ratio is relative to the bounding box diagonal
-simplified = PointSimplifier.simplify(my_large_point_list, ratio=0.005)
-```
-
-**Point Sampling:**
-```python
-from compgeom.geometry import Point
-from compgeom.points_sampling import PointSampler
-
-# Sample 50 points from a circle
-points = PointSampler.in_circle(Point(0, 0), radius=10.0, n_points=50)
 ```
 
 **Rectangle Packing:**
@@ -140,7 +140,6 @@ from compgeom.rectangle_packing import RectanglePacker
 
 dims = [(10, 20), (5, 5), (15, 10)]
 w, h, placements = RectanglePacker.pack(dims, target_shape="square")
-print(f"Packed into {w}x{h} container")
 ```
 
 ## Project Structure
@@ -156,6 +155,9 @@ print(f"Packed into {w}x{h} container")
     - `circle_packing.py`: `CirclePacker` class.
     - `mesh_io.py`: `OBJFileHandler` class.
     - `voxelization.py`: `MeshVoxelizer` class (Native & OpenVDB).
+    - `mesh.py`: Mesh classes and `MeshTopology` helper.
+    - `mesh_coloring.py`: `MeshColoring` class.
+    - `mesh_refinement.py`: `TriMeshRefiner` class.
     - `spatial.py`: Spatial indexing and `PointSimplifier`.
     - `visualization.py`: SVG/PNG export utilities.
 - `src/compgeom/cli/` - CLI script implementations.

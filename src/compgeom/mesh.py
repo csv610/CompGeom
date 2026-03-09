@@ -18,6 +18,7 @@ class MeshTopology:
         self._v2v: Optional[Dict[int, Set[int]]] = None
         self._v2e: Optional[Dict[int, Set[int]]] = None
         self._e2e: Optional[Dict[int, Set[int]]] = None
+        self._e2e_edge: Optional[Dict[int, Set[int]]] = None
 
     def vertex_neighbors(self, vertex_idx: int) -> Set[int]:
         """Returns the set of vertex indices adjacent to the given vertex."""
@@ -32,18 +33,22 @@ class MeshTopology:
         return self._v2e.get(vertex_idx, set())
 
     def element_neighbors(self, element_idx: int) -> Set[int]:
-        """Returns the set of element indices adjacent to the given element."""
+        """Returns the set of element indices sharing at least one vertex."""
         if self._e2e is None:
             self._build_e2e()
         return self._e2e.get(element_idx, set())
+
+    def shared_edge_neighbors(self, element_idx: int) -> Set[int]:
+        """Returns the set of element indices sharing an edge (at least 2 vertices)."""
+        if self._e2e_edge is None:
+            self._build_e2e_edge()
+        return self._e2e_edge.get(element_idx, set())
 
     def _build_v2v(self):
         self._v2v = defaultdict(set)
         for element in self._mesh.elements:
             n = len(element)
             for i in range(n):
-                # Connect every vertex in the element to every other (clique)
-                # For faces this naturally forms edges. For tets it forms edges.
                 u = element[i]
                 for j in range(i + 1, n):
                     v = element[j]
@@ -64,10 +69,33 @@ class MeshTopology:
         self._e2e = defaultdict(set)
         for i, element in enumerate(self._mesh.elements):
             for v_idx in element:
-                # Every element sharing this vertex is a neighbor
                 for neighbor_idx in self._v2e[v_idx]:
                     if neighbor_idx != i:
                         self._e2e[i].add(neighbor_idx)
+
+    def _build_e2e_edge(self):
+        """Builds adjacency based on shared edges (at least two vertices)."""
+        self._e2e_edge = defaultdict(set)
+        
+        # Map edge (sorted tuple of 2 vertices) to elements sharing it
+        edge_map = defaultdict(list)
+        for i, element in enumerate(self._mesh.elements):
+            n = len(element)
+            for j in range(n):
+                # For polygons (triangle, quad), edges are adjacent vertices
+                # For polyhedra (tet, hex), we also check adjacent pairs in face definitions
+                # Simplified: check all pairs in the element for any dimension
+                for k in range(j + 1, n):
+                    edge = tuple(sorted((element[j], element[k])))
+                    edge_map[edge].append(i)
+        
+        for sharing_elements in edge_map.values():
+            if len(sharing_elements) > 1:
+                for i in range(len(sharing_elements)):
+                    for j in range(i + 1, len(sharing_elements)):
+                        u, v = sharing_elements[i], sharing_elements[j]
+                        self._e2e_edge[u].add(v)
+                        self._e2e_edge[v].add(u)
 
 
 class Mesh(ABC):
