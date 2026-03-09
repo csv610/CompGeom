@@ -55,6 +55,11 @@ compgeom identify_concave_parts --poly 0 0 10 0 10 10 5 5 0 10 --output concave.
 compgeom convex_decomposition --poly 0 0 10 0 10 10 5 5 0 10 --output pieces.png
 ```
 
+**Convert Triangle Mesh to Quad Mesh:** 
+```bash 
+compgeom simple_tri2quads --input model_tri.obj --output model_quad.obj 
+``` 
+
 **Smooth a Polygon (MCF):**
 ```bash
 # Apply 200 iterations of Mean Curvature Flow
