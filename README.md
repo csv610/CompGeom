@@ -104,6 +104,14 @@ compgeom mesh_voxelization --voxel_size 0.1 --method native
 
 You can use the high-level classes directly in your Python code:
 
+**Mesh Conversion (Tri to Quad):** 
+```python 
+from compgeom.mesh import TriangleToQuadConverter 
+
+# Converts TriangleMesh to QuadMesh 
+quad_mesh = TriangleToQuadConverter.convert(tri_mesh) 
+``` 
+
 **Reflex Vertices (Concave Parts):**
 ```python
 from compgeom.polygon import get_reflex_vertices
