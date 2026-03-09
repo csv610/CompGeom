@@ -8,7 +8,7 @@ import random
 from collections import deque
 from typing import List, Tuple, Union
 
-from .geometry import (
+from ..geometry import (
     EPSILON,
     Point,
     Point3D,
@@ -18,7 +18,7 @@ from .geometry import (
     length,
     sub,
 )
-from .math_utils import distance, signed_area_twice
+from ..math_utils import distance, signed_area_twice
 
 
 class _TriangleView:

@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 from typing import List, Optional, Tuple
 
-from .geometry import Point
-from .math_utils import distance
+from ..geometry import Point
+from ..math_utils import distance
 
 
 class PolygonalMeanCurvatureFlow:

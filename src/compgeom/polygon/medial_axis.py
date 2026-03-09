@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from .geometry import EPSILON, Point, get_circumcenter, length, sub
+from ..geometry import EPSILON, Point, get_circumcenter, length, sub
 from .polygon import is_point_in_polygon
-from .mesh import build_topology, triangulate
+from ..mesh import build_topology, triangulate
 
 
 def polygon_area(polygon):

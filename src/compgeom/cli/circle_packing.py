@@ -1,7 +1,7 @@
 import argparse
 import sys
 from compgeom.geometry import Point
-from compgeom.circle_packing import CirclePacker
+from compgeom.polygon import CirclePacker
 from compgeom.visualization import save_png, save_svg
 
 def main():

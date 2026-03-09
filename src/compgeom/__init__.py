@@ -1,13 +1,9 @@
 """Shared geometry and algorithm package for the TriangleMesh project."""
 
 from .geometry import EPSILON, Point
-from .planar import DCEL, DCELFace, DCELHalfEdge, DCELVertex, build_polygon_dcel, locate_face
 from .visualization import generate_svg_path, save_svg, save_png
 from .rectangle_packing import RectanglePacker
 from .sequences import DavenportSchinzel
-from .circle_packing import CirclePacker
-from .distance_map import DistanceMapSolver
-from .polygon_smoothing import PolygonalMeanCurvatureFlow
 from .shapes import (
     Circle,
     Cube,
@@ -45,6 +41,34 @@ from .mesh import (
     get_square_boundary,
     get_voronoi_cells,
     triangulate,
+)
+from .polygon import (
+    CirclePacker,
+    DCEL,
+    DCELFace,
+    DCELHalfEdge,
+    DCELVertex,
+    DistanceMapSolver,
+    PolygonalMeanCurvatureFlow,
+    approximate_medial_axis,
+    build_polygon_dcel,
+    generate_points_in_triangle,
+    generate_random_convex_polygon,
+    generate_simple_polygon,
+    get_polygon_properties,
+    get_triangulation_with_diagonals,
+    graham_scan,
+    hertel_mehlhorn,
+    is_convex,
+    is_ear,
+    is_point_in_polygon,
+    locate_face,
+    monotone_chain,
+    shortest_path_in_polygon,
+    solve_art_gallery,
+    triangulate_polygon,
+    triangulate_polygon_with_holes,
+    visibility_polygon,
 )
 
 __all__ = [
@@ -86,16 +110,33 @@ __all__ = [
     "TriMeshRefiner",
     "Triangle",
     "TriangleMesh",
+    "approximate_medial_axis",
     "build_polygon_dcel",
     "build_topology",
     "constrained_delaunay_triangulation",
     "delaunay_flip",
+    "generate_points_in_triangle",
+    "generate_random_convex_polygon",
+    "generate_simple_polygon",
     "generate_svg_path",
     "get_circle_boundary",
+    "get_polygon_properties",
     "get_square_boundary",
+    "get_triangulation_with_diagonals",
     "get_voronoi_cells",
+    "graham_scan",
+    "hertel_mehlhorn",
+    "is_convex",
+    "is_ear",
+    "is_point_in_polygon",
     "locate_face",
+    "monotone_chain",
     "save_svg",
     "save_png",
+    "shortest_path_in_polygon",
+    "solve_art_gallery",
     "triangulate",
+    "triangulate_polygon",
+    "triangulate_polygon_with_holes",
+    "visibility_polygon",
 ]

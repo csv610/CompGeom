@@ -88,7 +88,7 @@ You can use the high-level classes directly in your Python code:
 
 **Polygon Smoothing:**
 ```python
-from compgeom.polygon_smoothing import PolygonalMeanCurvatureFlow
+from compgeom.polygon import PolygonalMeanCurvatureFlow
 
 # Resample and smooth a polygon
 resampled = PolygonalMeanCurvatureFlow.resample_polygon(my_points, n_points=100)
@@ -122,7 +122,7 @@ center, radius = LargestEmptyCircle.find(points)
 
 **Circle Packing:**
 ```python
-from compgeom.circle_packing import CirclePacker
+from compgeom.polygon import CirclePacker
 
 centers = CirclePacker.pack(polygon_vertices, radius=0.1)
 ```
@@ -141,13 +141,17 @@ voxels = MeshVoxelizer.voxelize_native(vertices, faces, voxel_size=0.1)
     - `geometry.py`: Primitives and types (Point, Point3D).
     - `math_utils.py`: Low-level mathematical functions.
     - `shapes.py`: High-level shape classes.
-    - `polygon_smoothing.py`: `PolygonalMeanCurvatureFlow` class.
-    - `distance_map.py`: `DistanceMapSolver` class.
     - `points_sampling.py`: `PointSampler` class.
     - `sequences.py`: `DavenportSchinzel` class.
     - `space_filling_curves.py`: `SpaceFillingCurves` class.
     - `rectangle_packing.py`: `RectanglePacker` class.
-    - `circle_packing.py`: `CirclePacker` class.
+    - `polygon/`: Polygon sub-package:
+        - `polygon.py`: Core polygon algorithms.
+        - `circle_packing.py`: `CirclePacker` class.
+        - `polygon_smoothing.py`: `PolygonalMeanCurvatureFlow` class.
+        - `distance_map.py`: `DistanceMapSolver` class.
+        - `medial_axis.py`: Skeletal structures.
+        - `planar.py`: DCEL and planar subdivisions.
     - `mesh/`: Mesh sub-package:
         - `mesh.py`: Mesh classes and `MeshTopology` helper.
         - `mesh_io.py`: `OBJFileHandler` class.

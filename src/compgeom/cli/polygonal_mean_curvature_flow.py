@@ -2,7 +2,7 @@ import argparse
 import sys
 from compgeom.geometry import Point
 from compgeom.polygon import generate_simple_polygon
-from compgeom.polygon_smoothing import PolygonalMeanCurvatureFlow
+from compgeom.polygon import PolygonalMeanCurvatureFlow
 from compgeom.visualization import save_png, save_svg
 
 def main():

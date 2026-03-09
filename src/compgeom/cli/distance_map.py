@@ -1,7 +1,7 @@
 import argparse
 import sys
 from compgeom.geometry import Point
-from compgeom.distance_map import DistanceMapSolver
+from compgeom.polygon import DistanceMapSolver
 from compgeom.visualization import save_png, save_svg
 
 def main():
