@@ -44,6 +44,7 @@ from .mesh import (
 )
 from .polygon import (
     CirclePacker,
+    ConvexDecomposer,
     DCEL,
     DCELFace,
     DCELHalfEdge,
@@ -75,6 +76,7 @@ from .polygon import (
 __all__ = [
     "Circle",
     "CirclePacker",
+    "ConvexDecomposer",
     "Cube",
     "Cuboid",
     "DCEL",

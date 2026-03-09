@@ -21,6 +21,7 @@ from .polygon import (
     triangulate_polygon_with_holes,
     visibility_polygon,
 )
+from .convex_decomposition import ConvexDecomposer
 from .circle_packing import CirclePacker
 from .polygon_smoothing import PolygonalMeanCurvatureFlow
 from .distance_map import DistanceMapSolver
@@ -40,6 +41,7 @@ __all__ = [
     "DCELHalfEdge",
     "DCELVertex",
     "CirclePacker",
+    "ConvexDecomposer",
     "DistanceMapSolver",
     "PolygonalMeanCurvatureFlow",
     "approximate_medial_axis",
