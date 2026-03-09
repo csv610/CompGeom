@@ -78,6 +78,8 @@ pip install -e .
 
 ## Detailed Examples & Explanations
 
+Complete Python examples for the algorithms listed in this README are collected in [docs/algorithm_examples.md](docs/algorithm_examples.md).
+
 ### 1. Polygon Generation & Smoothing
 **Objective:** Generate a random irregular polygon and transform it into a circle while preserving its perimeter.
 
