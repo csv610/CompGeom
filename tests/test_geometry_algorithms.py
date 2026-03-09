@@ -20,7 +20,7 @@ from compgeom.mesh import mesh_neighbors
 from compgeom.path import shortest_path
 from compgeom.planar import build_polygon_dcel, locate_face
 from compgeom.polygon import shortest_path_in_polygon, triangulate_polygon_with_holes, visibility_polygon
-from compgeom.triangulation import constrained_delaunay_triangulation, triangulate
+from compgeom.mesh import constrained_delaunay_triangulation, triangulate
 
 
 class BoundingShapeTests(unittest.TestCase):

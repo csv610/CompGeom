@@ -4,10 +4,10 @@ from .geometry import EPSILON, Point
 from .planar import DCEL, DCELFace, DCELHalfEdge, DCELVertex, build_polygon_dcel, locate_face
 from .visualization import generate_svg_path, save_svg, save_png
 from .rectangle_packing import RectanglePacker
-from .voxelization import MeshVoxelizer
-from .mesh_io import OBJFileHandler
 from .sequences import DavenportSchinzel
 from .circle_packing import CirclePacker
+from .distance_map import DistanceMapSolver
+from .polygon_smoothing import PolygonalMeanCurvatureFlow
 from .shapes import (
     Circle,
     Cube,
@@ -27,29 +27,38 @@ from .shapes import (
 )
 from .proximity import LargestEmptyCircle
 from .mesh import (
+    DynamicDelaunay,
     HexMesh,
     Mesh,
+    MeshColoring,
     MeshTopology,
+    MeshVoxelizer,
+    OBJFileHandler,
     QuadMesh,
     TetMesh,
+    TriMeshRefiner,
     TriangleMesh,
+    build_topology,
+    constrained_delaunay_triangulation,
+    delaunay_flip,
+    get_circle_boundary,
+    get_square_boundary,
+    get_voronoi_cells,
+    triangulate,
 )
-from .mesh_refinement import TriMeshRefiner
-from .mesh_coloring import MeshColoring
-from .mesh_reordering import CuthillMcKee
-from .polygon_smoothing import PolygonalMeanCurvatureFlow
 
 __all__ = [
     "Circle",
     "CirclePacker",
     "Cube",
     "Cuboid",
-    "CuthillMcKee",
     "DCEL",
     "DCELFace",
     "DCELHalfEdge",
     "DCELVertex",
     "DavenportSchinzel",
+    "DistanceMapSolver",
+    "DynamicDelaunay",
     "EPSILON",
     "HexMesh",
     "Hexahedron",
@@ -78,8 +87,15 @@ __all__ = [
     "Triangle",
     "TriangleMesh",
     "build_polygon_dcel",
+    "build_topology",
+    "constrained_delaunay_triangulation",
+    "delaunay_flip",
     "generate_svg_path",
+    "get_circle_boundary",
+    "get_square_boundary",
+    "get_voronoi_cells",
     "locate_face",
     "save_svg",
     "save_png",
+    "triangulate",
 ]

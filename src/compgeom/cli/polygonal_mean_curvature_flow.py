@@ -11,9 +11,11 @@ def main():
     parser.add_argument("--n_points", type=int, default=50, help="Number of points for uniform resampling")
     parser.add_argument("--iterations", type=int, default=100, help="Number of smoothing iterations")
     parser.add_argument("--dt", type=float, default=0.1, help="Time step for the flow")
-    parser.add_argument("--output", default="smoothed_polygon.png", help="Output visualization file")
+    parser.add_argument("--no_center", action="store_false", dest="fix_centroid", help="Do not fix centroid at (0,0)")
+    parser.add_argument("--output", default="smoothed_centered.png", help="Output visualization file")
     
     args = parser.parse_args()
+    fix_centroid = getattr(args, 'fix_centroid', True)
     
     if args.poly:
         try:
@@ -34,31 +36,51 @@ def main():
     
     # 2. Smooth
     print(f"Applying MCF for {args.iterations} iterations (dt={args.dt})...")
-    smoothed = PolygonalMeanCurvatureFlow.smooth(resampled, args.iterations, args.dt, keep_perimeter=True)
+    if fix_centroid:
+        print("Constraint: Centroid is fixed at (0,0).")
+        
+    smoothed = PolygonalMeanCurvatureFlow.smooth(
+        resampled, 
+        args.iterations, 
+        args.dt, 
+        keep_perimeter=True, 
+        fix_centroid=fix_centroid
+    )
     
     print("Done.")
     
     # 3. Visualize
     def poly_to_svg(poly_list, width=800, height=600):
-        # Scale to fit
+        # We need a fixed view for centered polygons
         all_pts = []
         for p in poly_list: all_pts.extend([p.x, p.y])
-        min_x, max_x = min(all_pts), max(all_pts)
-        min_y, max_y = min(all_pts[1::2]), max(all_pts[1::2])
+        if args.poly:
+            for p in polygon: all_pts.extend([p.x, p.y])
+            
+        max_coord = max(max(abs(x) for x in all_pts), 1.0) * 1.2
         
-        svg = [f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">']
-        svg.append('<rect width="100%" height="100%" fill="white" />')
+        svg = [f'<svg width="{width}" height="{height}" viewBox="{-max_coord} {-max_coord} {2*max_coord} {2*max_coord}" xmlns="http://www.w3.org/2000/svg">']
+        svg.append('<rect x="-100%" y="-100%" width="200%" height="200%" fill="white" />')
         
-        def tx(x): return 50 + (x - min_x) / (max_x - min_x) * (width - 100) if max_x > min_x else 50
-        def ty(y): return height - (50 + (y - min_y) / (max_y - min_y) * (height - 100)) if max_y > min_y else 50
+        # Grid lines for center
+        svg.append(f'<line x1="{-max_coord}" y1="0" x2="{max_coord}" y2="0" stroke="#eee" stroke-width="0.5" />')
+        svg.append(f'<line x1="0" y1="{-max_coord}" x2="0" y2="{max_coord}" stroke="#eee" stroke-width="0.5" />')
         
-        # Original (dashed)
-        orig_str = " ".join(f"{tx(p.x)},{ty(p.y)}" for p in polygon)
-        svg.append(f'<polygon points="{orig_str}" fill="none" stroke="#ddd" stroke-dasharray="5,5" />')
+        # Original (dashed) - need to center it for comparison if fix_centroid is on
+        if fix_centroid:
+            cx = sum(p.x for p in polygon) / len(polygon)
+            cy = sum(p.y for p in polygon) / len(polygon)
+            centered_orig = [Point(p.x - cx, p.y - cy) for p in polygon]
+        else:
+            centered_orig = polygon
+
+        def to_pts(pts): return " ".join(f"{p.x},{-p.y}" for p in pts) # -y because SVG Y is down
         
-        # Smoothed
-        smooth_str = " ".join(f"{tx(p.x)},{ty(p.y)}" for p in smoothed)
-        svg.append(f'<polygon points="{smooth_str}" fill="none" stroke="red" stroke-width="3" />')
+        svg.append(f'<polygon points="{to_pts(centered_orig)}" fill="none" stroke="#ddd" stroke-dasharray="2,2" />')
+        svg.append(f'<polygon points="{to_pts(smoothed)}" fill="none" stroke="red" stroke-width="2" />')
+        
+        # Centroid marker
+        svg.append('<circle cx="0" cy="0" r="2" fill="blue" />')
         
         svg.append('</svg>')
         return "\n".join(svg)

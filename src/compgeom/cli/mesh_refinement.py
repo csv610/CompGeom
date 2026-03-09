@@ -2,8 +2,8 @@ import argparse
 import sys
 from compgeom.geometry import Point
 from compgeom.mesh import TriangleMesh
-from compgeom.mesh_refinement import TriMeshRefiner
-from compgeom.mesh_io import OBJFileHandler
+from compgeom.mesh import TriMeshRefiner
+from compgeom.mesh import OBJFileHandler
 
 def main():
     parser = argparse.ArgumentParser(description="Refine a triangular mesh.")

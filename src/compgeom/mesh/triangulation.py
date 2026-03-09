@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from collections import deque
 
-from .geometry import (
+from ..geometry import (
     EPSILON,
     Point,
     clip_polygon,
@@ -17,7 +17,7 @@ from .geometry import (
     orientation_sign,
     sub,
 )
-from .polygon import is_point_in_polygon, triangulate_polygon_with_holes
+from ..polygon import is_point_in_polygon, triangulate_polygon_with_holes
 
 
 class Triangle:

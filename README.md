@@ -12,6 +12,7 @@ A comprehensive Python library and command-line tool for computational geometry,
 - **Core Geometry:** Points (2D and 3D), vectors, primitive intersections, geometric predicates (orientation, incircle).
 - **Mathematical Utilities:** High-precision orientation and incircle tests, coordinate conversions for space-filling curves, 2D/3D distances, and 2D rotations.
 - **Polygon Smoothing:** Transform arbitrary polygons towards a circular shape using discrete Mean Curvature Flow with perimeter preservation.
+- **Distance Maps:** Solve the Eikonal equation (|grad u| = 1) using the Fast Sweeping Method to generate distance fields from boundaries.
 - **Polygons:** Boolean operations, properties (area, centroid, orientation), visibility, triangulation (ear-clipping, CDT), and shortest paths.
 - **Proximity & Bounding:** Closest/farthest pair, Graham scan, monotone chain, minimum bounding box, minimum enclosing circle (Welzl's algorithm), and **Largest Empty Circle**.
 - **Davenport-Schinzel Sequences:** Compute the lower envelope of line segments and extract the combinatorial sequence.
@@ -96,7 +97,7 @@ smoothed = PolygonalMeanCurvatureFlow.smooth(resampled, iterations=100)
 
 **Mesh Reordering:**
 ```python
-from compgeom.mesh_reordering import CuthillMcKee
+from compgeom.mesh import CuthillMcKee
 
 # Get new element ordering using RCM
 new_indices = CuthillMcKee.reorder_elements(my_mesh)
@@ -104,7 +105,7 @@ new_indices = CuthillMcKee.reorder_elements(my_mesh)
 
 **Mesh Refinement:**
 ```python
-from compgeom.mesh_refinement import TriMeshRefiner
+from compgeom.mesh import TriMeshRefiner
 
 # Uniform refinement (ratio-based)
 refined_mesh = TriMeshRefiner.refine_uniform(my_mesh, max_area_ratio=0.01)
@@ -128,7 +129,7 @@ centers = CirclePacker.pack(polygon_vertices, radius=0.1)
 
 **Mesh Voxelization:**
 ```python
-from compgeom.voxelization import MeshVoxelizer
+from compgeom.mesh import MeshVoxelizer
 
 # Using native surface sampling
 voxels = MeshVoxelizer.voxelize_native(vertices, faces, voxel_size=0.1)
@@ -141,17 +142,20 @@ voxels = MeshVoxelizer.voxelize_native(vertices, faces, voxel_size=0.1)
     - `math_utils.py`: Low-level mathematical functions.
     - `shapes.py`: High-level shape classes.
     - `polygon_smoothing.py`: `PolygonalMeanCurvatureFlow` class.
+    - `distance_map.py`: `DistanceMapSolver` class.
     - `points_sampling.py`: `PointSampler` class.
     - `sequences.py`: `DavenportSchinzel` class.
     - `space_filling_curves.py`: `SpaceFillingCurves` class.
     - `rectangle_packing.py`: `RectanglePacker` class.
     - `circle_packing.py`: `CirclePacker` class.
-    - `mesh_io.py`: `OBJFileHandler` class.
-    - `voxelization.py`: `MeshVoxelizer` class (Native & OpenVDB).
-    - `mesh.py`: Mesh classes and `MeshTopology` helper.
-    - `mesh_coloring.py`: `MeshColoring` class.
-    - `mesh_refinement.py`: `TriMeshRefiner` class.
-    - `mesh_reordering.py`: `CuthillMcKee` class.
+    - `mesh/`: Mesh sub-package:
+        - `mesh.py`: Mesh classes and `MeshTopology` helper.
+        - `mesh_io.py`: `OBJFileHandler` class.
+        - `mesh_coloring.py`: `MeshColoring` class.
+        - `mesh_refinement.py`: `TriMeshRefiner` class.
+        - `mesh_reordering.py`: `CuthillMcKee` class.
+        - `voxelization.py`: `MeshVoxelizer` class (Native & OpenVDB).
+        - `triangulation.py`: Delaunay and Voronoi algorithms.
     - `spatial.py`: Spatial indexing and `PointSimplifier`.
     - `visualization.py`: SVG/PNG export utilities.
 - `src/compgeom/cli/` - CLI script implementations.

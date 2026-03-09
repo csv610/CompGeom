@@ -1,8 +1,8 @@
 import argparse
 import sys
 from compgeom.geometry import Point3D
-from compgeom.voxelization import MeshVoxelizer
-from compgeom.mesh_io import OBJFileHandler
+from compgeom.mesh import MeshVoxelizer
+from compgeom.mesh import OBJFileHandler
 
 def create_cube():
     """Returns vertices and faces for a unit cube."""

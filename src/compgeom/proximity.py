@@ -146,7 +146,7 @@ class LargestEmptyCircle:
             return Point(0, 0), 0.0
 
         hull = graham_scan(points)
-        from .triangulation import triangulate
+        from .mesh import triangulate
         triangles, _ = triangulate(points)
         
         max_radius = -1.0

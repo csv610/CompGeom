@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from .geometry import Point, Point3D
+from ..geometry import Point, Point3D
 
 
 class MeshTopology:

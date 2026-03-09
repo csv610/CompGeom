@@ -2,8 +2,8 @@ import argparse
 import sys
 from compgeom.geometry import Point
 from compgeom.mesh import TriangleMesh
-from compgeom.mesh_coloring import MeshColoring
-from compgeom.mesh_io import OBJFileHandler
+from compgeom.mesh import MeshColoring
+from compgeom.mesh import OBJFileHandler
 
 def main():
     parser = argparse.ArgumentParser(description="Color mesh elements or vertices using a greedy algorithm.")

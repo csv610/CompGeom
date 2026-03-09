@@ -1,6 +1,6 @@
 import sys
 from compgeom.geometry import Point
-from compgeom.triangulation import triangulate
+from compgeom.mesh import triangulate
 
 def main():
     points = []
