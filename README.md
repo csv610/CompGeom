@@ -26,7 +26,7 @@ A comprehensive Python library and command-line suite for geometric modeling, me
    - Polygon Smoothing (Mean Curvature Flow)
    - Convex Decomposition (Hertel-Mehlhorn)
    - Concave Part Identification (Reflex Vertices)
-   - **Random Polygon Generation (PolygonGenerator)**
+   - Random Polygon Generation (PolygonGenerator)
 6. **Spatial Polygon Operations**
    - Circle Packing (Hexagonal Grid)
    - Distance Maps (Eikonal Equation / Fast Sweeping Method)
@@ -37,14 +37,15 @@ A comprehensive Python library and command-line suite for geometric modeling, me
 7. **Mesh Architecture**
    - Mesh Types (Triangle, Quad, Tet, Hex)
    - Mesh Topology & Adjacency Queries
-   - **Mesh Loading (OBJ Support via `from_file`)**
+   - Mesh Loading (OBJ Support via `from_file`)
 8. **Mesh Refinement & Reordering**
    - Triangle Mesh Refinement (Linear & Uniform)
    - Bandwidth Reduction (Reverse Cuthill-McKee)
-   - **Nodal Renumbering (`reorder_nodes`)**
+   - Nodal Renumbering (`reorder_nodes`)
 9. **Mesh Optimization**
    - Mesh Coloring (Vertex & Element)
-   - **Triangle-to-Quad Conversion**
+   - Triangle-to-Quad Conversion
+   - **Mesh Topology Transfer (Harmonic Mapping)**
 10. **Volumetric Modeling**
     - Mesh Voxelization (Native & OpenVDB)
     - Mesh I/O (OBJ Support)
@@ -54,7 +55,7 @@ A comprehensive Python library and command-line suite for geometric modeling, me
     - Davenport-Schinzel Sequences (Lower Envelopes)
 12. **Point Cloud Operations**
     - Point Sampling (Circle, Rectangle, Triangle, Cube, Sphere)
-    - **Protected Point Simplification (Voxel Grid Decimation)**
+    - Protected Point Simplification (Voxel Grid Decimation)
     - Closest/Farthest Pair Analysis
 13. **Grid & Path Generation**
     - Space-Filling Curves (Hilbert, Peano, Morton, ZigZag, Sweep)
@@ -94,7 +95,7 @@ smoothed = PolygonalMeanCurvatureFlow.smooth(resampled, iterations=200)
 ```
 
 ### 2. High-Performance Point Cloud Simplification
-**Objective:** Reduce a massive point set while **protecting specific points from removal**.
+**Objective:** Reduce a massive point set while protecting specific points from removal.
 
 ```python
 from compgeom.spatial import PointSimplifier
@@ -106,7 +107,24 @@ protected = {0, 10, 50}
 simplified = PointSimplifier.simplify(points, ratio=0.001, protected_ids=protected)
 ```
 
-### 3. Mesh Renumbering & Bandwidth Reduction
+### 3. Mesh Topology Transfer
+**Objective:** Map the triangulation from one polygonal boundary to a completely different boundary shape while minimizing geometric distortion using **Harmonic Mapping**.
+
+```python
+from compgeom.mesh import TriangleMesh, MeshTransfer
+
+# 1. Load a source mesh (e.g., a high-quality grid in a square)
+source = TriangleMesh.from_file("square_grid.obj")
+
+# 2. Define a new target boundary (e.g., an L-shape)
+target_poly = [Point(0,0), Point(2,0), Point(2,1), Point(1,1), Point(1,2), Point(0,2)]
+
+# 3. Transfer the topology
+# This solves the discrete Laplace equation for internal vertex positions
+new_mesh = MeshTransfer.transfer(source, target_poly)
+```
+
+### 4. Mesh Renumbering & Bandwidth Reduction
 **Objective:** Load a mesh and reorder its vertices to optimize matrix bandwidth.
 
 ```python
@@ -120,19 +138,6 @@ new_indices = CuthillMcKee.reorder_vertices(mesh)
 
 # 3. Apply renumbering (automatically updates all face connectivity)
 mesh.reorder_nodes(new_indices)
-```
-
-### 4. Triangle-to-Quad Conversion
-**Objective:** Transform a triangular mesh into a quadrilateral mesh.
-
-```python
-from compgeom.mesh import TriangleMesh, TriangleToQuadConverter
-
-# 1. Load triangle mesh
-tri_mesh = TriangleMesh.from_file("input.obj")
-
-# 2. Convert (1-to-3 split algorithm)
-quad_mesh = TriangleToQuadConverter.convert(tri_mesh)
 ```
 
 ### 5. Mesh Voxelization (Surface & Volume)
@@ -153,15 +158,41 @@ voxels = MeshVoxelizer.voxelize(mesh, voxel_size=0.01, fill_interior=True)
 
 | Command | Description | Example |
 | :--- | :--- | :--- |
+| `mesh_transfer` | Map mesh to new boundary | `compgeom mesh_transfer --input sq.obj --output circle.obj` |
 | `identify_concave_parts`| Find reflex vertices | `compgeom identify_concave_parts --poly 0 0 10 0 10 10 5 5 0 10` |
 | `convex_decomposition` | Split polygon into convex pieces | `compgeom convex_decomposition --poly ... --output pieces.png` |
 | `simple_tri2quads` | Convert triangles to quads | `compgeom simple_tri2quads in.obj out.obj` |
 | `point_simplification` | $O(N)$ point cloud decimation | `compgeom point_simplification --n 1000000 --ratio 0.005` |
 | `mesh_refinement` | Increase mesh resolution | `compgeom mesh_refinement --input in.obj --max_area 0.01` |
 | `mesh_voxelization` | Convert 3D mesh to voxels | `compgeom mesh_voxelization --input model.obj --fill` |
-| `circle_packing` | Pack circles into polygons | `compgeom circle_packing --poly ... --radius 1.0` |
 
 ---
+
+## Project Structure
+
+- `src/compgeom/` - Core library modules:
+    - `geometry.py`: Primitives and types (Point, Point3D).
+    - `math_utils.py`: Low-level mathematical functions.
+    - `shapes.py`: High-level shape classes.
+    - `polygon/`: Polygon sub-package (Smoothing, Packing, Decomposition, DCEL).
+    - `mesh/`: Mesh sub-package:
+        - `mesh.py`: Mesh classes and `MeshTopology` helper.
+        - `mesh_io.py`: `OBJFileHandler` class.
+        - `mesh_coloring.py`: `MeshColoring` class.
+        - `mesh_refinement.py`: `TriMeshRefiner` class.
+        - `mesh_reordering.py`: `CuthillMcKee` class.
+        - `mesh_transfer.py`: `MeshTransfer` class (Harmonic Mapping).
+        - `voxelization.py`: `MeshVoxelizer` class (Native & OpenVDB).
+        - `triangulation.py`: Delaunay and Voronoi algorithms.
+        - `quadmesh/`: QuadMesh specific algorithms.
+    - `spatial.py`: Spatial indexing and `PointSimplifier`.
+    - `points_sampling.py`: `PointSampler` class.
+    - `sequences.py`: `DavenportSchinzel` class.
+    - `space_filling_curves.py`: `SpaceFillingCurves` class.
+    - `rectangle_packing.py`: `RectanglePacker` class.
+    - `visualization.py`: SVG/PNG export utilities.
+- `src/compgeom/cli/` - CLI script implementations.
+- `tests/` - Comprehensive unit test suite.
 
 ## Development & Testing
 

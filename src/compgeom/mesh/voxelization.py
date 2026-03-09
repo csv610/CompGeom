@@ -7,23 +7,41 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 from ..geometry import Point3D
 from ..polygon import generate_points_in_triangle
+from .mesh import TriangleMesh
 
 
 class MeshVoxelizer:
     """Provides methods to voxelize 3D meshes."""
 
     @staticmethod
+    def voxelize(
+        mesh: TriangleMesh, 
+        voxel_size: float,
+        fill_interior: bool = True
+    ) -> Union[Set[Tuple[int, int, int]], 'openvdb.FloatGrid']:
+        """
+        Voxelizes a triangular mesh. Defaults to OpenVDB if available,
+        otherwise falls back to native surface sampling.
+        """
+        try:
+            return MeshVoxelizer.voxelize_openvdb(mesh, voxel_size, fill_interior=fill_interior)
+        except (ImportError, RuntimeError):
+            # Fallback to native
+            return MeshVoxelizer.voxelize_native(mesh, voxel_size, fill_interior=fill_interior)
+
+    @staticmethod
     def voxelize_native(
-        vertices: List[Point3D], 
-        faces: List[Tuple[int, int, int]], 
+        mesh: TriangleMesh, 
         voxel_size: float,
         fill_interior: bool = False
     ) -> Set[Tuple[int, int, int]]:
         """
-        Voxelizes a mesh using surface sampling and optional interior filling.
+        Voxelizes a triangular mesh using surface sampling and optional interior filling.
         Returns a set of integer voxel coordinates (ix, iy, iz).
         """
         voxels: Set[Tuple[int, int, int]] = set()
+        vertices = mesh.vertices
+        faces = mesh.faces
         
         # 1. Surface Voxelization
         for f in faces:
@@ -53,28 +71,14 @@ class MeshVoxelizer:
             
             interior_voxels = set()
             
-            # For every (x, y) column, fill along z
             for x in range(min_x, max_x + 1):
                 for y in range(min_y, max_y + 1):
-                    # Find all z-boundaries in this column
                     z_boundaries = sorted([v[2] for v in voxels if v[0] == x and v[1] == y])
-                    
                     if not z_boundaries:
                         continue
-                        
-                    # Fill between pairs of boundaries
-                    # This is a simplified parity fill. For complex meshes, 
-                    # more robust ray-casting might be needed.
                     for i in range(len(z_boundaries) - 1):
-                        z_start = z_boundaries[i]
-                        z_end = z_boundaries[i+1]
-                        
-                        # Only fill if there's a gap
+                        z_start, z_end = z_boundaries[i], z_boundaries[i+1]
                         if z_end - z_start > 1:
-                            # Heuristic: check if midpoint is likely inside
-                            # For a closed manifold, alternating fill works.
-                            # We'll fill all voxels between the first and last boundary 
-                            # in this simplified implementation.
                             for z in range(z_start + 1, z_end):
                                 interior_voxels.add((x, y, z))
             
@@ -84,27 +88,24 @@ class MeshVoxelizer:
 
     @staticmethod
     def voxelize_openvdb(
-        vertices: List[Point3D], 
-        faces: List[Tuple[int, int, int]], 
+        mesh: TriangleMesh, 
         voxel_size: float,
         bandwidth: float = 3.0,
         fill_interior: bool = True
     ):
         """
-        Voxelizes a mesh using pyopenvdb (OpenVDB).
+        Voxelizes a triangular mesh using pyopenvdb (OpenVDB).
         Returns an openvdb.FloatGrid. 
         If fill_interior is True, returns a Level Set (SDF).
-        Note: Requires pyopenvdb to be installed.
         """
         try:
             import pyopenvdb as vdb
         except ImportError:
             raise ImportError("pyopenvdb is not installed. Please install it to use this method.")
 
-        v_list = [(v.x, v.y, v.z) for v in vertices]
+        v_list = [(v.x, v.y, v.z) for v in mesh.vertices]
+        faces = mesh.faces
         
-        # meshToLevelSet creates a narrow-band level set (signed distance field)
-        # where the interior is represented by negative distances.
         grid = vdb.FloatGrid.meshToLevelSet(v_list, faces, exBandWidth=bandwidth, inBandWidth=bandwidth)
         grid.transform = vdb.createLinearTransform(voxel_size)
         

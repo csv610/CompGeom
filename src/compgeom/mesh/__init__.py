@@ -20,6 +20,7 @@ from .mesh_io import OBJFileHandler
 from .mesh_coloring import MeshColoring
 from .mesh_refinement import TriMeshRefiner
 from .mesh_reordering import CuthillMcKee
+from .mesh_transfer import MeshTransfer
 from .voxelization import MeshVoxelizer
 from .quadmesh.simple_tri2quads import TriangleToQuadConverter
 from .triangulation import (
@@ -40,6 +41,7 @@ __all__ = [
     "Mesh",
     "MeshColoring",
     "MeshTopology",
+    "MeshTransfer",
     "MeshVoxelizer",
     "OBJFileHandler",
     "QuadMesh",

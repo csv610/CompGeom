@@ -161,6 +161,25 @@ class Mesh(ABC):
         
         return (min_x, min_y), (max_x, max_y)
 
+    def reorder_nodes(self, new_node_indices: List[int]):
+        """
+        Renumbers the vertices and updates element connectivity.
+        
+        Args:
+            new_node_indices: A list where the value at index i is the old vertex index
+                             that should now be at position i.
+        """
+        if len(new_node_indices) != len(self._vertices):
+            raise ValueError("new_node_indices must have the same length as vertices.")
+
+        old_to_new = {old_idx: new_idx for new_idx, old_idx in enumerate(new_node_indices)}
+        self._vertices = [self._vertices[i] for i in new_node_indices]
+        new_elements = []
+        for element in self._elements:
+            new_elements.append(tuple(old_to_new[v_idx] for v_idx in element))
+        self._elements = new_elements
+        self._topology = MeshTopology(self)
+
 
 class TriangleMesh(Mesh):
     """A 2D or 3D mesh composed of triangular faces."""
@@ -311,4 +330,101 @@ class QuadMesh(Mesh):
 
 
 class TetMesh(Mesh):
-...
+    """A 3D volumetric mesh composed of tetrahedral cells."""
+
+    def __init__(self, vertices: List[Point3D], tets: List[Tuple[int, int, int, int]]):
+        super().__init__(vertices, tets)
+
+    @property
+    def cells(self) -> List[Tuple[int, int, int, int]]:
+        return self._elements
+
+
+class HexMesh(Mesh):
+    """A 3D volumetric mesh composed of hexahedral cells."""
+
+    def __init__(self, vertices: List[Point3D], hexas: List[Tuple[int, int, int, int, int, int, int, int]]):
+        super().__init__(vertices, hexas)
+
+    @property
+    def cells(self) -> List[Tuple[int, int, int, int, int, int, int, int]]:
+        return self._elements
+
+
+def mesh_edges(triangles):
+    edges = set()
+    for a, b, c in triangles:
+        edges.add(tuple(sorted((a.id, b.id))))
+        edges.add(tuple(sorted((b.id, c.id))))
+        edges.add(tuple(sorted((c.id, a.id))))
+    return edges
+
+
+def mesh_vertices(triangles):
+    vertices = {}
+    for triangle in triangles:
+        for vertex in triangle:
+            vertices[vertex.id] = vertex
+    return vertices
+
+
+def euler_characteristic(triangles):
+    vertices = mesh_vertices(triangles)
+    edges = mesh_edges(triangles)
+    faces = len(triangles)
+    chi = len(vertices) - len(edges) + faces
+    return {
+        "vertices": len(vertices),
+        "edges": len(edges),
+        "faces": faces,
+        "euler_characteristic": chi,
+    }
+
+
+def vertex_neighbors(triangles):
+    neighbors = defaultdict(set)
+    for a, b, c in triangles:
+        neighbors[a.id].update([b.id, c.id])
+        neighbors[b.id].update([a.id, c.id])
+        neighbors[c.id].update([a.id, b.id])
+    return {vertex_id: sorted(adjacent) for vertex_id, adjacent in neighbors.items()}
+
+
+def triangle_neighbors(triangles):
+    edge_to_triangles = defaultdict(list)
+    for triangle_index, (a, b, c) in enumerate(triangles):
+        edge_to_triangles[tuple(sorted((a.id, b.id)))].append(triangle_index)
+        edge_to_triangles[tuple(sorted((b.id, c.id)))].append(triangle_index)
+        edge_to_triangles[tuple(sorted((c.id, a.id)))].append(triangle_index)
+
+    neighbors = {triangle_index: set() for triangle_index in range(len(triangles))}
+    for owners in edge_to_triangles.values():
+        if len(owners) != 2:
+            continue
+        left, right = owners
+        neighbors[left].add(right)
+        neighbors[right].add(left)
+    return {triangle_index: sorted(adjacent) for triangle_index, adjacent in neighbors.items()}
+
+
+def mesh_neighbors(triangles):
+    return {
+        "vertex_neighbors": vertex_neighbors(triangles),
+        "triangle_neighbors": triangle_neighbors(triangles),
+    }
+
+
+__all__ = [
+    "HexMesh",
+    "Mesh",
+    "MeshTopology",
+    "QuadMesh",
+    "TetMesh",
+    "TriangleMesh",
+    "euler_characteristic",
+    "mesh_edges",
+    "mesh_neighbors",
+    "mesh_vertices",
+    "triangle_neighbors",
+    "vertex_neighbors",
+]

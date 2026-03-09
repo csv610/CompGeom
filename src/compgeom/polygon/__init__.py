@@ -23,6 +23,7 @@ from .polygon import (
     visibility_polygon,
 )
 from .convex_decomposition import ConvexDecomposer
+from .polygon_generator import PolygonGenerator
 from .circle_packing import CirclePacker
 from .polygon_smoothing import PolygonalMeanCurvatureFlow
 from .distance_map import DistanceMapSolver
@@ -45,6 +46,7 @@ __all__ = [
     "ConvexDecomposer",
     "DistanceMapSolver",
     "PolygonalMeanCurvatureFlow",
+    "PolygonGenerator",
     "approximate_medial_axis",
     "build_polygon_dcel",
     "generate_points_in_triangle",
