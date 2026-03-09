@@ -4,10 +4,11 @@ A comprehensive Python library and command-line tool for computational geometry,
 
 ## Features
 
+- **Geometric Shapes:** Object-oriented representations of Triangle, Square, Rectangle, Circle, Sphere, Cube, Cuboid, Plane, LineSegment, Ray, Tetrahedron, and Hexahedron with properties like area, volume, and centroid.
 - **Core Geometry:** Points (2D and 3D), vectors, primitive intersections, geometric predicates (orientation, incircle).
 - **Mathematical Utilities:** High-precision orientation and incircle tests, coordinate conversions for space-filling curves, 2D/3D distances, and 2D rotations.
 - **Polygons:** Boolean operations, properties (area, centroid, orientation), visibility, triangulation (ear-clipping, CDT), and shortest paths.
-- **Proximity & Bounding:** Closest/farthest pair, Graham scan, monotone chain, minimum bounding box, and minimum enclosing circle (Welzl's algorithm).
+- **Proximity & Bounding:** Closest/farthest pair, Graham scan, monotone chain, minimum bounding box, minimum enclosing circle (Welzl's algorithm), and **Largest Empty Circle**.
 - **Davenport-Schinzel Sequences:** Compute the lower envelope of line segments and extract the combinatorial sequence.
 - **Space-Filling Curves:** Hilbert, Peano, Morton (Z-order), ZigZag, and Sweep curves with grid cell index output.
 - **Point Sampling:** Uniform sampling from circles, rectangles, triangles, line segments, cubes, and spheres.
@@ -34,6 +35,12 @@ This will also install the `compgeom` command-line utility.
 ### Command-Line Interface
 
 The package exposes a unified command-line tool. You can invoke it using the `compgeom` command.
+
+**Find the Largest Empty Circle:**
+```bash
+# Find the LEC for a set of points and save visualization
+compgeom largest_empty_circle --points 0 0 10 0 10 10 0 10 5 5 --output lec.png
+```
 
 **Pack Circles into a Polygon:**
 ```bash
@@ -66,6 +73,15 @@ compgeom rectangle_packer --dims 10 10 20 5 5 15 --shape square --output packed.
 ### Python API
 
 You can use the high-level classes directly in your Python code:
+
+**Largest Empty Circle:**
+```python
+from compgeom.proximity import LargestEmptyCircle
+from compgeom.geometry import Point
+
+points = [Point(0,0), Point(10,0), Point(10,10), Point(0,10), Point(5,5)]
+center, radius = LargestEmptyCircle.find(points)
+```
 
 **Circle Packing (into a Square or Circle):**
 ```python
@@ -132,6 +148,7 @@ print(f"Packed into {w}x{h} container")
 - `src/compgeom/` - Core library modules:
     - `geometry.py`: Primitives and types (Point, Point3D).
     - `math_utils.py`: Low-level mathematical functions.
+    - `shapes.py`: High-level shape classes.
     - `points_sampling.py`: `PointSampler` class.
     - `sequences.py`: `DavenportSchinzel` class.
     - `space_filling_curves.py`: `SpaceFillingCurves` class.
