@@ -50,8 +50,6 @@ class MeshVoxelizer:
             max_x = max(v[0] for v in voxels)
             min_y = min(v[1] for v in voxels)
             max_y = max(v[1] for v in voxels)
-            min_z = min(v[2] for v in voxels)
-            max_z = max(v[2] for v in voxels)
             
             interior_voxels = set()
             

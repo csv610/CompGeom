@@ -7,7 +7,7 @@ from decimal import Decimal, getcontext
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
-    from .geometry import Point
+    from .geometry import Point, Point3D
 
 EPSILON = 1e-9
 

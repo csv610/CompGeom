@@ -91,7 +91,7 @@ def main():
         try:
             save_png(svg_content, args.output)
             print(f"Saved visualization to {args.output}")
-        except Exception as e:
+        except Exception:
             save_svg(svg_content, args.output.rsplit('.', 1)[0] + ".svg")
     else:
         save_svg(svg_content, args.output)
