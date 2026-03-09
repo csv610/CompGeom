@@ -26,6 +26,7 @@ A comprehensive Python library and command-line suite for geometric modeling, me
    - Polygon Smoothing (Mean Curvature Flow)
    - Convex Decomposition (Hertel-Mehlhorn)
    - Concave Part Identification (Reflex Vertices)
+   - **Random Polygon Generation (PolygonGenerator)**
 6. **Spatial Polygon Operations**
    - Circle Packing (Hexagonal Grid)
    - Distance Maps (Eikonal Equation / Fast Sweeping Method)
@@ -36,13 +37,14 @@ A comprehensive Python library and command-line suite for geometric modeling, me
 7. **Mesh Architecture**
    - Mesh Types (Triangle, Quad, Tet, Hex)
    - Mesh Topology & Adjacency Queries
-   - **Mesh Loading (OBJ Support)**
+   - **Mesh Loading (OBJ Support via `from_file`)**
 8. **Mesh Refinement & Reordering**
    - Triangle Mesh Refinement (Linear & Uniform)
    - Bandwidth Reduction (Reverse Cuthill-McKee)
+   - **Nodal Renumbering (`reorder_nodes`)**
 9. **Mesh Optimization**
    - Mesh Coloring (Vertex & Element)
-   - Triangle-to-Quad Conversion
+   - **Triangle-to-Quad Conversion**
 10. **Volumetric Modeling**
     - Mesh Voxelization (Native & OpenVDB)
     - Mesh I/O (OBJ Support)
@@ -75,116 +77,74 @@ pip install -e .
 
 ## Detailed Examples & Explanations
 
-### 1. Polygon Resampling & Smoothing (MCF)
-**Objective:** Transform an irregular polygon into a circle while preserving its perimeter. This is useful for shape normalization and organic modeling.
+### 1. Polygon Generation & Smoothing
+**Objective:** Generate a random irregular polygon and transform it into a circle while preserving its perimeter.
 
 ```python
-import math
-from compgeom.geometry import Point
-from compgeom.polygon import PolygonalMeanCurvatureFlow
+from compgeom.polygon import PolygonGenerator, PolygonalMeanCurvatureFlow
 
-# 1. Define an irregular star-like polygon
-polygon = [
-    Point(0, 5), Point(1, 1), Point(5, 0), Point(1, -1),
-    Point(0, -5), Point(-1, -1), Point(-5, 0), Point(-1, 1)
-]
+# 1. Generate a random concave polygon
+polygon = PolygonGenerator.concave(n_points=20)
 
 # 2. Resample to 100 uniform points
 resampled = PolygonalMeanCurvatureFlow.resample_polygon(polygon, n_points=100)
 
 # 3. Apply Mean Curvature Flow (MCF)
-smoothed = PolygonalMeanCurvatureFlow.smooth(
-    resampled, 
-    iterations=200, 
-    time_step=0.1, 
-    fix_centroid=True
-)
+smoothed = PolygonalMeanCurvatureFlow.smooth(resampled, iterations=200)
 ```
 
 ### 2. High-Performance Point Cloud Simplification
-**Objective:** Reduce a massive point set to a representative set based on a spatial density threshold, while **protecting specific points from removal**.
+**Objective:** Reduce a massive point set while **protecting specific points from removal**.
 
 ```python
-from compgeom.geometry import Point3D
 from compgeom.spatial import PointSimplifier
 
-# Assume 'points' is a list of Point3D objects
-# Protect points with IDs 0, 10, and 50 (e.g., critical boundary or landmark points)
+# Protect critical boundary or landmark points
 protected = {0, 10, 50}
 
 # ratio=0.001 means grid size is 0.1% of bounding box diagonal
 simplified = PointSimplifier.simplify(points, ratio=0.001, protected_ids=protected)
-
-print(f"Original: {len(points)}, Simplified: {len(simplified)}")
 ```
 
-### 3. Mesh Reordering & Loading
-**Objective:** Load a mesh directly from a file and optimize its numbering using Reverse Cuthill-McKee (RCM).
+### 3. Mesh Renumbering & Bandwidth Reduction
+**Objective:** Load a mesh and reorder its vertices to optimize matrix bandwidth.
 
 ```python
 from compgeom.mesh import TriangleMesh, CuthillMcKee
 
 # 1. Load directly from OBJ file
-mesh = TriangleMesh.from_file("high_res_model.obj")
+mesh = TriangleMesh.from_file("model.obj")
 
-# 2. Compute RCM reordering for elements
-new_order = CuthillMcKee.reorder_elements(mesh)
+# 2. Compute Reverse Cuthill-McKee (RCM) permutation
+new_indices = CuthillMcKee.reorder_vertices(mesh)
 
-# 3. Apply reordering
-reordered_faces = [mesh.faces[i] for i in new_order]
-optimized_mesh = TriangleMesh(mesh.vertices, reordered_faces)
+# 3. Apply renumbering (automatically updates all face connectivity)
+mesh.reorder_nodes(new_indices)
 ```
 
-### 4. Advanced Circle Packing
-**Objective:** Optimally fill an arbitrary polygon boundary with circles using a hexagonal lattice approach (~90.6% density).
+### 4. Triangle-to-Quad Conversion
+**Objective:** Transform a triangular mesh into a quadrilateral mesh.
 
 ```python
-from compgeom.polygon import CirclePacker, generate_simple_polygon
+from compgeom.mesh import TriangleMesh, TriangleToQuadConverter
 
-# 1. Generate or define a container boundary
-container = generate_simple_polygon(n_points=12, x_range=(0, 100), y_range=(0, 100))
+# 1. Load triangle mesh
+tri_mesh = TriangleMesh.from_file("input.obj")
 
-# 2. Pack circles of radius 2.5
-centers = CirclePacker.pack(container, radius=2.5)
-
-# 3. Calculate metrics
-efficiency = CirclePacker.calculate_efficiency(container, centers, radius=2.5)
+# 2. Convert (1-to-3 split algorithm)
+quad_mesh = TriangleToQuadConverter.convert(tri_mesh)
 ```
 
 ### 5. Mesh Voxelization (Surface & Volume)
-**Objective:** Convert a 3D triangular mesh into a discrete volumetric representation (Voxels).
+**Objective:** Convert a 3D triangular mesh into a solid voxel grid.
 
 ```python
-from compgeom.mesh import OBJFileHandler, MeshVoxelizer
+from compgeom.mesh import TriangleMesh, MeshVoxelizer
 
-# 1. Load mesh
-vertices, faces = OBJFileHandler.read("sphere.obj")
+mesh = TriangleMesh.from_file("model.obj")
 
-# 2. Voxelize with a grid size of 0.01 units
-voxels = MeshVoxelizer.voxelize_native(
-    vertices, 
-    faces, 
-    voxel_size=0.01, 
-    fill_interior=True
-)
-```
-
-### 6. Davenport-Schinzel Sequences (Lower Envelopes)
-**Objective:** Identify the sequence of segments visible from "minus infinity" along the Y-axis.
-
-```python
-from compgeom.geometry import Point
-from compgeom.sequences import DavenportSchinzel
-
-# Define overlapping line segments
-segments = [
-    (Point(0, 5), Point(10, 5)),
-    (Point(2, 8), Point(8, 2)),
-    (Point(4, 2), Point(6, 10))
-]
-
-# Calculate combinatorial sequence of IDs appearing on the lower envelope
-sequence = DavenportSchinzel.calculate_sequence(segments)
+# fill_interior=True uses a scanline algorithm to fill the volume
+voxels = MeshVoxelizer.voxelize(mesh, voxel_size=0.01, fill_interior=True)
 ```
 
 ---
@@ -193,19 +153,18 @@ sequence = DavenportSchinzel.calculate_sequence(segments)
 
 | Command | Description | Example |
 | :--- | :--- | :--- |
-| `point_simplification` | $O(N)$ point cloud decimation | `compgeom point_simplification --n 1000000 --ratio 0.005 --protected 0 1` |
+| `identify_concave_parts`| Find reflex vertices | `compgeom identify_concave_parts --poly 0 0 10 0 10 10 5 5 0 10` |
+| `convex_decomposition` | Split polygon into convex pieces | `compgeom convex_decomposition --poly ... --output pieces.png` |
 | `simple_tri2quads` | Convert triangles to quads | `compgeom simple_tri2quads in.obj out.obj` |
-| `visualize_curve` | Generate space-filling curves | `compgeom visualize_curve hilbert --level 3 --output path.png` |
-| `mesh_refinement` | Increase mesh resolution | `compgeom mesh_refinement --input in.obj --max_area 0.01 --output out.obj` |
-| `mesh_voxelization` | Convert 3D mesh to voxels | `compgeom mesh_voxelization --input model.obj --voxel_size 0.05 --fill` |
-| `mesh_reordering` | Apply RCM renumbering | `compgeom mesh_reordering --input in.obj --target vertices --output out.obj` |
-| `circle_packing` | Pack circles into polygons | `compgeom circle_packing --poly 0 0 10 0 10 10 0 10 --radius 1.0` |
+| `point_simplification` | $O(N)$ point cloud decimation | `compgeom point_simplification --n 1000000 --ratio 0.005` |
+| `mesh_refinement` | Increase mesh resolution | `compgeom mesh_refinement --input in.obj --max_area 0.01` |
+| `mesh_voxelization` | Convert 3D mesh to voxels | `compgeom mesh_voxelization --input model.obj --fill` |
+| `circle_packing` | Pack circles into polygons | `compgeom circle_packing --poly ... --radius 1.0` |
 
 ---
 
 ## Development & Testing
 
 ```bash
-# Run all tests
 pytest tests
 ```
