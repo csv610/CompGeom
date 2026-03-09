@@ -7,8 +7,10 @@ from .rectangle_packing import RectanglePacker
 from .voxelization import MeshVoxelizer
 from .mesh_io import OBJFileHandler
 from .sequences import DavenportSchinzel
+from .circle_packing import CirclePacker
 
 __all__ = [
+    "CirclePacker",
     "DCEL",
     "DCELFace",
     "DCELHalfEdge",
