@@ -26,18 +26,12 @@ class _TriangleView:
         self.vertices = (v1, v2, v3)
 
 
-
-
-
 def _ensure_ccw(polygon: list[Point]) -> list[Point]:
     return polygon if signed_area_twice(polygon) >= 0 else list(reversed(polygon))
 
 
 def _ensure_cw(polygon: list[Point]) -> list[Point]:
     return polygon if signed_area_twice(polygon) <= 0 else list(reversed(polygon))
-
-
-
 
 
 def _same_point(a: Point, b: Point, tolerance: float = 1e-7) -> bool:
@@ -550,10 +544,41 @@ def generate_points_in_triangle(
     return samples
 
 
+def get_convex_diameter(polygon: List[Point]) -> float:
+    """Calculates the maximum diameter of a convex polygon using Rotating Calipers."""
+    if len(polygon) < 2:
+        return 0.0
+    if len(polygon) == 2:
+        return distance(polygon[0], polygon[1])
+
+    n = len(polygon)
+    max_d_sq = 0.0
+    k = 1
+    
+    for i in range(n):
+        while True:
+            # Area of triangle formed by edge (i, i+1) and vertex k
+            area = abs(cross_product(polygon[i], polygon[(i + 1) % n], polygon[k]))
+            # Area of triangle with next vertex k+1
+            next_area = abs(cross_product(polygon[i], polygon[(i + 1) % n], polygon[(k + 1) % n]))
+            
+            if next_area > area:
+                k = (k + 1) % n
+            else:
+                break
+        
+        d1 = (polygon[i].x - polygon[k].x)**2 + (polygon[i].y - polygon[k].y)**2
+        d2 = (polygon[(i + 1) % n].x - polygon[k].x)**2 + (polygon[(i + 1) % n].y - polygon[k].y)**2
+        max_d_sq = max(max_d_sq, d1, d2)
+        
+    return math.sqrt(max_d_sq)
+
+
 __all__ = [
     "generate_points_in_triangle",
     "generate_random_convex_polygon",
     "generate_simple_polygon",
+    "get_convex_diameter",
     "get_polygon_properties",
     "get_triangulation_with_diagonals",
     "graham_scan",

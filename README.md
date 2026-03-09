@@ -8,12 +8,12 @@ A comprehensive Python library and command-line tool for computational geometry,
 - **Mesh Structures:** Support for TriangleMesh, QuadMesh, TetMesh, and HexMesh with topological query support (vertex/element adjacency) via `MeshTopology`.
 - **Mesh Refinement:** Subdivide triangular meshes using linear subdivision (midpoint splitting) or uniform refinement (area-ratio based) to increase resolution.
 - **Mesh Coloring:** Assign colors to mesh elements (faces/cells) or vertices using a greedy graph coloring algorithm (minimum colors for adjacent components).
-- **Geometric Shapes:** Object-oriented representations of Triangle, Square, Rectangle, Circle, Sphere, Cube, Cuboid, Plane, LineSegment, Ray, Tetrahedron, and Hexahedron with properties like area, volume, and centroid.
+- **Geometric Shapes:** Object-oriented representations of Triangle, Square, Rectangle, Circle, Sphere, Cube, Cuboid, Plane, LineSegment, Ray, Tetrahedron, and Hexahedron with properties like area, volume, centroid, and diameter.
 - **Core Geometry:** Points (2D and 3D), vectors, primitive intersections, geometric predicates (orientation, incircle).
 - **Mathematical Utilities:** High-precision orientation and incircle tests, coordinate conversions for space-filling curves, 2D/3D distances, and 2D rotations.
 - **Polygon Smoothing:** Transform arbitrary polygons towards a circular shape using discrete Mean Curvature Flow with perimeter preservation.
 - **Distance Maps:** Solve the Eikonal equation (|grad u| = 1) using the Fast Sweeping Method to generate distance fields from boundaries.
-- **Polygons:** Boolean operations, properties (area, centroid, orientation), visibility, triangulation (ear-clipping, CDT), and shortest paths.
+- **Polygons:** Boolean operations, properties (area, diameter, centroid, orientation), visibility, triangulation (ear-clipping, CDT), and shortest paths.
 - **Proximity & Bounding:** Closest/farthest pair, Graham scan, monotone chain, minimum bounding box, minimum enclosing circle (Welzl's algorithm), and **Largest Empty Circle**.
 - **Davenport-Schinzel Sequences:** Compute the lower envelope of line segments and extract the combinatorial sequence.
 - **Space-Filling Curves:** Hilbert, Peano, Morton (Z-order), ZigZag, and Sweep curves with grid cell index output.
@@ -141,10 +141,6 @@ voxels = MeshVoxelizer.voxelize_native(vertices, faces, voxel_size=0.1)
     - `geometry.py`: Primitives and types (Point, Point3D).
     - `math_utils.py`: Low-level mathematical functions.
     - `shapes.py`: High-level shape classes.
-    - `points_sampling.py`: `PointSampler` class.
-    - `sequences.py`: `DavenportSchinzel` class.
-    - `space_filling_curves.py`: `SpaceFillingCurves` class.
-    - `rectangle_packing.py`: `RectanglePacker` class.
     - `polygon/`: Polygon sub-package:
         - `polygon.py`: Core polygon algorithms.
         - `circle_packing.py`: `CirclePacker` class.
@@ -161,6 +157,10 @@ voxels = MeshVoxelizer.voxelize_native(vertices, faces, voxel_size=0.1)
         - `voxelization.py`: `MeshVoxelizer` class (Native & OpenVDB).
         - `triangulation.py`: Delaunay and Voronoi algorithms.
     - `spatial.py`: Spatial indexing and `PointSimplifier`.
+    - `points_sampling.py`: `PointSampler` class.
+    - `sequences.py`: `DavenportSchinzel` class.
+    - `space_filling_curves.py`: `SpaceFillingCurves` class.
+    - `rectangle_packing.py`: `RectanglePacker` class.
     - `visualization.py`: SVG/PNG export utilities.
 - `src/compgeom/cli/` - CLI script implementations.
 - `tests/` - Comprehensive unit test suite.

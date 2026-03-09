@@ -19,6 +19,12 @@ class Shape(ABC):
         """Returns the geometric center of the shape."""
         pass
 
+    @property
+    @abstractmethod
+    def diameter(self) -> float:
+        """Returns the maximum distance between any two points on the shape."""
+        pass
+
 
 class Shape2D(Shape):
     """Abstract base class for 2D shapes."""
@@ -66,6 +72,10 @@ class LineSegment(Shape):
         return distance(self.start, self.end)
 
     @property
+    def diameter(self) -> float:
+        return self.length
+
+    @property
     def centroid(self) -> Union[Point, Point3D]:
         if isinstance(self.start, Point3D) and isinstance(self.end, Point3D):
             return Point3D(
@@ -92,6 +102,10 @@ class Ray(Shape):
     def centroid(self) -> Union[Point, Point3D]:
         return self.origin
 
+    @property
+    def diameter(self) -> float:
+        return float('inf')
+
     def __repr__(self) -> str:
         return f"Ray(origin={self.origin}, direction_to={self.direction_pt})"
 
@@ -110,6 +124,10 @@ class Circle(Shape2D):
     @property
     def centroid(self) -> Point:
         return self._center
+
+    @property
+    def diameter(self) -> float:
+        return 2.0 * self._radius
 
     @property
     def area(self) -> float:
@@ -143,6 +161,10 @@ class Rectangle(Shape2D):
     @property
     def centroid(self) -> Point:
         return self._center
+
+    @property
+    def diameter(self) -> float:
+        return math.sqrt(self._width**2 + self._height**2)
 
     @property
     def area(self) -> float:
@@ -194,6 +216,11 @@ class Triangle(Shape2D):
         return Point((self.a.x + self.b.x + self.c.x) / 3.0, (self.a.y + self.b.y + self.c.y) / 3.0)
 
     @property
+    def diameter(self) -> float:
+        from .polygon.polygon import get_convex_diameter
+        return get_convex_diameter([self.a, self.b, self.c])
+
+    @property
     def area(self) -> float:
         return abs(signed_area_twice([self.a, self.b, self.c])) / 2.0
 
@@ -216,6 +243,10 @@ class Plane(Shape):
     def centroid(self) -> Point3D:
         return self.point
 
+    @property
+    def diameter(self) -> float:
+        return float('inf')
+
     def __repr__(self) -> str:
         return f"Plane(point={self.point}, normal={self.normal})"
 
@@ -233,6 +264,16 @@ class Tetrahedron(Shape3D):
             sum(v.y for v in self.vertices) / 4.0,
             sum(v.z for v in self.vertices) / 4.0,
         )
+
+    @property
+    def diameter(self) -> float:
+        # Max distance between any two vertices
+        max_d = 0.0
+        v = self.vertices
+        for i in range(4):
+            for j in range(i + 1, 4):
+                max_d = max(max_d, distance_3d(v[i], v[j]))
+        return max_d
 
     @property
     def volume(self) -> float:
@@ -288,6 +329,10 @@ class Sphere(Shape3D):
         return self._center
 
     @property
+    def diameter(self) -> float:
+        return 2.0 * self._radius
+
+    @property
     def volume(self) -> float:
         return (4.0 / 3.0) * math.pi * (self._radius**3)
 
@@ -311,6 +356,10 @@ class Cuboid(Shape3D):
     @property
     def centroid(self) -> Point3D:
         return self._center
+
+    @property
+    def diameter(self) -> float:
+        return math.sqrt(self._width**2 + self._height**2 + self._depth**2)
 
     @property
     def volume(self) -> float:
@@ -343,6 +392,15 @@ class Hexahedron(Shape3D):
             sum(v.y for v in self.vertices) / 8.0,
             sum(v.z for v in self.vertices) / 8.0,
         )
+
+    @property
+    def diameter(self) -> float:
+        max_d = 0.0
+        v = self.vertices
+        for i in range(8):
+            for j in range(i + 1, 8):
+                max_d = max(max_d, distance_3d(v[i], v[j]))
+        return max_d
 
     @property
     def volume(self) -> float:
@@ -418,6 +476,10 @@ class Cube(Hexahedron):
     @property
     def centroid(self) -> Point3D:
         return self._center
+
+    @property
+    def diameter(self) -> float:
+        return math.sqrt(3.0) * self._side
 
     @property
     def volume(self) -> float:
