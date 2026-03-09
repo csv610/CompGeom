@@ -44,6 +44,19 @@ class MeshTopology:
             self._build_e2e_edge()
         return self._e2e_edge.get(element_idx, set())
 
+    def boundary_edges(self) -> List[Tuple[int, int]]:
+        """Returns a list of edges (as vertex index pairs) that belong to only one element."""
+        edge_count = defaultdict(int)
+        
+        for element in self._mesh.elements:
+            n = len(element)
+            for i in range(n):
+                u, v = element[i], element[(i + 1) % n]
+                edge = tuple(sorted((u, v)))
+                edge_count[edge] += 1
+        
+        return [edge for edge, count in edge_count.items() if count == 1]
+
     def _build_v2v(self):
         self._v2v = defaultdict(set)
         for element in self._mesh.elements:
@@ -77,17 +90,13 @@ class MeshTopology:
         """Builds adjacency based on shared edges (at least two vertices)."""
         self._e2e_edge = defaultdict(set)
         
-        # Map edge (sorted tuple of 2 vertices) to elements sharing it
         edge_map = defaultdict(list)
         for i, element in enumerate(self._mesh.elements):
             n = len(element)
             for j in range(n):
-                # For polygons (triangle, quad), edges are adjacent vertices
-                # For polyhedra (tet, hex), we also check adjacent pairs in face definitions
-                # Simplified: check all pairs in the element for any dimension
-                for k in range(j + 1, n):
-                    edge = tuple(sorted((element[j], element[k])))
-                    edge_map[edge].append(i)
+                u, v = element[j], element[(j + 1) % n]
+                edge = tuple(sorted((u, v)))
+                edge_map[edge].append(i)
         
         for sharing_elements in edge_map.values():
             if len(sharing_elements) > 1:
@@ -171,111 +180,70 @@ class TriangleMesh(Mesh):
         e = len(edges)
         return v - e + f
 
+    def ensure_even_elements(self) -> TriangleMesh:
+        """
+        Ensures the mesh has an even number of triangles.
+        If count is odd:
+        1. Try to find a boundary edge and split it (adds 1 triangle).
+        2. If no boundary exists, split one triangle into 4 (adds 3 triangles).
+        """
+        if len(self.faces) % 2 == 0:
+            return self
+
+        # 1. Look for boundary edges
+        edge_map = defaultdict(list)
+        for i, face in enumerate(self.faces):
+            for j in range(3):
+                edge = tuple(sorted((face[j], face[(j + 1) % 3])))
+                edge_map[edge].append(i)
+        
+        boundary_edges = [e for e, faces in edge_map.items() if len(faces) == 1]
+        
+        if boundary_edges:
+            # Simple boundary split: N -> N+1 (even)
+            edge = boundary_edges[0]
+            f_idx = edge_map[edge][0]
+            face = self.faces[f_idx]
+            
+            new_vertices = list(self.vertices)
+            mid_idx = len(new_vertices)
+            v1, v2 = self.vertices[edge[0]], self.vertices[edge[1]]
+            if isinstance(v1, Point3D) and isinstance(v2, Point3D):
+                mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, mid_idx)
+            else:
+                mid = Point((v1.x+v2.x)/2, (v1.y+v2.y)/2, mid_idx)
+            new_vertices.append(mid)
+            
+            opposite = [v for v in face if v not in edge][0]
+            new_faces = [(edge[0], mid, opposite), (edge[1], mid, opposite)]
+            
+            final_faces = [f for i, f in enumerate(self.faces) if i != f_idx] + new_faces
+            return TriangleMesh(new_vertices, final_faces)
+        else:
+            # Closed mesh: N -> N+3 (even) by splitting one triangle into 4
+            new_vertices = list(self.vertices)
+            target_face = self.faces[0]
+            
+            # Midpoints for the 3 edges
+            m_indices = []
+            for j in range(3):
+                u, v = target_face[j], target_face[(j + 1) % 3]
+                idx = len(new_vertices)
+                p1, p2 = self.vertices[u], self.vertices[v]
+                if isinstance(p1, Point3D):
+                    m = Point3D((p1.x+p2.x)/2, (p1.y+p2.y)/2, (p1.z+p2.z)/2, idx)
+                else:
+                    m = Point((p1.x+p2.x)/2, (p1.y+p2.y)/2, idx)
+                new_vertices.append(m)
+                m_indices.append(idx)
+            
+            v0, v1, v2 = target_face
+            m0, m1, m2 = m_indices
+            
+            new_sub_faces = [(v0, m0, m2), (v1, m1, m0), (v2, m2, m1), (m0, m1, m2)]
+            final_faces = list(self.faces[1:]) + new_sub_faces
+            return TriangleMesh(new_vertices, final_faces)
+
 
 class QuadMesh(Mesh):
-    """A 2D or 3D mesh composed of quadrilateral faces."""
-
-    @property
-    def faces(self) -> List[Tuple[int, int, int, int]]:
-        return self._elements
-
-
-class TetMesh(Mesh):
-    """A 3D volumetric mesh composed of tetrahedral cells."""
-
-    def __init__(self, vertices: List[Point3D], tets: List[Tuple[int, int, int, int]]):
-        super().__init__(vertices, tets)
-
-    @property
-    def cells(self) -> List[Tuple[int, int, int, int]]:
-        return self._elements
-
-
-class HexMesh(Mesh):
-    """A 3D volumetric mesh composed of hexahedral cells."""
-
-    def __init__(self, vertices: List[Point3D], hexas: List[Tuple[int, int, int, int, int, int, int, int]]):
-        super().__init__(vertices, hexas)
-
-    @property
-    def cells(self) -> List[Tuple[int, int, int, int, int, int, int, int]]:
-        return self._elements
-
-
-def mesh_edges(triangles):
-    edges = set()
-    for a, b, c in triangles:
-        edges.add(tuple(sorted((a.id, b.id))))
-        edges.add(tuple(sorted((b.id, c.id))))
-        edges.add(tuple(sorted((c.id, a.id))))
-    return edges
-
-
-def mesh_vertices(triangles):
-    vertices = {}
-    for triangle in triangles:
-        for vertex in triangle:
-            vertices[vertex.id] = vertex
-    return vertices
-
-
-def euler_characteristic(triangles):
-    vertices = mesh_vertices(triangles)
-    edges = mesh_edges(triangles)
-    faces = len(triangles)
-    chi = len(vertices) - len(edges) + faces
-    return {
-        "vertices": len(vertices),
-        "edges": len(edges),
-        "faces": faces,
-        "euler_characteristic": chi,
-    }
-
-
-def vertex_neighbors(triangles):
-    neighbors = defaultdict(set)
-    for a, b, c in triangles:
-        neighbors[a.id].update([b.id, c.id])
-        neighbors[b.id].update([a.id, c.id])
-        neighbors[c.id].update([a.id, b.id])
-    return {vertex_id: sorted(adjacent) for vertex_id, adjacent in neighbors.items()}
-
-
-def triangle_neighbors(triangles):
-    edge_to_triangles = defaultdict(list)
-    for triangle_index, (a, b, c) in enumerate(triangles):
-        edge_to_triangles[tuple(sorted((a.id, b.id)))].append(triangle_index)
-        edge_to_triangles[tuple(sorted((b.id, c.id)))].append(triangle_index)
-        edge_to_triangles[tuple(sorted((c.id, a.id)))].append(triangle_index)
-
-    neighbors = {triangle_index: set() for triangle_index in range(len(triangles))}
-    for owners in edge_to_triangles.values():
-        if len(owners) != 2:
-            continue
-        left, right = owners
-        neighbors[left].add(right)
-        neighbors[right].add(left)
-    return {triangle_index: sorted(adjacent) for triangle_index, adjacent in neighbors.items()}
-
-
-def mesh_neighbors(triangles):
-    return {
-        "vertex_neighbors": vertex_neighbors(triangles),
-        "triangle_neighbors": triangle_neighbors(triangles),
-    }
-
-
-__all__ = [
-    "HexMesh",
-    "Mesh",
-    "MeshTopology",
-    "QuadMesh",
-    "TetMesh",
-    "TriangleMesh",
-    "euler_characteristic",
-    "mesh_edges",
-    "mesh_neighbors",
-    "mesh_vertices",
-    "triangle_neighbors",
-    "vertex_neighbors",
-]
+...
