@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import math
+import random
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from .geometry import (
+    EPSILON,
     Point,
     cross_product,
     dist_point_to_segment,
@@ -22,106 +25,193 @@ from .math_utils import (
     signed_area_twice,
     support,
 )
-from .polygon import graham_scan
+from .polygon import graham_scan, is_point_in_polygon
 
 
-def get_minkowski_support(poly1: list[Point], poly2: list[Point], direction: Point) -> Point:
-    p1 = support(poly1, direction)
-    p2 = support(poly2, Point(-direction.x, -direction.y))
-    return sub(p1, p2)
+class ClosestPair:
+    """Algorithms for finding the closest pair of points in a set."""
 
+    @staticmethod
+    def divide_and_conquer(points: List[Point]) -> Tuple[float, Tuple[Optional[Point], Optional[Point]]]:
+        """Traditional O(N log N) divide and conquer algorithm."""
+        if len(points) <= 3:
+            min_dist = float("inf")
+            pair = (None, None)
+            for i in range(len(points)):
+                for j in range(i + 1, len(points)):
+                    d = distance(points[i], points[j])
+                    if d < min_dist:
+                        min_dist = d
+                        pair = (points[i], points[j])
+            return min_dist, pair
 
-def min_dist_convex_polygons(poly1: list[Point], poly2: list[Point]) -> float:
-    direction = Point(1, 0)
-    simplex = [get_minkowski_support(poly1, poly2, direction)]
-    direction = Point(-simplex[0].x, -simplex[0].y)
-
-    for _ in range(100):
-        if length(direction) < 1e-9:
-            return 0.0
-
-        candidate = get_minkowski_support(poly1, poly2, direction)
-        if dot_product(candidate, direction) < 0 and abs(dot_product(candidate, direction)) > 1e-9:
-            return (
-                length(simplex[0])
-                if len(simplex) == 1
-                else dist_point_to_segment(Point(0, 0), simplex[0], simplex[1])
-            )
-
-        simplex.append(candidate)
-        if len(simplex) == 2:
-            a, b = simplex[1], simplex[0]
-            ab = sub(b, a)
-            ao = Point(-a.x, -a.y)
-            if dot_product(ab, ao) > 0:
-                perpendicular = Point(-ab.y, ab.x)
-                if dot_product(perpendicular, ao) < 0:
-                    perpendicular = Point(ab.y, -ab.x)
-                direction = perpendicular
-            else:
-                simplex = [a]
-                direction = ao
-            continue
-
-        a, b, c = simplex[2], simplex[1], simplex[0]
-        ab = sub(b, a)
-        ac = sub(c, a)
-        ao = Point(-a.x, -a.y)
-
-        ab_perp = Point(-ab.y, ab.x)
-        if dot_product(ab_perp, sub(c, a)) > 0:
-            ab_perp = Point(ab.y, -ab.x)
-
-        ac_perp = Point(-ac.y, ac.x)
-        if dot_product(ac_perp, sub(b, a)) > 0:
-            ac_perp = Point(ac.y, -ac.x)
-
-        if dot_product(ab_perp, ao) > 0:
-            simplex = [b, a]
-            direction = ab_perp
-        elif dot_product(ac_perp, ao) > 0:
-            simplex = [c, a]
-            direction = ac_perp
+        ordered = sorted(points, key=lambda p: p.x)
+        mid = len(ordered) // 2
+        
+        d1, pair1 = ClosestPair.divide_and_conquer(ordered[:mid])
+        d2, pair2 = ClosestPair.divide_and_conquer(ordered[mid:])
+        
+        if d1 < d2:
+            best_d, best_pair = d1, pair1
         else:
-            return 0.0
+            best_d, best_pair = d2, pair2
 
-    return 0.0
+        mid_x = ordered[mid].x
+        strip = [p for p in ordered if abs(p.x - mid_x) < best_d]
+        strip.sort(key=lambda p: p.y)
+
+        for i in range(len(strip)):
+            for j in range(i + 1, len(strip)):
+                if strip[j].y - strip[i].y >= best_d:
+                    break
+                d = distance(strip[i], strip[j])
+                if d < best_d:
+                    best_d = d
+                    best_pair = (strip[i], strip[j])
+
+        return best_d, best_pair
+
+    @staticmethod
+    def grid_based_massive(
+        points_iterator: Iterable[Point], 
+        sample_size: int = 1000
+    ) -> Tuple[float, Tuple[Point, Point]]:
+        """
+        O(N) randomized grid-based algorithm for massive datasets.
+        Suitable for billions of points as it can process them in a stream.
+        """
+        points_list = []
+        try:
+            for _ in range(sample_size):
+                p = next(points_iterator)
+                points_list.append(p)
+        except StopIteration:
+            pass
+
+        if len(points_list) < 2:
+            raise ValueError("Need at least 2 points.")
+
+        best_d, best_pair = ClosestPair.divide_and_conquer(points_list)
+        
+        grid: Dict[Tuple[int, int], Point] = {}
+        
+        def add_to_grid(p: Point, d: float):
+            gx, gy = int(p.x / d), int(p.y / d)
+            local_best_d = d
+            local_pair = None
+            
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    key = (gx + dx, gy + dy)
+                    if key in grid:
+                        other = grid[key]
+                        dist = distance(p, other)
+                        if dist < local_best_d:
+                            local_best_d = dist
+                            local_pair = (p, other)
+            
+            if local_pair:
+                return local_best_d, local_pair
+            
+            grid[(gx, gy)] = p
+            return d, None
+
+        for p in points_list:
+            gx, gy = int(p.x / best_d), int(p.y / best_d)
+            grid[(gx, gy)] = p
+
+        for p in points_iterator:
+            new_d, new_pair = add_to_grid(p, best_d)
+            if new_pair:
+                best_d = new_d
+                best_pair = new_pair
+                
+        return best_d, best_pair
+
+
+class LargestEmptyCircle:
+    """Finds the largest circle whose center is within the convex hull and encloses no points."""
+
+    @staticmethod
+    def find(points: List[Point]) -> Tuple[Point, float]:
+        """
+        Returns (center, radius) of the largest empty circle.
+        Complexity: O(N log N) due to Delaunay Triangulation.
+        """
+        if len(points) < 3:
+            if len(points) == 2:
+                p1, p2 = points
+                center = Point((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
+                return center, distance(p1, p2) / 2.0
+            return Point(0, 0), 0.0
+
+        hull = graham_scan(points)
+        from .triangulation import triangulate
+        triangles, _ = triangulate(points)
+        
+        max_radius = -1.0
+        best_center = None
+        
+        for tri in triangles:
+            a, b, c = tri
+            center = get_circumcenter(a, b, c)
+            if center is None:
+                continue
+                
+            if is_point_in_polygon(center, hull):
+                r = distance(center, a)
+                if r > max_radius:
+                    max_radius = r
+                    best_center = center
+        
+        for i in range(len(hull)):
+            p1 = hull[i]
+            p2 = hull[(i + 1) % len(hull)]
+            mid = Point((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
+            min_d = min(distance(mid, p) for p in points)
+            if min_d > max_radius:
+                max_radius = min_d
+                best_center = mid
+
+        return best_center, max_radius
+
+    @staticmethod
+    def visualize(points: List[Point], center: Point, radius: float) -> str:
+        """Generates an SVG visualization of the points and the LEC."""
+        all_x = [p.x for p in points] + [center.x - radius, center.x + radius]
+        all_y = [p.y for p in points] + [center.y - radius, center.y + radius]
+        
+        min_x, max_x = min(all_x), max(all_x)
+        min_y, max_y = min(all_y), max(all_y)
+        
+        width, height = 800, 600
+        padding = 50
+        
+        def tx(x):
+            return padding + (x - min_x) / (max_x - min_x) * (width - 2 * padding) if max_x > min_x else padding
+        def ty(y):
+            return height - (padding + (y - min_y) / (max_y - min_y) * (height - 2 * padding)) if max_y > min_y else padding
+
+        svg = [f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">']
+        svg.append('<rect width="100%" height="100%" fill="white" />')
+        
+        hull = graham_scan(points)
+        hull_str = " ".join(f"{tx(p.x)},{ty(p.y)}" for p in hull)
+        svg.append(f'<polygon points="{hull_str}" fill="none" stroke="#ccc" stroke-dasharray="5,5" />')
+        
+        for p in points:
+            svg.append(f'<circle cx="{tx(p.x)}" cy="{ty(p.y)}" r="3" fill="black" />')
+            
+        svg.append(f'<circle cx="{tx(center.x)}" cy="{ty(center.y)}" r="{radius * (width - 2*padding) / (max_x - min_x) if max_x > min_x else 0}" fill="blue" fill-opacity="0.2" stroke="blue" stroke-width="2" />')
+        svg.append(f'<circle cx="{tx(center.x)}" cy="{ty(center.y)}" r="4" fill="red" />')
+        
+        svg.append('</svg>')
+        return "\n".join(svg)
 
 
 def closest_pair(points: list[Point]):
-    if len(points) <= 3:
-        min_distance = float("inf")
-        pair = (None, None)
-        for left in range(len(points)):
-            for right in range(left + 1, len(points)):
-                d = distance(points[left], points[right])
-                if d < min_distance:
-                    min_distance = d
-                    pair = (points[left], points[right])
-        return min_distance, pair
-
-    ordered = sorted(points, key=lambda point: point.x)
-    midpoint = len(ordered) // 2
-    left_distance, left_pair = closest_pair(ordered[:midpoint])
-    right_distance, right_pair = closest_pair(ordered[midpoint:])
-    best_distance, best_pair = (
-        (left_distance, left_pair) if left_distance < right_distance else (right_distance, right_pair)
-    )
-
-    strip = sorted(
-        [point for point in ordered if abs(point.x - ordered[midpoint].x) < best_distance],
-        key=lambda point: point.y,
-    )
-    for left in range(len(strip)):
-        for right in range(left + 1, len(strip)):
-            if strip[right].y - strip[left].y >= best_distance:
-                break
-            d = distance(strip[left], strip[right])
-            if d < best_distance:
-                best_distance = d
-                best_pair = (strip[left], strip[right])
-
-    return best_distance, best_pair
+    """Wrapper for ClosestPair.divide_and_conquer."""
+    return ClosestPair.divide_and_conquer(points)
 
 
 def do_intersect(p1: Point, q1: Point, p2: Point, q2: Point) -> bool:
@@ -130,12 +220,9 @@ def do_intersect(p1: Point, q1: Point, p2: Point, q2: Point) -> bool:
     o3 = math_orientation(p2, q2, p1)
     o4 = math_orientation(p2, q2, q1)
 
-    # Note: math_orientation returns float, we check signs
-    # but the logic in original was returning 0, 1, 2. 
-    # Let's use the cross_product sign logic here for simplicity.
-    
     def get_sign(val):
-        if abs(val) < 1e-9: return 0
+        if abs(val) < 1e-9:
+            return 0
         return 1 if val > 0 else 2
 
     s1, s2, s3, s4 = get_sign(o1), get_sign(o2), get_sign(o3), get_sign(o4)
@@ -163,8 +250,14 @@ def farthest_pair(points: list[Point]):
     k = 1
     for index in range(len(hull)):
         while True:
-            current_area = abs(cross_product(hull[index], hull[(index + 1) % len(hull)], hull[k]))
-            next_area = abs(cross_product(hull[index], hull[(index + 1) % len(hull)], hull[(k + 1) % len(hull)]))
+            current_area = abs(
+                cross_product(hull[index], hull[(index + 1) % len(hull)], hull[k])
+            )
+            next_area = abs(
+                cross_product(
+                    hull[index], hull[(index + 1) % len(hull)], hull[(k + 1) % len(hull)]
+                )
+            )
             if next_area > current_area:
                 k = (k + 1) % len(hull)
             else:
@@ -212,7 +305,9 @@ def minkowski_sum(poly1: list[Point], poly2: list[Point]) -> list[Point]:
     def prepare_polygon(polygon: list[Point]) -> list[Point]:
         area_twice = signed_area_twice(polygon)
         ordered = polygon if area_twice >= 0 else list(reversed(polygon))
-        start_index = min(range(len(ordered)), key=lambda index: (ordered[index].y, ordered[index].x))
+        start_index = min(
+            range(len(ordered)), key=lambda index: (ordered[index].y, ordered[index].x)
+        )
         return ordered[start_index:] + ordered[:start_index]
 
     p1 = prepare_polygon(poly1)
@@ -227,8 +322,12 @@ def minkowski_sum(poly1: list[Point], poly2: list[Point]) -> list[Point]:
     while i < n or j < m:
         result.append(Point(p1[i % n].x + p2[j % m].x, p1[i % n].y + p2[j % m].y))
         if i < n and j < m:
-            angle1 = math.atan2(p1[i + 1].y - p1[i].y, p1[i + 1].x - p1[i].x) % (2 * math.pi)
-            angle2 = math.atan2(p2[j + 1].y - p2[j].y, p2[j + 1].x - p2[j].x) % (2 * math.pi)
+            angle1 = (
+                math.atan2(p1[i + 1].y - p1[i].y, p1[i + 1].x - p1[i].x) % (2 * math.pi)
+            )
+            angle2 = (
+                math.atan2(p2[j + 1].y - p2[j].y, p2[j + 1].x - p2[j].x) % (2 * math.pi)
+            )
             if angle1 < angle2:
                 i += 1
             elif angle1 > angle2:
@@ -244,13 +343,13 @@ def minkowski_sum(poly1: list[Point], poly2: list[Point]) -> list[Point]:
 
 
 __all__ = [
+    "ClosestPair",
+    "LargestEmptyCircle",
     "closest_pair",
     "do_intersect",
     "farthest_pair",
     "get_circle_three_points",
     "get_circle_two_points",
-    "get_minkowski_support",
-    "min_dist_convex_polygons",
     "minkowski_sum",
     "support",
     "welzl",
