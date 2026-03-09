@@ -39,7 +39,14 @@ def _same_point(a: Point, b: Point, tolerance: float = 1e-7) -> bool:
 
 
 def _point_on_boundary(point: Point, polygon: list[Point]) -> bool:
-    return any(is_on_segment(point, polygon[i], polygon[(i + 1) % len(polygon)]) for i in range(len(polygon)))
+    n = len(polygon)
+    if n == 0:
+        return False
+    for i in range(n):
+        if is_on_segment(point, polygon[i], polygon[(i + 1) % n]):
+            return True
+    return False
+
 
 
 def _proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool:
@@ -127,18 +134,25 @@ def _cleanup_polygon(points: list[Point]) -> list[Point]:
 
 
 def get_polygon_properties(polygon: list[Point]):
-    area_twice = signed_area_twice(polygon)
-    area = area_twice / 2.0
-    if abs(area) < 1e-12:
-        return 0, Point(0, 0), "Degenerate"
+    n = len(polygon)
+    if n < 3:
+        return 0.0, Point(0, 0), "Degenerate"
 
+    area_twice = 0.0
     centroid_x = 0.0
     centroid_y = 0.0
-    for index, p1 in enumerate(polygon):
-        p2 = polygon[(index + 1) % len(polygon)]
+    
+    for i in range(n):
+        p1 = polygon[i]
+        p2 = polygon[(i + 1) % n]
         cross = (p1.x * p2.y) - (p2.x * p1.y)
+        area_twice += cross
         centroid_x += (p1.x + p2.x) * cross
         centroid_y += (p1.y + p2.y) * cross
+
+    area = area_twice / 2.0
+    if abs(area) < 1e-12:
+        return 0.0, Point(0, 0), "Degenerate"
 
     centroid_x /= 6.0 * area
     centroid_y /= 6.0 * area
@@ -147,17 +161,24 @@ def get_polygon_properties(polygon: list[Point]):
 
 
 def is_point_in_polygon(point: Point, polygon: list[Point]) -> bool:
-    for index, start in enumerate(polygon):
-        end = polygon[(index + 1) % len(polygon)]
-        if is_on_segment(point, start, end):
-            return True
+    n = len(polygon)
+    if n < 3:
+        return False
 
     inside = False
-    for index, start in enumerate(polygon):
-        end = polygon[(index + 1) % len(polygon)]
-        intersects_scanline = (start.y > point.y) != (end.y > point.y)
-        if intersects_scanline and point.x < (end.x - start.x) * (point.y - start.y) / (end.y - start.y) + start.x:
+    for i in range(n):
+        start = polygon[i]
+        end = polygon[(i + 1) % n]
+        
+        # Check if point is on segment
+        if is_on_segment(point, start, end):
+            return True
+            
+        # Ray casting
+        if ((start.y > point.y) != (end.y > point.y)) and \
+           (point.x < (end.x - start.x) * (point.y - start.y) / (end.y - start.y) + start.x):
             inside = not inside
+            
     return inside
 
 
@@ -166,10 +187,11 @@ def is_ear(a: Point, b: Point, c: Point, polygon: list[Point]) -> bool:
         return False
 
     triangle = _TriangleView(a, b, c)
-    return not any(
-        point not in (a, b, c) and contains_point(triangle, point)
-        for point in polygon
-    )
+    for point in polygon:
+        if point is not a and point is not b and point is not c:
+            if contains_point(triangle, point):
+                return False
+    return True
 
 
 def triangulate_polygon(polygon: list[Point]):

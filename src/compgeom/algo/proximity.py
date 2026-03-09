@@ -34,31 +34,56 @@ class ClosestPair:
     @staticmethod
     def divide_and_conquer(points: List[Point]) -> Tuple[float, Tuple[Optional[Point], Optional[Point]]]:
         """Traditional O(N log N) divide and conquer algorithm."""
-        if len(points) <= 3:
+        if not points:
+            return float("inf"), (None, None)
+        
+        points_x = sorted(points, key=lambda p: p.x)
+        points_y = sorted(points, key=lambda p: p.y)
+        
+        return ClosestPair._divide_and_conquer_recursive(points_x, points_y)
+
+    @staticmethod
+    def _divide_and_conquer_recursive(
+        points_x: List[Point], points_y: List[Point]
+    ) -> Tuple[float, Tuple[Optional[Point], Optional[Point]]]:
+        n = len(points_x)
+        if n <= 3:
             min_dist = float("inf")
             pair = (None, None)
-            for i in range(len(points)):
-                for j in range(i + 1, len(points)):
-                    d = distance(points[i], points[j])
+            for i in range(n):
+                for j in range(i + 1, n):
+                    d = distance(points_x[i], points_x[j])
                     if d < min_dist:
                         min_dist = d
-                        pair = (points[i], points[j])
+                        pair = (points_x[i], points_x[j])
             return min_dist, pair
 
-        ordered = sorted(points, key=lambda p: p.x)
-        mid = len(ordered) // 2
-        
-        d1, pair1 = ClosestPair.divide_and_conquer(ordered[:mid])
-        d2, pair2 = ClosestPair.divide_and_conquer(ordered[mid:])
-        
+        mid = n // 2
+        mid_point = points_x[mid]
+
+        points_y_left = []
+        points_y_right = []
+        for p in points_y:
+            if p.x < mid_point.x or (p.x == mid_point.x and p.y <= mid_point.y):
+                # This check should be consistent with how we split points_x
+                # Actually points_x[:mid] is points from 0 to mid-1.
+                # It's safer to just split points_y based on the same index or set.
+                pass
+
+        # Better way to split points_y in O(n):
+        left_set = set(points_x[:mid])
+        points_y_left = [p for p in points_y if p in left_set]
+        points_y_right = [p for p in points_y if p not in left_set]
+
+        d1, pair1 = ClosestPair._divide_and_conquer_recursive(points_x[:mid], points_y_left)
+        d2, pair2 = ClosestPair._divide_and_conquer_recursive(points_x[mid:], points_y_right)
+
         if d1 < d2:
             best_d, best_pair = d1, pair1
         else:
             best_d, best_pair = d2, pair2
 
-        mid_x = ordered[mid].x
-        strip = [p for p in ordered if abs(p.x - mid_x) < best_d]
-        strip.sort(key=lambda p: p.y)
+        strip = [p for p in points_y if abs(p.x - mid_point.x) < best_d]
 
         for i in range(len(strip)):
             for j in range(i + 1, len(strip)):

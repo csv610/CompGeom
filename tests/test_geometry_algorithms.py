@@ -8,19 +8,19 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from compgeom.geometry import Point
-from compgeom.cli.line_arrangement import analyze_arrangement
-from compgeom.cli.polygon_visibility import parse_input as parse_visibility_input, visible_boundary_segments
-from compgeom.cli.reflection_polygon import parse_input, simulate_reflections
-from compgeom.cli.polygon_boolean_operations import apply_boolean_operation
-from compgeom.bounding import minimum_bounding_box, minimum_enclosing_circle
-from compgeom.geometry import incircle_sign, orientation_sign
-from compgeom.polygon import approximate_medial_axis
-from compgeom.mesh import mesh_neighbors
-from compgeom.path import shortest_path
-from compgeom.polygon import build_polygon_dcel, locate_face
-from compgeom.polygon import shortest_path_in_polygon, triangulate_polygon_with_holes, visibility_polygon
-from compgeom.mesh import constrained_delaunay_triangulation, triangulate
+from compgeom import Point
+from compgeom.cli.line_arrangement_cli import analyze_arrangement
+from compgeom.cli.polygon_visibility_cli import parse_input as parse_visibility_input, visible_boundary_segments
+from compgeom.cli.reflection_polygon_cli import parse_input, simulate_reflections
+from compgeom.cli.polygon_boolean_operations_cli import apply_boolean_operation
+from compgeom import minimum_bounding_box, minimum_enclosing_circle
+from compgeom import incircle_sign, orientation_sign
+from compgeom import approximate_medial_axis
+from compgeom import mesh_neighbors
+from compgeom import shortest_path
+from compgeom import build_polygon_dcel, locate_face
+from compgeom import shortest_path_in_polygon, triangulate_polygon_with_holes, visibility_polygon
+from compgeom import constrained_delaunay_triangulation, triangulate
 
 
 class BoundingShapeTests(unittest.TestCase):
@@ -335,7 +335,7 @@ class TriangulationTests(unittest.TestCase):
 class MedialAxisTests(unittest.TestCase):
     def test_square_medial_axis_produces_interior_graph(self):
         polygon = [Point(0, 0), Point(2, 0), Point(2, 2), Point(0, 2)]
-        result = approximate_medial_axis(polygon, max_segment_length=0.5)
+        result = approximate_medial_axis(polygon, resolution=0.5)
         self.assertGreater(len(result["samples"]), 4)
         self.assertGreater(len(result["centers"]), 0)
         self.assertGreater(len(result["segments"]), 0)

@@ -133,30 +133,45 @@ class Mesh(ABC):
     @property
     def centroid(self) -> Union[Point, Point3D]:
         """Returns the geometric center of all vertices."""
-        if not self._vertices:
+        n = len(self._vertices)
+        if n == 0:
             return Point(0, 0)
         
-        avg_x = sum(v.x for v in self._vertices) / len(self._vertices)
-        avg_y = sum(v.y for v in self._vertices) / len(self._vertices)
+        sum_x = sum_y = sum_z = 0.0
+        is_3d = isinstance(self._vertices[0], Point3D)
         
-        if isinstance(self._vertices[0], Point3D):
-            avg_z = sum(v.z for v in self._vertices) / len(self._vertices)
-            return Point3D(avg_x, avg_y, avg_z)
-        return Point(avg_x, avg_y)
+        for v in self._vertices:
+            sum_x += v.x
+            sum_y += v.y
+            if is_3d:
+                sum_z += v.z
+        
+        if is_3d:
+            return Point3D(sum_x / n, sum_y / n, sum_z / n)
+        return Point(sum_x / n, sum_y / n)
 
     def bounding_box(self) -> Tuple:
         """Returns the axis-aligned bounding box (min_coords, max_coords)."""
         if not self._vertices:
             return ()
 
-        min_x = min(v.x for v in self._vertices)
-        max_x = max(v.x for v in self._vertices)
-        min_y = min(v.y for v in self._vertices)
-        max_y = max(v.y for v in self._vertices)
+        is_3d = isinstance(self._vertices[0], Point3D)
+        first = self._vertices[0]
+        min_x = max_x = first.x
+        min_y = max_y = first.y
+        min_z = max_z = getattr(first, 'z', 0.0) if is_3d else 0.0
 
-        if isinstance(self._vertices[0], Point3D):
-            min_z = min(v.z for v in self._vertices)
-            max_z = max(v.z for v in self._vertices)
+        for v in self._vertices[1:]:
+            if v.x < min_x: min_x = v.x
+            elif v.x > max_x: max_x = v.x
+            if v.y < min_y: min_y = v.y
+            elif v.y > max_y: max_y = v.y
+            if is_3d:
+                vz = v.z
+                if vz < min_z: min_z = vz
+                elif vz > max_z: max_z = vz
+
+        if is_3d:
             return (min_x, min_y, min_z), (max_x, max_y, max_z)
         
         return (min_x, min_y), (max_x, max_y)

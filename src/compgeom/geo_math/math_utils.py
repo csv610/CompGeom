@@ -11,26 +11,24 @@ if TYPE_CHECKING:
 
 EPSILON = 1e-9
 
+# Set precision once for the module
+getcontext().prec = 50
+
 
 def _decimal_orientation(a: Point, b: Point, c: Point) -> Decimal:
-    getcontext().prec = 50
-    ax = Decimal(str(a.x))
-    ay = Decimal(str(a.y))
-    bx = Decimal(str(b.x))
-    by = Decimal(str(b.y))
-    cx = Decimal(str(c.x))
-    cy = Decimal(str(c.y))
+    ax, ay = Decimal(a.x), Decimal(a.y)
+    bx, by = Decimal(b.x), Decimal(b.y)
+    cx, cy = Decimal(c.x), Decimal(c.y)
     return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
 
 
 def _decimal_incircle(a: Point, b: Point, c: Point, d: Point) -> Decimal:
-    getcontext().prec = 50
-    adx_d = Decimal(str(a.x)) - Decimal(str(d.x))
-    ady_d = Decimal(str(a.y)) - Decimal(str(d.y))
-    bdx_d = Decimal(str(b.x)) - Decimal(str(d.x))
-    bdy_d = Decimal(str(b.y)) - Decimal(str(d.y))
-    cdx_d = Decimal(str(c.x)) - Decimal(str(d.x))
-    cdy_d = Decimal(str(c.y)) - Decimal(str(d.y))
+    adx_d = Decimal(a.x) - Decimal(d.x)
+    ady_d = Decimal(a.y) - Decimal(d.y)
+    bdx_d = Decimal(b.x) - Decimal(d.x)
+    bdy_d = Decimal(b.y) - Decimal(d.y)
+    cdx_d = Decimal(c.x) - Decimal(d.x)
+    cdy_d = Decimal(c.y) - Decimal(d.y)
     return (
         (adx_d * adx_d + ady_d * ady_d) * (bdx_d * cdy_d - cdx_d * bdy_d)
         - (bdx_d * bdx_d + bdy_d * bdy_d) * (adx_d * cdy_d - cdx_d * ady_d)
@@ -80,26 +78,32 @@ def length_sq(point: Point) -> float:
 
 
 def length(point: Point) -> float:
-    return length_sq(point) ** 0.5
+    return math.hypot(point.x, point.y)
 
 
 def distance(a: Point, b: Point) -> float:
     """Return the Euclidean distance between two 2D points."""
-    return length(sub(a, b))
+    return math.hypot(a.x - b.x, a.y - b.y)
 
 
 def distance_3d(a: Point3D, b: Point3D) -> float:
     """Return the Euclidean distance between two 3D points."""
-    return math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
+    return math.dist((a.x, a.y, a.z), (b.x, b.y, b.z))
 
 
 def signed_area_twice(polygon: List[Point]) -> float:
     """Return twice the signed area of a polygon."""
-    return sum(
-        polygon[i].x * polygon[(i + 1) % len(polygon)].y
-        - polygon[(i + 1) % len(polygon)].x * polygon[i].y
-        for i in range(len(polygon))
-    )
+    n = len(polygon)
+    if n < 3:
+        return 0.0
+    area = 0.0
+    for i in range(n - 1):
+        p1 = polygon[i]
+        p2 = polygon[i + 1]
+        area += p1.x * p2.y - p2.x * p1.y
+    # Closing the polygon
+    area += polygon[n - 1].x * polygon[0].y - polygon[0].x * polygon[n - 1].y
+    return area
 
 
 def rotate_2d(point: Point, cos_theta: float, sin_theta: float) -> Point:

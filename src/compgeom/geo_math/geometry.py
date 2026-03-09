@@ -21,7 +21,9 @@ from .math_utils import (
 )
 
 
-@dataclass(frozen=True, eq=False)
+import math
+
+@dataclass(frozen=True, eq=False, slots=True)
 class Point:
     x: float
     y: float
@@ -33,15 +35,15 @@ class Point:
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Point)
-            and abs(self.x - other.x) < EPSILON
-            and abs(self.y - other.y) < EPSILON
+            and math.isclose(self.x, other.x, abs_tol=EPSILON)
+            and math.isclose(self.y, other.y, abs_tol=EPSILON)
         )
 
     def __hash__(self) -> int:
         return hash((round(self.x / EPSILON), round(self.y / EPSILON)))
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True, eq=False, slots=True)
 class Point3D:
     x: float
     y: float
@@ -54,9 +56,9 @@ class Point3D:
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Point3D)
-            and abs(self.x - other.x) < EPSILON
-            and abs(self.y - other.y) < EPSILON
-            and abs(self.z - other.z) < EPSILON
+            and math.isclose(self.x, other.x, abs_tol=EPSILON)
+            and math.isclose(self.y, other.y, abs_tol=EPSILON)
+            and math.isclose(self.z, other.z, abs_tol=EPSILON)
         )
 
     def __hash__(self) -> int:
@@ -109,40 +111,46 @@ def clip_polygon(polygon: list[Point], line_start: Point, line_end: Point) -> li
         return cross_product(line_start, line_end, point) >= -1e-12
 
     clipped: list[Point] = []
-    for index, current in enumerate(polygon):
-        nxt = polygon[(index + 1) % len(polygon)]
+    n = len(polygon)
+    if n == 0:
+        return clipped
+
+    for i in range(n):
+        current = polygon[i]
+        nxt = polygon[(i + 1) % n]
         current_inside = is_inside(current)
         next_inside = is_inside(nxt)
 
-        if current_inside and next_inside:
-            clipped.append(nxt)
-        elif current_inside and not next_inside:
-            intersection = intersect_lines(current, nxt, line_start, line_end)
-            if intersection is not None:
-                clipped.append(intersection)
-        elif not current_inside and next_inside:
-            intersection = intersect_lines(current, nxt, line_start, line_end)
-            if intersection is not None:
-                clipped.append(intersection)
-            clipped.append(nxt)
+        if current_inside:
+            if next_inside:
+                clipped.append(nxt)
+            else:
+                intersection = intersect_lines(current, nxt, line_start, line_end)
+                if intersection is not None:
+                    clipped.append(intersection)
+        else:
+            if next_inside:
+                intersection = intersect_lines(current, nxt, line_start, line_end)
+                if intersection is not None:
+                    clipped.append(intersection)
+                clipped.append(nxt)
     return clipped
 
 
 def dist_point_to_segment(point: Point, start: Point, end: Point) -> float:
     """Return the minimum distance from a point to a line segment."""
-    segment = sub(end, start)
-    from_start = sub(point, start)
-    from_end = sub(point, end)
-
-    segment_length_sq = length_sq(segment)
-    projection = dot_product(from_start, segment) / segment_length_sq if segment_length_sq > 0 else 0
-    if projection < 0:
-        return length(from_start)
-    if projection > 1:
-        return length(from_end)
-
-    closest = Point(start.x + projection * segment.x, start.y + projection * segment.y)
-    return distance(point, closest)
+    dx = end.x - start.x
+    dy = end.y - start.y
+    l2 = dx * dx + dy * dy
+    if l2 == 0:
+        return math.hypot(point.x - start.x, point.y - start.y)
+    
+    t = ((point.x - start.x) * dx + (point.y - start.y) * dy) / l2
+    t = max(0, min(1, t))
+    
+    closest_x = start.x + t * dx
+    closest_y = start.y + t * dy
+    return math.hypot(point.x - closest_x, point.y - closest_y)
 
 
 def is_on_segment(point: Point, start: Point, end: Point) -> bool:
