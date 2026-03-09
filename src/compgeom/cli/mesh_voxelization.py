@@ -2,6 +2,7 @@ import argparse
 import sys
 from compgeom.geometry import Point3D
 from compgeom.voxelization import MeshVoxelizer
+from compgeom.mesh_io import OBJFileHandler
 
 def create_cube():
     """Returns vertices and faces for a unit cube."""
@@ -22,27 +23,37 @@ def create_cube():
 
 def main():
     parser = argparse.ArgumentParser(description="Voxelize a 3D triangular mesh.")
+    parser.add_argument("--input", help="Path to input OBJ file (if not provided, a unit cube is used)")
     parser.add_argument("--voxel_size", type=float, default=0.1, help="Voxel edge length")
     parser.add_argument("--method", choices=["native", "openvdb"], default="native", help="Voxelization method")
+    parser.add_argument("--fill", action="store_true", help="Fill the interior of the mesh")
     parser.add_argument("--output", help="Output file (only for openvdb method, .vdb)")
     
     args = parser.parse_args()
     
-    vertices, faces = create_cube()
-    print(f"Mesh: Cube with {len(vertices)} vertices and {len(faces)} triangles.")
+    if args.input:
+        print(f"Reading mesh from {args.input}...")
+        vertices, faces = OBJFileHandler.read(args.input)
+        # Ensure triangles
+        faces = OBJFileHandler.triangulate_faces(faces)
+    else:
+        vertices, faces = create_cube()
+        print("Using default unit cube mesh.")
+        
+    print(f"Mesh: {len(vertices)} vertices and {len(faces)} triangles.")
     
     if args.method == "native":
-        print(f"Voxelizing using native surface sampling (voxel_size={args.voxel_size})...")
-        voxels = MeshVoxelizer.voxelize_native(vertices, faces, args.voxel_size)
-        print(f"Generated {len(voxels)} surface voxels.")
+        print(f"Voxelizing using native surface sampling (voxel_size={args.voxel_size}, fill={args.fill})...")
+        voxels = MeshVoxelizer.voxelize_native(vertices, faces, args.voxel_size, fill_interior=args.fill)
+        print(f"Generated {len(voxels)} voxels.")
         # Print a few voxels
         sample = list(voxels)[:5]
         print(f"Sample voxels: {sample}")
         
     elif args.method == "openvdb":
-        print(f"Voxelizing using OpenVDB (voxel_size={args.voxel_size})...")
+        print(f"Voxelizing using OpenVDB (voxel_size={args.voxel_size}, fill={args.fill})...")
         try:
-            grid = MeshVoxelizer.voxelize_openvdb(vertices, faces, args.voxel_size)
+            grid = MeshVoxelizer.voxelize_openvdb(vertices, faces, args.voxel_size, fill_interior=args.fill)
             print("Successfully generated OpenVDB FloatGrid.")
             if args.output:
                 MeshVoxelizer.save_vdb(grid, args.output)

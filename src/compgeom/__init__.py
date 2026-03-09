@@ -5,15 +5,19 @@ from .planar import DCEL, DCELFace, DCELHalfEdge, DCELVertex, build_polygon_dcel
 from .visualization import generate_svg_path, save_svg, save_png
 from .rectangle_packing import RectanglePacker
 from .voxelization import MeshVoxelizer
+from .mesh_io import OBJFileHandler
+from .sequences import DavenportSchinzel
 
 __all__ = [
     "DCEL",
     "DCELFace",
     "DCELHalfEdge",
     "DCELVertex",
+    "DavenportSchinzel",
     "EPSILON",
     "Point",
     "MeshVoxelizer",
+    "OBJFileHandler",
     "RectanglePacker",
     "build_polygon_dcel",
     "generate_svg_path",
