@@ -9,10 +9,21 @@ def main():
     
     import compgeom.cli
     
+    # Map from user-facing command name to module name
+    command_to_module = {}
+    
     for _, module_name, _ in pkgutil.iter_modules(compgeom.cli.__path__):
-        if module_name == "main":
+        if module_name == "main" or module_name == "__init__":
             continue
-        subparsers.add_parser(module_name, help=f"Run {module_name} script")
+            
+        # If module ends in _cli, strip it for the user-facing command
+        if module_name.endswith("_cli"):
+            cmd_name = module_name[:-4]
+        else:
+            cmd_name = module_name
+            
+        command_to_module[cmd_name] = module_name
+        subparsers.add_parser(cmd_name, help=f"Run {cmd_name} utility")
         
     args, unknown = parser.parse_known_args()
     
@@ -20,7 +31,8 @@ def main():
         parser.print_help()
         sys.exit(1)
         
-    module = importlib.import_module(f"compgeom.cli.{args.command}")
+    real_module_name = command_to_module.get(args.command, args.command)
+    module = importlib.import_module(f"compgeom.cli.{real_module_name}")
     
     # Pass along unknown arguments so that scripts that parse argv still work
     sys.argv = [sys.argv[0] + " " + args.command] + unknown
@@ -28,7 +40,7 @@ def main():
     if hasattr(module, "main"):
         module.main()
     else:
-        print(f"Error: {args.command} does not have a main() function.")
+        print(f"Error: {args.command} does not have a main() function in module {real_module_name}.")
         sys.exit(1)
 
 if __name__ == "__main__":

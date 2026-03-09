@@ -2,23 +2,35 @@ import argparse
 import sys
 from compgeom.geometry import Point
 from compgeom.polygon import get_reflex_vertices, generate_simple_polygon
+from compgeom.mesh import OBJFileHandler
 from compgeom.visualization import save_png, save_svg
+
+def read_polygon(args):
+    if args.input:
+        print(f"Reading polygon from {args.input}...")
+        vertices, _ = OBJFileHandler.read(args.input)
+        return [Point(v.x, v.y) for v in vertices]
+    
+    if args.poly:
+        try:
+            raw = [float(x) for x in args.poly]
+            return [Point(raw[i], raw[i+1], i//2) for i in range(0, len(raw), 2)]
+        except (ValueError, IndexError):
+            print("Error: Invalid polygon coordinates.")
+            sys.exit(1)
+    
+    return None
 
 def main():
     parser = argparse.ArgumentParser(description="Identify vertices forming concave parts of a polygon.")
+    parser.add_argument("--input", help="Path to input OBJ file defining the polygon")
     parser.add_argument("--poly", nargs="+", help="Polygon vertices as x1 y1 x2 y2 ...")
     parser.add_argument("--output", default="concave_parts.png", help="Output visualization file")
     
     args = parser.parse_args()
     
-    if args.poly:
-        try:
-            raw = [float(x) for x in args.poly]
-            polygon = [Point(raw[i], raw[i+1], i//2) for i in range(0, len(raw), 2)]
-        except (ValueError, IndexError):
-            print("Error: Invalid polygon coordinates.")
-            sys.exit(1)
-    else:
+    polygon = read_polygon(args)
+    if not polygon:
         print("Generating random simple polygon...")
         polygon = generate_simple_polygon(n_points=15, x_range=(10, 90), y_range=(10, 90))
         
@@ -43,15 +55,12 @@ def main():
         def tx(x): return 50 + (x - min_x) / (max_x - min_x) * (width - 100) if max_x > min_x else 50
         def ty(y): return height - (50 + (y - min_y) / (max_y - min_y) * (height - 100)) if max_y > min_y else 50
         
-        # Polygon
         pts_str = " ".join(f"{tx(p.x)},{ty(p.y)}" for p in poly)
         svg.append(f'<polygon points="{pts_str}" fill="white" stroke="black" stroke-width="2" />')
         
-        # All vertices (small dots)
         for p in poly:
             svg.append(f'<circle cx="{tx(p.x)}" cy="{ty(p.y)}" r="3" fill="#ccc" />')
             
-        # Concave vertices (larger red dots)
         for p in concave_pts:
             svg.append(f'<circle cx="{tx(p.x)}" cy="{ty(p.y)}" r="6" fill="red" />')
             svg.append(f'<circle cx="{tx(p.x)}" cy="{ty(p.y)}" r="8" fill="none" stroke="red" stroke-width="1" />')

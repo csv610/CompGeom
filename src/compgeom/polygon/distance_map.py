@@ -6,7 +6,7 @@ import math
 from typing import List, Tuple, Union
 
 from ..geometry import Point, dist_point_to_segment
-from .polygon import get_polygon_properties
+from ..polygon.polygon import get_polygon_properties
 
 
 class DistanceMapSolver:
@@ -53,26 +53,23 @@ class DistanceMapSolver:
         
         if width > height:
             nx = resolution
-            ny = int(resolution * (height / width))
+            ny = max(3, int(resolution * (height / width)))
         else:
             ny = resolution
-            nx = int(resolution * (width / height))
+            nx = max(3, int(resolution * (width / height)))
             
-        h = width / (nx - 1)
+        h = width / (nx - 1) if nx > 1 else 1.0
         
         # Initialize grid with infinity
         grid = [[float('inf')] * ny for _ in range(nx)]
         
         # 2. Boundary conditions: u=0 on the polygon edges
-        # We find the distance to the nearest edge for nodes near the boundary
         for i in range(nx):
             for j in range(ny):
                 px = min_x + i * h
                 py = min_y + j * h
                 p = Point(px, py)
                 
-                # We only seed points very close to the boundary to speed up
-                # (Or we could seed all, but let's be efficient)
                 for k in range(len(polygon)):
                     p1 = polygon[k]
                     p2 = polygon[(k + 1) % len(polygon)]
@@ -87,7 +84,6 @@ class DistanceMapSolver:
             else:
                 return (a + b + math.sqrt(2 * h * h - (a - b)**2)) / 2.0
 
-        # 8 directions of sweeping
         sweeps = [
             (range(nx), range(ny)),
             (range(nx-1, -1, -1), range(ny)),
@@ -95,11 +91,10 @@ class DistanceMapSolver:
             (range(nx-1, -1, -1), range(ny-1, -1, -1)),
         ]
 
-        for _ in range(2): # Usually 1-2 passes are enough for 2D Eikonal
+        for _ in range(2): 
             for x_range, y_range in sweeps:
                 for i in x_range:
                     for j in y_range:
-                        # Neighbor values
                         u_left = grid[i-1][j] if i > 0 else float('inf')
                         u_right = grid[i+1][j] if i < nx-1 else float('inf')
                         u_bottom = grid[i][j-1] if j > 0 else float('inf')
@@ -119,7 +114,7 @@ class DistanceMapSolver:
         nx = len(grid)
         ny = len(grid[0])
         
-        max_dist = 0
+        max_dist = 0.0
         for i in range(nx):
             for j in range(ny):
                 if grid[i][j] != float('inf'):
@@ -134,11 +129,8 @@ class DistanceMapSolver:
         for i in range(nx):
             for j in range(ny):
                 d = grid[i][j]
-                # Map distance to color (blue to red)
                 val = int(255 * (d / max_dist)) if max_dist > 0 else 0
                 color = f"rgb({val}, {100}, {255-val})"
-                
-                # Flip J for SVG Y-axis
                 svg.append(f'  <rect x="{i*cell_size}" y="{(ny-1-j)*cell_size}" width="{cell_size}" height="{cell_size}" fill="{color}" />')
         
         svg.append('</svg>')

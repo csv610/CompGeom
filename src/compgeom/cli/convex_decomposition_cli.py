@@ -2,23 +2,35 @@ import argparse
 import sys
 from compgeom.geometry import Point
 from compgeom.polygon import ConvexDecomposer, generate_simple_polygon
+from compgeom.mesh import OBJFileHandler
 from compgeom.visualization import save_png, save_svg
+
+def read_polygon(args):
+    if args.input:
+        print(f"Reading polygon from {args.input}...")
+        vertices, _ = OBJFileHandler.read(args.input)
+        return [Point(v.x, v.y) for v in vertices]
+    
+    if args.poly:
+        try:
+            raw = [float(x) for x in args.poly]
+            return [Point(raw[i], raw[i+1], i//2) for i in range(0, len(raw), 2)]
+        except (ValueError, IndexError):
+            print("Error: Invalid polygon coordinates.")
+            sys.exit(1)
+    
+    return None
 
 def main():
     parser = argparse.ArgumentParser(description="Decompose a polygon into convex pieces using Hertel-Mehlhorn.")
+    parser.add_argument("--input", help="Path to input OBJ file defining the polygon")
     parser.add_argument("--poly", nargs="+", help="Polygon vertices as x1 y1 x2 y2 ...")
     parser.add_argument("--output", default="convex_decomposition.png", help="Output visualization file")
     
     args = parser.parse_args()
     
-    if args.poly:
-        try:
-            raw = [float(x) for x in args.poly]
-            polygon = [Point(raw[i], raw[i+1], i//2) for i in range(0, len(raw), 2)]
-        except (ValueError, IndexError):
-            print("Error: Invalid polygon coordinates.")
-            sys.exit(1)
-    else:
+    polygon = read_polygon(args)
+    if not polygon:
         print("Generating random simple polygon...")
         polygon = generate_simple_polygon(n_points=15, x_range=(10, 90), y_range=(10, 90))
         
@@ -54,7 +66,6 @@ def main():
             color = colors[i % len(colors)]
             svg.append(f'<polygon points="{pts_str}" fill="{color}" fill-opacity="0.5" stroke="black" stroke-width="1" />')
             
-            # Label
             cx = sum(p.x for p in piece) / len(piece)
             cy = sum(p.y for p in piece) / len(piece)
             svg.append(f'<text x="{tx(cx)}" y="{ty(cy)}" font-size="12" text-anchor="middle" fill="black">{i+1}</text>')
