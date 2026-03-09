@@ -8,19 +8,19 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from geometry_utils import Point
-from cli.line_arrangement import analyze_arrangement
-from cli.polygon_visibility import parse_input as parse_visibility_input, visible_boundary_segments
-from cli.reflection_polygon import parse_input, simulate_reflections
-from cli.polygon_boolean_operations import apply_boolean_operation
-from trianglemesh.bounding import minimum_bounding_box, minimum_enclosing_circle
-from trianglemesh.geometry import incircle_sign, orientation_sign
-from trianglemesh.medial_axis import approximate_medial_axis
-from trianglemesh.mesh import mesh_neighbors
-from trianglemesh.path import shortest_path
-from trianglemesh.planar import build_polygon_dcel, locate_face
-from trianglemesh.polygon import shortest_path_in_polygon, triangulate_polygon_with_holes, visibility_polygon
-from trianglemesh.triangulation import constrained_delaunay_triangulation, triangulate
+from compgeom.geometry import Point
+from compgeom.cli.line_arrangement import analyze_arrangement
+from compgeom.cli.polygon_visibility import parse_input as parse_visibility_input, visible_boundary_segments
+from compgeom.cli.reflection_polygon import parse_input, simulate_reflections
+from compgeom.cli.polygon_boolean_operations import apply_boolean_operation
+from compgeom.bounding import minimum_bounding_box, minimum_enclosing_circle
+from compgeom.geometry import incircle_sign, orientation_sign
+from compgeom.medial_axis import approximate_medial_axis
+from compgeom.mesh import mesh_neighbors
+from compgeom.path import shortest_path
+from compgeom.planar import build_polygon_dcel, locate_face
+from compgeom.polygon import shortest_path_in_polygon, triangulate_polygon_with_holes, visibility_polygon
+from compgeom.triangulation import constrained_delaunay_triangulation, triangulate
 
 
 class BoundingShapeTests(unittest.TestCase):

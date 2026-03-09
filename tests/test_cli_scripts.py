@@ -11,8 +11,9 @@ SCRIPTS = ROOT / "scripts"
 
 class CliRegressionTests(unittest.TestCase):
     def run_script(self, script_name, stdin_text):
+        module_name = script_name.replace('.py', '')
         completed = subprocess.run(
-            [sys.executable, str(SCRIPTS / script_name)],
+            [sys.executable, "-m", "compgeom.cli.main", module_name],
             input=stdin_text,
             text=True,
             capture_output=True,
