@@ -36,12 +36,14 @@ from .mesh import (
 )
 from .mesh_refinement import TriMeshRefiner
 from .mesh_coloring import MeshColoring
+from .mesh_reordering import CuthillMcKee
 
 __all__ = [
     "Circle",
     "CirclePacker",
     "Cube",
     "Cuboid",
+    "CuthillMcKee",
     "DCEL",
     "DCELFace",
     "DCELHalfEdge",
