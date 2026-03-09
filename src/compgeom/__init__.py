@@ -37,6 +37,7 @@ from .mesh import (
 from .mesh_refinement import TriMeshRefiner
 from .mesh_coloring import MeshColoring
 from .mesh_reordering import CuthillMcKee
+from .polygon_smoothing import PolygonalMeanCurvatureFlow
 
 __all__ = [
     "Circle",
@@ -61,6 +62,7 @@ __all__ = [
     "OBJFileHandler",
     "Plane",
     "Point",
+    "PolygonalMeanCurvatureFlow",
     "QuadMesh",
     "Ray",
     "Rectangle",

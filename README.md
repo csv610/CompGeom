@@ -4,12 +4,14 @@ A comprehensive Python library and command-line tool for computational geometry,
 
 ## Features
 
+- **Mesh Reordering:** Optimize element and vertex numbering using the Reverse Cuthill-McKee (RCM) algorithm to reduce matrix bandwidth.
 - **Mesh Structures:** Support for TriangleMesh, QuadMesh, TetMesh, and HexMesh with topological query support (vertex/element adjacency) via `MeshTopology`.
 - **Mesh Refinement:** Subdivide triangular meshes using linear subdivision (midpoint splitting) or uniform refinement (area-ratio based) to increase resolution.
 - **Mesh Coloring:** Assign colors to mesh elements (faces/cells) or vertices using a greedy graph coloring algorithm (minimum colors for adjacent components).
 - **Geometric Shapes:** Object-oriented representations of Triangle, Square, Rectangle, Circle, Sphere, Cube, Cuboid, Plane, LineSegment, Ray, Tetrahedron, and Hexahedron with properties like area, volume, and centroid.
 - **Core Geometry:** Points (2D and 3D), vectors, primitive intersections, geometric predicates (orientation, incircle).
 - **Mathematical Utilities:** High-precision orientation and incircle tests, coordinate conversions for space-filling curves, 2D/3D distances, and 2D rotations.
+- **Polygon Smoothing:** Transform arbitrary polygons towards a circular shape using discrete Mean Curvature Flow with perimeter preservation.
 - **Polygons:** Boolean operations, properties (area, centroid, orientation), visibility, triangulation (ear-clipping, CDT), and shortest paths.
 - **Proximity & Bounding:** Closest/farthest pair, Graham scan, monotone chain, minimum bounding box, minimum enclosing circle (Welzl's algorithm), and **Largest Empty Circle**.
 - **Davenport-Schinzel Sequences:** Compute the lower envelope of line segments and extract the combinatorial sequence.
@@ -39,15 +41,26 @@ This will also install the `compgeom` command-line utility.
 
 The package exposes a unified command-line tool. You can invoke it using the `compgeom` command.
 
+**Smooth a Polygon (MCF):**
+```bash
+# Apply 200 iterations of Mean Curvature Flow
+compgeom polygonal_mean_curvature_flow --n_points 100 --iterations 200 --output smooth.png
+```
+
+**Reorder Mesh Vertices (RCM):**
+```bash
+compgeom mesh_reordering --input model.obj --target vertices --output reordered.obj
+```
+
 **Refine a Mesh (Uniformly):**
 ```bash
 # Refine until no triangle is larger than 1% of total area
 compgeom mesh_refinement --input model.obj --max_area 0.01 --output refined.obj
 ```
 
-**Color Mesh Vertices:**
+**Color Mesh Elements:**
 ```bash
-compgeom mesh_coloring --input model.obj --target vertices
+compgeom mesh_coloring --input model.obj --target elements
 ```
 
 **Find the Largest Empty Circle:**
@@ -68,41 +81,33 @@ compgeom circle_packing --poly 0 0 10 0 10 10 0 10 --radius 1.0 --output packed.
 compgeom mesh_voxelization --voxel_size 0.1 --method native
 ```
 
-**Simplify a Large Point Cloud:**
-```bash
-# Simplify 1 million points with a 0.001 diagonal ratio in 3D
-compgeom point_simplification --n 1000000 --ratio 0.001 --dim 3d
-```
-
-**Visualize a Space-Filling Curve:**
-```bash
-compgeom visualize_curve hilbert --level 3 --output path.png
-```
-
 ### Python API
 
 You can use the high-level classes directly in your Python code:
+
+**Polygon Smoothing:**
+```python
+from compgeom.polygon_smoothing import PolygonalMeanCurvatureFlow
+
+# Resample and smooth a polygon
+resampled = PolygonalMeanCurvatureFlow.resample_polygon(my_points, n_points=100)
+smoothed = PolygonalMeanCurvatureFlow.smooth(resampled, iterations=100)
+```
+
+**Mesh Reordering:**
+```python
+from compgeom.mesh_reordering import CuthillMcKee
+
+# Get new element ordering using RCM
+new_indices = CuthillMcKee.reorder_elements(my_mesh)
+```
 
 **Mesh Refinement:**
 ```python
 from compgeom.mesh_refinement import TriMeshRefiner
 
-# Linear subdivision (1 triangle -> 4 triangles)
-refined_mesh = TriMeshRefiner.subdivide_linear(my_mesh)
-
 # Uniform refinement (ratio-based)
 refined_mesh = TriMeshRefiner.refine_uniform(my_mesh, max_area_ratio=0.01)
-```
-
-**Mesh Coloring:**
-```python
-from compgeom.mesh_coloring import MeshColoring
-
-# Color faces (ensures adjacent faces have different colors)
-face_colors = MeshColoring.color_elements(my_mesh)
-
-# Color vertices
-vert_colors = MeshColoring.color_vertices(my_mesh)
 ```
 
 **Largest Empty Circle:**
@@ -114,16 +119,11 @@ points = [Point(0,0), Point(10,0), Point(10,10), Point(0,10), Point(5,5)]
 center, radius = LargestEmptyCircle.find(points)
 ```
 
-**Circle Packing (into a Square or Circle):**
+**Circle Packing:**
 ```python
-import math
-from compgeom.geometry import Point
 from compgeom.circle_packing import CirclePacker
 
-# 1. Packing into a Square
-square = [Point(0, 0), Point(10, 0), Point(10, 10), Point(0, 10)]
-centers = CirclePacker.pack(square, radius=0.1)
-efficiency = CirclePacker.calculate_efficiency(square, centers, radius=0.1)
+centers = CirclePacker.pack(polygon_vertices, radius=0.1)
 ```
 
 **Mesh Voxelization:**
@@ -134,20 +134,13 @@ from compgeom.voxelization import MeshVoxelizer
 voxels = MeshVoxelizer.voxelize_native(vertices, faces, voxel_size=0.1)
 ```
 
-**Rectangle Packing:**
-```python
-from compgeom.rectangle_packing import RectanglePacker
-
-dims = [(10, 20), (5, 5), (15, 10)]
-w, h, placements = RectanglePacker.pack(dims, target_shape="square")
-```
-
 ## Project Structure
 
 - `src/compgeom/` - Core library modules:
     - `geometry.py`: Primitives and types (Point, Point3D).
     - `math_utils.py`: Low-level mathematical functions.
     - `shapes.py`: High-level shape classes.
+    - `polygon_smoothing.py`: `PolygonalMeanCurvatureFlow` class.
     - `points_sampling.py`: `PointSampler` class.
     - `sequences.py`: `DavenportSchinzel` class.
     - `space_filling_curves.py`: `SpaceFillingCurves` class.
@@ -158,6 +151,7 @@ w, h, placements = RectanglePacker.pack(dims, target_shape="square")
     - `mesh.py`: Mesh classes and `MeshTopology` helper.
     - `mesh_coloring.py`: `MeshColoring` class.
     - `mesh_refinement.py`: `TriMeshRefiner` class.
+    - `mesh_reordering.py`: `CuthillMcKee` class.
     - `spatial.py`: Spatial indexing and `PointSimplifier`.
     - `visualization.py`: SVG/PNG export utilities.
 - `src/compgeom/cli/` - CLI script implementations.
