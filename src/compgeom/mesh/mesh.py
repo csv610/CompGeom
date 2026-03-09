@@ -183,16 +183,86 @@ class TriangleMesh(Mesh):
     def ensure_even_elements(self) -> TriangleMesh:
         """
         Ensures the mesh has an even number of triangles.
-        If count is odd:
-        1. Try to find a boundary edge and split it (adds 1 triangle).
-        2. If no boundary exists, split one triangle into 4 (adds 3 triangles).
+        If the count is odd, refines one triangle into 4 smaller ones, 
+        and splits neighbors to maintain topology. If result is still odd, 
+        performs one additional single-edge split.
         """
         if len(self.faces) % 2 == 0:
             return self
 
-        # 1. Look for boundary edges
+        mesh = self._split_one_to_four(self)
+        if len(mesh.faces) % 2 != 0:
+            mesh = self._split_one_edge(mesh)
+        return mesh
+
+    @staticmethod
+    def _split_one_to_four(mesh: TriangleMesh) -> TriangleMesh:
+        def get_area(f_idx):
+            v0, v1, v2 = [mesh.vertices[i] for i in mesh.faces[f_idx]]
+            ax, ay, az = v0.x, v0.y, getattr(v0, 'z', 0.0)
+            bx, by, bz = v1.x, v1.y, getattr(v1, 'z', 0.0)
+            cx, cy, cz = v2.x, v2.y, getattr(v2, 'z', 0.0)
+            ux, uy, uz = bx - ax, by - ay, bz - az
+            vx, vy, vz = cx - ax, cy - ay, cz - az
+            cp_x, cp_y, cp_z = uy*vz - uz*vy, uz*vx - ux*vz, ux*vy - uy*vx
+            return 0.5 * math.sqrt(cp_x**2 + cp_y**2 + cp_z**2)
+
+        target_f_idx = max(range(len(mesh.faces)), key=get_area)
+        target_face = mesh.faces[target_f_idx]
+        
         edge_map = defaultdict(list)
-        for i, face in enumerate(self.faces):
+        for i, face in enumerate(mesh.faces):
+            for j in range(3):
+                edge = tuple(sorted((face[j], face[(j + 1) % 3])))
+                edge_map[edge].append(i)
+        
+        new_vertices = list(mesh.vertices)
+        mid_indices = []
+        edges = []
+        for j in range(3):
+            u_idx, v_idx = target_face[j], target_face[(j + 1) % 3]
+            edge = tuple(sorted((u_idx, v_idx)))
+            edges.append(edge)
+            
+            mid_idx = len(new_vertices)
+            v1, v2 = mesh.vertices[u_idx], mesh.vertices[v_idx]
+            if isinstance(v1, Point3D) and isinstance(v2, Point3D):
+                mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, mid_idx)
+            else:
+                mid = Point((v1.x+v2.x)/2, (v1.y+v2.y)/2, mid_idx)
+            new_vertices.append(mid)
+            mid_indices.append(mid_idx)
+            
+        m01, m12, m20 = mid_indices
+        v0, v1, v2 = target_face
+        
+        new_faces = []
+        new_faces.extend([(v0, m01, m20), (v1, m12, m01), (v2, m20, m12), (m01, m12, m20)])
+        
+        split_neighbor_indices = set()
+        for j in range(3):
+            edge = edges[j]
+            mid = mid_indices[j]
+            neighbors = [i for i in edge_map[edge] if i != target_f_idx]
+            for n_idx in neighbors:
+                split_neighbor_indices.add(n_idx)
+                n_face = mesh.faces[n_idx]
+                opposite = [v for v in n_face if v not in edge][0]
+                new_faces.append((edge[0], mid, opposite))
+                new_faces.append((edge[1], mid, opposite))
+                
+        final_faces = list(new_faces)
+        for i, face in enumerate(mesh.faces):
+            if i == target_f_idx or i in split_neighbor_indices:
+                continue
+            final_faces.append(face)
+            
+        return TriangleMesh(new_vertices, final_faces)
+
+    @staticmethod
+    def _split_one_edge(mesh: TriangleMesh) -> TriangleMesh:
+        edge_map = defaultdict(list)
+        for i, face in enumerate(mesh.faces):
             for j in range(3):
                 edge = tuple(sorted((face[j], face[(j + 1) % 3])))
                 edge_map[edge].append(i)
@@ -200,50 +270,125 @@ class TriangleMesh(Mesh):
         boundary_edges = [e for e, faces in edge_map.items() if len(faces) == 1]
         
         if boundary_edges:
-            # Simple boundary split: N -> N+1 (even)
             edge = boundary_edges[0]
             f_idx = edge_map[edge][0]
-            face = self.faces[f_idx]
-            
-            new_vertices = list(self.vertices)
+            face = mesh.faces[f_idx]
+            new_vertices = list(mesh.vertices)
             mid_idx = len(new_vertices)
-            v1, v2 = self.vertices[edge[0]], self.vertices[edge[1]]
-            if isinstance(v1, Point3D) and isinstance(v2, Point3D):
-                mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, mid_idx)
-            else:
-                mid = Point((v1.x+v2.x)/2, (v1.y+v2.y)/2, mid_idx)
+            v1, v2 = mesh.vertices[edge[0]], mesh.vertices[edge[1]]
+            mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, mid_idx) if isinstance(v1, Point3D) else Point((v1.x+v2.x)/2, (v1.y+v2.y)/2, mid_idx)
             new_vertices.append(mid)
-            
             opposite = [v for v in face if v not in edge][0]
             new_faces = [(edge[0], mid, opposite), (edge[1], mid, opposite)]
-            
-            final_faces = [f for i, f in enumerate(self.faces) if i != f_idx] + new_faces
+            final_faces = [f for i, f in enumerate(mesh.faces) if i != f_idx] + new_faces
             return TriangleMesh(new_vertices, final_faces)
-        else:
-            # Closed mesh: N -> N+3 (even) by splitting one triangle into 4
-            new_vertices = list(self.vertices)
-            target_face = self.faces[0]
-            
-            # Midpoints for the 3 edges
-            m_indices = []
-            for j in range(3):
-                u, v = target_face[j], target_face[(j + 1) % 3]
-                idx = len(new_vertices)
-                p1, p2 = self.vertices[u], self.vertices[v]
-                if isinstance(p1, Point3D):
-                    m = Point3D((p1.x+p2.x)/2, (p1.y+p2.y)/2, (p1.z+p2.z)/2, idx)
-                else:
-                    m = Point((p1.x+p2.x)/2, (p1.y+p2.y)/2, idx)
-                new_vertices.append(m)
-                m_indices.append(idx)
-            
-            v0, v1, v2 = target_face
-            m0, m1, m2 = m_indices
-            
-            new_sub_faces = [(v0, m0, m2), (v1, m1, m0), (v2, m2, m1), (m0, m1, m2)]
-            final_faces = list(self.faces[1:]) + new_sub_faces
-            return TriangleMesh(new_vertices, final_faces)
+        return mesh
 
 
 class QuadMesh(Mesh):
-...
+    """A 2D or 3D mesh composed of quadrilateral faces."""
+
+    @property
+    def faces(self) -> List[Tuple[int, int, int, int]]:
+        return self._elements
+
+
+class TetMesh(Mesh):
+    """A 3D volumetric mesh composed of tetrahedral cells."""
+
+    def __init__(self, vertices: List[Point3D], tets: List[Tuple[int, int, int, int]]):
+        super().__init__(vertices, tets)
+
+    @property
+    def cells(self) -> List[Tuple[int, int, int, int]]:
+        return self._elements
+
+
+class HexMesh(Mesh):
+    """A 3D volumetric mesh composed of hexahedral cells."""
+
+    def __init__(self, vertices: List[Point3D], hexas: List[Tuple[int, int, int, int, int, int, int, int]]):
+        super().__init__(vertices, hexas)
+
+    @property
+    def cells(self) -> List[Tuple[int, int, int, int, int, int, int, int]]:
+        return self._elements
+
+
+def mesh_edges(triangles):
+    edges = set()
+    for a, b, c in triangles:
+        edges.add(tuple(sorted((a.id, b.id))))
+        edges.add(tuple(sorted((b.id, c.id))))
+        edges.add(tuple(sorted((c.id, a.id))))
+    return edges
+
+
+def mesh_vertices(triangles):
+    vertices = {}
+    for triangle in triangles:
+        for vertex in triangle:
+            vertices[vertex.id] = vertex
+    return vertices
+
+
+def euler_characteristic(triangles):
+    vertices = mesh_vertices(triangles)
+    edges = mesh_edges(triangles)
+    faces = len(triangles)
+    chi = len(vertices) - len(edges) + faces
+    return {
+        "vertices": len(vertices),
+        "edges": len(edges),
+        "faces": faces,
+        "euler_characteristic": chi,
+    }
+
+
+def vertex_neighbors(triangles):
+    neighbors = defaultdict(set)
+    for a, b, c in triangles:
+        neighbors[a.id].update([b.id, c.id])
+        neighbors[b.id].update([a.id, c.id])
+        neighbors[c.id].update([a.id, b.id])
+    return {vertex_id: sorted(adjacent) for vertex_id, adjacent in neighbors.items()}
+
+
+def triangle_neighbors(triangles):
+    edge_to_triangles = defaultdict(list)
+    for triangle_index, (a, b, c) in enumerate(triangles):
+        edge_to_triangles[tuple(sorted((a.id, b.id)))].append(triangle_index)
+        edge_to_triangles[tuple(sorted((b.id, c.id)))].append(triangle_index)
+        edge_to_triangles[tuple(sorted((c.id, a.id)))].append(triangle_index)
+
+    neighbors = {triangle_index: set() for triangle_index in range(len(triangles))}
+    for owners in edge_to_triangles.values():
+        if len(owners) != 2:
+            continue
+        left, right = owners
+        neighbors[left].add(right)
+        neighbors[right].add(left)
+    return {triangle_index: sorted(adjacent) for triangle_index, adjacent in neighbors.items()}
+
+
+def mesh_neighbors(triangles):
+    return {
+        "vertex_neighbors": vertex_neighbors(triangles),
+        "triangle_neighbors": triangle_neighbors(triangles),
+    }
+
+
+__all__ = [
+    "HexMesh",
+    "Mesh",
+    "MeshTopology",
+    "QuadMesh",
+    "TetMesh",
+    "TriangleMesh",
+    "euler_characteristic",
+    "mesh_edges",
+    "mesh_neighbors",
+    "mesh_vertices",
+    "triangle_neighbors",
+    "vertex_neighbors",
+]

@@ -21,6 +21,7 @@ from .mesh_coloring import MeshColoring
 from .mesh_refinement import TriMeshRefiner
 from .mesh_reordering import CuthillMcKee
 from .voxelization import MeshVoxelizer
+from .quadmesh.simple_tri2quads import TriangleToQuadConverter
 from .triangulation import (
     DynamicDelaunay,
     constrained_delaunay_triangulation,
@@ -45,6 +46,7 @@ __all__ = [
     "TetMesh",
     "TriMeshRefiner",
     "TriangleMesh",
+    "TriangleToQuadConverter",
     "build_topology",
     "constrained_delaunay_triangulation",
     "delaunay_flip",
