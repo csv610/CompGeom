@@ -6,6 +6,7 @@ A comprehensive Python library and command-line tool for computational geometry,
 
 - **Mesh Reordering:** Optimize element and vertex numbering using the Reverse Cuthill-McKee (RCM) algorithm to reduce matrix bandwidth.
 - **Mesh Structures:** Support for TriangleMesh, QuadMesh, TetMesh, and HexMesh with topological query support (vertex/element adjacency) via `MeshTopology`.
+- **Mesh Conversion:** Convert TriangleMesh to QuadMesh using 1-to-3 midpoint-centroid splitting.
 - **Mesh Refinement:** Subdivide triangular meshes using linear subdivision (midpoint splitting) or uniform refinement (area-ratio based) to increase resolution.
 - **Mesh Coloring:** Assign colors to mesh elements (faces/cells) or vertices using a greedy graph coloring algorithm (minimum colors for adjacent components).
 - **Geometric Shapes:** Object-oriented representations of Triangle, Square, Rectangle, Circle, Sphere, Cube, Cuboid, Plane, LineSegment, Ray, Tetrahedron, and Hexahedron with properties like area, volume, centroid, and diameter.
@@ -176,6 +177,7 @@ centers = CirclePacker.pack(polygon_vertices, radius=0.1)
         - `mesh_reordering.py`: `CuthillMcKee` class.
         - `voxelization.py`: `MeshVoxelizer` class (Native & OpenVDB).
         - `triangulation.py`: Delaunay and Voronoi algorithms.
+        - `quadmesh/`: QuadMesh specific algorithms (e.g., Triangle to Quad conversion).
     - `spatial.py`: Spatial indexing and `PointSimplifier`.
     - `points_sampling.py`: `PointSampler` class.
     - `sequences.py`: `DavenportSchinzel` class.
