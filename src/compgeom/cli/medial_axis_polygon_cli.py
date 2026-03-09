@@ -1,7 +1,7 @@
 import sys
 
-from compgeom.geometry import Point
-from compgeom.polygon import approximate_medial_axis
+from compgeom import Point
+from compgeom import approximate_medial_axis
 
 
 def parse_polygon(lines):

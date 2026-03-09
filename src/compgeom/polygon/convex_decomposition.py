@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import List, Set, Tuple
 
-from ..geometry import Point, cross_product
+from ..geo_math.geometry import Point, cross_product
 from .polygon import get_triangulation_with_diagonals, _ensure_ccw
 
 

@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.proximity import minkowski_sum
+from compgeom import Point
+from compgeom import minkowski_sum
 
 def main():
     lines, idx = sys.stdin.readlines(), 0

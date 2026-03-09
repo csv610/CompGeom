@@ -1,5 +1,5 @@
 import sys
-from compgeom.polygon import generate_random_convex_polygon
+from compgeom import generate_random_convex_polygon
 
 def main():
     num_samples = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 20

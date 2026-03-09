@@ -6,7 +6,7 @@ import math
 import random
 from typing import List, Optional
 
-from .geometry import Point, Point3D
+from ..geo_math.geometry import Point, Point3D
 
 
 class PointSampler:
@@ -88,7 +88,7 @@ class PointSampler:
     @staticmethod
     def in_triangle(a: Point, b: Point, c: Point, n_points: int = 100) -> List[Point]:
         """Samples points uniformly from the interior of a triangle."""
-        from .polygon import generate_points_in_triangle
+        from ..polygon.polygon import generate_points_in_triangle
 
         return generate_points_in_triangle(a, b, c, n_points)
 

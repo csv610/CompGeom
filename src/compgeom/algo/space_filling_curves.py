@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from .math_utils import (
+from ..geo_math.math_utils import (
     hilbert_index_to_coords,
     morton_index_to_coords,
     peano_index_to_coords,
@@ -84,7 +84,7 @@ class SpaceFillingCurves:
     @staticmethod
     def visualize(indices: List[int], width: int, height: int, cell_size: int = 20) -> str:
         """Return an SVG image string representing the curve path."""
-        from .visualization import generate_svg_path
+        from ..graphics.visualization import generate_svg_path
 
         return generate_svg_path(indices, width, height, cell_size)
 
@@ -93,7 +93,7 @@ class SpaceFillingCurves:
         indices: List[int], width: int, height: int, filename: str, cell_size: int = 20
     ):
         """Save the curve visualization to a file (SVG or PNG)."""
-        from .visualization import generate_svg_path, save_png, save_svg
+        from ..graphics.visualization import generate_svg_path, save_png, save_svg
 
         svg = generate_svg_path(indices, width, height, cell_size)
         if filename.lower().endswith(".png"):

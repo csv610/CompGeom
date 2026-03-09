@@ -1,7 +1,7 @@
 import argparse
 import sys
-from compgeom.geometry import Point
-from compgeom.mesh import TriangleMesh, CuthillMcKee, OBJFileHandler
+from compgeom import Point
+from compgeom import TriangleMesh, CuthillMcKee, OBJFileHandler
 
 def calculate_dual_bandwidth(mesh: TriangleMesh):
     adj = {i: mesh.topology.shared_edge_neighbors(i) for i in range(len(mesh.faces))}

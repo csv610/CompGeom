@@ -1,5 +1,5 @@
 import argparse, sys
-from compgeom.walks import simulate_random_walk_3d
+from compgeom import simulate_random_walk_3d
 
 def main():
     parser = argparse.ArgumentParser()

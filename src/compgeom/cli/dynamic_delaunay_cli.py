@@ -1,6 +1,6 @@
 import random
-from compgeom.geometry import Point
-from compgeom.mesh import DynamicDelaunay
+from compgeom import Point
+from compgeom import DynamicDelaunay
 
 def main():
     dt = DynamicDelaunay()

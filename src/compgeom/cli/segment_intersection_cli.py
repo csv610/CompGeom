@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.proximity import do_intersect
+from compgeom import Point
+from compgeom import do_intersect
 
 def main():
     lines = sys.stdin.readlines()

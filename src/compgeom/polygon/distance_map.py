@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import List, Tuple, Union
 
-from ..geometry import Point, dist_point_to_segment
+from ..geo_math.geometry import Point, dist_point_to_segment
 from ..polygon.polygon import get_polygon_properties
 
 

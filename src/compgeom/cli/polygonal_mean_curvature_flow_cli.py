@@ -1,9 +1,9 @@
 import argparse
 import sys
-from compgeom.geometry import Point
-from compgeom.polygon import generate_simple_polygon, PolygonalMeanCurvatureFlow
-from compgeom.mesh import OBJFileHandler
-from compgeom.visualization import save_png, save_svg
+from compgeom import Point
+from compgeom import generate_simple_polygon, PolygonalMeanCurvatureFlow
+from compgeom import OBJFileHandler
+from compgeom import save_png, save_svg
 
 def read_polygon(args):
     if args.input:

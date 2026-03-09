@@ -4,8 +4,8 @@ import math
 import sys
 from dataclasses import dataclass
 
-from compgeom.geometry import EPSILON, Point
-from compgeom.polygon import is_point_in_polygon
+from compgeom import EPSILON, Point
+from compgeom import is_point_in_polygon
 
 
 CANVAS_WIDTH = 900

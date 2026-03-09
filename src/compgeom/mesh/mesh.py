@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ..geometry import Point, Point3D
+from ..geo_math.geometry import Point, Point3D
 
 
 class MeshTopology:
@@ -327,6 +327,88 @@ class QuadMesh(Mesh):
         vertices, faces = OBJFileHandler.read(filename)
         # Assumes faces are quads
         return cls(vertices, faces)
+
+    def extract_chord(self, start_quad_idx: int, edge_index: int) -> List[int]:
+        """
+        Extracts a topological chord starting from a given quad and its edge.
+        A chord is a sequence of topologically parallel edges across adjacent quads.
+        
+        Extraction starts in both directions from the starting quad to ensure
+        completeness, especially if one side ends at a boundary.
+        
+        Traversal stops if:
+        1. A boundary edge is reached.
+        2. The traversal returns to the starting quad and edge (closed loop).
+        
+        Args:
+            start_quad_idx: Index of the starting quadrilateral.
+            edge_index: Which edge of the quad to start from (0, 1, 2, or 3).
+                        Parallel edge is (edge_index + 2) % 4.
+                        
+        Returns:
+            A list of quadrilateral indices forming the chord.
+        """
+        if start_quad_idx < 0 or start_quad_idx >= len(self.faces):
+            raise ValueError("Invalid quad index.")
+            
+        # Direction A: Forward extraction starting by crossing edge_index
+        # We simulate entry from the opposite side
+        path_forward, loop_f = self._traverse_chord_v2(start_quad_idx, (edge_index + 2) % 4, set())
+        
+        if loop_f:
+            # If closed loop, the forward path already covers the cycle
+            return [start_quad_idx] + path_forward
+
+        # Direction B: Backward extraction starting by crossing opposite_edge_index
+        # We simulate entry from edge_index
+        path_backward, _ = self._traverse_chord_v2(start_quad_idx, edge_index, set(path_forward) | {start_quad_idx})
+        
+        # Assemble: reversed(backward) + start + forward
+        return list(reversed(path_backward)) + [start_quad_idx] + path_forward
+
+    def _traverse_chord_v2(self, start_idx: int, entry_edge_idx: int, global_visited: Set[int]) -> Tuple[List[int], bool]:
+        path = []
+        # State: (quad_idx, entry_edge_idx)
+        visited_states = set()
+        
+        curr_idx = start_idx
+        curr_entry = entry_edge_idx
+        
+        while True:
+            # Exit from opposite side
+            exit_edge_idx = (curr_entry + 2) % 4
+            curr_face = self.faces[curr_idx]
+            u, v = curr_face[exit_edge_idx], curr_face[(exit_edge_idx + 1) % 4]
+            exit_edge = tuple(sorted((u, v)))
+            
+            # Find neighbor across exit_edge
+            next_idx = None
+            next_entry = -1
+            
+            for n_idx in self.topology.shared_edge_neighbors(curr_idx):
+                n_face = self.faces[n_idx]
+                n_edges = [tuple(sorted((n_face[k], n_face[(k + 1) % 4]))) for k in range(4)]
+                if exit_edge in n_edges:
+                    next_idx = n_idx
+                    next_entry = n_edges.index(exit_edge)
+                    break
+            
+            if next_idx is None:
+                # Boundary reached (no neighbor sharing the exit edge)
+                return path, False
+            
+            if next_idx == start_idx:
+                # Returned to starting element
+                return path, True
+                
+            if next_idx in global_visited or (next_idx, next_entry) in visited_states:
+                # Collision with other part of the chord
+                return path, False
+                
+            path.append(next_idx)
+            visited_states.add((next_idx, next_entry))
+            curr_idx = next_idx
+            curr_entry = next_entry
 
 
 class TetMesh(Mesh):

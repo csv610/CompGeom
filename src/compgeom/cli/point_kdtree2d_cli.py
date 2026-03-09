@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.spatial import build_kdtree, display_kdtree
+from compgeom import Point
+from compgeom import build_kdtree, display_kdtree
 
 def main():
     points = []

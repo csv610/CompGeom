@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ..geometry import Point3D
-from ..polygon import generate_points_in_triangle
+from ..geo_math.geometry import Point3D
+from ..polygon.polygon import generate_points_in_triangle
 from .mesh import TriangleMesh
 
 

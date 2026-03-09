@@ -1,4 +1,4 @@
-from compgeom.geometry import EPSILON, Point, contains_point, cross_product, in_circle
+from compgeom import EPSILON, Point, contains_point, cross_product, in_circle
 
 
 def orientation(a, b, c):

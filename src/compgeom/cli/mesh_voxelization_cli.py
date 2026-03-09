@@ -1,7 +1,7 @@
 import argparse
 import sys
-from compgeom.geometry import Point3D
-from compgeom.mesh import TriangleMesh, MeshVoxelizer, OBJFileHandler
+from compgeom import Point3D
+from compgeom import TriangleMesh, MeshVoxelizer, OBJFileHandler
 
 def create_cube():
     """Returns a TriangleMesh representing a unit cube."""

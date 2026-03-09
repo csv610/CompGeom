@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.polygon import get_polygon_properties
+from compgeom import Point
+from compgeom import get_polygon_properties
 
 def main():
     points = []

@@ -1,5 +1,5 @@
 import argparse, sys
-from compgeom.walks import simulate_saw_2d
+from compgeom import simulate_saw_2d
 
 def main():
     parser = argparse.ArgumentParser()

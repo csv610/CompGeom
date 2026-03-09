@@ -5,8 +5,8 @@ from __future__ import annotations
 import heapq
 from collections import defaultdict
 
-from .geometry import EPSILON, Point, contains_point, cross_product, is_on_segment, length, sub
-from .mesh import mesh_edges
+from ..geo_math.geometry import EPSILON, Point, contains_point, cross_product, is_on_segment, length, sub
+from ..mesh.mesh import mesh_edges
 
 
 def point_key(point: Point):

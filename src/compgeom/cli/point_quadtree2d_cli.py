@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.spatial import PointQuadtree
+from compgeom import Point
+from compgeom import PointQuadtree
 
 def main():
     points = []

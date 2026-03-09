@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.polygon import is_point_in_polygon
+from compgeom import Point
+from compgeom import is_point_in_polygon
 
 def main():
     lines = sys.stdin.readlines()

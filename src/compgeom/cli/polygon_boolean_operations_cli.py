@@ -1,8 +1,8 @@
 import sys
 
-from compgeom.geometry import EPSILON, Point, length, sub
-from compgeom.cli.line_arrangement import analyze_arrangement
-from compgeom.polygon import is_point_in_polygon
+from compgeom import EPSILON, Point, length, sub
+from compgeom.cli.line_arrangement_cli import analyze_arrangement
+from compgeom import is_point_in_polygon
 
 
 def signed_area(polygon):

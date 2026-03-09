@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.polygon import hertel_mehlhorn
+from compgeom import Point
+from compgeom import hertel_mehlhorn
 
 def main():
     points = []

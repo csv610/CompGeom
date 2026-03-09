@@ -1,5 +1,5 @@
 import argparse, math
-from compgeom.walks import generate_spiral_path
+from compgeom import generate_spiral_path
 
 def main():
     parser = argparse.ArgumentParser()

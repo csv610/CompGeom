@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.mesh import get_voronoi_cells, get_circle_boundary, get_square_boundary
+from compgeom import Point
+from compgeom import get_voronoi_cells, get_circle_boundary, get_square_boundary
 
 def main():
     points = []

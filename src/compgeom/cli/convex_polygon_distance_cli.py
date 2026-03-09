@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.proximity import min_dist_convex_polygons
+from compgeom import Point
+from compgeom import min_dist_convex_polygons
 
 def main():
     lines, idx = sys.stdin.readlines(), 0

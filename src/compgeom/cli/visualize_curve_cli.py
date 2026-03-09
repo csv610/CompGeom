@@ -1,6 +1,6 @@
 import argparse
 import sys
-from compgeom.space_filling_curves import SpaceFillingCurves
+from compgeom import SpaceFillingCurves
 
 def main():
     parser = argparse.ArgumentParser(description="Visualize space-filling curves as SVG.")

@@ -1,9 +1,9 @@
 import argparse
 import sys
-from compgeom.geometry import Point
-from compgeom.polygon import get_reflex_vertices, generate_simple_polygon
-from compgeom.mesh import OBJFileHandler
-from compgeom.visualization import save_png, save_svg
+from compgeom import Point
+from compgeom import get_reflex_vertices, generate_simple_polygon
+from compgeom import OBJFileHandler
+from compgeom import save_png, save_svg
 
 def read_polygon(args):
     if args.input:

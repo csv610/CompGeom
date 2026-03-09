@@ -6,7 +6,7 @@ import heapq
 import math
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ..geometry import Point, Point3D
+from ..geo_math.geometry import Point, Point3D
 from .mesh import TriangleMesh
 
 

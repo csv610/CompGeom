@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..geometry import EPSILON, Point
+from ..geo_math.geometry import EPSILON, Point
 from .polygon import is_point_in_polygon
 
 

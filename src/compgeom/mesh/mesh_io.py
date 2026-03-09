@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import List, Tuple, Union
 
-from ..geometry import Point, Point3D
+from ..geo_math.geometry import Point, Point3D
 
 
 class OBJFileHandler:

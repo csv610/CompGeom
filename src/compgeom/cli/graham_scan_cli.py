@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.polygon import graham_scan
+from compgeom import Point
+from compgeom import graham_scan
 
 def main():
     points = []

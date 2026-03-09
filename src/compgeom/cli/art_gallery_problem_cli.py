@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.polygon import solve_art_gallery
+from compgeom import Point
+from compgeom import solve_art_gallery
 
 def main():
     points = []

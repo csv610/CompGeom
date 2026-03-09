@@ -1,7 +1,7 @@
 import sys
 
-from compgeom.geometry import Point
-from compgeom.mesh import euler_characteristic
+from compgeom import Point
+from compgeom import euler_characteristic
 
 
 def parse_mesh(lines):

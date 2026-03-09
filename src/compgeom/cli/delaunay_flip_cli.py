@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.mesh import build_topology, delaunay_flip
+from compgeom import Point
+from compgeom import build_topology, delaunay_flip
 
 def main():
     points_map, triangles_data, reading_points = {}, [], True

@@ -1,8 +1,8 @@
 import argparse
 import sys
 import math
-from compgeom.geometry import Point
-from compgeom.mesh import TriangleMesh, MeshTransfer, OBJFileHandler
+from compgeom import Point
+from compgeom import TriangleMesh, MeshTransfer, OBJFileHandler
 
 def main():
     parser = argparse.ArgumentParser(description="Transfer mesh topology to a new polygonal domain.")

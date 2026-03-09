@@ -1,7 +1,7 @@
 import math
 import sys
 
-from compgeom.geometry import EPSILON, Point, cross_product, is_on_segment, length, sub
+from compgeom import EPSILON, Point, cross_product, is_on_segment, length, sub
 
 
 def point_key(point):

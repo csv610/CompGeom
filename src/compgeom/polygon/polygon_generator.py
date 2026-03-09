@@ -6,8 +6,8 @@ import math
 import random
 from typing import List, Set, Tuple, Union
 
-from ..geometry import Point, cross_product
-from ..math_utils import distance
+from ..geo_math.geometry import Point, cross_product
+from ..geo_math.math_utils import distance
 from .polygon import (
     generate_random_convex_polygon,
     generate_simple_polygon,

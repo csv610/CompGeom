@@ -1,5 +1,5 @@
 import sys
-from compgeom.geometry import Point
+from compgeom import Point
 from compgeom.points_sampling import PointSampler
 
 def main():

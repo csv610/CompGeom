@@ -6,8 +6,8 @@ import math
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
 
-from .geometry import Point, Point3D
-from .math_utils import distance, distance_3d
+from ..geo_math.geometry import Point, Point3D
+from ..geo_math.math_utils import distance, distance_3d
 
 
 @dataclass

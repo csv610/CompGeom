@@ -6,7 +6,7 @@ import math
 import random
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
-from .geometry import (
+from ..geo_math.geometry import (
     EPSILON,
     Point,
     cross_product,
@@ -17,7 +17,7 @@ from .geometry import (
     length,
     sub,
 )
-from .math_utils import (
+from ..geo_math.math_utils import (
     distance,
     get_circle_three_points,
     get_circle_two_points,
@@ -25,7 +25,7 @@ from .math_utils import (
     signed_area_twice,
     support,
 )
-from .polygon import graham_scan, is_point_in_polygon
+from ..polygon.polygon import graham_scan, is_point_in_polygon
 
 
 class ClosestPair:
@@ -146,7 +146,7 @@ class LargestEmptyCircle:
             return Point(0, 0), 0.0
 
         hull = graham_scan(points)
-        from .mesh import triangulate
+        from ..mesh.mesh import triangulate
         triangles, _ = triangulate(points)
         
         max_radius = -1.0

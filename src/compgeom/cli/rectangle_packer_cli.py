@@ -1,7 +1,7 @@
 import argparse
 import sys
-from compgeom.rectangle_packing import RectanglePacker
-from compgeom.visualization import save_png, save_svg
+from compgeom import RectanglePacker
+from compgeom import save_png, save_svg
 
 def main():
     parser = argparse.ArgumentParser(description="Pack rectangles into minimum area.")

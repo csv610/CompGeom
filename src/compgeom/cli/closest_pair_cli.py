@@ -1,6 +1,6 @@
 import sys
-from compgeom.geometry import Point
-from compgeom.proximity import closest_pair
+from compgeom import Point
+from compgeom import closest_pair
 
 def main():
     points = []

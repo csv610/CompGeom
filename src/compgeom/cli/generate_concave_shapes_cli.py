@@ -1,7 +1,7 @@
 import argparse
 import sys
-from compgeom.polygon import PolygonGenerator
-from compgeom.visualization import save_png, save_svg
+from compgeom import PolygonGenerator
+from compgeom import save_png, save_svg
 
 def main():
     parser = argparse.ArgumentParser(description="Generate random polygons.")

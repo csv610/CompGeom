@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
-from .geometry import EPSILON, Point
+from ..geo_math.geometry import EPSILON, Point
 
 
 @dataclass

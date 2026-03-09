@@ -1,7 +1,7 @@
 import sys
 
-from compgeom.geometry import Point
-from compgeom.bounding import minimum_bounding_box, minimum_enclosing_circle
+from compgeom import Point
+from compgeom import minimum_bounding_box, minimum_enclosing_circle
 
 
 def parse_points(lines):

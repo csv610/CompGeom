@@ -1,5 +1,5 @@
 import argparse, math
-from compgeom.space_filling_curves import SpaceFillingCurves
+from compgeom import SpaceFillingCurves
 
 def main():
     parser = argparse.ArgumentParser()

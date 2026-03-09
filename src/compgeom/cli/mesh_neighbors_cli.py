@@ -1,7 +1,7 @@
 import sys
 
-from compgeom.geometry import Point
-from compgeom.mesh import mesh_neighbors
+from compgeom import Point
+from compgeom import mesh_neighbors
 
 
 def parse_mesh_query(lines):

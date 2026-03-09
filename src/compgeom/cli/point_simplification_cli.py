@@ -2,8 +2,8 @@ import argparse
 import random
 import time
 import sys
-from compgeom.geometry import Point, Point3D
-from compgeom.spatial import PointSimplifier
+from compgeom import Point, Point3D
+from compgeom import PointSimplifier
 
 def main():
     parser = argparse.ArgumentParser(description="Simplify a large point set (decimation).")

@@ -3,8 +3,8 @@ from __future__ import annotations
 import math
 import sys
 
-from compgeom.geometry import EPSILON, Point, cross_product, is_on_segment
-from compgeom.polygon import is_point_in_polygon
+from compgeom import EPSILON, Point, cross_product, is_on_segment
+from compgeom import is_point_in_polygon
 
 
 def _dot(a: Point, b: Point) -> float:

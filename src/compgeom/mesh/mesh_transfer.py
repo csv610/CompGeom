@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ..geometry import Point, Point3D
-from ..math_utils import distance
+from ..geo_math.geometry import Point, Point3D
+from ..geo_math.math_utils import distance
 from .mesh import TriangleMesh
 
 

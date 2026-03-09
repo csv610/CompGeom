@@ -22,7 +22,7 @@ from .mesh_refinement import TriMeshRefiner
 from .mesh_reordering import CuthillMcKee
 from .mesh_transfer import MeshTransfer
 from .voxelization import MeshVoxelizer
-from .quadmesh.simple_tri2quads_cli import TriangleToQuadConverter
+from .quadmesh.simple_tri2quads import TriangleToQuadConverter
 from .triangulation import (
     DynamicDelaunay,
     constrained_delaunay_triangulation,

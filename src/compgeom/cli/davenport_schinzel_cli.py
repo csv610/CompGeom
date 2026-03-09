@@ -1,8 +1,8 @@
 import argparse
 import sys
-from compgeom.geometry import Point
-from compgeom.sequences import DavenportSchinzel
-from compgeom.visualization import save_svg, save_png
+from compgeom import Point
+from compgeom import DavenportSchinzel
+from compgeom import save_svg, save_png
 
 def main():
     parser = argparse.ArgumentParser(description="Calculate Davenport-Schinzel sequence for line segments.")

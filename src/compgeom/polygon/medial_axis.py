@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from ..geometry import EPSILON, Point, get_circumcenter, length, sub
+import math
+from typing import List, Set, Tuple
+
+from ..geo_math.geometry import EPSILON, Point, get_circumcenter, length, sub
 from .polygon import is_point_in_polygon
-from ..mesh import build_topology, triangulate
+from ..mesh.triangulation import build_topology, triangulate
 
 
 def polygon_area(polygon):
@@ -68,11 +71,12 @@ def segment_key(a, b):
     return (ka, kb) if ka <= kb else (kb, ka)
 
 
-def approximate_medial_axis(polygon, max_segment_length=0.25):
+def approximate_medial_axis(polygon, resolution=0.25):
+    """Approximate the medial axis of a polygon using Delaunay triangulation."""
     if len(polygon) < 3:
         return {"samples": [], "centers": [], "segments": []}
 
-    boundary_samples = sample_polygon_boundary(polygon, max_segment_length=max_segment_length)
+    boundary_samples = sample_polygon_boundary(polygon, max_segment_length=resolution)
     sampled_triangles, _ = triangulate(boundary_samples)
     if not sampled_triangles:
         return {"samples": boundary_samples, "centers": [], "segments": []}

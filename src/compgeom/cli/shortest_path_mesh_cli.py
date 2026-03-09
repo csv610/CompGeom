@@ -1,6 +1,6 @@
 import sys
 
-from compgeom.geometry import Point
+from compgeom import Point
 from compgeom.path import shortest_path
 
 

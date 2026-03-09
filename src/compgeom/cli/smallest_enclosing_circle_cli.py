@@ -1,7 +1,7 @@
 import sys
 import random
-from compgeom.geometry import Point
-from compgeom.proximity import welzl
+from compgeom import Point
+from compgeom import welzl
 
 def main():
     points = []

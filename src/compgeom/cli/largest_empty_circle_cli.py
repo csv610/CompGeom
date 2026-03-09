@@ -1,8 +1,8 @@
 import argparse
 import sys
-from compgeom.geometry import Point
-from compgeom.proximity import LargestEmptyCircle
-from compgeom.visualization import save_png, save_svg
+from compgeom import Point
+from compgeom import LargestEmptyCircle
+from compgeom import save_png, save_svg
 
 def main():
     parser = argparse.ArgumentParser(description="Find the largest empty circle within the convex hull.")
