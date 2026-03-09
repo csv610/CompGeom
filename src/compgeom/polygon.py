@@ -6,8 +6,18 @@ import heapq
 import math
 import random
 from collections import deque
+from typing import List, Tuple, Union
 
-from .geometry import EPSILON, Point, contains_point, cross_product, is_on_segment, length, sub
+from .geometry import (
+    EPSILON,
+    Point,
+    Point3D,
+    contains_point,
+    cross_product,
+    is_on_segment,
+    length,
+    sub,
+)
 from .math_utils import distance, signed_area_twice
 
 
@@ -509,21 +519,34 @@ def generate_simple_polygon(
     return [Point(point.x, point.y, index) for index, point in enumerate(ordered)]
 
 
-def generate_points_in_triangle(a: Point, b: Point, c: Point, n_points: int = 100) -> list[Point]:
-    edge_ab = sub(b, a)
-    edge_ac = sub(c, a)
-    samples: list[Point] = []
+def generate_points_in_triangle(
+    a: Union[Point, Point3D], 
+    b: Union[Point, Point3D], 
+    c: Union[Point, Point3D], 
+    n_points: int = 100
+) -> list[Union[Point, Point3D]]:
+    """Samples points uniformly from the interior of a triangle (2D or 3D)."""
+    is_3d = isinstance(a, Point3D) or isinstance(b, Point3D) or isinstance(c, Point3D)
+    
+    samples: list[Union[Point, Point3D]] = []
     for _ in range(n_points):
         r1 = random.random()
         r2 = random.random()
         if r1 + r2 > 1:
             r1, r2 = 1 - r1, 1 - r2
-        samples.append(
-            Point(
-                a.x + r1 * edge_ab.x + r2 * edge_ac.x,
-                a.y + r1 * edge_ab.y + r2 * edge_ac.y,
-            )
-        )
+        
+        px = a.x + r1 * (b.x - a.x) + r2 * (c.x - a.x)
+        py = a.y + r1 * (b.y - a.y) + r2 * (c.y - a.y)
+        
+        if is_3d:
+            az = getattr(a, 'z', 0.0)
+            bz = getattr(b, 'z', 0.0)
+            cz = getattr(c, 'z', 0.0)
+            pz = az + r1 * (bz - az) + r2 * (cz - az)
+            samples.append(Point3D(px, py, pz))
+        else:
+            samples.append(Point(px, py))
+            
     return samples
 
 
