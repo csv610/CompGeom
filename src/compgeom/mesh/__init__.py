@@ -34,6 +34,7 @@ from .mesh_reordering import CuthillMcKee
 from .mesh_transfer import MeshTransfer
 from .quadmesh.simple_tri2quads import TriangleToQuadConverter
 from .triangulation import (
+    VoronoiDiagram,
     get_circle_boundary,
     get_square_boundary,
     get_voronoi_cells,
@@ -56,6 +57,7 @@ __all__ = [
     "TriMeshRefiner",
     "TriangleMesh",
     "TriangleToQuadConverter",
+    "VoronoiDiagram",
     "build_topology",
     "constrained_delaunay_triangulation",
     "delaunay_flip",
