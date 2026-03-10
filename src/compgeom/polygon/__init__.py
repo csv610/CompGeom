@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from .polygon import (
+    ConvexHull,
+    Polygon,
+    PolygonProperties,
     generate_points_in_triangle,
     generate_random_convex_polygon,
     generate_simple_polygon,
@@ -16,13 +19,14 @@ from .polygon import (
     is_ear,
     is_point_in_polygon,
     monotone_chain,
+    polygon_kernel,
     shortest_path_in_polygon,
-    solve_art_gallery,
     triangulate_polygon,
     triangulate_polygon_with_holes,
     visibility_polygon,
 )
-from .convex_decomposition import ConvexDecomposer
+from .polygon_guards import PolygonGuards, guard_polygon, solve_art_gallery
+from .polygon_decomposer import PolygonDecomposer
 from .polygon_generator import PolygonGenerator
 from .circle_packing import CirclePacker
 from .polygon_smoothing import PolygonalMeanCurvatureFlow
@@ -43,10 +47,14 @@ __all__ = [
     "DCELHalfEdge",
     "DCELVertex",
     "CirclePacker",
-    "ConvexDecomposer",
+    "ConvexHull",
     "DistanceMapSolver",
+    "PolygonDecomposer",
     "PolygonalMeanCurvatureFlow",
     "PolygonGenerator",
+    "PolygonGuards",
+    "Polygon",
+    "PolygonProperties",
     "approximate_medial_axis",
     "build_polygon_dcel",
     "generate_points_in_triangle",
@@ -57,12 +65,14 @@ __all__ = [
     "get_reflex_vertices",
     "get_triangulation_with_diagonals",
     "graham_scan",
+    "guard_polygon",
     "hertel_mehlhorn",
     "is_convex",
     "is_ear",
     "is_point_in_polygon",
     "locate_face",
     "monotone_chain",
+    "polygon_kernel",
     "shortest_path_in_polygon",
     "solve_art_gallery",
     "triangulate_polygon",

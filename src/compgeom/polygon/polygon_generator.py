@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import math
 import random
-from typing import List, Set, Tuple, Union
+from typing import List, Tuple
 
-from ..geo_math.geometry import Point, cross_product
-from ..geo_math.math_utils import distance
+from ..geo_math.geometry import Point
 from .polygon import (
-    generate_random_convex_polygon,
+    ConvexHull,
     generate_simple_polygon,
-    get_triangulation_with_diagonals,
-    _ensure_ccw,
 )
 
 
@@ -22,7 +19,11 @@ class PolygonGenerator:
     @staticmethod
     def convex(n_points: int = 10, x_range: Tuple[float, float] = (0, 100), y_range: Tuple[float, float] = (0, 100)) -> List[Point]:
         """Generates a random convex polygon with n_points."""
-        return generate_random_convex_polygon(n_points, x_range, y_range)
+        points = [
+            Point(random.uniform(*x_range), random.uniform(*y_range), index)
+            for index in range(n_points)
+        ]
+        return ConvexHull.monotone_chain(points)
 
     @staticmethod
     def concave(n_points: int = 15, x_range: Tuple[float, float] = (0, 100), y_range: Tuple[float, float] = (0, 100)) -> List[Point]:

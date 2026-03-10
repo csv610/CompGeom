@@ -63,10 +63,9 @@ class MeshTopology:
             n = len(element)
             for i in range(n):
                 u = element[i]
-                for j in range(i + 1, n):
-                    v = element[j]
-                    self._v2v[u].add(v)
-                    self._v2v[v].add(u)
+                v = element[(i + 1) % n]
+                self._v2v[u].add(v)
+                self._v2v[v].add(u)
 
     def _build_v2e(self):
         self._v2e = defaultdict(set)
@@ -110,9 +109,10 @@ class MeshTopology:
 class Mesh(ABC):
     """Abstract base class for all mesh types."""
 
-    def __init__(self, vertices: List[Union[Point, Point3D]], elements: List[Tuple[int, ...]]):
+    def __init__(self, vertices: List[Union[Point, Point3D]], elements: List[Tuple[int, ...]], skipped_points: Optional[List[Tuple[Point, str]]] = None):
         self._vertices = vertices
         self._elements = elements
+        self._skipped_points = skipped_points or []
         self._topology = MeshTopology(self)
 
     @property
@@ -124,6 +124,11 @@ class Mesh(ABC):
     def elements(self) -> List[Tuple[int, ...]]:
         """Returns the list of element indices (faces or cells)."""
         return self._elements
+
+    @property
+    def skipped_points(self) -> List[Tuple[Point, str]]:
+        """Returns points that were skipped during mesh generation (e.g., duplicates)."""
+        return self._skipped_points
 
     @property
     def topology(self) -> MeshTopology:
@@ -426,11 +431,48 @@ class QuadMesh(Mesh):
             curr_entry = next_entry
 
 
+class PolygonMesh(Mesh):
+    """A 2D or 3D mesh composed of arbitrary polygonal faces."""
+
+    @property
+    def faces(self) -> List[Tuple[int, ...]]:
+        return self._elements
+
+    @classmethod
+    def from_file(cls, filename: str) -> PolygonMesh:
+        """Creates a PolygonMesh from a file (OBJ, OFF, STL)."""
+        from .mesh_io import MeshIO
+        vertices, faces = MeshIO.read(filename)
+        return cls(vertices, [tuple(f) for f in faces])
+
+    def triangulate(self) -> TriangleMesh:
+        """
+        Converts the polygon mesh into a triangle mesh using fan triangulation.
+        Each polygon with n vertices is split into n-2 triangles.
+        """
+        from .mesh_io import OBJFileHandler
+        tri_faces = OBJFileHandler.triangulate_faces(self._elements)
+        return TriangleMesh(self._vertices, tri_faces)
+
+    def euler_characteristic(self) -> int:
+        """Calculates the Euler characteristic (V - E + F)."""
+        v = len(self._vertices)
+        f = len(self._elements)
+        edges = set()
+        for face in self._elements:
+            n = len(face)
+            for i in range(n):
+                u, v_idx = face[i], face[(i + 1) % n]
+                edges.add(tuple(sorted((u, v_idx))))
+        e = len(edges)
+        return v - e + f
+
+
 class TetMesh(Mesh):
     """A 3D volumetric mesh composed of tetrahedral cells."""
 
-    def __init__(self, vertices: List[Point3D], tets: List[Tuple[int, int, int, int]]):
-        super().__init__(vertices, tets)
+    def __init__(self, vertices: List[Point3D], tets: List[Tuple[int, int, int, int]], skipped_points: Optional[List[Tuple[Point, str]]] = None):
+        super().__init__(vertices, tets, skipped_points)
 
     @property
     def cells(self) -> List[Tuple[int, int, int, int]]:
@@ -440,8 +482,8 @@ class TetMesh(Mesh):
 class HexMesh(Mesh):
     """A 3D volumetric mesh composed of hexahedral cells."""
 
-    def __init__(self, vertices: List[Point3D], hexas: List[Tuple[int, int, int, int, int, int, int, int]]):
-        super().__init__(vertices, hexas)
+    def __init__(self, vertices: List[Point3D], hexas: List[Tuple[int, int, int, int, int, int, int, int]], skipped_points: Optional[List[Tuple[Point, str]]] = None):
+        super().__init__(vertices, hexas, skipped_points)
 
     @property
     def cells(self) -> List[Tuple[int, int, int, int, int, int, int, int]]:
@@ -515,6 +557,7 @@ __all__ = [
     "HexMesh",
     "Mesh",
     "MeshTopology",
+    "PolygonMesh",
     "QuadMesh",
     "TetMesh",
     "TriangleMesh",

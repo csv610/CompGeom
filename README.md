@@ -20,11 +20,11 @@ A comprehensive Python library and command-line suite for geometric modeling, me
 ### Part II: Polygon Processing
 4. **Basic Polygon Algorithms**
    - Orientation & Properties (Area, Centroid, Diameter)
-   - Containment & Visibility
+   - Containment, Visibility & Kernel
    - Convex Hull (Graham Scan, Monotone Chain)
 5. **Advanced Polygon Transformations**
    - Polygon Smoothing (Mean Curvature Flow)
-   - Convex Decomposition (Hertel-Mehlhorn)
+   - Polygon Decomposition (Triangulation, Convex, Monotone, Trapezoidal, Visibility)
    - Concave Part Identification (Reflex Vertices)
    - Random Polygon Generation (PolygonGenerator)
 6. **Spatial Polygon Operations**
@@ -96,7 +96,25 @@ resampled = PolygonalMeanCurvatureFlow.resample_polygon(polygon, n_points=100)
 smoothed = PolygonalMeanCurvatureFlow.smooth(resampled, iterations=200)
 ```
 
-### 2. High-Performance Point Cloud Simplification
+### 2. Polygon Decomposition & Kernel
+**Objective:** Decompose a polygon into useful substructures and compute its visibility kernel.
+
+```python
+from compgeom import Point, Polygon, PolygonDecomposer, polygon_kernel
+
+polygon = [Point(0, 0), Point(4, 0), Point(4, 4), Point(2, 2), Point(0, 4)]
+
+tri_mesh = PolygonDecomposer.triangulate(polygon)
+convex_mesh = PolygonDecomposer.convex_decomposition(polygon)
+monotone_mesh = PolygonDecomposer.monotone_decomposition(polygon)
+trapezoid_mesh = PolygonDecomposer.trapezoidal_decomposition(polygon)
+visibility_mesh = PolygonDecomposer.visibility_decomposition(polygon)
+
+kernel = Polygon(polygon).kernel()
+kernel2 = polygon_kernel(polygon)
+```
+
+### 3. High-Performance Point Cloud Simplification
 **Objective:** Reduce a massive point set while protecting specific points from removal.
 
 ```python
@@ -109,7 +127,7 @@ protected = {0, 10, 50}
 simplified = PointSimplifier.simplify(points, ratio=0.001, protected_ids=protected)
 ```
 
-### 3. Mesh Topology Transfer
+### 4. Mesh Topology Transfer
 **Objective:** Map the triangulation from one polygonal boundary to a completely different boundary shape while minimizing geometric distortion using **Harmonic Mapping**.
 
 ```python
@@ -126,7 +144,7 @@ target_poly = [Point(0,0), Point(2,0), Point(2,1), Point(1,1), Point(1,2), Point
 new_mesh = MeshTransfer.transfer(source, target_poly)
 ```
 
-### 4. Mesh Renumbering & Bandwidth Reduction
+### 5. Mesh Renumbering & Bandwidth Reduction
 **Objective:** Load a mesh and reorder its vertices to optimize matrix bandwidth.
 
 ```python
@@ -142,7 +160,7 @@ new_indices = CuthillMcKee.reorder_vertices(mesh)
 mesh.reorder_nodes(new_indices)
 ```
 
-### 5. Mesh Voxelization (Surface & Volume)
+### 6. Mesh Voxelization (Surface & Volume)
 **Objective:** Convert a 3D triangular mesh into a solid voxel grid.
 
 ```python
@@ -162,7 +180,7 @@ voxels = MeshVoxelizer.voxelize(mesh, voxel_size=0.01, fill_interior=True)
 | :--- | :--- | :--- |
 | `mesh_transfer` | Map mesh to new boundary | `compgeom mesh_transfer --input sq.obj --output circle.obj` |
 | `identify_concave_parts`| Find reflex vertices | `compgeom identify_concave_parts --poly 0 0 10 0 10 10 5 5 0 10` |
-| `convex_decomposition` | Split polygon into convex pieces | `compgeom convex_decomposition --poly ... --output pieces.png` |
+| `convex_decomposition` | Decompose a polygon and visualize the convex pieces | `compgeom convex_decomposition --poly ... --output pieces.png` |
 | `simple_tri2quads` | Convert triangles to quads | `compgeom simple_tri2quads in.obj out.obj` |
 | `point_simplification` | $O(N)$ point cloud decimation | `compgeom point_simplification --n 1000000 --ratio 0.005` |
 | `mesh_refinement` | Increase mesh resolution | `compgeom mesh_refinement --input in.obj --max_area 0.01` |
@@ -174,7 +192,7 @@ voxels = MeshVoxelizer.voxelize(mesh, voxel_size=0.01, fill_interior=True)
 
 - `src/compgeom/` - Core package:
     - `geo_math/`: geometric primitives and numeric helpers.
-    - `polygon/`: polygon algorithms, decomposition, smoothing, medial axis, and DCEL helpers.
+    - `polygon/`: polygon algorithms, kernel and visibility queries, decomposition helpers, smoothing, medial axis, and DCEL helpers.
     - `mesh/`: mesh data structures, topology, I/O, refinement, transfer, voxelization, and triangulation helpers.
     - `algo/`: higher-level algorithms such as `PointSimplifier`, `PointSampler`, `DavenportSchinzel`, `RectanglePacker`, and `SpaceFillingCurves`.
     - `graphics/`: SVG/PNG export utilities.

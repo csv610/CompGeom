@@ -10,14 +10,13 @@ from compgeom.geo_math.geometry import Point
 from compgeom.mesh.delaunay_triangulation import DelaunayMesher
 
 def run_benchmarks():
-    # Note: 10^7+ points usually require significant RAM and time in Python.
-    # 10^10 is technically impossible on a single machine's RAM.
-    sizes = [10**2, 10**3, 10**4, 10**5, 10**6]
+    # 10^7 points usually require significant RAM and time in Python.
+    sizes = [10**2, 10**3, 10**4, 10**5, 10**6, 10**7]
     
     print("Delaunay Triangulation Scalability Analysis")
-    print("=" * 60)
-    print(f"{'N Points':<12} | {'Incremental (s)':<18} | {'Divide & Conquer (s)':<22}")
-    print("-" * 60)
+    print("=" * 100)
+    print(f"{'N Points':<12} | {'Incremental (s)':<18} | {'Divide & Conquer (s)':<22} | {'Delaunay Flip* (s)':<22}")
+    print("-" * 100)
     
     for n in sizes:
         # Generate random 2D points
@@ -28,27 +27,37 @@ def run_benchmarks():
         
         results = {}
         
-        # Benchmark Divide and Conquer (usually faster, so we do it first)
+        # Benchmark Divide and Conquer
         start = time.perf_counter()
+        mesh_dc = None
         try:
-            DelaunayMesher.triangulate(points, algorithm="divide_and_conquer")
+            mesh_dc = DelaunayMesher.triangulate(points, algorithm="divide_and_conquer")
             results['dc'] = f"{time.perf_counter() - start:.4f}"
         except Exception as e:
-            results['dc'] = f"Error: {e}"
+            results['dc'] = f"Error"
             
         # Benchmark Incremental (Bowyer-Watson)
-        # We skip incremental for very large N as it is O(N^2) in worst case (though often O(N log N) on average)
-        if n <= 10**4: # Reduced limit for incremental to keep benchmark reasonable
+        # Note: This is O(N^2) in this implementation and will be very slow for large N.
+        start = time.perf_counter()
+        try:
+            DelaunayMesher.triangulate(points, algorithm="incremental")
+            results['inc'] = f"{time.perf_counter() - start:.4f}"
+        except Exception as e:
+            results['inc'] = f"Error"
+
+        # Benchmark Delaunay Flip (Topology Build + Flip)
+        # *Note: This benchmarks building topology and verifying/flipping an existing Delaunay mesh.
+        if mesh_dc:
             start = time.perf_counter()
             try:
-                DelaunayMesher.triangulate(points, algorithm="incremental")
-                results['inc'] = f"{time.perf_counter() - start:.4f}"
+                mesh = DelaunayMesher.triangulate(points, algorithm="flip")
+                results['flip'] = f"{time.perf_counter() - start:.4f}"
             except Exception as e:
-                results['inc'] = f"Error: {e}"
+                results['flip'] = f"Error"
         else:
-            results['inc'] = "Skipped (>10^4)"
+            results['flip'] = "N/A"
 
-        print(f"{n:<12} | {results['inc']:<18} | {results['dc']:<22}")
+        print(f"{n:<12} | {results['inc']:<18} | {results['dc']:<22} | {results['flip']:<22}")
 
 if __name__ == "__main__":
     run_benchmarks()

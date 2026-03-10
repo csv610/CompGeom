@@ -7,38 +7,47 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from compgeom.geo_math.geometry import Point
-from compgeom.mesh.triangulation import VoronoiDiagram
+from compgeom.mesh.voronoi_diagram import VoronoiDiagram
+from compgeom.graphics.geo_plot import GeomPlot
 
 def run_benchmarks():
     # sizes from 10^1 to 10^5
     sizes = [10, 100, 1000, 10000, 100000]
-    
+
     print("Voronoi Diagram Scalability Analysis (Clipping Algorithm)")
     print("WARNING: This algorithm is O(N^2). N=100,000 may take a very long time in Python.")
     print("=" * 60)
     print(f"{'N Points':<12} | {'Time (s)':<18} | {'Avg Time/Point (ms)':<22}")
     print("-" * 60)
-    
-    # Square boundary for all tests
-    boundary = VoronoiDiagram.get_square_boundary(size=100000, center=(50000, 50000))
-    
+
     for n in sizes:
-        # Generate random 2D points within the boundary
+        # Generate random 2D points within a range
         points = [
             Point(random.uniform(1000, 99000), random.uniform(1000, 99000), id=i) 
             for i in range(n)
         ]
-        
-        vd = VoronoiDiagram(points, boundary)
-        
+
+        vd = VoronoiDiagram()
+
         start = time.perf_counter()
         try:
             # For N=100,000, we might want to alert the user it's starting
             if n >= 10000:
                 print(f"Starting N={n}... (this will take a while)")
-            
-            vd.compute()
+
+            vd.compute(points, boundary_type="square")
             elapsed = time.perf_counter() - start
+
+            # Save a plot for N=100
+            if n == 100:
+                svg_data = GeomPlot.get_image(vd, format="svg")
+                with open("voronoi_100.svg", "w") as f:
+                    f.write(svg_data)
+                png_data = GeomPlot.get_image(vd, format="png")
+                with open("voronoi_100.png", "wb") as f:
+                    f.write(png_data)
+                print(f"Saved voronoi_100.svg and voronoi_100.png")
+
             avg_ms = (elapsed / n) * 1000
             print(f"{n:<12} | {elapsed:<18.4f} | {avg_ms:<22.4f}")
         except KeyboardInterrupt:

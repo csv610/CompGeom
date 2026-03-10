@@ -52,6 +52,18 @@ class OBJFileHandler:
         return vertices, faces
 
     @staticmethod
+    def triangulate_faces(faces: List[Union[List[int], Tuple[int, ...]]]) -> List[Tuple[int, int, int]]:
+        """Converts arbitrary faces into triangles using fan triangulation."""
+        tri_faces = []
+        for face in faces:
+            if len(face) == 3:
+                tri_faces.append(tuple(face))
+            elif len(face) > 3:
+                for i in range(1, len(face) - 1):
+                    tri_faces.append((face[0], face[i], face[i+1]))
+        return tri_faces
+
+    @staticmethod
     def write(filename: str, vertices: List[Union[Point, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]]):
         """Writes vertices and faces to an OBJ file."""
         with open(filename, "w") as f:

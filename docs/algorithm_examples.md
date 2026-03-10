@@ -108,6 +108,49 @@ print(hull_a)
 print(hull_b)
 ```
 
+### Spatial indexing: KD-tree range search, interval tree, and segment tree
+
+```python
+from compgeom import (
+    Interval,
+    IntervalTree,
+    Point,
+    SegmentTree,
+    build_kdtree,
+    range_search,
+)
+
+# Orthogonal range query on sampled geometry points.
+points = [
+    Point(0, 0),
+    Point(2, 1),
+    Point(3, 4),
+    Point(5, 2),
+    Point(6, 5),
+]
+
+root = build_kdtree(points)
+hits = range_search(root, 1, 5, 1, 4)
+print(hits)
+
+# Active x-intervals from projected line segments in a sweep-line stage.
+intervals = [
+    Interval(0.0, 2.5, "segment_ab"),
+    Interval(1.5, 4.0, "segment_cd"),
+    Interval(3.0, 5.5, "segment_ef"),
+]
+
+interval_tree = IntervalTree(intervals)
+print(interval_tree.query_point(2.0))
+print(interval_tree.query_interval(2.0, 3.5))
+
+# Occupancy counts across scanline buckets.
+segment_tree = SegmentTree.for_sum([3, 1, 0, 2, 4, 1])
+print(segment_tree.range_query(1, 4))
+segment_tree.update(2, 5)
+print(segment_tree.range_query(1, 4))
+```
+
 ### Polygon generation
 
 ```python

@@ -1,7 +1,7 @@
 import argparse
 import sys
 from compgeom import Point
-from compgeom import ConvexDecomposer, generate_simple_polygon
+from compgeom import PolygonDecomposer, generate_simple_polygon
 from compgeom import OBJFileHandler
 from compgeom import save_png, save_svg
 
@@ -37,7 +37,8 @@ def main():
     print(f"Initial Polygon: {len(polygon)} vertices.")
     
     # Decompose
-    pieces = ConvexDecomposer.hertel_mehlhorn(polygon)
+    mesh = PolygonDecomposer.convex_decomposition(polygon)
+    pieces = [[mesh.vertices[index] for index in face] for face in mesh.faces]
     
     print(f"\nDecomposed into {len(pieces)} convex pieces.")
     for i, piece in enumerate(pieces):

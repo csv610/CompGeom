@@ -13,6 +13,7 @@ from .mesh import (
     HexMesh,
     Mesh,
     MeshTopology,
+    PolygonMesh,
     QuadMesh,
     TetMesh,
     TriangleMesh,
@@ -29,7 +30,8 @@ from .mesh_refinement import TriMeshRefiner
 from .mesh_reordering import CuthillMcKee
 from .mesh_transfer import MeshTransfer
 from .quadmesh.simple_tri2quads import TriangleToQuadConverter
-from .triangulation import VoronoiDiagram
+from .voronoi_diagram import VoronoiDiagram
+from ..graphics.geo_plot import GeomPlot
 from .voxelization import MeshVoxelizer
 
 __all__ = [
@@ -41,6 +43,7 @@ __all__ = [
     "Mesh",
     "MeshColoring",
     "MeshIO",
+    "GeomPlot",
     "MeshTriangle",
     "MeshTopology",
     "MeshTransfer",
@@ -48,6 +51,7 @@ __all__ = [
     "OBJFileHandler",
     "OFFFileHandler",
     "STLFileHandler",
+    "PolygonMesh",
     "QuadMesh",
     "TetMesh",
     "TriMeshRefiner",

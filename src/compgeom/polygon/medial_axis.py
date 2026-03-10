@@ -7,7 +7,7 @@ from typing import List, Set, Tuple
 
 from ..geo_math.geometry import EPSILON, Point, get_circumcenter, length, sub
 from .polygon import is_point_in_polygon
-from ..mesh.triangulation import build_topology, triangulate
+from ..mesh.delaunay_triangulation import build_topology, triangulate
 
 
 def polygon_area(polygon):

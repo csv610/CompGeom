@@ -62,6 +62,55 @@ class CirclePacker:
         return centers
 
     @staticmethod
+    def optimal_radius(polygon: List[Point], num_circles: int, tolerance: float = 1e-4) -> float:
+        """
+        Finds the maximum radius such that at least `num_circles` can be packed into the polygon.
+        
+        Args:
+            polygon: List of Points defining the closed boundary.
+            num_circles: The target number of circles to pack.
+            tolerance: Precision for the binary search.
+            
+        Returns:
+            The maximum radius that fits at least `num_circles` using hexagonal packing.
+        """
+        if not polygon or num_circles <= 0:
+            return 0.0
+
+        min_x = min(p.x for p in polygon)
+        max_x = max(p.x for p in polygon)
+        min_y = min(p.y for p in polygon)
+        max_y = max(p.y for p in polygon)
+
+        # Initial bounds for binary search
+        # low = 0: infinitely small circles
+        # high: half of the smallest dimension of the bounding box
+        low = 0.0
+        high = min(max_x - min_x, max_y - min_y) / 2.0
+        
+        if high <= 0:
+            return 0.0
+
+        best_radius = 0.0
+        
+        # Binary search for the largest radius that fits at least `num_circles`
+        # Using 50 iterations as a safety limit if tolerance is extremely small
+        for _ in range(50):
+            if high - low < tolerance:
+                break
+                
+            mid = (low + high) / 2.0
+            centers = CirclePacker.pack(polygon, mid)
+            
+            if len(centers) >= num_circles:
+                best_radius = mid
+                low = mid
+            else:
+                high = mid
+                
+        return best_radius
+
+    @staticmethod
     def _is_circle_inside(center: Point, radius: float, polygon: List[Point]) -> bool:
         """Checks if a circle is entirely contained within a polygon."""
         # Center must be inside

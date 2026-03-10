@@ -16,7 +16,6 @@ from ..geo_math.geometry import (
     orientation_sign,
     sub,
 )
-from ..polygon.polygon import is_point_in_polygon, triangulate_polygon_with_holes
 
 
 def _get_angle(p1: Point, p2: Point) -> float:
@@ -47,15 +46,18 @@ def triangulate_divide_and_conquer(points: list[Point]):
     triangles = []
     seen = set()
     for u in unique_points:
+        if u not in adj: continue
         for v in adj[u]:
+            if v not in adj: continue
             for w in adj[v]:
+                if w not in adj: continue
                 if w in adj[u]:
                     tri_key = tuple(sorted((u.id, v.id, w.id)))
                     if tri_key not in seen:
                         # Ensure CCW orientation for consistency
                         if orientation_sign(u, v, w) > 0:
                             triangles.append((u, v, w))
-                        else:
+                        elif orientation_sign(u, v, w) < 0:
                             triangles.append((u, w, v))
                         seen.add(tri_key)
     
@@ -64,21 +66,25 @@ def triangulate_divide_and_conquer(points: list[Point]):
 
 def _dc_triangulate(points: list[Point]) -> dict[Point, list[Point]]:
     n = len(points)
-    adj = {p: [] for p in points}
-
-    if n == 2:
-        u, v = points
-        adj[u].append(v)
-        adj[v].append(u)
-        return adj
-    
-    if n == 3:
-        u, v, w = points
-        adj[u].extend([v, w])
-        adj[v].extend([u, w])
-        adj[w].extend([u, v])
-        # Sort neighbors CCW
-        for p in [u, v, w]:
+    if n <= 3:
+        adj = {p: [] for p in points}
+        if n == 2:
+            u, v = points
+            adj[u].append(v)
+            adj[v].append(u)
+        elif n == 3:
+            u, v, w = points
+            orient = orientation_sign(u, v, w)
+            if orient == 0:
+                # Collinear: connect consecutive points only
+                adj[u].append(v)
+                adj[v].extend([u, w])
+                adj[w].append(v)
+            else:
+                adj[u].extend([v, w])
+                adj[v].extend([u, w])
+                adj[w].extend([u, v])
+        for p in adj:
             adj[p].sort(key=lambda neighbor: _get_angle(p, neighbor))
         return adj
 
@@ -86,127 +92,162 @@ def _dc_triangulate(points: list[Point]) -> dict[Point, list[Point]]:
     left_adj = _dc_triangulate(points[:mid])
     right_adj = _dc_triangulate(points[mid:])
     
-    # Merge adjacencies
-    for p, neighbors in right_adj.items():
-        adj[p] = neighbors
-    for p, neighbors in left_adj.items():
-        adj[p] = neighbors
+    # Combined adjacency dictionary
+    adj = {**left_adj, **right_adj}
 
-    # Find the base LR edge (lowest common tangent)
+    # 1. Find the base LR edge (lowest common tangent)
+    # Start with rightmost of left set and leftmost of right set
     ld = points[mid - 1]
     rd = points[mid]
     
-    # Walk down to find the lowest common tangent
-    changed = True
-    while changed:
+    while True:
         changed = False
-        # Move ld down
+        # Move ld down (CW) relative to rd
         for neighbor in adj[ld]:
             if orientation_sign(rd, ld, neighbor) < 0:
                 ld = neighbor
                 changed = True
                 break
         if changed: continue
-        # Move rd down
+        
+        # Move rd down (CCW) relative to ld
         for neighbor in adj[rd]:
             if orientation_sign(ld, rd, neighbor) > 0:
                 rd = neighbor
                 changed = True
                 break
+        if not changed:
+            break
 
-    # Merge step: move up from the base edge
+    # 2. Merge step: move up from the base edge
     while True:
+        # Add the current LR edge to the triangulation
         if rd not in adj[ld]: adj[ld].append(rd)
         if ld not in adj[rd]: adj[rd].append(ld)
-        # Re-sort CCW
+        
+        # Maintain CCW sorting of neighbors
         adj[ld].sort(key=lambda neighbor: _get_angle(ld, neighbor))
         adj[rd].sort(key=lambda neighbor: _get_angle(rd, neighbor))
 
+        # Find potential candidates for the next LR edge
         lc = None
-        for i, neighbor in enumerate(adj[ld]):
-            if neighbor == rd:
-                cand = adj[ld][(i + 1) % len(adj[ld])]
-                if orientation_sign(ld, rd, cand) > 0:
-                    lc = cand
+        idx_rd = adj[ld].index(rd)
+        # Check candidates on the left side in CCW order from rd
+        for i in range(1, len(adj[ld])):
+            cand = adj[ld][(idx_rd + i) % len(adj[ld])]
+            if orientation_sign(ld, rd, cand) > 0:
+                lc = cand
+                # Validate lc using Delaunay criteria (in-circle test)
+                while True:
+                    next_idx = (adj[ld].index(lc) + 1) % len(adj[ld])
+                    next_cand = adj[ld][next_idx]
+                    if next_cand != rd and orientation_sign(ld, rd, next_cand) > 0 and \
+                       in_circle(ld, rd, lc, next_cand):
+                        # Invalidate current lc and try next neighbor
+                        adj[ld].remove(lc)
+                        adj[lc].remove(ld)
+                        lc = next_cand
+                    else:
+                        break
                 break
-        
-        if lc:
-            while True:
-                idx = adj[ld].index(lc)
-                next_cand = adj[ld][(idx + 1) % len(adj[ld])]
-                if next_cand != rd and orientation_sign(ld, rd, next_cand) > 0 and in_circle(ld, rd, lc, next_cand):
-                    adj[ld].remove(lc)
-                    adj[lc].remove(ld)
-                    lc = next_cand
-                else:
-                    break
         
         rc = None
-        for i, neighbor in enumerate(adj[rd]):
-            if neighbor == ld:
-                cand = adj[rd][(i - 1 + len(adj[rd])) % len(adj[rd])]
-                if orientation_sign(rd, ld, cand) < 0:
-                    rc = cand
+        idx_ld = adj[rd].index(ld)
+        # Check candidates on the right side in CW order from ld
+        for i in range(1, len(adj[rd])):
+            cand = adj[rd][(idx_ld - i + len(adj[rd])) % len(adj[rd])]
+            if orientation_sign(rd, ld, cand) < 0:
+                rc = cand
+                # Validate rc using Delaunay criteria
+                while True:
+                    next_idx = (adj[rd].index(rc) - 1 + len(adj[rd])) % len(adj[rd])
+                    next_cand = adj[rd][next_idx]
+                    if next_cand != ld and orientation_sign(rd, ld, next_cand) < 0 and \
+                       in_circle(rd, ld, rc, next_cand):
+                        adj[rd].remove(rc)
+                        adj[rc].remove(rd)
+                        rc = next_cand
+                    else:
+                        break
                 break
-        
-        if rc:
-            while True:
-                idx = adj[rd].index(rc)
-                next_cand = adj[rd][(idx - 1 + len(adj[rd])) % len(adj[rd])]
-                if next_cand != ld and orientation_sign(rd, ld, next_cand) < 0 and in_circle(rd, ld, rc, next_cand):
-                    adj[rd].remove(rc)
-                    adj[rc].remove(rd)
-                    rc = next_cand
-                else:
-                    break
 
+        # Termination: no more candidates above the current LR edge
         if not lc and not rc:
             break
         
-        if not lc:
+        # Select the next base LR edge
+        if not lc or (rc and in_circle(ld, rd, lc, rc)):
             rd = rc
-        elif not rc:
-            ld = lc
         else:
-            if in_circle(ld, rd, lc, rc):
-                rd = rc
-            else:
-                ld = lc
+            ld = lc
 
     return adj
+
 
 
 class DelaunayMesher:
     """
     A unified interface for Delaunay triangulation algorithms and utilities.
     
-    Provides methods for incremental, divide and conquer, dynamic, and
-    constrained Delaunay triangulation.
+    Provides methods for incremental, divide and conquer, flip-based,
+    dynamic, and constrained Delaunay triangulation.
     """
 
     @staticmethod
-    def triangulate(points: list[Point], algorithm: str = "incremental") -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+    def _to_triangle_mesh(triangles: list[tuple[Point, Point, Point]], skipped_points: list[tuple[Point, str]] | None = None) -> "TriangleMesh":
+        """Converts a list of Point triangles to a TriangleMesh object."""
+        from .mesh import TriangleMesh
+        
+        unique_points = []
+        point_to_idx = {}
+        
+        for tri in triangles:
+            for p in tri:
+                if p not in point_to_idx:
+                    point_to_idx[p] = len(unique_points)
+                    unique_points.append(p)
+        
+        faces = []
+        for tri in triangles:
+            faces.append((point_to_idx[tri[0]], point_to_idx[tri[1]], point_to_idx[tri[2]]))
+            
+        return TriangleMesh(unique_points, faces, skipped_points=skipped_points)
+
+    @staticmethod
+    def triangulate(points: list[Point], algorithm: str = "incremental") -> "TriangleMesh":
         """
         Performs Delaunay triangulation using the specified algorithm.
         
         Args:
             points: List of points to triangulate.
-            algorithm: The algorithm to use ("incremental" or "divide_and_conquer").
+            algorithm: The algorithm to use ("incremental", "divide_and_conquer", or "flip").
             
         Returns:
-            A tuple of (triangles, skipped_points).
+            A TriangleMesh object.
         """
+        skipped = []
         if algorithm == "incremental":
-            return triangulate(points)
+            triangles, skipped = triangulate(points)
         elif algorithm == "divide_and_conquer":
-            return triangulate_divide_and_conquer(points)
+            triangles, skipped = triangulate_divide_and_conquer(points)
+        elif algorithm == "flip":
+            raw_triangles, skipped, super_triangle_vertices = triangulate_naive(points)
+            mesh = build_topology(raw_triangles)
+            DelaunayMesher.delaunay_flip(mesh)
+            triangles = [
+                tuple(m.vertices) for m in mesh 
+                if not any(vertex in super_triangle_vertices for vertex in m.vertices)
+            ]
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
+            
+        return DelaunayMesher._to_triangle_mesh(triangles, skipped_points=skipped)
 
     @staticmethod
-    def constrained_triangulate(outer_boundary: list[Point], holes: list[list[Point]] | None = None):
+    def constrained_triangulate(outer_boundary: list[Point], holes: list[list[Point]] | None = None) -> "TriangleMesh":
         """Performs Constrained Delaunay Triangulation."""
-        return constrained_delaunay_triangulation(outer_boundary, holes)
+        triangles, _ = constrained_delaunay_triangulation(outer_boundary, holes)
+        return DelaunayMesher._to_triangle_mesh(triangles)
 
     @staticmethod
     def dynamic_triangulate(width: float = 1000, height: float = 1000) -> DynamicDelaunay:
@@ -219,9 +260,74 @@ class DelaunayMesher:
         return build_topology(triangles)
 
     @staticmethod
+    def delaunay_flip(mesh: list[MeshTriangle]):
+        """Improves a triangulation by performing edge flips until it is Delaunay."""
+        queue = deque()
+        queued_edges = set()
+
+        def add_to_queue(triangle, index):
+            if triangle.neighbors[index] is not None:
+                edge = triangle.get_edge(index)
+                if edge not in queued_edges:
+                    queue.append((triangle, index))
+                    queued_edges.add(edge)
+
+        for triangle in mesh:
+            for i in range(3):
+                add_to_queue(triangle, i)
+
+        while queue:
+            t1, i1 = queue.popleft()
+            edge = t1.get_edge(i1)
+            queued_edges.discard(edge)
+
+            t2 = t1.neighbors[i1]
+            if t2 is None:
+                continue
+
+            i2 = t2.find_neighbor_index(t1)
+            if i2 == -1:
+                continue
+
+            a = t1.vertices[i1]
+            b = t1.vertices[(i1 + 1) % 3]
+            c = t1.vertices[(i1 + 2) % 3]
+            d = t2.vertices[i2]
+
+            if not in_circle(a, b, c, d):
+                continue
+
+            n_ac = t1.neighbors[(i1 + 1) % 3]
+            n_ab = t1.neighbors[(i1 + 2) % 3]
+            n_db = t2.neighbors[(i2 + 1) % 3]
+            n_dc = t2.neighbors[(i2 + 2) % 3]
+
+            t1.vertices = [a, b, d]
+            t2.vertices = [a, d, c]
+            
+            t1.neighbors[0], t1.neighbors[1], t1.neighbors[2] = n_db, t2, n_ab
+            t2.neighbors[0], t2.neighbors[1], t2.neighbors[2] = n_dc, n_ac, t1
+
+            if n_db:
+                idx = n_db.find_neighbor_index(t2)
+                if idx != -1: n_db.neighbors[idx] = t1
+            if n_ab:
+                idx = n_ab.find_neighbor_index(t1)
+                if idx != -1: n_ab.neighbors[idx] = t1
+            if n_dc:
+                idx = n_dc.find_neighbor_index(t2)
+                if idx != -1: n_dc.neighbors[idx] = t2
+            if n_ac:
+                idx = n_ac.find_neighbor_index(t1)
+                if idx != -1: n_ac.neighbors[idx] = t2
+
+            for t, idx in [(t1, 0), (t1, 2), (t2, 0), (t2, 1)]:
+                add_to_queue(t, idx)
+
+    @staticmethod
     def improve_by_flipping(mesh: list[MeshTriangle]):
         """Improves a triangulation by performing edge flips until it is Delaunay."""
-        delaunay_flip(mesh)
+        DelaunayMesher.delaunay_flip(mesh)
 
     @staticmethod
     def check_is_delaunay(mesh: list[MeshTriangle]) -> bool:
@@ -314,6 +420,46 @@ def triangulate(points: list[Point]):
     return final_triangles, skipped_points
 
 
+def triangulate_naive(points: list[Point]):
+    """Creates a naive triangulation by iteratively splitting triangles."""
+    if not points:
+        return [], []
+
+    super_triangle = _create_super_triangle(points)
+    super_triangle_vertices = set(super_triangle)
+    skipped_points = []
+    existing_points = set()
+    triangles = [super_triangle]
+
+    def make_ccw(a: Point, b: Point, c: Point):
+        return (a, b, c) if cross_product(a, b, c) >= 0 else (a, c, b)
+
+    for point in points:
+        if point in existing_points or any(point == vertex for vertex in super_triangle_vertices):
+            skipped_points.append((point, "Duplicate/Coincident Point"))
+            continue
+
+        containing_triangle = None
+        for triangle in triangles:
+            if contains_point(Triangle(*triangle), point):
+                containing_triangle = triangle
+                break
+        
+        if not containing_triangle:
+            skipped_points.append((point, "Outside super-triangle (Numerical Error)"))
+            continue
+
+        triangles.remove(containing_triangle)
+        a, b, c = containing_triangle
+        triangles.append(make_ccw(a, b, point))
+        triangles.append(make_ccw(b, c, point))
+        triangles.append(make_ccw(c, a, point))
+        
+        existing_points.add(point)
+
+    return triangles, skipped_points, super_triangle_vertices
+
+
 class MeshTriangle:
     def __init__(self, v1: Point, v2: Point, v3: Point):
         self.vertices = [v1, v2, v3] if cross_product(v1, v2, v3) >= 0 else [v1, v3, v2]
@@ -344,61 +490,6 @@ def build_topology(triangles):
             triangle.neighbors[edge_index] = mesh[other_triangle_index]
             mesh[other_triangle_index].neighbors[other_edge_index] = triangle
     return mesh
-
-
-def delaunay_flip(mesh):
-    queue = deque()
-    queued_edges = set()
-
-    for triangle in mesh:
-        for edge_index, neighbor in enumerate(triangle.neighbors):
-            if neighbor is None:
-                continue
-            edge = triangle.get_edge(edge_index)
-            if edge not in queued_edges:
-                queue.append((triangle, edge_index))
-                queued_edges.add(edge)
-
-    while queue:
-        t1, i1 = queue.popleft()
-        edge = t1.get_edge(i1)
-        queued_edges.discard(edge)
-
-        t2 = t1.neighbors[i1]
-        if t2 is None:
-            continue
-
-        i2 = t2.find_neighbor_index(t1)
-        a = t1.vertices[i1]
-        b = t1.vertices[(i1 + 1) % 3]
-        c = t1.vertices[(i1 + 2) % 3]
-        d = t2.vertices[i2]
-
-        if not in_circle(a, b, c, d):
-            continue
-
-        n_ac = t1.neighbors[(i1 + 1) % 3]
-        n_ab = t1.neighbors[(i1 + 2) % 3]
-        n_db = t2.neighbors[(i2 + 1) % 3]
-        n_dc = t2.neighbors[(i2 + 2) % 3]
-
-        t1.vertices = [a, b, d]
-        t2.vertices = [a, d, c]
-        t1.neighbors[0], t1.neighbors[1], t1.neighbors[2] = n_db, t2, n_ab
-        t2.neighbors[0], t2.neighbors[1], t2.neighbors[2] = n_dc, n_ac, t1
-
-        if n_db:
-            n_db.neighbors[n_db.find_neighbor_index(t2)] = t1
-        if n_ac:
-            n_ac.neighbors[n_ac.find_neighbor_index(t1)] = t2
-
-        for triangle, edge_index in [(t1, 0), (t1, 2), (t2, 0), (t2, 1)]:
-            if triangle.neighbors[edge_index] is None:
-                continue
-            candidate = triangle.get_edge(edge_index)
-            if candidate not in queued_edges:
-                queue.append((triangle, edge_index))
-                queued_edges.add(candidate)
 
 
 def is_delaunay(mesh: list[MeshTriangle]) -> bool:
@@ -563,6 +654,10 @@ class DynamicDelaunay:
             if not any(vertex in self.super_vertices for vertex in triangle.v)
         ]
 
+    def get_mesh(self) -> "TriangleMesh":
+        """Returns the current triangulation as a TriangleMesh object."""
+        return DelaunayMesher._to_triangle_mesh(self.get_triangles())
+
 
 def _point_key(point: Point):
     return (round(point.x / EPSILON), round(point.y / EPSILON), point.id)
@@ -629,6 +724,7 @@ def _proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool
 
 
 def _point_in_domain(point: Point, outer_boundary: list[Point], holes: list[list[Point]]) -> bool:
+    from ..polygon.polygon import is_point_in_polygon
     if not is_point_in_polygon(point, outer_boundary):
         return False
     for hole in holes:
@@ -663,6 +759,7 @@ def _segment_valid_in_domain(
 
 
 def constrained_delaunay_triangulation(outer_boundary: list[Point], holes: list[list[Point]] | None = None):
+    from ..polygon.polygon import triangulate_polygon_with_holes
     holes = holes or []
     triangles, merged_polygon = triangulate_polygon_with_holes(outer_boundary, holes)
     constrained_edges = {
@@ -708,7 +805,6 @@ __all__ = [
     "Triangle",
     "build_topology",
     "constrained_delaunay_triangulation",
-    "delaunay_flip",
     "get_nondelaunay_triangles",
     "is_delaunay",
     "triangulate",

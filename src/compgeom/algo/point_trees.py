@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import Callable, Dict, Generic, Iterable, List, Optional, Sequence, Set, Tuple, TypeVar, Union
 
 from ..geo_math.geometry import Point, Point3D
 from ..geo_math.math_utils import distance, distance_3d
+
+T = TypeVar("T")
 
 
 @dataclass
@@ -91,6 +93,201 @@ def display_kdtree(node: KDNode | None, depth: int = 0):
     print(f"{'  ' * depth}[Depth {depth}, Split {'X' if node.axis == 0 else 'Y'}] {node.point}")
     display_kdtree(node.left, depth + 1)
     display_kdtree(node.right, depth + 1)
+
+
+def range_search(
+    node: KDNode | None,
+    min_x: float,
+    max_x: float,
+    min_y: float,
+    max_y: float,
+) -> list[Point]:
+    """Return points inside an axis-aligned query rectangle from a KD-tree."""
+    if node is None:
+        return []
+
+    point = node.point
+    result: list[Point] = []
+    if min_x <= point.x <= max_x and min_y <= point.y <= max_y:
+        result.append(point)
+
+    split_value = point.x if node.axis == 0 else point.y
+    lower_bound = min_x if node.axis == 0 else min_y
+    upper_bound = max_x if node.axis == 0 else max_y
+
+    if lower_bound <= split_value:
+        result.extend(range_search(node.left, min_x, max_x, min_y, max_y))
+    if split_value <= upper_bound:
+        result.extend(range_search(node.right, min_x, max_x, min_y, max_y))
+    return result
+
+
+@dataclass(frozen=True, slots=True)
+class Interval:
+    start: float
+    end: float
+    payload: object | None = None
+
+    def __post_init__(self):
+        if self.end < self.start:
+            raise ValueError("Interval end must be greater than or equal to start.")
+
+    def overlaps(self, start: float, end: float) -> bool:
+        return not (self.end < start or end < self.start)
+
+    def contains(self, value: float) -> bool:
+        return self.start <= value <= self.end
+
+
+@dataclass(slots=True)
+class IntervalTreeNode:
+    center: float
+    intervals: list[Interval]
+    left: "IntervalTreeNode | None" = None
+    right: "IntervalTreeNode | None" = None
+
+
+class IntervalTree:
+    """Centered interval tree supporting stabbing and overlap queries."""
+
+    def __init__(self, intervals: Iterable[Interval | tuple[float, float] | tuple[float, float, object]] = ()):
+        normalized = [self._normalize_interval(interval) for interval in intervals]
+        self.root = self._build(normalized)
+
+    @staticmethod
+    def _normalize_interval(interval: Interval | tuple[float, float] | tuple[float, float, object]) -> Interval:
+        if isinstance(interval, Interval):
+            return interval
+        if len(interval) == 2:
+            start, end = interval
+            return Interval(start, end)
+        start, end, payload = interval
+        return Interval(start, end, payload)
+
+    def _build(self, intervals: list[Interval]) -> IntervalTreeNode | None:
+        if not intervals:
+            return None
+
+        endpoints = sorted([value for interval in intervals for value in (interval.start, interval.end)])
+        center = endpoints[len(endpoints) // 2]
+        overlapping = [interval for interval in intervals if interval.contains(center)]
+        left = [interval for interval in intervals if interval.end < center]
+        right = [interval for interval in intervals if interval.start > center]
+        overlapping.sort(key=lambda interval: (interval.start, interval.end))
+        return IntervalTreeNode(
+            center=center,
+            intervals=overlapping,
+            left=self._build(left),
+            right=self._build(right),
+        )
+
+    def query_point(self, value: float) -> list[Interval]:
+        result: list[Interval] = []
+        self._query_point(self.root, value, result)
+        return result
+
+    def _query_point(self, node: IntervalTreeNode | None, value: float, result: list[Interval]) -> None:
+        if node is None:
+            return
+        result.extend(interval for interval in node.intervals if interval.contains(value))
+        if value < node.center:
+            self._query_point(node.left, value, result)
+        elif value > node.center:
+            self._query_point(node.right, value, result)
+
+    def query_interval(self, start: float, end: float) -> list[Interval]:
+        if end < start:
+            raise ValueError("Query interval end must be greater than or equal to start.")
+        result: list[Interval] = []
+        self._query_interval(self.root, start, end, result)
+        return result
+
+    def _query_interval(
+        self, node: IntervalTreeNode | None, start: float, end: float, result: list[Interval]
+    ) -> None:
+        if node is None:
+            return
+        result.extend(interval for interval in node.intervals if interval.overlaps(start, end))
+        if start <= node.center:
+            self._query_interval(node.left, start, end, result)
+        if node.center <= end:
+            self._query_interval(node.right, start, end, result)
+
+
+class SegmentTree(Generic[T]):
+    """Array-backed segment tree with configurable range aggregation."""
+
+    def __init__(
+        self,
+        values: Sequence[T],
+        combine: Callable[[T, T], T] | None = None,
+        default: T | None = None,
+    ):
+        if not values:
+            raise ValueError("SegmentTree requires at least one value.")
+        if combine is None:
+            combine = lambda left, right: left + right
+        if default is None:
+            default = 0  # type: ignore[assignment]
+
+        self.combine = combine
+        self.default = default
+        self.size = len(values)
+        self.tree: list[T] = [self.default for _ in range(4 * self.size)]
+        self._build(1, 0, self.size - 1, list(values))
+
+    def _build(self, node: int, left: int, right: int, values: list[T]) -> None:
+        if left == right:
+            self.tree[node] = values[left]
+            return
+        mid = (left + right) // 2
+        self._build(node * 2, left, mid, values)
+        self._build(node * 2 + 1, mid + 1, right, values)
+        self.tree[node] = self.combine(self.tree[node * 2], self.tree[node * 2 + 1])
+
+    def update(self, index: int, value: T) -> None:
+        if not 0 <= index < self.size:
+            raise IndexError("SegmentTree index out of range.")
+        self._update(1, 0, self.size - 1, index, value)
+
+    def _update(self, node: int, left: int, right: int, index: int, value: T) -> None:
+        if left == right:
+            self.tree[node] = value
+            return
+        mid = (left + right) // 2
+        if index <= mid:
+            self._update(node * 2, left, mid, index, value)
+        else:
+            self._update(node * 2 + 1, mid + 1, right, index, value)
+        self.tree[node] = self.combine(self.tree[node * 2], self.tree[node * 2 + 1])
+
+    def range_query(self, query_left: int, query_right: int) -> T:
+        if not 0 <= query_left <= query_right < self.size:
+            raise IndexError("SegmentTree query range out of bounds.")
+        return self._range_query(1, 0, self.size - 1, query_left, query_right)
+
+    def _range_query(self, node: int, left: int, right: int, query_left: int, query_right: int) -> T:
+        if query_left <= left and right <= query_right:
+            return self.tree[node]
+        if right < query_left or query_right < left:
+            return self.default
+
+        mid = (left + right) // 2
+        left_value = self._range_query(node * 2, left, mid, query_left, query_right)
+        right_value = self._range_query(node * 2 + 1, mid + 1, right, query_left, query_right)
+        return self.combine(left_value, right_value)
+
+    @classmethod
+    def for_sum(cls, values: Sequence[float | int]) -> "SegmentTree[float | int]":
+        return cls(values, combine=lambda left, right: left + right, default=0)
+
+    @classmethod
+    def for_min(cls, values: Sequence[float | int]) -> "SegmentTree[float | int]":
+        return cls(values, combine=min, default=float("inf"))
+
+    @classmethod
+    def for_max(cls, values: Sequence[float | int]) -> "SegmentTree[float | int]":
+        return cls(values, combine=max, default=float("-inf"))
 
 
 class PointSimplifier:
@@ -204,10 +401,15 @@ class PointSimplifier:
 
 
 __all__ = [
+    "Interval",
+    "IntervalTree",
+    "IntervalTreeNode",
     "KDNode",
     "PointQuadtree",
     "PointSimplifier",
     "QuadNode",
+    "SegmentTree",
     "build_kdtree",
     "display_kdtree",
+    "range_search",
 ]
