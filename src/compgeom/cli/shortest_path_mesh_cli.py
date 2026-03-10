@@ -1,10 +1,11 @@
-import sys
+from __future__ import annotations
 
 from compgeom import Point
-from compgeom.path import shortest_path
+from ._shared import demo_mesh_lines
+from compgeom.algo.path import shortest_path
 
 
-def parse_mesh_query(lines):
+def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point, Point, Point]], Point | None, Point | None]:
     points_map = {}
     triangles = []
     reading_points = True
@@ -60,32 +61,27 @@ def parse_mesh_query(lines):
     return triangles, source, target
 
 
-def format_point(point):
+def format_point(point: Point) -> str:
     return f"({point.x:.6f}, {point.y:.6f})"
 
 
-def main():
-    mode = sys.argv[1].lower() if len(sys.argv) > 1 else "true"
-    triangles, source, target = parse_mesh_query(sys.stdin.readlines())
-    if not triangles:
-        print("No triangles found in input.")
-        return
-    if source is None or target is None:
-        print("Need source and target points in a Q section.")
-        return
+def main() -> int:
+    mode = "true"
+    triangles, source, target = parse_mesh_query([*demo_mesh_lines(), "Q\n", "0.1 0.1\n", "0.9 0.9\n"])
 
     try:
         path, total_length = shortest_path(triangles, source, target, mode=mode)
     except ValueError as exc:
         print(str(exc))
-        return
+        return 1
 
     print(f"Mode: {mode}")
     print(f"Path length: {total_length:.6f}")
     print(f"Path vertices: {len(path)}")
     for index, point in enumerate(path, start=1):
         print(f"  {index:3}: {format_point(point)}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

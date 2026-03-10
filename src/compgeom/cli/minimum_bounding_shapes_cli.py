@@ -1,32 +1,11 @@
-import sys
+from __future__ import annotations
 
-from compgeom import Point
 from compgeom import minimum_bounding_box, minimum_enclosing_circle
+from compgeom.cli._shared import demo_points, format_point
 
 
-def parse_points(lines):
-    points = []
-    for line in lines:
-        parts = line.strip().split()
-        if len(parts) < 2:
-            continue
-        try:
-            points.append(Point(float(parts[0]), float(parts[1]), len(points)))
-        except ValueError:
-            continue
-    return points
-
-
-def format_point(point):
-    return f"({point.x:.6f}, {point.y:.6f})"
-
-
-def main():
-    points = parse_points(sys.stdin.readlines())
-    if not points:
-        print("No points found in input.")
-        return
-
+def main() -> int:
+    points = demo_points()
     circle_center, circle_radius = minimum_enclosing_circle(points)
     box = minimum_bounding_box(points)
 
@@ -43,7 +22,8 @@ def main():
     print("  Corners:")
     for index, corner in enumerate(box["corners"], start=1):
         print(f"    {index}: {format_point(corner)}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

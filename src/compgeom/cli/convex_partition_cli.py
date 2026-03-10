@@ -1,18 +1,16 @@
-import sys
-from compgeom import Point
-from compgeom import hertel_mehlhorn
+from __future__ import annotations
 
-def main():
-    points = []
-    for line in sys.stdin:
-        parts = line.strip().split()
-        if len(parts) >= 2:
-            try: points.append(Point(float(parts[0]), float(parts[1]), len(points)))
-            except ValueError: continue
-    if len(points) < 3: return
+from compgeom import hertel_mehlhorn
+from compgeom.cli._shared import demo_polygon
+
+
+def main() -> int:
+    points = demo_polygon()
     partitions, polygon = hertel_mehlhorn(points)
     print(f"Polygon partitioned into {len(partitions)} convex pieces.")
-    for i, part in enumerate(partitions): print(f"Partition {i}: {sorted(part)}")
+    for index, partition in enumerate(partitions):
+        print(f"Partition {index}: {sorted(partition)}")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

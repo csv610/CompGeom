@@ -1,25 +1,17 @@
-import sys
-from compgeom import Point
-from compgeom import minkowski_sum
+from __future__ import annotations
 
-def main():
-    lines, idx = sys.stdin.readlines(), 0
-    if not lines: return
-    def read_poly():
-        nonlocal idx
-        while idx < len(lines) and not lines[idx].strip(): idx += 1
-        if idx >= len(lines): return None
-        try:
-            n = int(lines[idx].strip()); idx += 1; poly = []
-            for _ in range(n):
-                parts = lines[idx].split(); poly.append(Point(float(parts[0]), float(parts[1]))); idx += 1
-            return poly
-        except (ValueError, IndexError): return None
-    p1, p2 = read_poly(), read_poly()
-    if p1 and p2:
-        res = minkowski_sum(p1, p2)
-        print(f"Minkowski Sum result ({len(res)} vertices):")
-        for p in res: print(f"  ({p.x:.4f}, {p.y:.4f})")
+from compgeom import minkowski_sum
+from compgeom.cli._shared import demo_polygon
+
+
+def main() -> int:
+    polygon_a = demo_polygon()[:4]
+    polygon_b = [point.__class__(point.x * 0.5, point.y * 0.5) for point in demo_polygon()[2:6]]
+    result = minkowski_sum(polygon_a, polygon_b)
+    print(f"Minkowski Sum result ({len(result)} vertices):")
+    for point in result:
+        print(f"  ({point.x:.4f}, {point.y:.4f})")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

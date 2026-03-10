@@ -1,20 +1,11 @@
-import sys
+from __future__ import annotations
 
-from compgeom import Point
-from compgeom.points_sampling import PointSampler
+from compgeom.algo.points_sampling import PointSampler
 
 
-def main():
-    lines = [line.strip() for line in sys.stdin if line.strip()]
-    if not lines:
-        return
-
-    try:
-        width, height = map(float, lines[0].split()[:2])
-        n_points = int(lines[1]) if len(lines) > 1 else 100
-    except (ValueError, IndexError):
-        print("Invalid input.")
-        return
+def main() -> int:
+    width, height = 6.0, 4.0
+    n_points = 100
 
     points = PointSampler.in_rectangle(width, height, n_points)
     print(
@@ -23,7 +14,8 @@ def main():
     )
     for point in points:
         print(f"  ({point.x:.6f}, {point.y:.6f})")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

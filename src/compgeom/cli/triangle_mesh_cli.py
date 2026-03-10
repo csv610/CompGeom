@@ -1,26 +1,21 @@
-import sys
-from compgeom import Point
-from compgeom import triangulate
+from __future__ import annotations
 
-def main():
-    points = []
-    lines = sys.stdin.readlines()
-    if not lines: return
-    for line in lines:
-        parts = line.split()
-        if len(parts) >= 2:
-            try:
-                x, y = float(parts[0]), float(parts[1])
-                points.append(Point(x, y, len(points)))
-            except ValueError: continue
+from compgeom.cli._shared import demo_points
+from compgeom.mesh.delaunay_triangulation import triangulate
+
+
+def main() -> int:
+    points = demo_points()
     triangles, skipped = triangulate(points)
     if skipped:
         print("Skipped Points:")
-        for p, reason in skipped: print(f"  {p}: {reason}")
+        for point, reason in skipped:
+            print(f"  {point}: {reason}")
     print(f"\nFinal Mesh: {len(triangles)} active triangles constructed.")
-    for i, (a, b, c) in enumerate(triangles):
+    for index, (a, b, c) in enumerate(triangles):
         ids = sorted([a.id, b.id, c.id])
-        print(f"Triangle {i:3}: {ids[0]:3}, {ids[1]:3}, {ids[2]:3}")
+        print(f"Triangle {index:3}: {ids[0]:3}, {ids[1]:3}, {ids[2]:3}")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

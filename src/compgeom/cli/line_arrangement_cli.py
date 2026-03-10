@@ -1,8 +1,6 @@
 import math
 
 from compgeom import EPSILON, Point, cross_product, is_on_segment, length, sub
-from ._shared import read_stdin_lines
-
 
 def point_key(point: Point) -> tuple[int, int]:
     return (round(point.x / EPSILON), round(point.y / EPSILON))
@@ -207,11 +205,12 @@ def format_point(point: Point) -> str:
 
 
 def main() -> int:
-    try:
-        segments = parse_segments(read_stdin_lines())
-    except ValueError as exc:
-        print(f"Invalid input: {exc}")
-        return 1
+    segments = [
+        (Point(0.0, 0.0), Point(1.0, 0.0)),
+        (Point(1.0, 0.0), Point(1.0, 1.0)),
+        (Point(1.0, 1.0), Point(0.0, 1.0)),
+        (Point(0.0, 1.0), Point(0.0, 0.0)),
+    ]
 
     intersection_points, split, polygons = analyze_arrangement(segments)
 

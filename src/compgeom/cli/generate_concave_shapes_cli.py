@@ -9,9 +9,12 @@ def main():
     parser.add_argument("--n", type=int, default=15, help="Number of vertices")
     parser.add_argument("--output", default="generated_polygon.png", help="Output visualization file")
     
+    parser.add_argument("--print", action="store_true", help="Print polygon vertices to stdout")
+    
     args = parser.parse_args()
     
-    print(f"Generating random {args.type} polygon with {args.n} vertices...")
+    if not args.print:
+        print(f"Generating random {args.type} polygon with {args.n} vertices...")
     
     if args.type == "convex":
         poly = PolygonGenerator.convex(args.n)
@@ -20,6 +23,11 @@ def main():
     else:
         poly = PolygonGenerator.star_shaped(args.n)
         
+    if args.print:
+        for p in poly:
+            print(f"{p.x} {p.y}")
+        return
+
     print(f"Result: Polygon with {len(poly)} vertices.")
 
     # Visualize

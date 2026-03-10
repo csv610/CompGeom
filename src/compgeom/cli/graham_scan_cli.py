@@ -1,19 +1,16 @@
-import sys
-from compgeom import Point
-from compgeom import graham_scan
+from __future__ import annotations
 
-def main():
-    points = []
-    for line in sys.stdin:
-        parts = line.strip().split()
-        if len(parts) >= 2:
-            try: points.append(Point(float(parts[0]), float(parts[1]), len(points)))
-            except ValueError: continue
-    if not points:
-        print("No valid points provided."); return
+from compgeom import graham_scan
+from compgeom.cli._shared import demo_points
+
+
+def main() -> int:
+    points = demo_points()
     hull = graham_scan(points)
     print(f"Convex Hull (Graham Scan) has {len(hull)} vertices:")
-    for p in hull: print(f"  ({p.x:.4f}, {p.y:.4f})")
+    for point in hull:
+        print(f"  ({point.x:.4f}, {point.y:.4f})")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

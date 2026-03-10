@@ -1,8 +1,9 @@
-import sys
+from __future__ import annotations
 
 from compgeom import EPSILON, Point, length, sub
-from compgeom.cli.line_arrangement_cli import analyze_arrangement
 from compgeom import is_point_in_polygon
+from compgeom.cli._shared import demo_polygon
+from compgeom.cli.line_arrangement_cli import analyze_arrangement
 
 
 def signed_area(polygon):
@@ -355,22 +356,15 @@ def format_point(point):
     return f"({point.x:.6f}, {point.y:.6f})"
 
 
-def main():
-    lines = sys.stdin.readlines()
-    if not lines:
-        return
-
-    operation = lines[0].strip().lower()
+def main() -> int:
+    operation = "union"
+    poly1 = demo_polygon()[:4]
+    poly2 = [Point(point.x + 1.5, point.y + 0.5) for point in demo_polygon()[2:6]]
     try:
-        poly1, index = parse_polygon(lines, 1)
-        poly2, _ = parse_polygon(lines, index)
-        if not poly1 or not poly2:
-            print("Invalid input.")
-            return
         result = apply_boolean_operation(poly1, poly2, operation)
     except (ValueError, IndexError):
         print("Invalid input.")
-        return
+        return 1
 
     print(f"Operation: {operation}")
     print(f"Result regions: {len(result)}")
@@ -380,7 +374,8 @@ def main():
         for hole_idx, hole in enumerate(region["holes"], start=1):
             hole_vertices = ", ".join(format_point(point) for point in hole)
             print(f"  hole {hole_idx}: {hole_vertices}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

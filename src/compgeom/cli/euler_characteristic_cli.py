@@ -1,10 +1,10 @@
-import sys
+from __future__ import annotations
 
-from compgeom import Point
 from compgeom import euler_characteristic
+from compgeom.cli._shared import demo_mesh_lines, parse_point_fields
 
 
-def parse_mesh(lines):
+def parse_mesh(lines: list[str]) -> list[tuple[object, object, object]]:
     points_map = {}
     triangles = []
     reading_points = True
@@ -20,20 +20,15 @@ def parse_mesh(lines):
             continue
 
         if reading_points:
-            if len(parts) < 2:
-                continue
-            try:
-                if len(parts) >= 3:
-                    point_id = int(parts[0])
-                    x = float(parts[1])
-                    y = float(parts[2])
-                else:
-                    point_id = len(points_map)
-                    x = float(parts[0])
-                    y = float(parts[1])
-                points_map[point_id] = Point(x, y, point_id)
-            except ValueError:
+            point = parse_point_fields(
+                parts,
+                point_id=len(points_map),
+                with_id=len(parts) >= 3,
+            )
+            if point is None:
                 reading_points = False
+            else:
+                points_map[point.id] = point
             continue
 
         try:
@@ -46,19 +41,16 @@ def parse_mesh(lines):
     return triangles
 
 
-def main():
-    triangles = parse_mesh(sys.stdin.readlines())
-    if not triangles:
-        print("No triangles found in input.")
-        return
-
+def main() -> int:
+    triangles = parse_mesh(demo_mesh_lines())
     result = euler_characteristic(triangles)
     print("Mesh Topology:")
     print(f"  Vertices: {result['vertices']}")
     print(f"  Edges:    {result['edges']}")
     print(f"  Faces:    {result['faces']}")
     print(f"  Euler characteristic: {result['euler_characteristic']}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

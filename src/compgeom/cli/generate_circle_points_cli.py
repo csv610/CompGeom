@@ -1,26 +1,20 @@
-import sys
+from __future__ import annotations
 
-from compgeom import Point
-from compgeom.points_sampling import PointSampler
+from compgeom.cli._shared import demo_points
+from compgeom.algo.points_sampling import PointSampler
 
 
-def main():
-    lines = [line.strip() for line in sys.stdin if line.strip()]
-    if not lines:
-        return
+def main() -> int:
+    center = demo_points()[0]
+    x, y, radius = center.x, center.y, 2.5
+    n_points = 100
 
-    try:
-        x, y, radius = map(float, lines[0].split()[:3])
-        n_points = int(lines[1]) if len(lines) > 1 else 100
-    except (ValueError, IndexError):
-        print("Invalid input.")
-        return
-
-    points = PointSampler.in_circle(Point(x, y), radius, n_points)
+    points = PointSampler.in_circle(center, radius, n_points)
     print(f"Generated {len(points)} points in circle centered at ({x:.4f}, {y:.4f}) with radius {radius:.4f}:")
     for point in points:
         print(f"  ({point.x:.6f}, {point.y:.6f})")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

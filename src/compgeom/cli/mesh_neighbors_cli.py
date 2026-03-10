@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from compgeom import Point
 from compgeom import mesh_neighbors
-from ._shared import read_stdin_lines
+from ._shared import demo_mesh_lines, parse_point_fields
 
 
 def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point, Point, Point]], int | None, int | None]:
@@ -36,20 +36,10 @@ def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point, Point, Point]]
             continue
 
         if reading_points:
-            if len(parts) < 2:
+            point = parse_point_fields(parts, point_id=len(points_map), with_id=len(parts) >= 3)
+            if point is None:
                 continue
-            try:
-                if len(parts) >= 3:
-                    point_id = int(parts[0])
-                    x = float(parts[1])
-                    y = float(parts[2])
-                else:
-                    point_id = len(points_map)
-                    x = float(parts[0])
-                    y = float(parts[1])
-                points_map[point_id] = Point(x, y, point_id)
-            except ValueError:
-                continue
+            points_map[point.id] = point
             continue
 
         try:
@@ -63,10 +53,8 @@ def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point, Point, Point]]
 
 
 def main() -> int:
-    triangles, query_vertex, query_triangle = parse_mesh_query(read_stdin_lines())
-    if not triangles:
-        print("No triangles found in input.")
-        return 1
+    lines = [*demo_mesh_lines(), "P 1\n", "F 0\n"]
+    triangles, query_vertex, query_triangle = parse_mesh_query(lines)
 
     neighbors = mesh_neighbors(triangles)
 

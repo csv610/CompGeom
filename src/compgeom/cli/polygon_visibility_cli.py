@@ -4,7 +4,7 @@ import math
 
 from compgeom import EPSILON, Point, cross_product, is_on_segment
 from compgeom import is_point_in_polygon
-from ._shared import print_lines, read_stdin_lines
+from ._shared import print_lines
 
 
 def _dot(a: Point, b: Point) -> float:
@@ -204,18 +204,17 @@ def format_point(point: Point) -> str:
 
 
 def main() -> int:
-    try:
-        query, polygon = parse_input(read_stdin_lines())
-    except ValueError as exc:
-        print_lines(
-            [
-                f"Invalid input: {exc}",
-                "Input format:",
-                "  line 1: query_x query_y",
-                "  line 2+: polygon vertices x y",
-            ]
-        )
-        return 1
+    query = Point(1.0, 2.5)
+    polygon = [
+        Point(0.0, 0.0),
+        Point(5.0, 0.0),
+        Point(5.0, 1.0),
+        Point(2.0, 1.0),
+        Point(2.0, 4.0),
+        Point(5.0, 4.0),
+        Point(5.0, 5.0),
+        Point(0.0, 5.0),
+    ]
 
     segments = visible_boundary_segments(query, polygon)
     if not segments:

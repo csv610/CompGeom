@@ -8,6 +8,9 @@ from .delaunay_triangulation import (
     DynamicDelaunay,
     MeshTriangle,
     Triangle,
+    build_topology,
+    constrained_delaunay_triangulation,
+    triangulate,
 )
 from .mesh import (
     HexMesh,
@@ -40,6 +43,8 @@ __all__ = [
     "DelaunayMesher",
     "DynamicDelaunay",
     "HexMesh",
+    "build_topology",
+    "constrained_delaunay_triangulation",
     "Mesh",
     "MeshColoring",
     "MeshIO",
@@ -64,5 +69,6 @@ __all__ = [
     "mesh_neighbors",
     "mesh_vertices",
     "triangle_neighbors",
+    "triangulate",
     "vertex_neighbors",
 ]

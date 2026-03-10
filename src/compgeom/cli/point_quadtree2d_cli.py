@@ -1,20 +1,17 @@
-import sys
-from compgeom import Point
-from compgeom import PointQuadtree
+from __future__ import annotations
 
-def main():
-    points = []
-    for line in sys.stdin:
-        parts = line.strip().split()
-        if len(parts) >= 2:
-            try: points.append(Point(float(parts[0]), float(parts[1]), len(points)))
-            except ValueError: continue
-    if not points:
-        print("No valid points provided."); return
+from compgeom import PointQuadtree
+from compgeom.cli._shared import demo_points
+
+
+def main() -> int:
+    points = demo_points()
     qt = PointQuadtree()
-    for p in points: qt.insert(p)
+    for point in points:
+        qt.insert(point)
     print(f"Point Quadtree built with {qt.count} points.\n")
     qt.display()
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

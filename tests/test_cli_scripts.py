@@ -67,6 +67,19 @@ class CliRegressionTests(unittest.TestCase):
         self.assertIn("(2.666667, 0.000000)", completed.stdout)
         self.assertIn("(2.000000, 1.000000) -> (2.000000, 4.000000)", completed.stdout)
 
+    def test_generated_demo_commands_run_without_stdin(self):
+        closest_pair = self.run_script("closest_pair.py", "")
+        self.assertEqual(closest_pair.returncode, 0, msg=closest_pair.stderr)
+        self.assertIn("Closest Pair:", closest_pair.stdout)
+
+        line_arrangement = self.run_script("line_arrangement.py", "")
+        self.assertEqual(line_arrangement.returncode, 0, msg=line_arrangement.stderr)
+        self.assertIn("(1.000000, 1.000000)", line_arrangement.stdout)
+
+        polygon_visibility = self.run_script("polygon_visibility.py", "")
+        self.assertEqual(polygon_visibility.returncode, 0, msg=polygon_visibility.stderr)
+        self.assertIn("(2.666667, 0.000000)", polygon_visibility.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

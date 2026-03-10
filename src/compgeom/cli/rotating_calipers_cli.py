@@ -1,17 +1,14 @@
-import sys
-from compgeom import Point
-from compgeom import farthest_pair
+from __future__ import annotations
 
-def main():
-    points = []
-    for line in sys.stdin:
-        parts = line.strip().split()
-        if len(parts) >= 2:
-            try: points.append(Point(float(parts[0]), float(parts[1]), len(points)))
-            except ValueError: continue
-    if not points: return
+from compgeom import farthest_pair
+from compgeom.cli._shared import demo_points
+
+
+def main() -> int:
+    points = demo_points()
     dist, (p1, p2) = farthest_pair(points)
     print(f"Farthest Pair (Diameter): {p1} and {p2}\nMaximum Distance:         {dist:.6f}")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

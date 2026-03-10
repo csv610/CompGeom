@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import math
-import sys
 from dataclasses import dataclass
 
 from compgeom import EPSILON, Point
 from compgeom import is_point_in_polygon
+from compgeom.cli._shared import demo_polygon
 
 
 CANVAS_WIDTH = 900
@@ -271,26 +271,21 @@ class ReflectionViewer:
         self.root.mainloop()
 
 
-def main() -> None:
-    try:
-        origin, direction, polygon = parse_input(sys.stdin.readlines())
-    except ValueError as exc:
-        print(f"Invalid input: {exc}")
-        print("Input format:")
-        print("  line 1: origin_x origin_y")
-        print("  line 2: direction_x direction_y")
-        print("  line 3+: polygon vertices x y")
-        return
+def main() -> int:
+    origin = Point(2.0, 2.0)
+    direction = Point(1.0, 0.3)
+    polygon = demo_polygon()
 
     try:
         viewer = ReflectionViewer(polygon, origin, direction)
     except ModuleNotFoundError as exc:
         print(f"Unable to start viewer: {exc}")
         print("This script requires tkinter support in the local Python installation.")
-        return
+        return 1
 
     viewer.run()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
