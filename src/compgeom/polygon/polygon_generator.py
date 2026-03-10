@@ -7,10 +7,8 @@ import random
 from typing import List, Tuple
 
 from ..geo_math.geometry import Point
-from .polygon import (
-    ConvexHull,
-    generate_simple_polygon,
-)
+from .convex_hull import ConvexHull
+from .polygon import generate_simple_polygon
 
 
 class PolygonGenerator:

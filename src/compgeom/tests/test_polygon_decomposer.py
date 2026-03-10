@@ -29,8 +29,10 @@ def test_polygon_decomposer_returns_polygon_mesh_objects():
     polygon_points = [Point(0, 0), Point(4, 0), Point(4, 1), Point(2, 2), Point(4, 4), Point(0, 4)]
     polygon = Polygon(polygon_points)
 
-    tri_indices_expected, tri_vertices_expected = polygon.triangulate()
-    diag_triangles_expected, diagonals_expected, diag_vertices_expected = polygon.triangulation_with_diagonals()
+    tri_indices_expected, tri_vertices_expected = PolygonDecomposer.triangulate_indices(polygon_points)
+    diag_triangles_expected, diagonals_expected, diag_vertices_expected = (
+        PolygonDecomposer.triangulation_with_diagonals_indices(polygon_points)
+    )
     hm_partitions_expected, hm_vertices_expected = polygon.hertel_mehlhorn()
 
     triangulated = PolygonDecomposer.triangulate(polygon_points)

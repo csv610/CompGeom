@@ -2,31 +2,14 @@
 
 from __future__ import annotations
 
-from .polygon import (
-    ConvexHull,
-    Polygon,
-    PolygonProperties,
-    generate_points_in_triangle,
-    generate_random_convex_polygon,
-    generate_simple_polygon,
-    get_convex_diameter,
-    get_polygon_properties,
-    get_reflex_vertices,
-    get_triangulation_with_diagonals,
-    graham_scan,
-    hertel_mehlhorn,
-    is_convex,
-    is_ear,
-    is_point_in_polygon,
-    monotone_chain,
-    polygon_kernel,
-    shortest_path_in_polygon,
-    triangulate_polygon,
-    triangulate_polygon_with_holes,
-    visibility_polygon,
-)
+from .convex_hull import ConvexHull, graham_scan, monotone_chain
+from .polygon import Polygon, PolygonProperties, generate_points_in_triangle, is_ear, is_point_in_polygon
+from .polygon_decomposer import PolygonDecomposer, get_triangulation_with_diagonals, hertel_mehlhorn, triangulate_polygon, triangulate_polygon_with_holes
+from .polygon_factory import generate_random_convex_polygon, generate_simple_polygon
+from .polygon_metrics import get_convex_diameter, get_polygon_properties, get_reflex_vertices, is_convex
+from .polygon_path import shortest_path_in_polygon
+from .polygon_visibility import polygon_kernel, visibility_polygon
 from .polygon_guards import PolygonGuards, guard_polygon, solve_art_gallery
-from .polygon_decomposer import PolygonDecomposer
 from .polygon_generator import PolygonGenerator
 from .circle_packing import CirclePacker
 from .polygon_smoothing import PolygonalMeanCurvatureFlow

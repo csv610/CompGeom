@@ -7,6 +7,7 @@ from compgeom.graphics.geo_plot import GeomPlot
 from compgeom.polygon import (
     ConvexHull,
     Polygon,
+    PolygonDecomposer,
     PolygonGuards,
     PolygonGenerator,
     PolygonProperties,
@@ -57,8 +58,10 @@ def test_polygon_contains_point_and_wrapper():
 def test_polygon_triangulate_and_diagonals():
     polygon = Polygon([Point(0, 0), Point(2, 0), Point(3, 1), Point(1, 3), Point(0, 2)])
 
-    triangles, ordered_vertices = polygon.triangulate()
-    triangles2, diagonals, ordered_vertices2 = polygon.triangulation_with_diagonals()
+    triangles, ordered_vertices = PolygonDecomposer.triangulate_indices(polygon.as_list())
+    triangles2, diagonals, ordered_vertices2 = PolygonDecomposer.triangulation_with_diagonals_indices(
+        polygon.as_list()
+    )
 
     assert len(triangles) == len(polygon) - 2
     assert len(triangles2) == len(polygon) - 2
@@ -118,13 +121,15 @@ def test_triangulate_polygon_with_holes_returns_non_empty_result():
     outer = [Point(0, 0), Point(6, 0), Point(6, 6), Point(0, 6)]
     hole = [Point(2, 2), Point(2, 4), Point(4, 4), Point(4, 2)]
 
-    triangles, merged = Polygon(outer).triangulate_with_holes([hole])
+    triangles = PolygonDecomposer.triangulate_with_holes(outer, [hole])
     wrapper_triangles, wrapper_merged = triangulate_polygon_with_holes(outer, [hole])
 
-    assert triangles
-    assert merged
-    assert wrapper_triangles == triangles
-    assert wrapper_merged == merged
+    assert triangles.faces
+    assert triangles.vertices
+    assert set(wrapper_merged) == set(triangles.vertices)
+    assert {frozenset(triangle) for triangle in wrapper_triangles} == {
+        frozenset(triangles.vertices[index] for index in face) for face in triangles.faces
+    }
 
 
 def test_art_gallery_and_hertel_mehlhorn_return_expected_shapes():
@@ -200,6 +205,14 @@ def test_polygon_random_generators_return_polygon_compatible_shapes():
     assert len(PolygonGenerator.convex(8)) >= 3
     assert len(generate_random_convex_polygon(8)) >= 3
     assert len(generate_simple_polygon(8)) == 8
+
+
+def test_polygon_classmethod_generators_preserve_subclass_type():
+    class PolygonChild(Polygon):
+        pass
+
+    assert isinstance(PolygonChild.from_random_convex(6), PolygonChild)
+    assert isinstance(PolygonChild.from_simple_random(6), PolygonChild)
 
 
 def test_convex_hull_quick_hull_matches_other_hull_algorithms():
