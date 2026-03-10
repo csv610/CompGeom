@@ -1,4 +1,4 @@
-"""Triangulation, Delaunay, and Voronoi algorithms."""
+"""Triangulation and Voronoi algorithms."""
 
 from __future__ import annotations
 
@@ -16,13 +16,6 @@ from .delaunay_triangulation import (
     DynamicDelaunay,
     MeshTriangle,
     Triangle,
-    build_topology,
-    constrained_delaunay_triangulation,
-    delaunay_flip,
-    get_nondelaunay_triangles,
-    is_delaunay,
-    triangulate,
-    triangulate_divide_and_conquer,
 )
 
 
@@ -80,22 +73,6 @@ class VoronoiDiagram:
         ]
 
 
-def get_voronoi_cells(points: list[Point], boundary_polygon: list[Point]):
-    """Legacy wrapper for VoronoiDiagram.compute()."""
-    vd = VoronoiDiagram(points, boundary_polygon)
-    return vd.compute()
-
-
-def get_square_boundary(size=100, center=(50, 50)):
-    """Legacy wrapper for VoronoiDiagram.get_square_boundary()."""
-    return VoronoiDiagram.get_square_boundary(size, center)
-
-
-def get_circle_boundary(radius=50, center=(50, 50), n_segments=64):
-    """Legacy wrapper for VoronoiDiagram.get_circle_boundary()."""
-    return VoronoiDiagram.get_circle_boundary(radius, center, n_segments)
-
-
 __all__ = [
     "DTriangle",
     "DelaunayMesher",
@@ -103,14 +80,4 @@ __all__ = [
     "MeshTriangle",
     "Triangle",
     "VoronoiDiagram",
-    "constrained_delaunay_triangulation",
-    "build_topology",
-    "delaunay_flip",
-    "get_circle_boundary",
-    "get_nondelaunay_triangles",
-    "get_square_boundary",
-    "get_voronoi_cells",
-    "is_delaunay",
-    "triangulate",
-    "triangulate_divide_and_conquer",
 ]
