@@ -205,9 +205,9 @@ class TriangleMesh(Mesh):
 
     @classmethod
     def from_file(cls, filename: str) -> TriangleMesh:
-        """Creates a TriangleMesh from an OBJ file."""
-        from .mesh_io import OBJFileHandler
-        vertices, faces = OBJFileHandler.read(filename)
+        """Creates a TriangleMesh from a file (OBJ, OFF, STL)."""
+        from .mesh_io import MeshIO, OBJFileHandler
+        vertices, faces = MeshIO.read(filename)
         # Ensure triangles
         tri_faces = OBJFileHandler.triangulate_faces(faces)
         return cls(vertices, tri_faces)
@@ -337,9 +337,9 @@ class QuadMesh(Mesh):
 
     @classmethod
     def from_file(cls, filename: str) -> QuadMesh:
-        """Creates a QuadMesh from an OBJ file."""
-        from .mesh_io import OBJFileHandler
-        vertices, faces = OBJFileHandler.read(filename)
+        """Creates a QuadMesh from a file (OBJ, OFF, STL)."""
+        from .mesh_io import MeshIO
+        vertices, faces = MeshIO.read(filename)
         # Assumes faces are quads
         return cls(vertices, faces)
 

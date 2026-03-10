@@ -24,7 +24,7 @@ from .mesh import (
     vertex_neighbors,
 )
 from .mesh_coloring import MeshColoring
-from .mesh_io import OBJFileHandler
+from .mesh_io import MeshIO, OBJFileHandler, OFFFileHandler, STLFileHandler
 from .mesh_refinement import TriMeshRefiner
 from .mesh_reordering import CuthillMcKee
 from .mesh_transfer import MeshTransfer
@@ -40,11 +40,14 @@ __all__ = [
     "HexMesh",
     "Mesh",
     "MeshColoring",
+    "MeshIO",
     "MeshTriangle",
     "MeshTopology",
     "MeshTransfer",
     "MeshVoxelizer",
     "OBJFileHandler",
+    "OFFFileHandler",
+    "STLFileHandler",
     "QuadMesh",
     "TetMesh",
     "TriMeshRefiner",
