@@ -18,6 +18,9 @@ from ..geo_math.geometry import (
 )
 
 
+from .delaunay_mesh_incremental import triangulate_incremental_fast
+
+
 def _get_angle(p1: Point, p2: Point) -> float:
     return math.atan2(p2.y - p1.y, p2.x - p1.x)
 
@@ -227,7 +230,7 @@ class DelaunayMesher:
         """
         skipped = []
         if algorithm == "incremental":
-            triangles, skipped = triangulate(points)
+            triangles, skipped = triangulate_incremental_fast(points)
         elif algorithm == "divide_and_conquer":
             triangles, skipped = triangulate_divide_and_conquer(points)
         elif algorithm == "flip":
@@ -340,6 +343,11 @@ class DelaunayMesher:
         return get_nondelaunay_triangles(mesh)
 
 
+def triangulate(points: list[Point], algorithm: str = "incremental") -> "TriangleMesh":
+    """Standalone shortcut for DelaunayMesher.triangulate."""
+    return DelaunayMesher.triangulate(points, algorithm)
+
+
 class Triangle:
     def __init__(self, v1: Point, v2: Point, v3: Point):
         self.vertices = (v1, v2, v3)
@@ -369,55 +377,6 @@ def _create_super_triangle(points: list[Point]) -> tuple[Point, Point, Point]:
         Point(min_x - delta, min_y - delta, id=-2),
         Point(max_x + delta, min_y - delta, id=-3),
     )
-
-
-def triangulate(points: list[Point]):
-    if not points:
-        return [], []
-
-    super_triangle = _create_super_triangle(points)
-    super_triangle_vertices = set(super_triangle)
-    skipped_points = []
-    existing_points = set()
-    triangles = [super_triangle]
-
-    def make_ccw(a: Point, b: Point, c: Point):
-        return (a, b, c) if cross_product(a, b, c) >= 0 else (a, c, b)
-
-    for point in points:
-        if point in existing_points or any(point == vertex for vertex in super_triangle_vertices):
-            skipped_points.append((point, "Duplicate/Coincident Point"))
-            continue
-
-        bad_triangles = [triangle for triangle in triangles if in_circle(*triangle, point)]
-        if not bad_triangles:
-            containing = [triangle for triangle in triangles if contains_point(Triangle(*triangle), point)]
-            if not containing:
-                skipped_points.append((point, "Outside super-triangle (Numerical Error)"))
-                continue
-            bad_triangles = containing
-
-        edge_counts = {}
-        directed_edges = {}
-        for triangle in bad_triangles:
-            a, b, c = triangle
-            for edge in ((a, b), (b, c), (c, a)):
-                key = frozenset(edge)
-                edge_counts[key] = edge_counts.get(key, 0) + 1
-                directed_edges[key] = edge
-
-        triangles = [triangle for triangle in triangles if triangle not in bad_triangles]
-        for key, count in edge_counts.items():
-            if count != 1:
-                continue
-            a, b = directed_edges[key]
-            triangles.append(make_ccw(a, b, point))
-        existing_points.add(point)
-
-    final_triangles = [
-        triangle for triangle in triangles if not any(vertex in super_triangle_vertices for vertex in triangle)
-    ]
-    return final_triangles, skipped_points
 
 
 def triangulate_naive(points: list[Point]):
@@ -599,7 +558,7 @@ class DynamicDelaunay:
                 continue
             for neighbor_index in range(3):
                 if old_neighbor.n[neighbor_index] == triangle:
-                    old_neighbor.n[neighbor_index] = [t0, t1, t2][index]
+                    old_neighbor.n[neighbor_index] = [t1, t2, t0][index]
                     break
 
         self.triangles.remove(triangle)
@@ -641,7 +600,7 @@ class DynamicDelaunay:
                     n_db.n[probe] = triangle
         if n_ac:
             for probe in range(3):
-                if n_ac.v[(probe + 1) % 3] == c and n_ac.v[(probe + 2) % 3] == a:
+                if n_ac.v[(probe + 1) % 3] == a and n_ac.v[(probe + 2) % 3] == c:
                     n_ac.n[probe] = neighbor
 
         self.legalize_edge(point, triangle, 0)

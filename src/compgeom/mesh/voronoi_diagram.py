@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Iterable, Union
 
 from ..geo_math.geometry import (
     Point,
@@ -19,11 +20,30 @@ from .delaunay_triangulation import (
     build_topology,
     triangulate,
 )
+from .delaunay_mesh_incremental import IncrementalDelaunayMesher, IncrementalTriangle
+
+
+def get_circumcenter(p1: Point, p2: Point, p3: Point) -> Point:
+    """Calculates the circumcenter of a triangle."""
+    x1, y1 = p1.x, p1.y
+    x2, y2 = p2.x, p2.y
+    x3, y3 = p3.x, p3.y
+    
+    # Using the formula for circumcenter of a triangle
+    d = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
+    if abs(d) < 1e-12:
+        # Collinear fallback: centroid
+        return Point((x1 + x2 + x3) / 3, (y1 + y2 + y3) / 3)
+        
+    ux = ((x1**2 + y1**2) * (y2 - y3) + (x2**2 + y2**2) * (y3 - y1) + (x3**2 + y3**2) * (y1 - y2)) / d
+    uy = ((x1**2 + y1**2) * (x3 - x2) + (x2**2 + y2**2) * (x1 - x3) + (x3**2 + y3**2) * (x2 - x1)) / d
+    return Point(ux, uy)
 
 
 class VoronoiDiagram:
     """
     Computes and stores a Voronoi Diagram for a set of points within a boundary.
+    Exploits duality with Delaunay Triangulation for O(N log N) performance.
     """
 
     def __init__(self):
@@ -33,8 +53,7 @@ class VoronoiDiagram:
 
     def compute(self, points: list[Point], boundary_type: str = "square") -> "PolygonMesh":
         """
-        Computes the Voronoi cells using a clipping algorithm.
-        The boundary is used to trim infinite rays from the Voronoi cells.
+        Computes the Voronoi cells using the Delaunay Dual property.
         Returns a PolygonMesh object.
         """
         from .mesh import PolygonMesh
@@ -42,6 +61,8 @@ class VoronoiDiagram:
         if not points:
             return PolygonMesh([], [])
 
+        self.points = points
+        
         # 1. Determine bounding box and generate boundary
         min_x = min(p.x for p in points)
         max_x = max(p.x for p in points)
@@ -53,19 +74,21 @@ class VoronoiDiagram:
         cx, cy = (min_x + max_x) / 2, (min_y + max_y) / 2
         max_dim = max(width, height, 1.0)
         
-        # User boundary: used for the final trim
         size = max_dim * 1.5
         if boundary_type == "circle":
             self.boundary = self.get_circle_boundary(radius=size / 2, center=(cx, cy))
         else:
             self.boundary = self.get_square_boundary(size=size, center=(cx, cy))
 
-        # 2. Infinite box to represent "rays" during bisector clipping
-        # This keeps the "algorithm" logic separate from the user boundary.
-        inf_size = max_dim * 1e6
-        inf_box = self.get_square_boundary(size=inf_size, center=(cx, cy))
+        # 2. Compute Delaunay Triangulation (Stateful)
+        mesher = IncrementalDelaunayMesher()
+        mesher.triangulate(points)
         
-        self.points = points
+        # 3. Precompute circumcenters for all active triangles
+        tri_to_cc: dict[IncrementalTriangle, Point] = {}
+        for tri in mesher.active_triangles:
+            tri_to_cc[tri] = get_circumcenter(*tri.vertices)
+
         self.cells = []
         unique_vertices = []
         vertex_to_idx = {}
@@ -78,34 +101,162 @@ class VoronoiDiagram:
             return vertex_to_idx[key]
 
         face_indices = []
-        for point in self.points:
-            # Start with the infinite cell (simulating rays)
-            cell = list(inf_box)
+        
+        # 4. For each point, find the star of triangles and their circumcenters
+        for site in self.points:
+            star = mesher.vertex_to_triangles.get(site)
+            if not star:
+                continue
             
-            # Clip by all perpendicular bisectors (The core algorithm)
-            for other in self.points:
-                if point == other:
-                    continue
-                midpoint = Point((point.x + other.x) / 2, (point.y + other.y) / 2)
-                direction = sub(other, point)
-                bisector_end = Point(midpoint.x - direction.y, midpoint.y + direction.x)
-                
-                # Keep the side containing the site 'point'
-                if cross_product(midpoint, bisector_end, point) < 0:
-                    cell = clip_polygon(cell, bisector_end, midpoint)
-                else:
-                    cell = clip_polygon(cell, midpoint, bisector_end)
+            sorted_star = self._sort_star(site, star)
+            cell = [tri_to_cc[tri] for tri in sorted_star]
             
-            # Use the boundary to clip the resulting Voronoi rays
+            # Clip by the boundary
             for i in range(len(self.boundary)):
                 p1, p2 = self.boundary[i], self.boundary[(i + 1) % len(self.boundary)]
                 cell = clip_polygon(cell, p1, p2)
             
-            self.cells.append((point, cell))
+            self.cells.append((site, cell))
             if cell:
                 face_indices.append(tuple(get_v_idx(p) for p in cell))
         
         return PolygonMesh(unique_vertices, face_indices)
+
+    def verify(self) -> bool:
+        """
+        Verifies the correctness of the Voronoi Diagram.
+        Checks:
+        1. Each site is inside its cell.
+        2. Each cell is convex.
+        3. Vertices of the cell are closer to their defining site than to others.
+        """
+        from ..geo_math.geometry import orientation_sign, length_sq, sub
+        
+        if not self.cells:
+            return True
+
+        for site, cell in self.cells:
+            if not cell: continue
+            
+            n = len(cell)
+            # 1. Site containment & 2. Convexity
+            # We assume CCW orientation for the cell.
+            for i in range(n):
+                p1, p2 = cell[i], cell[(i + 1) % n]
+                # Site containment: site should be on the left of each edge
+                if orientation_sign(p1, p2, site) < 0:
+                    print(f"Verification Failed: Site {site} is outside its cell edge ({p1}, {p2}).")
+                    return False
+                
+                # Convexity: each vertex turn should be CCW
+                p3 = cell[(i + 2) % n]
+                if orientation_sign(p1, p2, p3) < 0:
+                    print(f"Verification Failed: Cell for site {site} is not convex at ({p1}, {p2}, {p3}).")
+                    return False
+
+            # 3. Voronoi Property (Nearest Neighbor)
+            for v in cell:
+                d_site = length_sq(sub(v, site))
+                for other_site in self.points:
+                    if other_site == site: continue
+                    d_other = length_sq(sub(v, other_site))
+                    if d_other < d_site - 1e-7:
+                        # Check if vertex is on boundary (clipping can move vertices)
+                        on_boundary = any(abs(orientation_sign(self.boundary[j], self.boundary[(j+1)%len(self.boundary)], v)) == 0
+                                         for j in range(len(self.boundary)))
+                        if not on_boundary:
+                            print(f"Verification Failed: Vertex {v} of site {site} is closer to {other_site}.")
+                            return False
+                            
+        return True
+
+    def _sort_star(self, site: Point, star: Iterable[IncrementalTriangle]) -> list[IncrementalTriangle]:
+        """Sorts triangles around a site in CCW order using adjacency."""
+        star_list = list(star)
+        if not star_list: return []
+        
+        curr = star_list[0]
+        sorted_tris = [curr]
+        visited = {curr}
+        
+        # Walk CCW around the site
+        temp = curr
+        while True:
+            idx = -1
+            for i, v in enumerate(temp.vertices):
+                if v == site:
+                    idx = i; break
+            if idx == -1: break
+            
+            next_tri = temp.neighbors[(idx + 1) % 3]
+            if next_tri and next_tri in star and next_tri not in visited:
+                sorted_tris.append(next_tri)
+                visited.add(next_tri)
+                temp = next_tri
+            else:
+                break
+                
+        # Walk CW around the site
+        temp = curr
+        while True:
+            idx = -1
+            for i, v in enumerate(temp.vertices):
+                if v == site:
+                    idx = i; break
+            if idx == -1: break
+            
+            next_tri = temp.neighbors[(idx + 2) % 3]
+            if next_tri and next_tri in star and next_tri not in visited:
+                sorted_tris.insert(0, next_tri)
+                visited.add(next_tri)
+                temp = next_tri
+            else:
+                break
+                
+        return sorted_tris
+
+    def plot(self, width: int = 1000, height: int = 1000, padding: int = 50) -> str:
+        """Generates a standalone SVG for the Voronoi Diagram."""
+        if not self.cells:
+            return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="white" /><text x="50" y="50">No Cells</text></svg>'
+
+        # Get bounds
+        all_pts = []
+        for _, cell in self.cells: all_pts.extend(cell)
+        all_pts.extend(self.points)
+        
+        min_x = min(p.x for p in all_pts)
+        max_x = max(p.x for p in all_pts)
+        min_y = min(p.y for p in all_pts)
+        max_y = max(p.y for p in all_pts)
+        
+        data_w = max_x - min_x or 1.0
+        data_h = max_y - min_y or 1.0
+        scale = min((width - 2*padding) / data_w, (height - 2*padding) / data_h)
+        off_x = padding - min_x * scale + (width - 2*padding - data_w * scale) / 2
+        off_y = padding - min_y * scale + (height - 2*padding - data_h * scale) / 2
+
+        def to_c(p: Point):
+            return off_x + p.x * scale, height - (off_y + p.y * scale)
+
+        svg = [f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">']
+        svg.append('<rect width="100%" height="100%" fill="white" />')
+        
+        # Draw cells
+        for _, cell in self.cells:
+            if not cell: continue
+            pts = [to_c(p) for p in cell]
+            pts_str = " ".join(f"{x:.2f},{y:.2f}" for x, y in pts)
+            svg.append(f'<polygon points="{pts_str}" fill="none" stroke="blue" stroke-width="0.5" />')
+            
+        # Draw sites
+        site_r = 1.0 if len(self.points) > 1000 else 2.0
+        for p in self.points:
+            cx, cy = to_c(p)
+            svg.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{site_r}" fill="red" />')
+            
+        svg.append('</svg>')
+        return "\n".join(svg)
 
     @staticmethod
     def get_square_boundary(size: float = 100, center: tuple[float, float] = (50, 50)) -> list[Point]:
@@ -144,6 +295,7 @@ __all__ = [
 if __name__ == "__main__":
     import argparse
     import random
+    import time
     from ..graphics.geo_plot import GeomPlot
     from .mesh_io import MeshIO
 
@@ -157,17 +309,29 @@ if __name__ == "__main__":
     # Generate random points in a 1000x1000 area
     points = [Point(random.uniform(0, 1000), random.uniform(0, 1000), id=i) for i in range(args.points)]
 
+    start = time.time()
     vd = VoronoiDiagram()
     mesh = vd.compute(points, boundary_type=args.boundary)
+    end = time.time()
+    print(f"Computed Voronoi for {args.points} points in {end - start:.4f} seconds.")
+    
+    is_valid = vd.verify()
+    print(f"Voronoi Verification: {'PASSED' if is_valid else 'FAILED'}")
 
     for out_file in args.output:
         ext = out_file.rsplit(".", 1)[-1].lower()
-        if ext in ["png", "svg"]:
-            img_data = GeomPlot.get_image(vd, format=ext)
-            mode = "wb" if ext == "png" else "w"
-            with open(out_file, mode) as f:
-                f.write(img_data)
-            print(f"Saved image to {out_file}")
+        if ext == "svg":
+            with open(out_file, "w") as f:
+                f.write(vd.plot())
+            print(f"Saved SVG to {out_file}")
+        elif ext == "png":
+            try:
+                img_data = GeomPlot.get_image(vd, format=ext)
+                with open(out_file, "wb") as f:
+                    f.write(img_data)
+                print(f"Saved PNG to {out_file}")
+            except Exception as e:
+                print(f"Could not save PNG: {e}")
         elif f".{ext}" in MeshIO._handlers:
             MeshIO.write(out_file, mesh.vertices, mesh.elements)
             print(f"Saved mesh to {out_file}")
