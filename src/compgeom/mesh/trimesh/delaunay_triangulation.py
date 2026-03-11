@@ -50,6 +50,8 @@ class DelaunayMesher:
             
         return TriangleMesh(unique_points, faces, skipped_points=skipped_points)
 
+from .delaunay_mesh_edgeflip import triangulate_edgeflip
+...
     @staticmethod
     def triangulate(points: list[Point], algorithm: str = "incremental") -> TriangleMesh:
         """
@@ -57,7 +59,7 @@ class DelaunayMesher:
         
         Args:
             points: List of points to triangulate.
-            algorithm: The algorithm to use ("incremental", "divide_and_conquer", or "flip").
+            algorithm: The algorithm to use ("incremental", "divide_and_conquer", "flip", or "edge_flip").
             
         Returns:
             A TriangleMesh object.
@@ -67,7 +69,10 @@ class DelaunayMesher:
             triangles, skipped = triangulate_incremental_fast(points)
         elif algorithm == "divide_and_conquer":
             triangles, skipped = triangulate_divide_and_conquer(points)
+        elif algorithm == "edge_flip":
+            triangles, skipped = triangulate_edgeflip(points)
         elif algorithm == "flip":
+...
             raw_triangles, skipped, super_triangle_vertices = triangulate_naive(points)
             mesh = build_topology(raw_triangles)
             DelaunayMesher.delaunay_flip(mesh)
@@ -226,4 +231,5 @@ __all__ = [
     "is_delaunay",
     "triangulate",
     "triangulate_divide_and_conquer",
+    "triangulate_edgeflip",
 ]
