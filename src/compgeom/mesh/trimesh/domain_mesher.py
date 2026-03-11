@@ -61,24 +61,18 @@ class DomainMesher:
         max_trials = num_points * 20
         trials = 0
         
-        # Rejection ratio as a distance threshold
-        dist_threshold = segment_length * rejection_ratio
+        # Rejection logic is now handled by DelaunayMesher.
+        # We generate more points here to allow for rejections later.
+        target_count = num_points
         
-        while len(internal_points) < num_points and trials < max_trials:
+        while len(internal_points) < target_count and trials < max_trials:
             trials += 1
             p = Point(
                 random.uniform(min_x + buffer, max_x - buffer),
                 random.uniform(min_y + buffer, max_y - buffer)
             )
             if is_point_in_polygon(p, boundary):
-                # Ensure it's not too close to existing points
-                too_close = False
-                for existing in internal_points:
-                    if math.sqrt((p.x - existing.x)**2 + (p.y - existing.y)**2) < dist_threshold:
-                        too_close = True
-                        break
-                if not too_close:
-                    internal_points.append(p)
+                internal_points.append(p)
                     
         return internal_points
 
@@ -111,8 +105,27 @@ class DomainMesher:
                 seen_coords.add(key)
                 all_points.append(p)
         
-        # Generate raw Delaunay triangulation with jitter delegated to DelaunayMesher
-        mesh = DelaunayMesher.triangulate(all_points, algorithm="edge_flip", jitter=jitter)
+        # Calculate rejection_dist relative to segment_length
+        # DelaunayMesher uses its own internal scale for rejection_ratio.
+        # To keep it consistent, we'll convert the DomainMesher rejection_ratio.
+        min_x = min(p.x for p in all_points)
+        max_x = max(p.x for p in all_points)
+        min_y = min(p.y for p in all_points)
+        max_y = max(p.y for p in all_points)
+        scale = max(max_x - min_x, max_y - min_y, 1.0)
+        
+        # dist_threshold = segment_length * rejection_ratio
+        # DelaunayMesher threshold = scale * delaunay_rejection_ratio
+        # So delaunay_rejection_ratio = (segment_length * rejection_ratio) / scale
+        delaunay_rejection_ratio = (segment_length * rejection_ratio) / scale if rejection_ratio else None
+        
+        # Generate raw Delaunay triangulation with jitter and rejection delegated to DelaunayMesher
+        mesh = DelaunayMesher.triangulate(
+            all_points, 
+            algorithm="edge_flip", 
+            jitter=jitter, 
+            rejection_ratio=delaunay_rejection_ratio
+        )
         
         if not outer_boundary:
             return mesh

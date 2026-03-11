@@ -52,7 +52,7 @@ class DelaunayMesher:
         return TriangleMesh(unique_points, faces, skipped_points=skipped_points)
 
     @staticmethod
-    def triangulate(points: list[Point], algorithm: str = "incremental", spatial_sort: bool = True, jitter: bool = False) -> TriangleMesh:
+    def triangulate(points: list[Point], algorithm: str = "incremental", spatial_sort: bool = True, jitter: bool = False, rejection_ratio: Optional[float] = None) -> TriangleMesh:
         """
         Performs Delaunay triangulation using the specified algorithm.
         
@@ -61,20 +61,40 @@ class DelaunayMesher:
             algorithm: The algorithm to use ("incremental", "divide_and_conquer", "flip", or "edge_flip").
             spatial_sort: Whether to spatially sort points (improves incremental algorithms).
             jitter: Whether to add a tiny random jitter to points to prevent collinearity issues.
+            rejection_ratio: If provided, filters out points that are closer than (rejection_ratio * bounding_box_scale).
             
         Returns:
             A TriangleMesh object.
         """
+        if not points:
+            return DelaunayMesher._to_triangle_mesh([])
+
+        # Calculate bounding box for jitter and rejection scaling
+        min_x = min(p.x for p in points)
+        max_x = max(p.x for p in points)
+        min_y = min(p.y for p in points)
+        max_y = max(p.y for p in points)
+        scale = max(max_x - min_x, max_y - min_y, 1.0)
+
+        skipped = []
+
+        if rejection_ratio is not None:
+            dist_threshold = scale * rejection_ratio
+            filtered_points = []
+            for p in points:
+                too_close = False
+                for existing in filtered_points:
+                    if math.sqrt((p.x - existing.x)**2 + (p.y - existing.y)**2) < dist_threshold:
+                        too_close = True
+                        skipped.append((p, f"Point too close (threshold: {dist_threshold})"))
+                        break
+                if not too_close:
+                    filtered_points.append(p)
+            points = filtered_points
+
         if jitter:
             import random
-            # Use a tiny jitter relative to the bounding box
-            min_x = min(p.x for p in points)
-            max_x = max(p.x for p in points)
-            min_y = min(p.y for p in points)
-            max_y = max(p.y for p in points)
-            scale = max(max_x - min_x, max_y - min_y, 1.0)
             eps = scale * 1e-10
-            
             jittered_points = []
             for p in points:
                 pj = Point(
@@ -85,7 +105,6 @@ class DelaunayMesher:
                 jittered_points.append(pj)
             points = jittered_points
 
-        skipped = []
         if algorithm == "incremental":
             triangles, skipped = triangulate_incremental_fast(points, spatial_sort=spatial_sort)
         elif algorithm == "divide_and_conquer":
