@@ -84,6 +84,17 @@ class DelaunayMesher:
         return DelaunayMesher._to_triangle_mesh(triangles, skipped_points=skipped)
 
     @staticmethod
+    def merge(mesh1: TriangleMesh, mesh2: TriangleMesh, algorithm: str = "edge_flip") -> TriangleMesh:
+        """
+        Merges two Delaunay meshes into a single Delaunay mesh.
+        
+        Extracts all unique vertices from both meshes and re-triangulates them.
+        This guarantees the Delaunay property even if the meshes overlap.
+        """
+        all_points = list(set(mesh1.vertices) | set(mesh2.vertices))
+        return DelaunayMesher.triangulate(all_points, algorithm=algorithm)
+
+    @staticmethod
     def constrained_triangulate(outer_boundary: list[Point], holes: list[list[Point]] | None = None) -> TriangleMesh:
         """Performs Constrained Delaunay Triangulation."""
         triangles, _ = constrained_delaunay_triangulation(outer_boundary, holes)
