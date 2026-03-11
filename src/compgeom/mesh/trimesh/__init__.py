@@ -15,6 +15,7 @@ from .delaunay_topology import (
     get_nondelaunay_triangles,
 )
 from .mesh_io import MeshImporter, MeshExporter
+from .platonic_solids import PlatonicSolid
 
 __all__ = [
     "DelaunayMesher",
@@ -30,4 +31,5 @@ __all__ = [
     "get_nondelaunay_triangles",
     "MeshImporter",
     "MeshExporter",
+    "PlatonicSolid",
 ]
