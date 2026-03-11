@@ -287,7 +287,23 @@ class IncrementalDelaunayMesher:
                 final.append(tuple(t.vertices))
         return final
 
-    def triangulate(self, points: list[Point]) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+    def _hilbert_key(self, x: int, y: int, n: int) -> int:
+        """Calculate Hilbert curve order for a point in a n x n grid (n is power of 2)."""
+        d = 0
+        s = n // 2
+        while s > 0:
+            rx = (x & s) > 0
+            ry = (y & s) > 0
+            d += s * s * ((3 * rx) ^ ry)
+            if ry == 0:
+                if rx == 1:
+                    x = s - 1 - x
+                    y = s - 1 - y
+                x, y = y, x
+            s //= 2
+        return d
+
+    def triangulate(self, points: list[Point], spatial_sort: bool = True) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
         """Performs batch triangulation of all given points."""
         if not points:
             return [], []
@@ -306,6 +322,23 @@ class IncrementalDelaunayMesher:
         if not unique_points:
             return [], skipped_initial
 
+        # HEURISTIC: Spatial Sorting (Hilbert Curve)
+        if spatial_sort and len(unique_points) > 2:
+            min_x = min(p.x for p in unique_points)
+            max_x = max(p.x for p in unique_points)
+            min_y = min(p.y for p in unique_points)
+            max_y = max(p.y for p in unique_points)
+            range_x = max_x - min_x if max_x != min_x else 1.0
+            range_y = max_y - min_y if max_y != min_y else 1.0
+            
+            N_HILBERT = 1 << 16
+            def get_order(p: Point):
+                hx = int((p.x - min_x) / range_x * (N_HILBERT - 1))
+                hy = int((p.y - min_y) / range_y * (N_HILBERT - 1))
+                return self._hilbert_key(hx, hy, N_HILBERT)
+
+            unique_points.sort(key=get_order)
+
         self.initialize(unique_points)
         for p in unique_points:
             self.add_point(p)
@@ -313,7 +346,7 @@ class IncrementalDelaunayMesher:
         return self.get_triangles(), skipped_initial + self.skipped
 
 
-def triangulate_incremental_fast(points: list[Point]) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+def triangulate_incremental_fast(points: list[Point], spatial_sort: bool = True) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
     """Convenience wrapper for IncrementalDelaunayMesher."""
     mesher = IncrementalDelaunayMesher()
-    return mesher.triangulate(points)
+    return mesher.triangulate(points, spatial_sort=spatial_sort)

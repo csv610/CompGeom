@@ -52,24 +52,25 @@ class DelaunayMesher:
         return TriangleMesh(unique_points, faces, skipped_points=skipped_points)
 
     @staticmethod
-    def triangulate(points: list[Point], algorithm: str = "incremental") -> TriangleMesh:
+    def triangulate(points: list[Point], algorithm: str = "incremental", spatial_sort: bool = True) -> TriangleMesh:
         """
         Performs Delaunay triangulation using the specified algorithm.
         
         Args:
             points: List of points to triangulate.
             algorithm: The algorithm to use ("incremental", "divide_and_conquer", "flip", or "edge_flip").
+            spatial_sort: Whether to spatially sort points (improves incremental algorithms).
             
         Returns:
             A TriangleMesh object.
         """
         skipped = []
         if algorithm == "incremental":
-            triangles, skipped = triangulate_incremental_fast(points)
+            triangles, skipped = triangulate_incremental_fast(points, spatial_sort=spatial_sort)
         elif algorithm == "divide_and_conquer":
             triangles, skipped = triangulate_divide_and_conquer(points)
         elif algorithm == "edge_flip":
-            triangles, skipped = triangulate_edgeflip(points)
+            triangles, skipped = triangulate_edgeflip(points, spatial_sort=spatial_sort)
         elif algorithm == "flip":
             raw_triangles, skipped, super_triangle_vertices = triangulate_naive(points)
             mesh = build_topology(raw_triangles)
