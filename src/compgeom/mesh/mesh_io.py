@@ -1,10 +1,13 @@
-"""I/O utilities for 3D meshes (OBJ, OFF, STL formats)."""
+"""I/O utilities for 3D meshes (OBJ, OFF, STL, PLY formats)."""
 
 from __future__ import annotations
 
 import os
 import struct
-from typing import List, Tuple, Union, Optional
+from typing import List, Tuple, Union, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .mesh import Mesh
 
 from ..kernel import Point, Point3D
 
@@ -64,8 +67,13 @@ class OBJFileHandler:
         return tri_faces
 
     @staticmethod
-    def write(filename: str, vertices: List[Union[Point, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]]):
+    def write(filename: str, vertices: Union[List[Union[Point, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None):
         """Writes vertices and faces to an OBJ file."""
+        if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
+            mesh = vertices
+            vertices = mesh.vertices
+            faces = mesh.elements
+
         with open(filename, "w") as f:
             f.write("# Exported by CompGeom\n")
             for v in vertices:
@@ -118,8 +126,13 @@ class OFFFileHandler:
         return vertices, faces
 
     @staticmethod
-    def write(filename: str, vertices: List[Union[Point, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]]):
+    def write(filename: str, vertices: Union[List[Union[Point, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None):
         """Writes vertices and faces to an OFF file."""
+        if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
+            mesh = vertices
+            vertices = mesh.vertices
+            faces = mesh.elements
+
         with open(filename, "w") as f:
             f.write("OFF\n")
             f.write(f"{len(vertices)} {len(faces)} 0\n")
@@ -200,8 +213,13 @@ class STLFileHandler:
         return vertices, faces
 
     @staticmethod
-    def write(filename: str, vertices: List[Union[Point, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]], binary: bool = True):
+    def write(filename: str, vertices: Union[List[Union[Point, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, binary: bool = True):
         """Writes a mesh to STL format (binary by default)."""
+        if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
+            mesh = vertices
+            vertices = mesh.vertices
+            faces = mesh.elements
+
         # STL only supports triangles
         tri_faces = []
         for face in faces:
@@ -246,13 +264,173 @@ class STLFileHandler:
             f.write("endsolid compgeom\n")
 
 
-class MeshIO:
-    """Unified interface for reading and writing meshes in multiple formats."""
+class PLYFileHandler:
+    """Reader and writer for Polygon File Format (PLY)."""
+
+    @staticmethod
+    def read(filename: str) -> Tuple[List[Union[Point, Point3D]], List[List[int]]]:
+        """Reads a PLY file (ASCII and Binary Little Endian)."""
+        vertices: List[Union[Point, Point3D]] = []
+        faces: List[List[int]] = []
+
+        with open(filename, "rb") as f:
+            line = f.readline().strip()
+            if line != b"ply":
+                raise ValueError("Invalid PLY file: Missing 'ply' header")
+
+            header = {}
+            elements = []
+            current_element = None
+
+            while True:
+                line_bytes = f.readline()
+                if not line_bytes:
+                    break
+                line = line_bytes.decode("ascii").strip()
+                if line == "end_header":
+                    break
+                
+                parts = line.split()
+                if not parts or parts[0] == "comment":
+                    continue
+                
+                if parts[0] == "format":
+                    header["format"] = parts[1]
+                elif parts[0] == "element":
+                    current_element = {"name": parts[1], "count": int(parts[2]), "properties": []}
+                    elements.append(current_element)
+                elif parts[0] == "property":
+                    if current_element is not None:
+                        current_element["properties"].append({"type": parts[1], "name": parts[-1], "raw": parts})
+            
+            if header["format"] == "ascii":
+                for element in elements:
+                    if element["name"] == "vertex":
+                        for i in range(element["count"]):
+                            line = f.readline().decode("ascii").strip()
+                            coords = [float(x) for x in line.split()]
+                            if len(coords) >= 3:
+                                vertices.append(Point3D(coords[0], coords[1], coords[2], i))
+                            else:
+                                vertices.append(Point(coords[0], coords[1], i))
+                    elif element["name"] == "face":
+                        for i in range(element["count"]):
+                            line = f.readline().decode("ascii").strip()
+                            parts = [int(x) for x in line.split()]
+                            faces.append(parts[1:])
+            elif header["format"] == "binary_little_endian":
+                type_map = {
+                    "char": "b", "uchar": "B", "short": "h", "ushort": "H",
+                    "int": "i", "uint": "I", "float": "f", "double": "d",
+                    "int8": "b", "uint8": "B", "int16": "h", "uint16": "H",
+                    "int32": "i", "uint32": "I", "float32": "f", "float64": "d"
+                }
+                
+                for element in elements:
+                    if element["name"] == "vertex":
+                        fmt = "<"
+                        for prop in element["properties"]:
+                            fmt += type_map.get(prop["type"], "f")
+                        
+                        size = struct.calcsize(fmt)
+                        for i in range(element["count"]):
+                            data = f.read(size)
+                            values = struct.unpack(fmt, data)
+                            x, y, z = 0.0, 0.0, 0.0
+                            found_z = False
+                            for j, prop in enumerate(element["properties"]):
+                                if prop["name"] == "x": x = values[j]
+                                elif prop["name"] == "y": y = values[j]
+                                elif prop["name"] == "z": 
+                                    z = values[j]
+                                    found_z = True
+                            if found_z:
+                                vertices.append(Point3D(x, y, z, i))
+                            else:
+                                vertices.append(Point(x, y, i))
+                    elif element["name"] == "face":
+                        for _ in range(element["count"]):
+                            list_prop = element["properties"][0]
+                            count_type = type_map[list_prop["raw"][2]]
+                            index_type = type_map[list_prop["raw"][3]]
+                            
+                            count_size = struct.calcsize("<" + count_type)
+                            count_data = f.read(count_size)
+                            count = struct.unpack("<" + count_type, count_data)[0]
+                            
+                            indices_fmt = "<" + index_type * count
+                            indices_size = struct.calcsize(indices_fmt)
+                            indices_data = f.read(indices_size)
+                            indices = struct.unpack(indices_fmt, indices_data)
+                            faces.append(list(indices))
+            else:
+                raise ValueError(f"Unsupported PLY format: {header.get('format')}")
+
+        return vertices, faces
+
+    @staticmethod
+    def write(filename: str, vertices: Union[List[Union[Point, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, binary: bool = False):
+        """Writes vertices and faces to a PLY file (ASCII by default)."""
+        if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
+            mesh = vertices
+            vertices = mesh.vertices
+            faces = mesh.elements
+
+        if binary:
+            PLYFileHandler._write_binary(filename, vertices, faces)
+        else:
+            PLYFileHandler._write_ascii(filename, vertices, faces)
+
+    @staticmethod
+    def _write_ascii(filename: str, vertices: List[Union[Point, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]]):
+        with open(filename, "w") as f:
+            f.write("ply\n")
+            f.write("format ascii 1.0\n")
+            f.write(f"element vertex {len(vertices)}\n")
+            f.write("property float x\n")
+            f.write("property float y\n")
+            f.write("property float z\n")
+            f.write(f"element face {len(faces)}\n")
+            f.write("property list uchar int vertex_index\n")
+            f.write("end_header\n")
+            
+            for v in vertices:
+                z = getattr(v, 'z', 0.0)
+                f.write(f"{v.x:.6f} {v.y:.6f} {z:.6f}\n")
+            
+            for face in faces:
+                f.write(f"{len(face)} " + " ".join(map(str, face)) + "\n")
+
+    @staticmethod
+    def _write_binary(filename: str, vertices: List[Union[Point, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]]):
+        with open(filename, "wb") as f:
+            f.write(b"ply\n")
+            f.write(b"format binary_little_endian 1.0\n")
+            f.write(f"element vertex {len(vertices)}\n".encode("ascii"))
+            f.write(b"property float x\n")
+            f.write(b"property float y\n")
+            f.write(b"property float z\n")
+            f.write(f"element face {len(faces)}\n".encode("ascii"))
+            f.write(b"property list uchar int vertex_index\n")
+            f.write(b"end_header\n")
+            
+            for v in vertices:
+                z = getattr(v, 'z', 0.0)
+                f.write(struct.pack("<fff", v.x, v.y, z))
+            
+            for face in faces:
+                f.write(struct.pack("<B", len(face)))
+                f.write(struct.pack(f"<{len(face)}i", *face))
+
+
+class MeshImporter:
+    """Unified interface for reading meshes in multiple formats."""
 
     _handlers = {
         ".obj": OBJFileHandler,
         ".off": OFFFileHandler,
         ".stl": STLFileHandler,
+        ".ply": PLYFileHandler,
     }
 
     @classmethod
@@ -263,8 +441,19 @@ class MeshIO:
             raise ValueError(f"Unsupported file format: {ext}")
         return cls._handlers[ext].read(filename)
 
+
+class MeshExporter:
+    """Unified interface for writing meshes in multiple formats."""
+
+    _handlers = {
+        ".obj": OBJFileHandler,
+        ".off": OFFFileHandler,
+        ".stl": STLFileHandler,
+        ".ply": PLYFileHandler,
+    }
+
     @classmethod
-    def write(cls, filename: str, vertices: List[Union[Point, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]], **kwargs):
+    def write(cls, filename: str, vertices: Union[List[Union[Point, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, **kwargs):
         """Detects format from extension and writes the file."""
         ext = os.path.splitext(filename)[1].lower()
         if ext not in cls._handlers:
@@ -272,4 +461,4 @@ class MeshIO:
         cls._handlers[ext].write(filename, vertices, faces, **kwargs)
 
 
-__all__ = ["MeshIO", "OBJFileHandler", "OFFFileHandler", "STLFileHandler"]
+__all__ = ["MeshImporter", "MeshExporter", "OBJFileHandler", "OFFFileHandler", "STLFileHandler", "PLYFileHandler"]

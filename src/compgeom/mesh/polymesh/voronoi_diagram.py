@@ -285,7 +285,7 @@ if __name__ == "__main__":
     import random
     import time
     from ...graphics.geo_plot import GeomPlot
-    from ..mesh_io import MeshIO
+    from ..mesh_io import MeshExporter
 
     parser = argparse.ArgumentParser(description="Generate and plot a Voronoi Diagram.")
     parser.add_argument("-n", "--points", type=int, default=50, help="Number of random points (default: 50)")
@@ -320,8 +320,8 @@ if __name__ == "__main__":
                 print(f"Saved PNG to {out_file}")
             except Exception as e:
                 print(f"Could not save PNG: {e}")
-        elif f".{ext}" in MeshIO._handlers:
-            MeshIO.write(out_file, mesh.vertices, mesh.elements)
+        elif f".{ext}" in MeshExporter._handlers:
+            MeshExporter.write(out_file, mesh.vertices, mesh.elements)
             print(f"Saved mesh to {out_file}")
         else:
             print(f"Unsupported format: {ext}")
