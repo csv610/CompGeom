@@ -52,7 +52,7 @@ class DelaunayMesher:
         return TriangleMesh(unique_points, faces, skipped_points=skipped_points)
 
     @staticmethod
-    def triangulate(points: list[Point], algorithm: str = "incremental", spatial_sort: bool = True) -> TriangleMesh:
+    def triangulate(points: list[Point], algorithm: str = "incremental", spatial_sort: bool = True, jitter: bool = False) -> TriangleMesh:
         """
         Performs Delaunay triangulation using the specified algorithm.
         
@@ -60,10 +60,31 @@ class DelaunayMesher:
             points: List of points to triangulate.
             algorithm: The algorithm to use ("incremental", "divide_and_conquer", "flip", or "edge_flip").
             spatial_sort: Whether to spatially sort points (improves incremental algorithms).
+            jitter: Whether to add a tiny random jitter to points to prevent collinearity issues.
             
         Returns:
             A TriangleMesh object.
         """
+        if jitter:
+            import random
+            # Use a tiny jitter relative to the bounding box
+            min_x = min(p.x for p in points)
+            max_x = max(p.x for p in points)
+            min_y = min(p.y for p in points)
+            max_y = max(p.y for p in points)
+            scale = max(max_x - min_x, max_y - min_y, 1.0)
+            eps = scale * 1e-10
+            
+            jittered_points = []
+            for p in points:
+                pj = Point(
+                    p.x + random.uniform(-eps, eps),
+                    p.y + random.uniform(-eps, eps),
+                    id=getattr(p, 'id', None)
+                )
+                jittered_points.append(pj)
+            points = jittered_points
+
         skipped = []
         if algorithm == "incremental":
             triangles, skipped = triangulate_incremental_fast(points, spatial_sort=spatial_sort)

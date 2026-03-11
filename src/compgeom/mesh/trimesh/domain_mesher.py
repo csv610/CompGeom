@@ -88,7 +88,8 @@ class DomainMesher:
         segment_length: float,
         num_internal_points: Optional[int] = None,
         rejection_ratio: float = 0.001,
-        outer_boundary: Optional[List[Point]] = None
+        outer_boundary: Optional[List[Point]] = None,
+        jitter: bool = True
     ) -> TriangleMesh:
         """Helper to triangulate boundary and internal points."""
         # Use the refined boundary points for sampling if no outer_boundary is provided
@@ -104,21 +105,14 @@ class DomainMesher:
         def get_coord_key(p):
             return (round(p.x / EPS), round(p.y / EPS))
             
-        # Add a tiny jitter to prevent exact collinearity
-        jitter_range = segment_length * 1e-6
         for p in boundary_points + internal_points:
             key = get_coord_key(p)
             if key not in seen_coords:
                 seen_coords.add(key)
-                # Jitter internal points slightly more, boundary points only very minimally
-                pj = Point(
-                    p.x + random.uniform(-jitter_range, jitter_range),
-                    p.y + random.uniform(-jitter_range, jitter_range)
-                )
-                all_points.append(pj)
+                all_points.append(p)
         
-        # Generate raw Delaunay triangulation
-        mesh = DelaunayMesher.triangulate(all_points, algorithm="edge_flip")
+        # Generate raw Delaunay triangulation with jitter delegated to DelaunayMesher
+        mesh = DelaunayMesher.triangulate(all_points, algorithm="edge_flip", jitter=jitter)
         
         if not outer_boundary:
             return mesh
@@ -141,7 +135,8 @@ class DomainMesher:
         length: float, 
         boundary_segment_length: float, 
         num_internal_points: Optional[int] = None,
-        rejection_ratio: float = 0.001
+        rejection_ratio: float = 0.001,
+        jitter: bool = True
     ) -> TriangleMesh:
         """Generates a refined triangle mesh for a square."""
         corners = [
@@ -154,7 +149,7 @@ class DomainMesher:
         for i in range(4):
             boundary.extend(DomainMesher._discretize_segment(corners[i], corners[(i + 1) % 4], boundary_segment_length))
         return DomainMesher._create_mesh_from_boundary(
-            boundary, boundary_segment_length, num_internal_points, rejection_ratio, outer_boundary=corners
+            boundary, boundary_segment_length, num_internal_points, rejection_ratio, outer_boundary=corners, jitter=jitter
         )
 
     @staticmethod
@@ -163,7 +158,8 @@ class DomainMesher:
         height: float, 
         boundary_segment_length: float, 
         num_internal_points: Optional[int] = None,
-        rejection_ratio: float = 0.001
+        rejection_ratio: float = 0.001,
+        jitter: bool = True
     ) -> TriangleMesh:
         """Generates a refined triangle mesh for a rectangle."""
         corners = [
@@ -176,7 +172,7 @@ class DomainMesher:
         for i in range(4):
             boundary.extend(DomainMesher._discretize_segment(corners[i], corners[(i + 1) % 4], boundary_segment_length))
         return DomainMesher._create_mesh_from_boundary(
-            boundary, boundary_segment_length, num_internal_points, rejection_ratio, outer_boundary=corners
+            boundary, boundary_segment_length, num_internal_points, rejection_ratio, outer_boundary=corners, jitter=jitter
         )
 
     @staticmethod
@@ -184,7 +180,8 @@ class DomainMesher:
         side_length: float, 
         boundary_segment_length: float, 
         num_internal_points: Optional[int] = None,
-        rejection_ratio: float = 0.001
+        rejection_ratio: float = 0.001,
+        jitter: bool = True
     ) -> TriangleMesh:
         """Generates a refined triangle mesh for an equilateral triangle."""
         h = side_length * math.sqrt(3) / 2
@@ -197,7 +194,7 @@ class DomainMesher:
         for i in range(3):
             boundary.extend(DomainMesher._discretize_segment(corners[i], corners[(i + 1) % 3], boundary_segment_length))
         return DomainMesher._create_mesh_from_boundary(
-            boundary, boundary_segment_length, num_internal_points, rejection_ratio, outer_boundary=corners
+            boundary, boundary_segment_length, num_internal_points, rejection_ratio, outer_boundary=corners, jitter=jitter
         )
 
     @staticmethod
@@ -205,7 +202,8 @@ class DomainMesher:
         radius: float, 
         boundary_segment_length: float, 
         num_internal_points: Optional[int] = None,
-        rejection_ratio: float = 0.001
+        rejection_ratio: float = 0.001,
+        jitter: bool = True
     ) -> TriangleMesh:
         """Generates a refined triangle mesh for a circle."""
         num_segments = max(8, math.ceil(2 * math.pi * radius / boundary_segment_length))
@@ -217,5 +215,5 @@ class DomainMesher:
         # For circle, the outer boundary is the same as the discretization points
         # to ensure it's filtered correctly.
         return DomainMesher._create_mesh_from_boundary(
-            boundary, boundary_segment_length, num_internal_points, rejection_ratio, outer_boundary=boundary
+            boundary, boundary_segment_length, num_internal_points, rejection_ratio, outer_boundary=boundary, jitter=jitter
         )
