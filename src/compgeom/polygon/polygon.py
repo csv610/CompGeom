@@ -149,13 +149,6 @@ def is_ear(a: Point, b: Point, c: Point, polygon: list[Point]) -> bool:
     return _is_ear(a, b, c, polygon)
 
 
-def triangulate_polygon(polygon: list[Point]) -> tuple[list[tuple[int, int, int]], list[Point]]:
-    from .polygon_decomposer import _ear_clip
-
-    triangles, _, ordered = _ear_clip(polygon)
-    return triangles, ordered
-
-
 def visibility_polygon(viewpoint: Point, polygon: list[Point]) -> list[Point]:
     from .polygon_visibility import visibility_polygon as _visibility_polygon
 
@@ -174,29 +167,6 @@ def shortest_path_in_polygon(
     from .polygon_path import shortest_path_in_polygon as _shortest_path_in_polygon
 
     return _shortest_path_in_polygon(polygon, source, target)
-
-
-def triangulate_polygon_with_holes(
-    outer_boundary: list[Point],
-    holes: list[list[Point]] | None = None,
-) -> tuple[list[tuple[Point, Point, Point]], list[Point]]:
-    from .polygon_decomposer import _triangulate_with_holes
-
-    return _triangulate_with_holes(outer_boundary, holes)
-
-
-def get_triangulation_with_diagonals(
-    polygon: list[Point],
-) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point]]:
-    from .polygon_decomposer import _triangulation_with_diagonals
-
-    return _triangulation_with_diagonals(polygon)
-
-
-def hertel_mehlhorn(polygon_input: list[Point]) -> tuple[list[list[int]], list[Point]]:
-    from .polygon_decomposer import _hertel_mehlhorn
-
-    return _hertel_mehlhorn(polygon_input)
 
 
 def graham_scan(points: list[Point]) -> list[Point]:
@@ -278,6 +248,36 @@ def get_convex_diameter(polygon: List[Point]) -> float:
     from .polygon_metrics import get_convex_diameter as _get_convex_diameter
 
     return _get_convex_diameter(polygon)
+
+
+def triangulate_polygon_with_holes(
+    outer_boundary: List[Point], holes: List[List[Point]] | None = None
+) -> tuple[list[tuple[Point, Point, Point]], list[Point]]:
+    from .polygon_decomposer import _triangulate_with_holes as _triangulate
+
+    return _triangulate(outer_boundary, holes)
+
+
+def get_triangulation_with_diagonals(
+    polygon: List[Point],
+) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point]]:
+    from .polygon_decomposer import PolygonDecomposer
+
+    return PolygonDecomposer.triangulation_with_diagonals_indices(polygon)
+
+
+def hertel_mehlhorn(polygon: List[Point]) -> tuple[list[list[int]], list[Point]]:
+    from .polygon_decomposer import _hertel_mehlhorn
+
+    return _hertel_mehlhorn(polygon)
+
+
+def triangulate_polygon(
+    polygon: List[Point],
+) -> tuple[list[tuple[int, int, int]], list[Point]]:
+    from .polygon_decomposer import PolygonDecomposer
+
+    return PolygonDecomposer.triangulate_indices(polygon)
 
 
 __all__ = [

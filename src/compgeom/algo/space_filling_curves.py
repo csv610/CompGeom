@@ -4,12 +4,51 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from ..geo_math.math_utils import (
-    hilbert_index_to_coords,
-    morton_index_to_coords,
-    peano_index_to_coords,
-)
+def peano_index_to_coords(index: int, level: int) -> Tuple[int, int]:
+    """Convert a Peano curve index to 2D coordinates."""
+    x = y = px = py = 0
+    for power in range(level - 1, -1, -1):
+        power_of_three = 3**power
+        digit = (index // (9**power)) % 9
+        row = digit // 3
+        col = digit % 3 if row % 2 == 0 else 2 - (digit % 3)
+        if py % 2 == 1:
+            col = 2 - col
+        if px % 2 == 1:
+            row = 2 - row
+        x += col * power_of_three
+        y += row * power_of_three
+        if col == 1:
+            px += 1
+        if row == 1:
+            py += 1
+    return x, y
 
+
+def morton_index_to_coords(index: int) -> Tuple[int, int]:
+    """Convert a Morton curve (Z-order) index to 2D coordinates."""
+    x = y = 0
+    for bit in range(32):
+        x |= (index & (1 << (2 * bit))) >> bit
+        y |= (index & (1 << (2 * bit + 1))) >> (bit + 1)
+    return x, y
+
+
+def hilbert_index_to_coords(index: int, order: int) -> Tuple[int, int]:
+    """Convert a Hilbert curve index to 2D coordinates."""
+    x = y = 0
+    t = index
+    for scale in range(order):
+        rx = 1 & (t // 2)
+        ry = 1 & (t ^ rx)
+        if ry == 0:
+            if rx == 1:
+                x, y = (2**scale - 1 - x), (2**scale - 1 - y)
+            x, y = y, x
+        x += rx * (2**scale)
+        y += ry * (2**scale)
+        t //= 4
+    return x, y
 
 class SpaceFillingCurves:
     """Generators for standard space-filling curves, returning paths as cell indices."""

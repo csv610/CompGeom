@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from typing import List
+from .polygon import Polygon
 
 from ..geo_math.geometry import EPSILON, Point, contains_point, cross_product, is_on_segment
 from ..geo_math.math_utils import distance
@@ -12,9 +13,111 @@ from .line_segment import proper_segment_intersection
 from .polygon_utils import ensure_ccw, ensure_cw, point_on_boundary, segment_inside_boundaries
 
 
+class PolygonDecomposer:
+    """Provides polygon decomposition helpers over the core ``Polygon`` API."""
+
+    @staticmethod
+    def supported_decompositions() -> list[str]:
+        """Returns the public decomposition algorithms supported by this class."""
+        return [
+            "triangulate",
+            "triangulate_with_holes",
+            "convex_decomposition",
+            "monotone_decomposition",
+            "trapezoidal_decomposition",
+            "visibility_decomposition",
+        ]
+
+    @staticmethod
+    def triangulate(polygon: List[Point]) -> PolygonMesh:
+        """Triangulates a simple polygon and returns the result as a polygon mesh."""
+        triangle_indices, _, vertices = _ear_clip(polygon)
+        return PolygonMesh(vertices, triangle_indices)
+
+    @staticmethod
+    def ear_clip_triangulation(polygon: List[Point]) -> PolygonMesh:
+        """Alias for triangulate."""
+        return PolygonDecomposer.triangulate(polygon)
+
+    @staticmethod
+    def triangulate_indices(
+        polygon: List[Point],
+    ) -> tuple[list[tuple[int, int, int]], list[Point]]:
+        """Triangulates a polygon and returns indices and vertices separately."""
+        triangle_indices, _, vertices = _ear_clip(polygon)
+        return triangle_indices, vertices
+
+    @staticmethod
+    def triangulation_with_diagonals(polygon: List[Point]) -> tuple[PolygonMesh, list[tuple[int, int]]]:
+        """Triangulates a polygon and returns the result as a polygon mesh and a list of diagonals."""
+        triangle_indices, diagonals, vertices = _triangulation_with_diagonals(polygon)
+        return PolygonMesh(vertices, triangle_indices), diagonals
+
+    @staticmethod
+    def triangulation_with_diagonals_indices(
+        polygon: List[Point],
+    ) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point]]:
+        """Triangulates a polygon and returns triangles, diagonals, and vertices indices."""
+        return _triangulation_with_diagonals(polygon)
+
+    @staticmethod
+    def triangulate_with_holes(
+        outer_boundary: List[Point],
+        holes: List[List[Point]] | None = None,
+    ) -> PolygonMesh:
+        """Triangulates a polygonal domain with holes and returns a polygon mesh."""
+        triangles, _ = _triangulate_with_holes(outer_boundary, holes)
+        return _mesh_from_point_faces(list(triangles))
+
+    @staticmethod
+    def convex_decomposition(polygon: List[Point]) -> PolygonMesh:
+        """Decomposes a simple polygon into convex parts and returns a polygon mesh."""
+        if len(polygon) < 3:
+            return PolygonMesh(list(polygon), [])
+
+        partitions, vertices = _hertel_mehlhorn(polygon)
+        faces = [tuple(sorted(partition)) for partition in partitions]
+        return PolygonMesh(vertices, faces)
+
+    @staticmethod
+    def convex_decomposition_indices(
+        polygon: List[Point],
+    ) -> tuple[list[list[int]], list[Point]]:
+        """Decomposes a simple polygon into convex parts and returns indices and vertices separately."""
+        return _hertel_mehlhorn(polygon)
+
+    @staticmethod
+    def monotone_decomposition(polygon: List[Point]) -> PolygonMesh:
+        """Decomposes a simple polygon into y-monotone parts and returns a polygon mesh."""
+        if len(polygon) < 3:
+            return PolygonMesh(list(polygon), [])
+
+        triangles, _, vertices = _ear_clip(polygon)
+        return PolygonMesh(vertices, _monotone_partitions(triangles, vertices))
+
+    @staticmethod
+    def trapezoidal_decomposition(polygon: List[Point]) -> PolygonMesh:
+        """Decomposes a simple polygon into vertical trapezoidal cells and returns a polygon mesh."""
+        if len(polygon) < 3:
+            return PolygonMesh(list(polygon), [])
+        from .polygon import Polygon
+
+        return _mesh_from_point_faces(_trapezoidal_faces(Polygon(polygon).ensure_ccw().as_list()))
+
+    @staticmethod
+    def visibility_decomposition(polygon: List[Point]) -> PolygonMesh:
+        """Decomposes a simple polygon using non-crossing reflex-visibility diagonals and returns a mesh."""
+        if len(polygon) < 3:
+            return PolygonMesh(list(polygon), [])
+
+        ordered = Polygon(polygon).ensure_ccw().as_list()
+        return PolygonMesh(ordered, _visibility_faces(ordered))
+
+
 class _TriangleView:
     def __init__(self, v1: Point, v2: Point, v3: Point):
         self.vertices = (v1, v2, v3)
+
 
 def _is_ear(a: Point, b: Point, c: Point, polygon: list[Point]) -> bool:
     if cross_product(a, b, c) <= 0:
@@ -90,30 +193,39 @@ def _triangulation_with_diagonals(
 def _hertel_mehlhorn(polygon_input: list[Point]) -> tuple[list[list[int]], list[Point]]:
     triangles, diagonals, polygon = _triangulation_with_diagonals(polygon_input)
     partitions = [list(triangle) for triangle in triangles]
-    reflex_vertices = {
-        index
-        for index in range(len(polygon))
-        if cross_product(polygon[index - 1], polygon[index], polygon[(index + 1) % len(polygon)]) <= 0
-    }
+
+    def is_convex(face_indices, vertex_index):
+        # face_indices are sorted, so they are in CCW order
+        n = len(face_indices)
+        try:
+            idx = face_indices.index(vertex_index)
+        except ValueError:
+            return True
+        
+        prev_idx = face_indices[(idx - 1) % n]
+        next_idx = face_indices[(idx + 1) % n]
+        
+        # In a CCW polygon, a left turn (cross_product > 0) is convex.
+        # We also allow 180 degrees (cross_product == 0).
+        return cross_product(polygon[prev_idx], polygon[vertex_index], polygon[next_idx]) >= -EPSILON
 
     for diagonal in diagonals:
+        u, v = diagonal
         shared_partitions = [
             partition_index
             for partition_index, partition in enumerate(partitions)
-            if diagonal[0] in partition and diagonal[1] in partition
+            if u in partition and v in partition
         ]
         if len(shared_partitions) != 2:
             continue
 
-        u, v = diagonal
-        if u in reflex_vertices or v in reflex_vertices:
-            continue
-
         first, second = shared_partitions
-        merged = list(set(partitions[first]) | set(partitions[second]))
-        partitions.pop(max(first, second))
-        partitions.pop(min(first, second))
-        partitions.append(merged)
+        merged_indices = sorted(list(set(partitions[first]) | set(partitions[second])))
+        
+        if is_convex(merged_indices, u) and is_convex(merged_indices, v):
+            partitions.pop(max(first, second))
+            partitions.pop(min(first, second))
+            partitions.append(merged_indices)
 
     return partitions, polygon
 
@@ -447,132 +559,4 @@ def _visibility_faces(polygon: list[Point]) -> list[tuple[int, ...]]:
     return faces
 
 
-class PolygonDecomposer:
-    """Provides polygon decomposition helpers over the core ``Polygon`` API."""
-
-    @staticmethod
-    def supported_decompositions() -> list[str]:
-        """Returns the public decomposition algorithms supported by this class."""
-        return [
-            "triangulate",
-            "triangulate_with_holes",
-            "convex_decomposition",
-            "monotone_decomposition",
-            "trapezoidal_decomposition",
-            "visibility_decomposition",
-        ]
-
-    @staticmethod
-    def triangulate(polygon: List[Point]) -> PolygonMesh:
-        """Triangulates a simple polygon and returns the result as a polygon mesh."""
-        triangle_indices, _, vertices = _ear_clip(polygon)
-        return PolygonMesh(vertices, triangle_indices)
-
-    @staticmethod
-    def triangulate_indices(
-        polygon: List[Point],
-    ) -> tuple[list[tuple[int, int, int]], list[Point]]:
-        """Triangulates a simple polygon and returns triangle indices plus ordered vertices."""
-        triangle_indices, _, vertices = _ear_clip(polygon)
-        return triangle_indices, vertices
-
-    @staticmethod
-    def triangulation_with_diagonals(
-        polygon: List[Point],
-    ) -> tuple[PolygonMesh, list[tuple[int, int]]]:
-        """Triangulates a polygon and returns the mesh plus inserted diagonals."""
-        triangle_indices, diagonals, vertices = _triangulation_with_diagonals(polygon)
-        return PolygonMesh(vertices, triangle_indices), diagonals
-
-    @staticmethod
-    def triangulation_with_diagonals_indices(
-        polygon: List[Point],
-    ) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point]]:
-        """Triangulates a polygon and returns triangle indices, diagonals, and ordered vertices."""
-        return _triangulation_with_diagonals(polygon)
-
-    @staticmethod
-    def triangulate_with_holes(
-        outer_boundary: List[Point],
-        holes: List[List[Point]] | None = None,
-    ) -> PolygonMesh:
-        """Triangulates a polygonal domain with holes and returns a polygon mesh."""
-        triangles, _ = _triangulate_with_holes(outer_boundary, holes)
-        return _mesh_from_point_faces(list(triangles))
-
-    @staticmethod
-    def convex_decomposition_indices(polygon: List[Point]) -> tuple[list[list[int]], list[Point]]:
-        """Returns convex decomposition partitions as vertex-index lists plus ordered vertices."""
-        return _hertel_mehlhorn(polygon)
-
-    @staticmethod
-    def hertel_mehlhorn_indices(polygon: List[Point]) -> tuple[list[list[int]], list[Point]]:
-        """Returns Hertel-Mehlhorn convex partitions and the ordered polygon vertices."""
-        return _hertel_mehlhorn(polygon)
-
-    @staticmethod
-    def convex_decomposition(polygon: List[Point]) -> PolygonMesh:
-        """Decomposes a simple polygon into convex parts."""
-        if len(polygon) < 3:
-            return PolygonMesh(list(polygon), [])
-
-        partitions, vertices = PolygonDecomposer.convex_decomposition_indices(polygon)
-        faces = [tuple(sorted(partition)) for partition in partitions]
-        return PolygonMesh(vertices, faces)
-
-    @staticmethod
-    def monotone_decomposition(polygon: List[Point]) -> PolygonMesh:
-        """Decomposes a simple polygon into y-monotone parts."""
-        if len(polygon) < 3:
-            return PolygonMesh(list(polygon), [])
-
-        triangles, _, vertices = _ear_clip(polygon)
-        return PolygonMesh(vertices, _monotone_partitions(triangles, vertices))
-
-    @staticmethod
-    def trapezoidal_decomposition(polygon: List[Point]) -> PolygonMesh:
-        """Decomposes a simple polygon into vertical trapezoidal cells."""
-        if len(polygon) < 3:
-            return PolygonMesh(list(polygon), [])
-        from .polygon import Polygon
-
-        return _mesh_from_point_faces(_trapezoidal_faces(Polygon(polygon).ensure_ccw().as_list()))
-
-    @staticmethod
-    def visibility_decomposition(polygon: List[Point]) -> PolygonMesh:
-        """Decomposes a simple polygon using non-crossing reflex-visibility diagonals."""
-        if len(polygon) < 3:
-            return PolygonMesh(list(polygon), [])
-        from .polygon import Polygon
-
-        ordered = Polygon(polygon).ensure_ccw().as_list()
-        return PolygonMesh(ordered, _visibility_faces(ordered))
-
-def triangulate_polygon(polygon: list[Point]) -> tuple[list[tuple[int, int, int]], list[Point]]:
-    return PolygonDecomposer.triangulate_indices(polygon)
-
-
-def triangulate_polygon_with_holes(
-    outer_boundary: list[Point],
-    holes: list[list[Point]] | None = None,
-) -> tuple[list[tuple[Point, Point, Point]], list[Point]]:
-    return _triangulate_with_holes(outer_boundary, holes)
-
-
-def get_triangulation_with_diagonals(
-    polygon: list[Point],
-) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point]]:
-    return PolygonDecomposer.triangulation_with_diagonals_indices(polygon)
-
-
-def hertel_mehlhorn(polygon: list[Point]) -> tuple[list[list[int]], list[Point]]:
-    return _hertel_mehlhorn(polygon)
-
-
-__all__ = [
-    "PolygonDecomposer",
-    "get_triangulation_with_diagonals",
-    "hertel_mehlhorn",
-    "triangulate_polygon",
-    "triangulate_polygon_with_holes",
-]
+__all__ = ["PolygonDecomposer"]

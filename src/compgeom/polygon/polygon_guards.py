@@ -88,7 +88,7 @@ def solve_art_gallery(polygon_input: List[Point]) -> List[Point]:
     Returns:
         A list of points representing guard positions.
     """
-    from .polygon import triangulate_polygon
+    from .polygon_decomposer import _ear_clip
 
-    triangles, vertices = triangulate_polygon(polygon_input)
+    triangles, _, vertices = _ear_clip(polygon_input)
     return guard_polygon(triangles, vertices)

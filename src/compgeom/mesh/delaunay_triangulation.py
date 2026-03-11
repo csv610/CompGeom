@@ -266,24 +266,44 @@ class DelaunayMesher:
     def delaunay_flip(mesh: list[MeshTriangle]):
         """Improves a triangulation by performing edge flips until it is Delaunay."""
         queue = deque()
-        queued_edges = set()
+
+        def edge_key(u: Point, v: Point):
+            return tuple(sorted((u.id, v.id)))
+
+        def build_triangle(vertices: tuple[Point, Point, Point], neighbors_by_edge):
+            v0, v1, v2 = _make_ccw_triangle(*vertices)
+            ordered_vertices = [v0, v1, v2]
+            ordered_neighbors = [
+                neighbors_by_edge[edge_key(v1, v2)],
+                neighbors_by_edge[edge_key(v2, v0)],
+                neighbors_by_edge[edge_key(v0, v1)],
+            ]
+            return ordered_vertices, ordered_neighbors
 
         def add_to_queue(triangle, index):
             if triangle.neighbors[index] is not None:
-                edge = triangle.get_edge(index)
-                if edge not in queued_edges:
-                    queue.append((triangle, index))
-                    queued_edges.add(edge)
+                queue.append((triangle, index))
 
         for triangle in mesh:
             for i in range(3):
                 add_to_queue(triangle, i)
 
-        while queue:
-            t1, i1 = queue.popleft()
-            edge = t1.get_edge(i1)
-            queued_edges.discard(edge)
+        # Optimization: Use a pass marker to track when a full cycle of the queue
+        # has been completed. If no flips occur in a full cycle, the algorithm
+        # terminates, even if some edges were re-queued (e.g., concave edges).
+        queue.append(None)
+        flips_this_pass = 0
 
+        while queue:
+            item = queue.popleft()
+            if item is None:
+                if flips_this_pass == 0:
+                    break
+                flips_this_pass = 0
+                queue.append(None)
+                continue
+
+            t1, i1 = item
             t2 = t1.neighbors[i1]
             if t2 is None:
                 continue
@@ -297,34 +317,63 @@ class DelaunayMesher:
             c = t1.vertices[(i1 + 2) % 3]
             d = t2.vertices[i2]
 
+            # Convexity check: a quadrilateral is convex if and only if both
+            # diagonals intersect. This means a and d must be on opposite sides
+            # of bc, AND b and c must be on opposite sides of ad.
+            if orientation_sign(a, d, b) * orientation_sign(a, d, c) >= 0 or \
+               orientation_sign(b, c, a) * orientation_sign(b, c, d) >= 0:
+                continue
+
+            # Use Delaunay criterion: flip if d is inside the circumcircle of abc
             if not in_circle(a, b, c, d):
                 continue
 
-            n_ac = t1.neighbors[(i1 + 1) % 3]
-            n_ab = t1.neighbors[(i1 + 2) % 3]
-            n_db = t2.neighbors[(i2 + 1) % 3]
-            n_dc = t2.neighbors[(i2 + 2) % 3]
-
-            t1.vertices = [a, b, d]
-            t2.vertices = [a, d, c]
+            # A flip will occur
+            flips_this_pass += 1
             
-            t1.neighbors[0], t1.neighbors[1], t1.neighbors[2] = n_db, t2, n_ab
-            t2.neighbors[0], t2.neighbors[1], t2.neighbors[2] = n_dc, n_ac, t1
+            # Neighbors of t1 and t2 (excluding each other)
+            # t1.neighbors[i1] is t2
+            n_ab = t1.neighbors[(i1 + 2) % 3] # opposite c
+            n_ca = t1.neighbors[(i1 + 1) % 3] # opposite b
+            
+            # t2.neighbors[i2] is t1
+            n_bd = t2.neighbors[(i2 + 1) % 3] # opposite c (in t2)
+            n_dc = t2.neighbors[(i2 + 2) % 3] # opposite b (in t2)
 
-            if n_db:
-                idx = n_db.find_neighbor_index(t2)
-                if idx != -1: n_db.neighbors[idx] = t1
-            if n_ab:
-                idx = n_ab.find_neighbor_index(t1)
-                if idx != -1: n_ab.neighbors[idx] = t1
-            if n_dc:
-                idx = n_dc.find_neighbor_index(t2)
-                if idx != -1: n_dc.neighbors[idx] = t2
-            if n_ac:
-                idx = n_ac.find_neighbor_index(t1)
-                if idx != -1: n_ac.neighbors[idx] = t2
+            # Reassign vertices and neighbors using the new diagonal ad.
+            t1.vertices, t1.neighbors = build_triangle(
+                (a, b, d),
+                {
+                    edge_key(b, d): n_bd,
+                    edge_key(d, a): t2,
+                    edge_key(a, b): n_ab,
+                },
+            )
+            t2.vertices, t2.neighbors = build_triangle(
+                (a, d, c),
+                {
+                    edge_key(d, c): n_dc,
+                    edge_key(c, a): n_ca,
+                    edge_key(a, d): t1,
+                },
+            )
 
-            for t, idx in [(t1, 0), (t1, 2), (t2, 0), (t2, 1)]:
+            # Update external neighbors' references to t1 and t2
+            if n_bd:
+                # n_bd used to point to t2, now points to t1
+                idx = n_bd.find_neighbor_index(t2)
+                if idx != -1: n_bd.neighbors[idx] = t1
+            
+            if n_ca:
+                # n_ca used to point to t1, now points to t2
+                idx = n_ca.find_neighbor_index(t1)
+                if idx != -1: n_ca.neighbors[idx] = t2
+            
+            # n_ab still points to t1, n_dc still points to t2 - no change needed for them
+
+            # Optimization: All five edges of the two new triangles (the 4 boundary 
+            # edges and the new diagonal) are pushed back to the queue to be re-checked.
+            for t, idx in [(t1, 0), (t1, 1), (t1, 2), (t2, 0), (t2, 1), (t2, 2)]:
                 add_to_queue(t, idx)
 
     @staticmethod
@@ -388,35 +437,120 @@ def triangulate_naive(points: list[Point]):
     super_triangle_vertices = set(super_triangle)
     skipped_points = []
     existing_points = set()
-    triangles = [super_triangle]
+
+    # Build spatial index helpers to speed up point-location.
+    min_x = min(point.x for point in points)
+    max_x = max(point.x for point in points)
+    min_y = min(point.y for point in points)
+    max_y = max(point.y for point in points)
+    span = max(max_x - min_x, max_y - min_y, 1.0)
+    cell_size = span / max(math.sqrt(max(1, len(points))), 1.0)
+
+    class _IndexedTriangle:
+        def __init__(self, vertices: tuple[Point, Point, Point]):
+            self.vertices = vertices
+            self.min_x = min(v.x for v in vertices)
+            self.max_x = max(v.x for v in vertices)
+            self.min_y = min(v.y for v in vertices)
+            self.max_y = max(v.y for v in vertices)
+            self.cells: list[tuple[int, int]] = []
+
+    class _TriangleSpatialIndex:
+        def __init__(self, cell_size: float):
+            self.cell_size = cell_size
+            self.grid: dict[tuple[int, int], list[_IndexedTriangle]] = {}
+
+        def _cell_coords(self, x: float, y: float) -> tuple[int, int]:
+            ix = int(math.floor((x - min_x) / self.cell_size))
+            iy = int(math.floor((y - min_y) / self.cell_size))
+            return ix, iy
+
+        def _cells_for_bbox(self, tri: _IndexedTriangle):
+            min_ix, min_iy = self._cell_coords(tri.min_x, tri.min_y)
+            max_ix, max_iy = self._cell_coords(tri.max_x, tri.max_y)
+            for ix in range(min_ix, max_ix + 1):
+                for iy in range(min_iy, max_iy + 1):
+                    yield (ix, iy)
+
+        def add(self, tri: _IndexedTriangle):
+            tri.cells = []
+            for cell in self._cells_for_bbox(tri):
+                self.grid.setdefault(cell, []).append(tri)
+                tri.cells.append(cell)
+
+        def remove(self, tri: _IndexedTriangle):
+            for cell in tri.cells:
+                cell_list = self.grid.get(cell)
+                if not cell_list:
+                    continue
+                try:
+                    cell_list.remove(tri)
+                except ValueError:
+                    continue
+                if not cell_list:
+                    del self.grid[cell]
+            tri.cells = []
+
+        def query(self, point: Point):
+            ix, iy = self._cell_coords(point.x, point.y)
+            seen = set()
+            candidates = []
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    cell = (ix + dx, iy + dy)
+                    for tri in self.grid.get(cell, []):
+                        if tri in seen:
+                            continue
+                        seen.add(tri)
+                        candidates.append(tri)
+            return candidates
+
+    spatial_index = _TriangleSpatialIndex(cell_size or 1.0)
+    triangles: list[_IndexedTriangle] = []
 
     def make_ccw(a: Point, b: Point, c: Point):
         return (a, b, c) if cross_product(a, b, c) >= 0 else (a, c, b)
+
+    def add_triangle(vertices: tuple[Point, Point, Point]):
+        entry = _IndexedTriangle(vertices)
+        triangles.append(entry)
+        spatial_index.add(entry)
+        return entry
+
+    add_triangle(super_triangle)
 
     for point in points:
         if point in existing_points or any(point == vertex for vertex in super_triangle_vertices):
             skipped_points.append((point, "Duplicate/Coincident Point"))
             continue
 
-        containing_triangle = None
-        for triangle in triangles:
-            if contains_point(Triangle(*triangle), point):
-                containing_triangle = triangle
+        candidates = spatial_index.query(point)
+        containing_entry = None
+        for entry in candidates:
+            if contains_point(Triangle(*entry.vertices), point):
+                containing_entry = entry
                 break
-        
-        if not containing_triangle:
+
+        if not containing_entry:
+            for entry in triangles:
+                if contains_point(Triangle(*entry.vertices), point):
+                    containing_entry = entry
+                    break
+
+        if not containing_entry:
             skipped_points.append((point, "Outside super-triangle (Numerical Error)"))
             continue
 
-        triangles.remove(containing_triangle)
-        a, b, c = containing_triangle
-        triangles.append(make_ccw(a, b, point))
-        triangles.append(make_ccw(b, c, point))
-        triangles.append(make_ccw(c, a, point))
-        
+        spatial_index.remove(containing_entry)
+        triangles.remove(containing_entry)
+        a, b, c = containing_entry.vertices
+        add_triangle(make_ccw(a, b, point))
+        add_triangle(make_ccw(b, c, point))
+        add_triangle(make_ccw(c, a, point))
+
         existing_points.add(point)
 
-    return triangles, skipped_points, super_triangle_vertices
+    return [entry.vertices for entry in triangles], skipped_points, super_triangle_vertices
 
 
 class MeshTriangle:

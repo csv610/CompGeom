@@ -3,8 +3,18 @@
 from __future__ import annotations
 
 from .convex_hull import ConvexHull, graham_scan, monotone_chain
-from .polygon import Polygon, PolygonProperties, generate_points_in_triangle, is_ear, is_point_in_polygon
-from .polygon_decomposer import PolygonDecomposer, get_triangulation_with_diagonals, hertel_mehlhorn, triangulate_polygon, triangulate_polygon_with_holes
+from .polygon import (
+    Polygon,
+    PolygonProperties,
+    generate_points_in_triangle,
+    get_triangulation_with_diagonals,
+    hertel_mehlhorn,
+    is_ear,
+    is_point_in_polygon,
+    triangulate_polygon,
+    triangulate_polygon_with_holes,
+)
+from .polygon_decomposer import PolygonDecomposer
 from .polygon_factory import generate_random_convex_polygon, generate_simple_polygon
 from .polygon_metrics import get_convex_diameter, get_polygon_properties, get_reflex_vertices, is_convex
 from .polygon_path import shortest_path_in_polygon

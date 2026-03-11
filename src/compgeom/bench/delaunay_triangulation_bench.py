@@ -29,9 +29,8 @@ def run_benchmarks():
         
         # Benchmark Divide and Conquer
         start = time.perf_counter()
-        mesh_dc = None
         try:
-            mesh_dc = DelaunayMesher.triangulate(points, algorithm="divide_and_conquer")
+            mesh = DelaunayMesher.triangulate(points, algorithm="divide_and_conquer")
             results['dc'] = f"{time.perf_counter() - start:.4f}"
         except Exception as e:
             results['dc'] = f"Error"
@@ -40,24 +39,26 @@ def run_benchmarks():
         # Note: This is O(N^2) in this implementation and will be very slow for large N.
         start = time.perf_counter()
         try:
-            DelaunayMesher.triangulate(points, algorithm="incremental")
+            mesh = DelaunayMesher.triangulate(points, algorithm="incremental")
             results['inc'] = f"{time.perf_counter() - start:.4f}"
         except Exception as e:
             results['inc'] = f"Error"
 
+        
+        """
+
         # Benchmark Delaunay Flip (Topology Build + Flip)
         # *Note: This benchmarks building topology and verifying/flipping an existing Delaunay mesh.
-        if mesh_dc:
-            start = time.perf_counter()
-            try:
-                mesh = DelaunayMesher.triangulate(points, algorithm="flip")
-                results['flip'] = f"{time.perf_counter() - start:.4f}"
-            except Exception as e:
-                results['flip'] = f"Error"
-        else:
-            results['flip'] = "N/A"
-
+        start = time.perf_counter()
+        try:
+           mesh = DelaunayMesher.triangulate(points, algorithm="flip")
+           results['flip'] = f"{time.perf_counter() - start:.4f}"
+        except Exception as e:
+           results['flip'] = f"Error"
         print(f"{n:<12} | {results['inc']:<18} | {results['dc']:<22} | {results['flip']:<22}")
+        """
+        print(f"{n:<12} | {results['inc']:<18} | {results['dc']:<22}")
+
 
 if __name__ == "__main__":
     run_benchmarks()
