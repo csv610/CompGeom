@@ -11,6 +11,7 @@ from .delaunay_dc import triangulate_divide_and_conquer
 from .delaunay_naive import triangulate_naive, Triangle
 from .delaunay_dynamic import DynamicDelaunay, DTriangle
 from .delaunay_constrained import constrained_delaunay_triangulation
+from .delaunay_mesh_edgeflip import triangulate_edgeflip
 from .delaunay_topology import (
     MeshTriangle,
     build_topology,
@@ -50,8 +51,6 @@ class DelaunayMesher:
             
         return TriangleMesh(unique_points, faces, skipped_points=skipped_points)
 
-from .delaunay_mesh_edgeflip import triangulate_edgeflip
-...
     @staticmethod
     def triangulate(points: list[Point], algorithm: str = "incremental") -> TriangleMesh:
         """
@@ -72,7 +71,6 @@ from .delaunay_mesh_edgeflip import triangulate_edgeflip
         elif algorithm == "edge_flip":
             triangles, skipped = triangulate_edgeflip(points)
         elif algorithm == "flip":
-...
             raw_triangles, skipped, super_triangle_vertices = triangulate_naive(points)
             mesh = build_topology(raw_triangles)
             DelaunayMesher.delaunay_flip(mesh)

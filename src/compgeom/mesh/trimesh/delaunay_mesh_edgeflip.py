@@ -183,6 +183,13 @@ class EdgeFlipDelaunayMesher:
                         return t
                 return None
 
+    def _update_neighbor(self, neighbor: EdgeFlipTriangle | None, v1: Point, v2: Point, new_tri: EdgeFlipTriangle):
+        """Updates neighbor's adjacency pointer if it shares the edge (v1, v2)."""
+        if neighbor:
+            idx = neighbor.get_edge_index(v1, v2)
+            if idx != -1:
+                neighbor.neighbors[idx] = new_tri
+
     def _flip_edges(self, suspect_edges: deque[tuple[EdgeFlipTriangle, int]]):
         """Processes a queue of suspect edges and flips them if they are non-Delaunay."""
         while suspect_edges:
@@ -194,23 +201,15 @@ class EdgeFlipDelaunayMesher:
             if t2 is None:
                 continue
 
-            # Index of t1 in t2's neighbors
-            i2 = -1
-            for j in range(3):
-                if t2.neighbors[j] == t1:
-                    i2 = j
-                    break
+            i2 = t2.get_edge_index(t1.vertices[(i1+1)%3], t1.vertices[(i1+2)%3])
             if i2 == -1: continue
 
             # Quadrilateral (a, c, b, d) with shared edge (a, b)
-            # t1 = (c, a, b), c=v[i1], a=v[(i1+1)%3], b=v[(i1+2)%3]
-            # t2 = (d, b, a), d=v[i2], b=v[(i2+1)%3], a=v[(i2+2)%3]
             c = t1.vertices[i1]
             a = t1.vertices[(i1+1)%3]
             b = t1.vertices[(i1+2)%3]
             d = t2.vertices[i2]
 
-            # Use in_circle for Delaunay property
             if in_circle(a, b, c, d):
                 n_ac = t1.neighbors[(i1 + 2) % 3]
                 n_cb = t1.neighbors[(i1 + 1) % 3]
@@ -220,37 +219,21 @@ class EdgeFlipDelaunayMesher:
                 self._remove_triangle(t1)
                 self._remove_triangle(t2)
 
-                # Create new triangles to avoid modifying old objects
                 nt1 = EdgeFlipTriangle(c, a, d)
                 nt2 = EdgeFlipTriangle(c, d, b)
 
-                # Neighbors for nt1=[c, a, d]: opp c: n_da, opp a: nt2, opp d: n_ac
                 nt1.neighbors = [n_da, nt2, n_ac]
-                # Neighbors for nt2=[c, d, b]: opp c: n_bd, opp d: n_cb, opp b: nt1
                 nt2.neighbors = [n_bd, n_cb, nt1]
 
                 self._add_triangle(nt1)
                 self._add_triangle(nt2)
 
-                # Update external neighbors
-                if n_da:
-                    idx = n_da.get_edge_index(a, d)
-                    if idx != -1: n_da.neighbors[idx] = nt1
-                if n_ac:
-                    idx = n_ac.get_edge_index(c, a)
-                    if idx != -1: n_ac.neighbors[idx] = nt1
-                if n_bd:
-                    idx = n_bd.get_edge_index(d, b)
-                    if idx != -1: n_bd.neighbors[idx] = nt2
-                if n_cb:
-                    idx = n_cb.get_edge_index(b, c)
-                    if idx != -1: n_cb.neighbors[idx] = nt2
+                self._update_neighbor(n_da, a, d, nt1)
+                self._update_neighbor(n_ac, c, a, nt1)
+                self._update_neighbor(n_bd, d, b, nt2)
+                self._update_neighbor(n_cb, b, c, nt2)
 
-                # New suspect edges
-                suspect_edges.append((nt1, 0)) # (a, d)
-                suspect_edges.append((nt1, 2)) # (c, a)
-                suspect_edges.append((nt2, 0)) # (d, b)
-                suspect_edges.append((nt2, 1)) # (b, c)
+                suspect_edges.extend([(nt1, 0), (nt1, 2), (nt2, 0), (nt2, 1)])
 
     def initialize(self, points: Iterable[Point]):
         pts = list(points)
@@ -264,6 +247,31 @@ class EdgeFlipDelaunayMesher:
         self.root = EdgeFlipTriangle(*sv)
         self._add_triangle(self.root)
         for v in sv: self.grid.add(v)
+
+    def _split_triangle(self, p: Point, target: EdgeFlipTriangle):
+        """Splits a triangle into three by inserting a point inside."""
+        v0, v1, v2 = target.vertices
+        n0, n1, n2 = target.neighbors # n0 opp v0, n1 opp v1, n2 opp v2
+        
+        self._remove_triangle(target)
+        
+        t0 = EdgeFlipTriangle(p, v1, v2)
+        t1 = EdgeFlipTriangle(p, v2, v0)
+        t2 = EdgeFlipTriangle(p, v0, v1)
+        
+        t0.neighbors = [n0, t1, t2]
+        t1.neighbors = [n1, t2, t0]
+        t2.neighbors = [n2, t0, t1]
+        
+        self._update_neighbor(n0, v1, v2, t0)
+        self._update_neighbor(n1, v2, v0, t1)
+        self._update_neighbor(n2, v0, v1, t2)
+
+        self._add_triangle(t0)
+        self._add_triangle(t1)
+        self._add_triangle(t2)
+        
+        return t0, t1, t2
 
     def add_point(self, p: Point):
         if not self.root:
@@ -280,38 +288,8 @@ class EdgeFlipDelaunayMesher:
             self.skipped.append((p, "Point outside super-triangle"))
             return
         
-        v0, v1, v2 = target.vertices
-        n0, n1, n2 = target.neighbors # n0 opp v0, n1 opp v1, n2 opp v2
+        t0, t1, t2 = self._split_triangle(p, target)
         
-        self._remove_triangle(target)
-        
-        # Split target into 3 triangles: (p, v1, v2), (p, v2, v0), (p, v0, v1)
-        t0 = EdgeFlipTriangle(p, v1, v2)
-        t1 = EdgeFlipTriangle(p, v2, v0)
-        t2 = EdgeFlipTriangle(p, v0, v1)
-        
-        # t0 neighbors: opp p: n0, opp v1: t1, opp v2: t2
-        t0.neighbors = [n0, t1, t2]
-        # t1 neighbors: opp p: n1, opp v2: t2, opp v0: t0
-        t1.neighbors = [n1, t2, t0]
-        # t2 neighbors: opp p: n2, opp v0: t0, opp v1: t1
-        t2.neighbors = [n2, t0, t1]
-        
-        if n0:
-            idx = n0.get_edge_index(v1, v2)
-            if idx != -1: n0.neighbors[idx] = t0
-        if n1:
-            idx = n1.get_edge_index(v2, v0)
-            if idx != -1: n1.neighbors[idx] = t1
-        if n2:
-            idx = n2.get_edge_index(v0, v1)
-            if idx != -1: n2.neighbors[idx] = t2
-
-        self._add_triangle(t0)
-        self._add_triangle(t1)
-        self._add_triangle(t2)
-        
-        # Legalize all 6 edges (3 outer, 3 inner)
         suspects = deque([(t0, 0), (t1, 0), (t2, 0), (t0, 1), (t1, 1), (t2, 1)])
         self._flip_edges(suspects)
         
