@@ -37,7 +37,7 @@ A comprehensive Python library and command-line suite for geometric modeling, me
 7. **Mesh Architecture**
    - Mesh Types (Triangle, Quad, Tet, Hex)
    - Mesh Topology & Adjacency Queries
-   - Mesh Loading (OBJ Support via `from_file`)
+   - Mesh Loading (STL, OFF, OBJ Support via `MeshImporter`)
 8. **Mesh Refinement & Reordering**
    - Triangle Mesh Refinement (Linear & Uniform)
    - Bandwidth Reduction (Reverse Cuthill-McKee)
@@ -48,7 +48,7 @@ A comprehensive Python library and command-line suite for geometric modeling, me
    - **Mesh Topology Transfer (Harmonic Mapping)**
 10. **Volumetric Modeling**
     - Mesh Voxelization (Native & OpenVDB)
-    - Mesh I/O (OBJ Support)
+    - Mesh I/O (STL, OFF, OBJ Support)
 
 ### Part IV: Spatial Algorithms & Visualization
 11. **Combinatorial Sequences**
@@ -172,6 +172,38 @@ mesh = TriangleMesh.from_file("model.obj")
 voxels = MeshVoxelizer.voxelize(mesh, voxel_size=0.01, fill_interior=True)
 ```
 
+
+### 7. Delaunay Triangulation & Mesh Merging
+**Objective:** Triangulate a point set using the optimized Edge Flip algorithm and merge it with another mesh.
+
+```python
+from compgeom.mesh.trimesh import DelaunayMesher, PlatonicSolid
+
+# 1. Generate points and triangulate using Edge Flip
+points = [Point(0,0), Point(1,0), Point(0,1), Point(1,1), Point(0.5, 0.5)]
+mesh1 = DelaunayMesher.triangulate(points, algorithm="edge_flip")
+
+# 2. Generate a Platonic Solid (e.g., Tetrahedron)
+tetra = PlatonicSolid.tetrahedron(size=2.0)
+
+# 3. Merge meshes (Optimized via Incremental Seeding)
+# Note: Merge works best for TriangleMesh objects
+merged = DelaunayMesher.merge(mesh1, tetra)
+```
+
+### 8. Multi-Format Mesh I/O
+**Objective:** Import a mesh from OFF format and export it to STL.
+
+```python
+from compgeom.mesh.trimesh import MeshImporter, MeshExporter
+
+# 1. Import
+mesh = MeshImporter.import_mesh("model.off")
+
+# 2. Export to various formats
+MeshExporter.export_mesh(mesh, "model.obj")
+MeshExporter.export_mesh(mesh, "model.stl")
+```
 ---
 
 ## Command-Line Interface (CLI) Quick-Start
