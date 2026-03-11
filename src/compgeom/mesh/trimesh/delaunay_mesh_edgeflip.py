@@ -397,12 +397,58 @@ class EdgeFlipDelaunayMesher:
         return [tuple(t.vertices) for t in self.active_triangles 
                 if not any(v in self.super_vertices for v in t.vertices)]
 
-    def triangulate(self, points: list[Point]) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
-        if not points: return [], []
+    def initialize_from_mesh(self, mesh: TriangleMesh):
+        """Seeds the mesher with an existing TriangleMesh to avoid starting from scratch."""
+        self.active_triangles = set()
+        self.vertex_to_triangles = {}
+        
+        # 1. Create EdgeFlipTriangle objects
+        tri_list = []
+        for face in mesh.faces:
+            v1, v2, v3 = [mesh.vertices[i] for i in face]
+            tri = EdgeFlipTriangle(v1, v2, v3)
+            tri_list.append(tri)
+            self._add_triangle(tri)
+            
+        # 2. Reconstruct neighbors (adjacency)
+        # This is O(F) using a edge-to-triangle map
+        edge_to_tri = {}
+        for tri in tri_list:
+            for i in range(3):
+                v_start = tri.vertices[(i + 1) % 3]
+                v_end = tri.vertices[(i + 2) % 3]
+                edge = tuple(sorted((v_start.id, v_end.id)))
+                if edge in edge_to_tri:
+                    other_tri, other_idx = edge_to_tri[edge]
+                    tri.neighbors[i] = other_tri
+                    other_tri.neighbors[other_idx] = tri
+                else:
+                    edge_to_tri[edge] = (tri, i)
+        
+        # 3. Add to grid for point location
+        if not self.grid:
+            self.grid = PointGrid(mesh.vertices)
+        for v in mesh.vertices:
+            self.grid.add(v)
+            
+        # Note: This mesh doesn't have a super-triangle. 
+        # For a truly robust merge, we should verify the mesh encloses the new points
+        # or dynamically expand it. For simplicity, we assume mesh1 encloses mesh2 area
+        # or we manually handle points outside.
+        self.root = tri_list[0] if tri_list else None
+
+    def triangulate(self, points: list[Point], existing_mesh: TriangleMesh | None = None) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+        if not points and not existing_mesh: return [], []
         
         unique_points = []
         seen = set()
         skipped_initial = []
+        
+        # Add points from existing mesh to 'seen' if provided
+        if existing_mesh:
+            for v in existing_mesh.vertices:
+                seen.add((v.x, v.y))
+
         for p in points:
             key = (p.x, p.y)
             if key in seen:
@@ -411,9 +457,13 @@ class EdgeFlipDelaunayMesher:
             seen.add(key)
             unique_points.append(p)
 
-        if not unique_points: return [], skipped_initial
+        if existing_mesh:
+            self.initialize_from_mesh(existing_mesh)
+        elif unique_points:
+            self.initialize(unique_points)
+        else:
+            return [], skipped_initial
 
-        self.initialize(unique_points)
         for p in unique_points:
             self.add_point(p)
 

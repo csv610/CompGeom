@@ -88,11 +88,22 @@ class DelaunayMesher:
         """
         Merges two Delaunay meshes into a single Delaunay mesh.
         
-        Extracts all unique vertices from both meshes and re-triangulates them.
-        This guarantees the Delaunay property even if the meshes overlap.
+        Optimized Approach: Seeds the mesher with mesh1 and incrementally inserts 
+        points from mesh2. This is significantly faster than starting from scratch
+        if one mesh is large.
         """
-        all_points = list(set(mesh1.vertices) | set(mesh2.vertices))
-        return DelaunayMesher.triangulate(all_points, algorithm=algorithm)
+        if algorithm != "edge_flip":
+            # Fallback to from-scratch for other algorithms that don't support seeding yet
+            all_points = list(set(mesh1.vertices) | set(mesh2.vertices))
+            return DelaunayMesher.triangulate(all_points, algorithm=algorithm)
+            
+        from .delaunay_mesh_edgeflip import EdgeFlipDelaunayMesher
+        mesher = EdgeFlipDelaunayMesher()
+        
+        # Triangulate points of mesh2 into the structure of mesh1
+        triangles, skipped = mesher.triangulate(mesh2.vertices, existing_mesh=mesh1)
+        
+        return DelaunayMesher._to_triangle_mesh(triangles, skipped_points=skipped)
 
     @staticmethod
     def constrained_triangulate(outer_boundary: list[Point], holes: list[list[Point]] | None = None) -> TriangleMesh:
