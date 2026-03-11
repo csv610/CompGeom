@@ -207,7 +207,13 @@ class EdgeFlipDelaunayMesher:
             b = t1.vertices[(i1 + 2) % 3]
             d = t2.vertices[i2]
 
-            if in_circle(a, b, c, d):
+            # Shortest Diagonal Flip Criterion:
+            # Current diagonal is (a, b), potential new diagonal is (c, d)
+            # We flip if the new diagonal is shorter than the current one.
+            dist_sq_current = (a.x - b.x)**2 + (a.y - b.y)**2
+            dist_sq_new = (c.x - d.x)**2 + (c.y - d.y)**2
+
+            if dist_sq_new < dist_sq_current:
                 # Flip the edge (a, b) to (c, d)
                 n_ac = t1.neighbors[(i1 + 2) % 3]
                 n_bc = t1.neighbors[(i1 + 1) % 3]
