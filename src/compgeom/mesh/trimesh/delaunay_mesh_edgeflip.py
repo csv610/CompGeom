@@ -38,6 +38,7 @@ class EdgeFlipTriangle:
 
     def contains_point(self, point: Point) -> bool:
         """Geometric containment check using cross products."""
+        # Use a small epsilon for robustness
         for i in range(3):
             if cross_product(self.vertices[i], self.vertices[(i + 1) % 3], point) < -1e-9:
                 return False
@@ -124,6 +125,7 @@ class EdgeFlipDelaunayMesher:
         self.super_vertices: set[Point] = set()
         self.skipped: list[tuple[Point, str]] = []
         self.root: EdgeFlipTriangle | None = None
+        self.last_tri: EdgeFlipTriangle | None = None
 
     def _create_super_triangle(self, points: Iterable[Point]) -> tuple[Point, Point, Point]:
         xs = [p.x for p in points]
@@ -144,6 +146,7 @@ class EdgeFlipDelaunayMesher:
 
     def _add_triangle(self, tri: EdgeFlipTriangle):
         self.active_triangles.add(tri)
+        self.last_tri = tri
         for v in tri.vertices:
             if v not in self.vertex_to_triangles:
                 self.vertex_to_triangles[v] = set()
@@ -152,6 +155,8 @@ class EdgeFlipDelaunayMesher:
     def _remove_triangle(self, tri: EdgeFlipTriangle):
         if tri in self.active_triangles:
             self.active_triangles.remove(tri)
+        if self.last_tri == tri:
+            self.last_tri = None
         for v in tri.vertices:
             if v in self.vertex_to_triangles:
                 self.vertex_to_triangles[v].discard(tri)
@@ -374,13 +379,24 @@ class EdgeFlipDelaunayMesher:
         if not self.root:
             raise RuntimeError("Mesher not initialized.")
             
-        nearest_vertex = self.grid.find_nearest(p)
-        if nearest_vertex in self.vertex_to_triangles and self.vertex_to_triangles[nearest_vertex]:
-             start_tri = next(iter(self.vertex_to_triangles[nearest_vertex]))
-        else:
-             start_tri = self.root
+        # Optimization: seed walk from last triangle or nearest grid vertex
+        start_tri = self.last_tri or self.root
         
         target = self._visibility_walk(p, start_tri)
+        if not target:
+            # Fallback to the grid if the 'nearby' heuristic fails
+            if self.grid:
+                nearest_vertex = self.grid.find_nearest(p)
+                if nearest_vertex in self.vertex_to_triangles and self.vertex_to_triangles[nearest_vertex]:
+                    start_tri = next(iter(self.vertex_to_triangles[nearest_vertex]))
+                    target = self._visibility_walk(p, start_tri)
+            else:
+                # Last resort fallback: check all triangles
+                for t in self.active_triangles:
+                    if t.contains_point(p):
+                        target = t
+                        break
+
         if not target:
             self.skipped.append((p, "Point outside super-triangle"))
             return
@@ -391,7 +407,8 @@ class EdgeFlipDelaunayMesher:
         suspects = [(t0, 0), (t1, 0), (t2, 0), (t0, 1), (t1, 1), (t2, 1)]
         self._flip_edges(suspects)
         
-        self.grid.add(p)
+        if self.grid:
+            self.grid.add(p)
 
     def get_triangles(self) -> list[tuple[Point, Point, Point]]:
         return [tuple(t.vertices) for t in self.active_triangles 
@@ -432,19 +449,32 @@ class EdgeFlipDelaunayMesher:
             self.grid.add(v)
             
         # Note: This mesh doesn't have a super-triangle. 
-        # For a truly robust merge, we should verify the mesh encloses the new points
-        # or dynamically expand it. For simplicity, we assume mesh1 encloses mesh2 area
-        # or we manually handle points outside.
         self.root = tri_list[0] if tri_list else None
 
-    def triangulate(self, points: list[Point], existing_mesh: TriangleMesh | None = None) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+    def _hilbert_key(self, x: int, y: int, n: int) -> int:
+        """Calculate Hilbert curve order for a point in a n x n grid (n is power of 2)."""
+        d = 0
+        s = n // 2
+        while s > 0:
+            rx = (x & s) > 0
+            ry = (y & s) > 0
+            d += s * s * ((3 * rx) ^ ry)
+            # Rotate/Flip
+            if ry == 0:
+                if rx == 1:
+                    x = s - 1 - x
+                    y = s - 1 - y
+                x, y = y, x
+            s //= 2
+        return d
+
+    def triangulate(self, points: list[Point], existing_mesh: TriangleMesh | None = None, spatial_sort: bool = True) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
         if not points and not existing_mesh: return [], []
         
         unique_points = []
         seen = set()
         skipped_initial = []
         
-        # Add points from existing mesh to 'seen' if provided
         if existing_mesh:
             for v in existing_mesh.vertices:
                 seen.add((v.x, v.y))
@@ -457,12 +487,31 @@ class EdgeFlipDelaunayMesher:
             seen.add(key)
             unique_points.append(p)
 
+        if not unique_points and not existing_mesh:
+            return [], skipped_initial
+
+        # HEURISTIC: Spatial Sorting (Hilbert Curve)
+        if spatial_sort and unique_points:
+            min_x = min(p.x for p in unique_points)
+            max_x = max(p.x for p in unique_points)
+            min_y = min(p.y for p in unique_points)
+            max_y = max(p.y for p in unique_points)
+            range_x = max_x - min_x if max_x != min_x else 1.0
+            range_y = max_y - min_y if max_y != min_y else 1.0
+            
+            # Grid size for Hilbert: 2^16 resolution
+            N_HILBERT = 1 << 16
+            def get_order(p: Point):
+                hx = int((p.x - min_x) / range_x * (N_HILBERT - 1))
+                hy = int((p.y - min_y) / range_y * (N_HILBERT - 1))
+                return self._hilbert_key(hx, hy, N_HILBERT)
+
+            unique_points.sort(key=get_order)
+
         if existing_mesh:
             self.initialize_from_mesh(existing_mesh)
-        elif unique_points:
-            self.initialize(unique_points)
         else:
-            return [], skipped_initial
+            self.initialize(unique_points)
 
         for p in unique_points:
             self.add_point(p)
@@ -470,7 +519,7 @@ class EdgeFlipDelaunayMesher:
         return self.get_triangles(), skipped_initial + self.skipped
 
 
-def triangulate_edgeflip(points: list[Point]) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+def triangulate_edgeflip(points: list[Point], spatial_sort: bool = True) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
     """Convenience wrapper for EdgeFlipDelaunayMesher."""
     mesher = EdgeFlipDelaunayMesher()
-    return mesher.triangulate(points)
+    return mesher.triangulate(points, spatial_sort=spatial_sort)
