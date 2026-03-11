@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 import random
 
-from ..geo_math.geometry import EPSILON, Point
-from ..geo_math.math_utils import rotate_2d, unrotate_2d
+from ..kernel import EPSILON, Point
+from ..kernel import rotate_2d, unrotate_2d
 from ..polygon.polygon import graham_scan
 from .proximity import welzl
 

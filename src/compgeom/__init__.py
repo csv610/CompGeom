@@ -1,15 +1,19 @@
 """Shared geometry and algorithm package for the TriangleMesh project."""
 
 # 1. Package access
-from . import geo_math as geometry
+from . import kernel as geometry
 from . import mesh
 from . import polygon
 from . import algo
 from . import graphics
 
 # 2. Flattened API - Foundations
-from .geo_math.geometry import *
-from .geo_math.math_utils import *
+from .kernel.geometry import *
+from .kernel.math_utils import *
+from .kernel.triangle import *
+from .kernel.line_segment import *
+from .kernel.circle import *
+from .kernel.quad import *
 
 # 3. Flattened API - Shapes and Basic Algos
 from .algo.bounding import *

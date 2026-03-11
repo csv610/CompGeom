@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Iterable
 
-from ..geo_math.geometry import (
+from ...kernel import (
     EPSILON,
     Point,
     contains_point,

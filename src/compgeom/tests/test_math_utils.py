@@ -1,12 +1,18 @@
 import pytest
 import math
-from compgeom.geo_math.geometry import Point, Point3D
-from compgeom.geo_math.math_utils import (
+from compgeom.kernel import (
+    Point, Point3D,
     cross_product, orientation, orientation_sign, dot_product,
     sub, length_sq, length, distance, distance_3d, signed_area_twice,
     rotate_2d, unrotate_2d, support, get_circle_two_points, get_circle_three_points,
-    incircle_det, incircle_sign, in_circle, peano_index_to_coords,
-    morton_index_to_coords, hilbert_index_to_coords
+    incircle_det, incircle_sign, in_circle, triangle_area, triangle_circumcenter,
+    triangle_incenter, triangle_inradius, contains_point,
+    circle_area, circle_perimeter, is_convex_quad, quad_area, segment_midpoint
+)
+from compgeom.algo.space_filling_curves import (
+    peano_index_to_coords,
+    morton_index_to_coords,
+    hilbert_index_to_coords
 )
 
 def test_cross_product():
@@ -74,7 +80,7 @@ def test_rotate_unrotate():
     sin_t = math.sin(theta)
     rotated = rotate_2d(p, cos_t, sin_t)
     assert math.isclose(rotated.x, 0, abs_tol=1e-9)
-    assert math.isclose(rotated.y, -1, abs_tol=1e-9)  # Wait, rotate_2d logic: x*c + y*s, -x*s + y*c -> 1*0 + 0 = 0; -1*1 + 0 = -1
+    assert math.isclose(rotated.y, -1, abs_tol=1e-9)
     
     unrotated = unrotate_2d(rotated, cos_t, sin_t)
     assert math.isclose(unrotated.x, 1, abs_tol=1e-9)
@@ -114,11 +120,33 @@ def test_in_circle():
     assert in_circle(a, b, c, d_out) == False
     assert incircle_sign(a, b, c, d_on) == 0
 
+def test_triangle_props():
+    a = Point(0, 0)
+    b = Point(2, 0)
+    c = Point(0, 2)
+    assert triangle_area(a, b, c) == 2.0
+    assert triangle_inradius(a, b, c) > 0
+    assert triangle_incenter(a, b, c) is not None
+    assert triangle_circumcenter(a, b, c) == Point(1, 1)
+
+def test_circle_props():
+    assert math.isclose(circle_area(1.0), math.pi)
+    assert math.isclose(circle_perimeter(1.0), 2 * math.pi)
+
+def test_quad_props():
+    p1, p2, p3, p4 = Point(0,0), Point(2,0), Point(2,2), Point(0,2)
+    assert quad_area(p1, p2, p3, p4) == 4.0
+    assert is_convex_quad(p1, p2, p3, p4) is True
+    assert is_convex_quad(Point(0,0), Point(2,0), Point(1,1), Point(0,2)) is False
+
+def test_segment_props():
+    assert segment_midpoint(Point(0,0), Point(2,2)) == Point(1,1)
+
 def test_space_filling_curves():
     # Peano
     assert peano_index_to_coords(0, 1) == (0, 0)
     # Morton
     assert morton_index_to_coords(0) == (0, 0)
-    assert morton_index_to_coords(3) == (1, 1) # 3 is 0b11 -> x=1, y=1
+    assert morton_index_to_coords(3) == (1, 1)
     # Hilbert
     assert hilbert_index_to_coords(0, 1) == (0, 0)

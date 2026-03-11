@@ -6,18 +6,16 @@ import math
 import random
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
-from ..geo_math.geometry import (
+from ..kernel import (
     EPSILON,
     Point,
     cross_product,
     dist_point_to_segment,
     dot_product,
-    get_circumcenter,
+    triangle_circumcenter,
     is_on_segment,
     length,
     sub,
-)
-from ..geo_math.math_utils import (
     distance,
     get_circle_three_points,
     get_circle_two_points,
@@ -60,15 +58,6 @@ class ClosestPair:
 
         mid = n // 2
         mid_point = points_x[mid]
-
-        points_y_left = []
-        points_y_right = []
-        for p in points_y:
-            if p.x < mid_point.x or (p.x == mid_point.x and p.y <= mid_point.y):
-                # This check should be consistent with how we split points_x
-                # Actually points_x[:mid] is points from 0 to mid-1.
-                # It's safer to just split points_y based on the same index or set.
-                pass
 
         # Better way to split points_y in O(n):
         left_set = set(points_x[:mid])
@@ -179,7 +168,7 @@ class LargestEmptyCircle:
         
         for tri in triangles:
             a, b, c = tri
-            center = get_circumcenter(a, b, c)
+            center = triangle_circumcenter(a, b, c)
             if center is None:
                 continue
                 

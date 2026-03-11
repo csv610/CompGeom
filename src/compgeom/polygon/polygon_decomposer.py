@@ -6,8 +6,8 @@ from collections import Counter
 from typing import List
 from .polygon import Polygon
 
-from ..geo_math.geometry import EPSILON, Point, contains_point, cross_product, is_on_segment
-from ..geo_math.math_utils import distance
+from ..kernel import EPSILON, Point, contains_point, cross_product, is_on_segment
+from ..kernel import distance
 from ..mesh.mesh import PolygonMesh
 from .line_segment import proper_segment_intersection
 from .polygon_utils import ensure_ccw, ensure_cw, point_on_boundary, segment_inside_boundaries

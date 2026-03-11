@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from compgeom.geo_math.geometry import Point
+from compgeom.kernel import Point
 from compgeom.graphics.geo_plot import GeomPlot
 from compgeom.polygon import (
     ConvexHull,

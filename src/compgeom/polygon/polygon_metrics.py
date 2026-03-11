@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 
-from ..geo_math.geometry import Point, cross_product
-from ..geo_math.math_utils import distance
+from ..kernel import Point, cross_product
+from ..kernel import distance
 from .polygon import Polygon, PolygonProperties
 
 

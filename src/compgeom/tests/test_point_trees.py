@@ -1,7 +1,7 @@
 import pytest
 
 from compgeom.algo.point_trees import Interval, IntervalTree, SegmentTree, build_kdtree, range_search
-from compgeom.geo_math.geometry import Point
+from compgeom.kernel import Point
 
 
 def test_kdtree_range_search_returns_points_in_rectangle():

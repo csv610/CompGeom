@@ -1,4 +1,4 @@
-from compgeom.geo_math.geometry import Point, orientation_sign
+from compgeom.kernel import Point, orientation_sign
 from compgeom.mesh.delaunay_triangulation import build_topology, is_delaunay, DelaunayMesher
 
 

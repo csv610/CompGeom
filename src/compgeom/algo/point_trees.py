@@ -6,8 +6,8 @@ import math
 from dataclasses import dataclass
 from typing import Callable, Dict, Generic, Iterable, List, Optional, Sequence, Set, Tuple, TypeVar, Union
 
-from ..geo_math.geometry import Point, Point3D
-from ..geo_math.math_utils import distance, distance_3d
+from ..kernel import Point, Point3D
+from ..kernel import distance, distance_3d
 
 T = TypeVar("T")
 

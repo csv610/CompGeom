@@ -6,7 +6,7 @@ import os
 import struct
 from typing import List, Tuple, Union, Optional
 
-from ..geo_math.geometry import Point, Point3D
+from ..kernel import Point, Point3D
 
 
 class OBJFileHandler:

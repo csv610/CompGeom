@@ -1,8 +1,9 @@
 import pytest
 import math
-from compgeom.geo_math.geometry import (
-    Point, Point3D, get_circumcenter, intersect_lines, clip_polygon,
-    dist_point_to_segment, is_on_segment, contains_point
+from compgeom.kernel import (
+    Point, Point3D, triangle_circumcenter, intersect_lines, clip_polygon,
+    dist_point_to_segment, is_on_segment, contains_point,
+    proper_segment_intersection, ray_segment_intersection
 )
 
 class Triangle:
@@ -30,12 +31,12 @@ def test_get_circumcenter():
     a = Point(-1, 0)
     b = Point(1, 0)
     c = Point(0, 1)
-    center = get_circumcenter(a, b, c)
+    center = triangle_circumcenter(a, b, c)
     assert math.isclose(center.x, 0, abs_tol=1e-9)
     assert math.isclose(center.y, 0, abs_tol=1e-9)
     
     # Collinear points
-    assert get_circumcenter(Point(0,0), Point(1,0), Point(2,0)) is None
+    assert triangle_circumcenter(Point(0,0), Point(1,0), Point(2,0)) is None
 
 def test_intersect_lines():
     p1 = Point(0, 0)
@@ -71,6 +72,22 @@ def test_is_on_segment():
     assert is_on_segment(Point(1, 0), start, end) == True
     assert is_on_segment(Point(3, 0), start, end) == False
     assert is_on_segment(Point(1, 1), start, end) == False
+
+def test_proper_segment_intersection():
+    a, b = Point(0, 0), Point(2, 2)
+    c, d = Point(0, 2), Point(2, 0)
+    assert proper_segment_intersection(a, b, c, d) is True
+    
+    # Intersection at endpoint
+    assert proper_segment_intersection(a, b, b, Point(3, 3)) is False
+
+def test_ray_segment_intersection():
+    origin = Point(0, 1)
+    angle = 0 # Ray pointing right
+    start, end = Point(2, 0), Point(2, 2)
+    t, hit = ray_segment_intersection(origin, angle, start, end)
+    assert math.isclose(t, 2.0)
+    assert hit == Point(2, 1)
 
 def test_contains_point():
     t = Triangle(Point(0, 0), Point(2, 0), Point(0, 2))

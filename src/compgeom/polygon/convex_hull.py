@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 
-from ..geo_math.geometry import EPSILON, Point, cross_product
-from ..geo_math.math_utils import distance
+from ..kernel import EPSILON, Point, cross_product
+from ..kernel import distance
 
 
 class ConvexHull:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import List, Set, Tuple
 
-from ..geo_math.geometry import EPSILON, Point, get_circumcenter, length, sub
+from ..kernel import EPSILON, Point, triangle_circumcenter, length, sub
 from .polygon import is_point_in_polygon
 from ..mesh.delaunay_triangulation import build_topology, triangulate
 
@@ -57,10 +57,6 @@ def triangle_centroid(triangle):
     return Point((a.x + b.x) / 3.0, (a.y + b.y) / 3.0)
 
 
-def triangle_circumcenter(triangle):
-    return get_circumcenter(*triangle)
-
-
 def point_key(point):
     return (round(point.x / EPSILON), round(point.y / EPSILON))
 
@@ -92,7 +88,7 @@ def approximate_medial_axis(polygon, resolution=0.25):
         if not is_point_in_polygon(centroid, polygon):
             continue
 
-        center = triangle_circumcenter(triangle)
+        center = triangle_circumcenter(*triangle)
         if center is None or not is_point_in_polygon(center, polygon):
             continue
 

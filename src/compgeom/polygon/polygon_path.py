@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import heapq
 
-from ..geo_math.geometry import EPSILON, Point
-from ..geo_math.math_utils import distance
+from ..kernel import EPSILON, Point
+from ..kernel import distance
 from .polygon import Polygon
 from .polygon_utils import point_on_boundary, segment_inside_boundaries
 

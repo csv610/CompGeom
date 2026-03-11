@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .delaunay_triangulation import (
+from .trimesh.delaunay_triangulation import (
     DTriangle,
     DelaunayMesher,
     DynamicDelaunay,
@@ -29,13 +29,12 @@ from .mesh import (
 )
 from .mesh_coloring import MeshColoring
 from .mesh_io import MeshIO, OBJFileHandler, OFFFileHandler, STLFileHandler
-from .mesh_refinement import TriMeshRefiner
+from .trimesh.mesh_refinement import TriMeshRefiner
 from .mesh_reordering import CuthillMcKee
 from .mesh_transfer import MeshTransfer
 from .quadmesh.simple_tri2quads import TriangleToQuadConverter
-from .voronoi_diagram import VoronoiDiagram
-from ..graphics.geo_plot import GeomPlot
-from .voxelization import MeshVoxelizer
+from .polymesh.voronoi_diagram import VoronoiDiagram
+from .voxelmesh.voxelization import MeshVoxelizer
 
 __all__ = [
     "CuthillMcKee",
@@ -48,7 +47,6 @@ __all__ = [
     "Mesh",
     "MeshColoring",
     "MeshIO",
-    "GeomPlot",
     "MeshTriangle",
     "MeshTopology",
     "MeshTransfer",

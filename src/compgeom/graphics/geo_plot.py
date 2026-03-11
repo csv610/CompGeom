@@ -6,7 +6,7 @@ import struct
 import zlib
 from typing import List, Tuple, Union
 
-from ..geo_math.geometry import Point, Point3D
+from ..kernel import Point, Point3D
 from ..mesh.mesh import Mesh
 from ..mesh.voronoi_diagram import VoronoiDiagram
 from ..polygon.polygon import Polygon

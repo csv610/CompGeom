@@ -1,5 +1,5 @@
 
-from compgeom.geo_math.geometry import Point
+from compgeom.kernel import Point
 from compgeom.polygon.polygon_guards import solve_art_gallery
 
 def test_triangle():

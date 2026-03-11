@@ -6,7 +6,7 @@ import random
 from dataclasses import dataclass
 from typing import List, Sequence, Union
 
-from ..geo_math.geometry import (
+from ..kernel import (
     Point,
     Point3D,
     is_on_segment,

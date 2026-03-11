@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 
-from ..geo_math.geometry import EPSILON, Point, clip_polygon
+from ..kernel import EPSILON, Point, clip_polygon
 from .line_segment import ray_segment_intersection
 from .polygon import Polygon
 from .polygon_utils import cleanup_polygon

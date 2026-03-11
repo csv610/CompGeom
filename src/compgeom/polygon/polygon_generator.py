@@ -6,7 +6,7 @@ import math
 import random
 from typing import List, Tuple
 
-from ..geo_math.geometry import Point
+from ..kernel import Point
 from .convex_hull import ConvexHull
 from .polygon import generate_simple_polygon
 

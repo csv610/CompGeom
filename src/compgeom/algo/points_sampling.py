@@ -6,7 +6,7 @@ import math
 import random
 from typing import List, Optional
 
-from ..geo_math.geometry import Point, Point3D
+from ..kernel import Point, Point3D
 
 
 class PointSampler:

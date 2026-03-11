@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Callable
 
-from ..geo_math.geometry import Point, cross_product, is_on_segment
-from ..geo_math.math_utils import signed_area_twice
+from ..kernel import Point, cross_product, is_on_segment
+from ..kernel import signed_area_twice
 from .line_segment import proper_segment_intersection
 
 

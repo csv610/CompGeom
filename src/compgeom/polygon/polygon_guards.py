@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import deque
 from typing import List, Tuple
 
-from ..geo_math.geometry import Point
+from ..kernel import Point
 
 
 class PolygonGuards:

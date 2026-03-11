@@ -6,7 +6,7 @@ import os
 # Ensure the library is in the python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from compgeom.geo_math.geometry import Point
+from compgeom.kernel import Point
 from compgeom.mesh.voronoi_diagram import VoronoiDiagram
 from compgeom.graphics.geo_plot import GeomPlot
 

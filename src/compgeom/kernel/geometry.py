@@ -10,13 +10,8 @@ from .math_utils import (
     cross_product,
     distance,
     dot_product,
-    in_circle,
-    incircle_det,
-    incircle_sign,
     length,
     length_sq,
-    orientation,
-    orientation_sign,
     sub,
 )
 
@@ -67,45 +62,9 @@ class Point3D:
         )
 
 
-def get_circumcenter(a: Point, b: Point, c: Point) -> Optional[Point]:
-    denominator = 2 * (
-        a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)
-    )
-    if abs(denominator) < 1e-12:
-        return None
-
-    ux = (
-        (a.x**2 + a.y**2) * (b.y - c.y)
-        + (b.x**2 + b.y**2) * (c.y - a.y)
-        + (c.x**2 + c.y**2) * (a.y - b.y)
-    ) / denominator
-    uy = (
-        (a.x**2 + a.y**2) * (c.x - b.x)
-        + (b.x**2 + b.y**2) * (a.x - c.x)
-        + (c.x**2 + c.y**2) * (b.x - a.x)
-    ) / denominator
-    return Point(ux, uy)
-
-
-def intersect_lines(p1: Point, p2: Point, p3: Point, p4: Point) -> Optional[Point]:
-    """Return the line-line intersection, or ``None`` for parallel lines."""
-    denominator = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x)
-    if abs(denominator) < 1e-12:
-        return None
-
-    px = (
-        (p1.x * p2.y - p1.y * p2.x) * (p3.x - p4.x)
-        - (p1.x - p2.x) * (p3.x * p4.y - p3.y * p4.x)
-    ) / denominator
-    py = (
-        (p1.x * p2.y - p1.y * p2.x) * (p3.y - p4.y)
-        - (p1.y - p2.y) * (p3.x * p4.y - p3.y * p4.x)
-    ) / denominator
-    return Point(px, py)
-
-
 def clip_polygon(polygon: list[Point], line_start: Point, line_end: Point) -> list[Point]:
     """Clip a polygon against the left half-plane of the directed line."""
+    from .line_segment import intersect_lines
 
     def is_inside(point: Point) -> bool:
         return cross_product(line_start, line_end, point) >= -1e-12
@@ -137,61 +96,14 @@ def clip_polygon(polygon: list[Point], line_start: Point, line_end: Point) -> li
     return clipped
 
 
-def dist_point_to_segment(point: Point, start: Point, end: Point) -> float:
-    """Return the minimum distance from a point to a line segment."""
-    dx = end.x - start.x
-    dy = end.y - start.y
-    l2 = dx * dx + dy * dy
-    if l2 == 0:
-        return math.hypot(point.x - start.x, point.y - start.y)
-    
-    t = ((point.x - start.x) * dx + (point.y - start.y) * dy) / l2
-    t = max(0, min(1, t))
-    
-    closest_x = start.x + t * dx
-    closest_y = start.y + t * dy
-    return math.hypot(point.x - closest_x, point.y - closest_y)
-
-
-def is_on_segment(point: Point, start: Point, end: Point) -> bool:
-    if abs(cross_product(start, end, point)) > EPSILON:
-        return False
-    return (
-        min(start.x, end.x) - EPSILON <= point.x <= max(start.x, end.x) + EPSILON
-        and min(start.y, end.y) - EPSILON <= point.y <= max(start.y, end.y) + EPSILON
-    )
-
-
-def contains_point(triangle, point: Point) -> bool:
-    a, b, c = triangle.vertices
-    cp1 = orientation(a, b, point)
-    cp2 = orientation(b, c, point)
-    cp3 = orientation(c, a, point)
-    return (
-        cp1 >= -EPSILON and cp2 >= -EPSILON and cp3 >= -EPSILON
-    ) or (
-        cp1 <= EPSILON and cp2 <= EPSILON and cp3 <= EPSILON
-    )
-
-
 __all__ = [
     "EPSILON",
     "Point",
     "Point3D",
     "clip_polygon",
-    "contains_point",
     "cross_product",
-    "dist_point_to_segment",
     "dot_product",
-    "get_circumcenter",
-    "incircle_det",
-    "incircle_sign",
-    "in_circle",
-    "intersect_lines",
-    "is_on_segment",
     "length",
     "length_sq",
-    "orientation",
-    "orientation_sign",
     "sub",
 ]

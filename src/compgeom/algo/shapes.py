@@ -6,8 +6,8 @@ import math
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple, Union
 
-from ..geo_math.geometry import Point, Point3D
-from ..geo_math.math_utils import distance, distance_3d, signed_area_twice
+from ..kernel import Point, Point3D
+from ..kernel import distance, distance_3d, signed_area_twice
 
 
 class Shape(ABC):

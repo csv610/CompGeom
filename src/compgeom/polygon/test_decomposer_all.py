@@ -1,6 +1,6 @@
 import pytest
 from compgeom.mesh import PolygonMesh
-from compgeom.geo_math.geometry import Point
+from compgeom.kernel import Point
 from compgeom.polygon import Polygon, PolygonDecomposer
 
 def _is_y_monotone(face, vertices):
