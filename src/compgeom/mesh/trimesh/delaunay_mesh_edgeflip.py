@@ -1,13 +1,12 @@
 """
 Delaunay triangulation using the Incremental Edge Flip algorithm.
 This implementation follows the structure of delaunay_mesh_incremental.py but uses
-an explicit queue-based edge flipping mechanism for legalization.
+an explicit stack-based edge flipping mechanism for legalization.
 """
 
 from __future__ import annotations
 
 import math
-from collections import deque
 from typing import TYPE_CHECKING, Iterable
 
 from ...kernel import (
@@ -16,6 +15,7 @@ from ...kernel import (
     contains_point,
     cross_product,
     in_circle,
+    incircle_sign,
 )
 
 if TYPE_CHECKING:
@@ -115,7 +115,7 @@ class PointGrid:
 class EdgeFlipDelaunayMesher:
     """
     Incremental Delaunay Mesher using the Edge Flip algorithm.
-    Uses visibility walks for point location and a queue-based edge flipping approach.
+    Optimized for numerical robustness and triangle reuse.
     """
     def __init__(self, points_for_grid: Iterable[Point] | None = None):
         self.active_triangles: set[EdgeFlipTriangle] = set()
@@ -156,6 +156,23 @@ class EdgeFlipDelaunayMesher:
             if v in self.vertex_to_triangles:
                 self.vertex_to_triangles[v].discard(tri)
 
+    def _robust_cross_product(self, a: Point, b: Point, p: Point) -> float:
+        """Cross product with SOS-style tie-breaking for collinear points."""
+        cp = cross_product(a, b, p)
+        if abs(cp) > 1e-12:
+            return cp
+        # Consistent tie-break using IDs
+        return 1e-15 if (a.id < b.id) else -1e-15
+
+    def _robust_in_circle(self, a: Point, b: Point, c: Point, d: Point) -> bool:
+        """In-circle test with SOS-style tie-breaking for cocircular points."""
+        sign = incircle_sign(a, b, c, d)
+        if sign != 0:
+            return sign > 0
+        # Tie-break using point IDs
+        max_id = max(a.id, b.id, c.id, d.id)
+        return d.id != max_id
+
     def _visibility_walk(self, point: Point, start_tri: EdgeFlipTriangle) -> EdgeFlipTriangle | None:
         curr = start_tri
         visited = {curr}
@@ -166,7 +183,7 @@ class EdgeFlipDelaunayMesher:
                 v1 = curr.vertices[(i + 1) % 3]
                 v2 = curr.vertices[(i + 2) % 3]
                 
-                if cross_product(v1, v2, point) < -1e-10:
+                if self._robust_cross_product(v1, v2, point) < -1e-10:
                     neighbor = curr.neighbors[i]
                     if neighbor and neighbor not in visited:
                         curr = neighbor
@@ -190,50 +207,46 @@ class EdgeFlipDelaunayMesher:
             if idx != -1:
                 neighbor.neighbors[idx] = new_tri
 
-    def _flip_edges(self, suspect_edges: deque[tuple[EdgeFlipTriangle, int]]):
-        """Processes a queue of suspect edges and flips them if they are non-Delaunay."""
+    def _flip_edges(self, suspect_edges: list[tuple[EdgeFlipTriangle, int]]):
+        """Processes a stack of suspect edges and flips them if they are non-Delaunay."""
         while suspect_edges:
-            t1, i1 = suspect_edges.popleft()
+            t1, i1 = suspect_edges.pop()
             if t1 not in self.active_triangles:
                 continue
             
             t2 = t1.neighbors[i1]
-            if t2 is None:
-                continue
+            if not t2: continue
 
             i2 = t2.get_edge_index(t1.vertices[(i1+1)%3], t1.vertices[(i1+2)%3])
             if i2 == -1: continue
 
-            # Quadrilateral (a, c, b, d) with shared edge (a, b)
-            c = t1.vertices[i1]
-            a = t1.vertices[(i1+1)%3]
-            b = t1.vertices[(i1+2)%3]
+            c, a, b = t1.vertices[i1], t1.vertices[(i1+1)%3], t1.vertices[(i1+2)%3]
             d = t2.vertices[i2]
 
-            if in_circle(a, b, c, d):
+            if self._robust_in_circle(a, b, c, d):
                 n_ac = t1.neighbors[(i1 + 2) % 3]
                 n_cb = t1.neighbors[(i1 + 1) % 3]
                 n_bd = t2.neighbors[(i2 + 2) % 3]
                 n_da = t2.neighbors[(i2 + 1) % 3]
 
+                # Triangle Reuse: update in-place
                 self._remove_triangle(t1)
                 self._remove_triangle(t2)
 
-                nt1 = EdgeFlipTriangle(c, a, d)
-                nt2 = EdgeFlipTriangle(c, d, b)
+                t1.vertices = [c, a, d]
+                t1.neighbors = [n_da, t2, n_ac]
+                t2.vertices = [c, d, b]
+                t2.neighbors = [n_bd, n_cb, t1]
 
-                nt1.neighbors = [n_da, nt2, n_ac]
-                nt2.neighbors = [n_bd, n_cb, nt1]
+                self._add_triangle(t1)
+                self._add_triangle(t2)
 
-                self._add_triangle(nt1)
-                self._add_triangle(nt2)
+                self._update_neighbor(n_da, a, d, t1)
+                self._update_neighbor(n_ac, c, a, t1)
+                self._update_neighbor(n_bd, d, b, t2)
+                self._update_neighbor(n_cb, b, c, t2)
 
-                self._update_neighbor(n_da, a, d, nt1)
-                self._update_neighbor(n_ac, c, a, nt1)
-                self._update_neighbor(n_bd, d, b, nt2)
-                self._update_neighbor(n_cb, b, c, nt2)
-
-                suspect_edges.extend([(nt1, 0), (nt1, 2), (nt2, 0), (nt2, 1)])
+                suspect_edges.extend([(t1, 0), (t1, 2), (t2, 0), (t2, 1)])
 
     def initialize(self, points: Iterable[Point]):
         pts = list(points)
@@ -251,7 +264,7 @@ class EdgeFlipDelaunayMesher:
     def _split_triangle(self, p: Point, target: EdgeFlipTriangle):
         """Splits a triangle into three by inserting a point inside."""
         v0, v1, v2 = target.vertices
-        n0, n1, n2 = target.neighbors # n0 opp v0, n1 opp v1, n2 opp v2
+        n0, n1, n2 = target.neighbors 
         
         self._remove_triangle(target)
         
@@ -290,7 +303,8 @@ class EdgeFlipDelaunayMesher:
         
         t0, t1, t2 = self._split_triangle(p, target)
         
-        suspects = deque([(t0, 0), (t1, 0), (t2, 0), (t0, 1), (t1, 1), (t2, 1)])
+        # Legalize using a Stack (LIFO) for better cache locality
+        suspects = [(t0, 0), (t1, 0), (t2, 0), (t0, 1), (t1, 1), (t2, 1)]
         self._flip_edges(suspects)
         
         self.grid.add(p)
