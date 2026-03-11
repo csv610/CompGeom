@@ -157,17 +157,31 @@ class EdgeFlipDelaunayMesher:
                 self.vertex_to_triangles[v].discard(tri)
 
     def _robust_cross_product(self, a: Point, b: Point, p: Point) -> float:
-        """Cross product with SOS-style tie-breaking for collinear points."""
-        cp = cross_product(a, b, p)
-        if abs(cp) > 1e-12:
-            return cp
+        """Adaptive exact cross product (orientation) with SOS tie-breaking."""
+        adx, ady = b.x - a.x, b.y - a.y
+        bdx, bdy = p.x - a.x, p.y - a.y
+        
+        det = adx * bdy - ady * bdx
+        # Dynamic error bound (Shewchuk style)
+        bound = 1e-14 * (abs(adx * bdy) + abs(ady * bdx))
+        
+        if abs(det) > bound:
+            return det
+            
+        # Exact arithmetic fallback using standard library fractions
+        import fractions
+        exact_det = (fractions.Fraction(b.x) - fractions.Fraction(a.x)) * (fractions.Fraction(p.y) - fractions.Fraction(a.y)) - \
+                    (fractions.Fraction(b.y) - fractions.Fraction(a.y)) * (fractions.Fraction(p.x) - fractions.Fraction(a.x))
+        
+        if exact_det != 0:
+            return float(exact_det)
+            
         # Consistent tie-break using IDs
         return 1e-15 if (a.id < b.id) else -1e-15
 
     def _robust_in_circle(self, a: Point, b: Point, c: Point, d: Point) -> bool:
-        """In-circle test with a fast bounding box filter and SOS tie-breaking."""
+        """In-circle test with a fast bounding box filter and Adaptive Precision arithmetic."""
         # 1. Fast Circumcircle Bounding Box Filter
-        # Calculate circumcenter (ox, oy) and squared radius r2 of triangle abc
         x1, y1 = a.x, a.y
         x2, y2 = b.x, b.y
         x3, y3 = c.x, c.y
@@ -179,17 +193,67 @@ class EdgeFlipDelaunayMesher:
             r2 = (x1 - ox)**2 + (y1 - oy)**2
             r = math.sqrt(r2)
             
-            # If d is outside the AABB of the circumcircle, it's definitely outside the circle
             if d.x < ox - r - 1e-9 or d.x > ox + r + 1e-9 or \
                d.y < oy - r - 1e-9 or d.y > oy + r + 1e-9:
                 return False
 
-        # 2. Full In-Circle Test
-        sign = incircle_sign(a, b, c, d)
+        # 2. Adaptive In-Circle Test (Shewchuk style error bound)
+        adx, ady = a.x - d.x, a.y - d.y
+        bdx, bdy = b.x - d.x, b.y - d.y
+        cdx, cdy = c.x - d.x, c.y - d.y
+
+        bdxcdy = bdx * cdy
+        cdxbdy = cdx * bdy
+        alift = adx * adx + ady * ady
+
+        cdxady = cdx * ady
+        adxcdy = adx * cdy
+        blift = bdx * bdx + bdy * bdy
+
+        adxbdy = adx * bdy
+        bdxady = bdx * ady
+        clift = cdx * cdx + cdy * cdy
+
+        det = (alift * (bdxcdy - cdxbdy) +
+               blift * (cdxady - adxcdy) +
+               clift * (adxbdy - bdxady))
+
+        permanent = (alift * (abs(bdxcdy) + abs(cdxbdy)) +
+                     blift * (abs(cdxady) + abs(adxcdy)) +
+                     clift * (abs(adxbdy) + abs(bdxady)))
+        
+        # Machine epsilon for float64 is ~1.11e-16. 1e-14 provides a safe relative bound.
+        err_bound = 1e-14 * permanent
+        
+        sign = 0
+        if abs(det) > err_bound:
+            sign = 1 if det > 0 else -1
+        else:
+            # 3. Exact Arithmetic Fallback using Fractions (avoid Decimal overhead/limitations)
+            import fractions
+            adx_f = fractions.Fraction(a.x) - fractions.Fraction(d.x)
+            ady_f = fractions.Fraction(a.y) - fractions.Fraction(d.y)
+            bdx_f = fractions.Fraction(b.x) - fractions.Fraction(d.x)
+            bdy_f = fractions.Fraction(b.y) - fractions.Fraction(d.y)
+            cdx_f = fractions.Fraction(c.x) - fractions.Fraction(d.x)
+            cdy_f = fractions.Fraction(c.y) - fractions.Fraction(d.y)
+            
+            alift_f = adx_f * adx_f + ady_f * ady_f
+            blift_f = bdx_f * bdx_f + bdy_f * bdy_f
+            clift_f = cdx_f * cdx_f + cdy_f * cdy_f
+            
+            exact_det = (alift_f * (bdx_f * cdy_f - cdx_f * bdy_f) +
+                         blift_f * (cdx_f * ady_f - adx_f * cdy_f) +
+                         clift_f * (adx_f * bdy_f - bdx_f * ady_f))
+                         
+            if exact_det > 0: sign = 1
+            elif exact_det < 0: sign = -1
+            else: sign = 0
+
         if sign != 0:
             return sign > 0
             
-        # 3. SOS Tie-break using point IDs
+        # 4. SOS Tie-break using point IDs
         max_id = max(a.id, b.id, c.id, d.id)
         return d.id != max_id
 
