@@ -7,7 +7,7 @@ import random
 
 from ..kernel import EPSILON, Point
 from ..kernel import rotate_2d, unrotate_2d
-from ..polygon.polygon import graham_scan
+from ..polygon.convex_hull import GrahamScan
 from .proximity import welzl
 
 
@@ -51,7 +51,7 @@ def minimum_bounding_box(points):
             "corners": [point, point, point, point],
         }
 
-    hull = graham_scan(list(points))
+    hull = GrahamScan().generate(list(points))
     if len(hull) == 2:
         a, b = hull
         dx = b.x - a.x

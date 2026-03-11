@@ -169,16 +169,8 @@ def shortest_path_in_polygon(
     return _shortest_path_in_polygon(polygon, source, target)
 
 
-def graham_scan(points: list[Point]) -> list[Point]:
-    from .convex_hull import graham_scan as _graham_scan
-
-    return _graham_scan(points)
 
 
-def monotone_chain(points: list[Point]) -> list[Point]:
-    from .convex_hull import monotone_chain as _monotone_chain
-
-    return _monotone_chain(points)
 
 
 def generate_random_convex_polygon(
@@ -291,12 +283,10 @@ __all__ = [
     "get_polygon_properties",
     "get_reflex_vertices",
     "get_triangulation_with_diagonals",
-    "graham_scan",
     "hertel_mehlhorn",
     "is_convex",
     "is_ear",
     "is_point_in_polygon",
-    "monotone_chain",
     "polygon_kernel",
     "shortest_path_in_polygon",
     "triangulate_polygon",

@@ -5,7 +5,7 @@ import pytest
 from compgeom.kernel import Point
 from compgeom.graphics.geo_plot import GeomPlot
 from compgeom.polygon import (
-    ConvexHull,
+    ConvexHullGenerator, GrahamScan, MonotoneChain, QuickHull, Chan,
     Polygon,
     PolygonDecomposer,
     PolygonGuards,
@@ -200,8 +200,8 @@ def test_polygon_random_generators_return_polygon_compatible_shapes():
 
     assert len(random_convex) >= 3
     assert len(random_simple) == 8
-    assert ConvexHull.graham_scan(hull_points) == [Point(0, 0), Point(1, 0), Point(0, 1)]
-    assert ConvexHull.monotone_chain(hull_points) == [Point(0, 0), Point(1, 0), Point(0, 1)]
+    assert GrahamScan().generate(hull_points) == [Point(0, 0), Point(1, 0), Point(0, 1)]
+    assert MonotoneChain().generate(hull_points) == [Point(0, 0), Point(1, 0), Point(0, 1)]
     assert len(PolygonGenerator.convex(8)) >= 3
     assert len(generate_random_convex_polygon(8)) >= 3
     assert len(generate_simple_polygon(8)) == 8
@@ -227,13 +227,13 @@ def test_convex_hull_quick_hull_matches_other_hull_algorithms():
         Point(1, 3),
     ]
 
-    expected = ConvexHull.monotone_chain(points)
+    expected = MonotoneChain().generate(points)
 
-    assert ConvexHull.quick_hull(points) == expected
-    assert ConvexHull.chan(points) == expected
-    assert ConvexHull.graham_scan(points) == expected
-    assert ConvexHull.is_convex_hull(points, expected) is True
-    assert ConvexHull.is_convex_hull(points, [Point(0, 0), Point(4, 0), Point(2, 2), Point(0, 4)]) is False
+    assert QuickHull().generate(points) == expected
+    assert Chan().generate(points) == expected
+    assert GrahamScan().generate(points) == expected
+    assert ConvexHullGenerator.is_convex_hull(points, expected) is True
+    assert ConvexHullGenerator.is_convex_hull(points, [Point(0, 0), Point(4, 0), Point(2, 2), Point(0, 4)]) is False
 
 
 def test_visibility_polygon_rejects_outside_viewpoint():

@@ -23,7 +23,8 @@ from ..kernel import (
     signed_area_twice,
     support,
 )
-from ..polygon.polygon import graham_scan, is_point_in_polygon
+from ..polygon.convex_hull import GrahamScan
+from ..polygon.polygon import is_point_in_polygon
 
 
 class ClosestPair:
@@ -159,7 +160,7 @@ class LargestEmptyCircle:
                 return center, distance(p1, p2) / 2.0
             return Point(0, 0), 0.0
 
-        hull = graham_scan(points)
+        hull = GrahamScan().generate(points)
         from ..mesh.delaunay_triangulation import triangulate
         triangles, _ = triangulate(points)
         
@@ -209,7 +210,7 @@ class LargestEmptyCircle:
         svg = [f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">']
         svg.append('<rect width="100%" height="100%" fill="white" />')
         
-        hull = graham_scan(points)
+        hull = GrahamScan().generate(points)
         hull_str = " ".join(f"{tx(p.x)},{ty(p.y)}" for p in hull)
         svg.append(f'<polygon points="{hull_str}" fill="none" stroke="#ccc" stroke-dasharray="5,5" />')
         
@@ -251,7 +252,7 @@ def do_intersect(p1: Point, q1: Point, p2: Point, q2: Point) -> bool:
 
 
 def farthest_pair(points: list[Point]):
-    hull = graham_scan(points)
+    hull = GrahamScan().generate(points)
     if len(hull) == 0:
         return 0, (None, None)
     if len(hull) == 1:

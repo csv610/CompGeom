@@ -7,7 +7,7 @@ import random
 from typing import List, Tuple
 
 from ..kernel import Point
-from .convex_hull import ConvexHull
+from .convex_hull import MonotoneChain
 from .polygon import generate_simple_polygon
 
 
@@ -21,7 +21,7 @@ class PolygonGenerator:
             Point(random.uniform(*x_range), random.uniform(*y_range), index)
             for index in range(n_points)
         ]
-        return ConvexHull.monotone_chain(points)
+        return MonotoneChain().generate(points)
 
     @staticmethod
     def concave(n_points: int = 15, x_range: Tuple[float, float] = (0, 100), y_range: Tuple[float, float] = (0, 100)) -> List[Point]:

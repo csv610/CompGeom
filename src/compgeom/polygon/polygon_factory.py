@@ -7,7 +7,7 @@ import random
 from typing import TypeVar
 
 from ..kernel import Point
-from .convex_hull import ConvexHull
+from .convex_hull import MonotoneChain
 from .polygon import Polygon
 
 PolygonT = TypeVar("PolygonT", bound=Polygon)
@@ -22,7 +22,7 @@ def random_convex_points(
         Point(random.uniform(*x_range), random.uniform(*y_range), index)
         for index in range(num_points)
     ]
-    return ConvexHull.monotone_chain(points)
+    return MonotoneChain().generate(points)
 
 
 def simple_polygon_points(

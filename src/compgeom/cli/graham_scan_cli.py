@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from compgeom import graham_scan
+from compgeom import GrahamScan
 from compgeom.cli._shared import demo_points
 
 
 def main() -> int:
     points = demo_points()
-    hull = graham_scan(points)
+    hull = GrahamScan().generate(points)
     print(f"Convex Hull (Graham Scan) has {len(hull)} vertices:")
     for point in hull:
         print(f"  ({point.x:.4f}, {point.y:.4f})")

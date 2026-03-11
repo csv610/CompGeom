@@ -135,6 +135,10 @@ class Mesh(ABC):
         """Returns the topological helper for this mesh."""
         return self._topology
 
+    def is_watertight(self) -> bool:
+        """Returns True if the mesh is closed (no boundary edges)."""
+        return len(self.topology.boundary_edges()) == 0
+
     @property
     def centroid(self) -> Union[Point, Point3D]:
         """Returns the geometric center of all vertices."""

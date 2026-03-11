@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .convex_hull import ConvexHull, graham_scan, monotone_chain
+from .convex_hull import ConvexHullGenerator, GrahamScan, MonotoneChain, QuickHull, Chan
 from .polygon import (
     Polygon,
     PolygonProperties,
@@ -40,7 +40,11 @@ __all__ = [
     "DCELHalfEdge",
     "DCELVertex",
     "CirclePacker",
-    "ConvexHull",
+    "ConvexHullGenerator",
+    "GrahamScan",
+    "MonotoneChain",
+    "QuickHull",
+    "Chan",
     "DistanceMapSolver",
     "PolygonDecomposer",
     "PolygonalMeanCurvatureFlow",
@@ -57,14 +61,12 @@ __all__ = [
     "get_polygon_properties",
     "get_reflex_vertices",
     "get_triangulation_with_diagonals",
-    "graham_scan",
     "guard_polygon",
     "hertel_mehlhorn",
     "is_convex",
     "is_ear",
     "is_point_in_polygon",
     "locate_face",
-    "monotone_chain",
     "polygon_kernel",
     "shortest_path_in_polygon",
     "solve_art_gallery",
