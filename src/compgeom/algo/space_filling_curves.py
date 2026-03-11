@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-def peano_index_to_coords(index: int, level: int) -> Tuple[int, int]:
+__all__ = ["SpaceFillingCurves"]
+
+
+def _peano_index_to_coords(index: int, level: int) -> Tuple[int, int]:
     """Convert a Peano curve index to 2D coordinates."""
     x = y = px = py = 0
     for power in range(level - 1, -1, -1):
@@ -25,16 +28,7 @@ def peano_index_to_coords(index: int, level: int) -> Tuple[int, int]:
     return x, y
 
 
-def morton_index_to_coords(index: int) -> Tuple[int, int]:
-    """Convert a Morton curve (Z-order) index to 2D coordinates."""
-    x = y = 0
-    for bit in range(32):
-        x |= (index & (1 << (2 * bit))) >> bit
-        y |= (index & (1 << (2 * bit + 1))) >> (bit + 1)
-    return x, y
-
-
-def hilbert_index_to_coords(index: int, order: int) -> Tuple[int, int]:
+def _hilbert_index_to_coords(index: int, order: int) -> Tuple[int, int]:
     """Convert a Hilbert curve index to 2D coordinates."""
     x = y = 0
     t = index
@@ -50,6 +44,16 @@ def hilbert_index_to_coords(index: int, order: int) -> Tuple[int, int]:
         t //= 4
     return x, y
 
+
+def _morton_index_to_coords(index: int) -> Tuple[int, int]:
+    """Convert a Morton curve (Z-order) index to 2D coordinates."""
+    x = y = 0
+    for bit in range(32):
+        x |= (index & (1 << (2 * bit))) >> bit
+        y |= (index & (1 << (2 * bit + 1))) >> (bit + 1)
+    return x, y
+
+
 class SpaceFillingCurves:
     """Generators for standard space-filling curves, returning paths as cell indices."""
 
@@ -60,7 +64,7 @@ class SpaceFillingCurves:
         num_points = 9**level
         indices = []
         for i in range(num_points):
-            x, y = peano_index_to_coords(i, level)
+            x, y = _peano_index_to_coords(i, level)
             indices.append(y * width + x)
         return indices
 
@@ -71,7 +75,7 @@ class SpaceFillingCurves:
         num_points = 4**order
         indices = []
         for i in range(num_points):
-            x, y = hilbert_index_to_coords(i, order)
+            x, y = _hilbert_index_to_coords(i, order)
             indices.append(y * width + x)
         return indices
 
@@ -82,7 +86,7 @@ class SpaceFillingCurves:
         num_points = 4**level
         indices = []
         for i in range(num_points):
-            x, y = morton_index_to_coords(i)
+            x, y = _morton_index_to_coords(i)
             indices.append(y * width + x)
         return indices
 
@@ -139,6 +143,3 @@ class SpaceFillingCurves:
             save_png(svg, filename)
         else:
             save_svg(svg, filename)
-
-
-__all__ = ["SpaceFillingCurves"]
