@@ -38,9 +38,9 @@ class EdgeFlipTriangle:
 
     def contains_point(self, point: Point) -> bool:
         """Geometric containment check using cross products."""
-        # Use a small epsilon for robustness
+        # Use a consistent epsilon for containment robustness
         for i in range(3):
-            if cross_product(self.vertices[i], self.vertices[(i + 1) % 3], point) < -1e-9:
+            if cross_product(self.vertices[i], self.vertices[(i + 1) % 3], point) < -1e-11:
                 return False
         return True
 
@@ -348,6 +348,8 @@ class EdgeFlipDelaunayMesher:
         self.super_vertices = set(sv)
         self.root = EdgeFlipTriangle(*sv)
         self._add_triangle(self.root)
+        
+        # Ensure super-vertices are in the grid to seed walks if necessary
         for v in sv: self.grid.add(v)
 
     def _split_triangle(self, p: Point, target: EdgeFlipTriangle):
@@ -511,6 +513,7 @@ class EdgeFlipDelaunayMesher:
         if existing_mesh:
             self.initialize_from_mesh(existing_mesh)
         else:
+            self.grid = PointGrid(unique_points)
             self.initialize(unique_points)
 
         for p in unique_points:
