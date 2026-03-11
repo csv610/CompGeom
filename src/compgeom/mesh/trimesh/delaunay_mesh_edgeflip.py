@@ -165,11 +165,31 @@ class EdgeFlipDelaunayMesher:
         return 1e-15 if (a.id < b.id) else -1e-15
 
     def _robust_in_circle(self, a: Point, b: Point, c: Point, d: Point) -> bool:
-        """In-circle test with SOS-style tie-breaking for cocircular points."""
+        """In-circle test with a fast bounding box filter and SOS tie-breaking."""
+        # 1. Fast Circumcircle Bounding Box Filter
+        # Calculate circumcenter (ox, oy) and squared radius r2 of triangle abc
+        x1, y1 = a.x, a.y
+        x2, y2 = b.x, b.y
+        x3, y3 = c.x, c.y
+        
+        d_val = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
+        if abs(d_val) > 1e-12:
+            ox = ((x1**2 + y1**2) * (y2 - y3) + (x2**2 + y2**2) * (y3 - y1) + (x3**2 + y3**2) * (y1 - y2)) / d_val
+            oy = ((x1**2 + y1**2) * (x3 - x2) + (x2**2 + y2**2) * (x1 - x3) + (x3**2 + y3**2) * (x2 - x1)) / d_val
+            r2 = (x1 - ox)**2 + (y1 - oy)**2
+            r = math.sqrt(r2)
+            
+            # If d is outside the AABB of the circumcircle, it's definitely outside the circle
+            if d.x < ox - r - 1e-9 or d.x > ox + r + 1e-9 or \
+               d.y < oy - r - 1e-9 or d.y > oy + r + 1e-9:
+                return False
+
+        # 2. Full In-Circle Test
         sign = incircle_sign(a, b, c, d)
         if sign != 0:
             return sign > 0
-        # Tie-break using point IDs
+            
+        # 3. SOS Tie-break using point IDs
         max_id = max(a.id, b.id, c.id, d.id)
         return d.id != max_id
 
