@@ -6,7 +6,7 @@ from .delaunay_triangulation import (
     DTriangle,
     MeshTriangle,
 )
-from .delaunay_dc import triangulate_divide_and_conquer
+from .delaunay_dc import triangulate_divide_and_conquer, DivideAndConquerDelaunayMesher
 from .delaunay_dynamic import DynamicDelaunay
 from .delaunay_constrained import constrained_delaunay_triangulation
 from .delaunay_topology import (
@@ -21,6 +21,7 @@ __all__ = [
     "DTriangle",
     "MeshTriangle",
     "triangulate_divide_and_conquer",
+    "DivideAndConquerDelaunayMesher",
     "DynamicDelaunay",
     "constrained_delaunay_triangulation",
     "build_topology",
