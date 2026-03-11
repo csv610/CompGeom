@@ -307,8 +307,10 @@ class EdgeFlipDelaunayMesher:
         self._add_triangle(t1)
         self._add_triangle(t2)
         
-        # Suspect edges are the outer edges of the original triangle
-        suspects = deque([(t0, 0), (t1, 0), (t2, 0)])
+        # Suspect edges are the outer edges of the original triangle AND the 3 new internal edges.
+        # Outer edges: (t0, 0), (t1, 0), (t2, 0)
+        # Internal edges: (t0, 1), (t1, 1), (t2, 1) - each shared between two of the new triangles
+        suspects = deque([(t0, 0), (t1, 0), (t2, 0), (t0, 1), (t1, 1), (t2, 1)])
         self._flip_edges(suspects)
         
         self.grid.add(p)
