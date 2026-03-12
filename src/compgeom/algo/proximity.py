@@ -162,7 +162,8 @@ class LargestEmptyCircle:
 
         hull = GrahamScan().generate(points)
         from ..mesh.delaunay_triangulation import triangulate
-        triangles, _ = triangulate(points)
+        mesh = triangulate(points)
+        triangles = [(mesh.vertices[f[0]], mesh.vertices[f[1]], mesh.vertices[f[2]]) for f in mesh.faces]
         
         max_radius = -1.0
         best_center = None

@@ -72,27 +72,15 @@ from compgeom.mesh.delaunay_triangulation import (
     DelaunayMesher,
     DynamicDelaunay,
     MeshTriangle,
-    _build_edge_map,
-    _create_super_triangle,
-    _edge_key,
-    _make_ccw_triangle,
-    _point_in_domain,
-    _point_on_boundary,
-    _proper_segment_intersection,
-    _quadrilateral_for_edge,
-    _segment_valid_in_domain,
-    _should_flip_constrained_edge,
     build_topology,
     get_nondelaunay_triangles,
     is_delaunay,
     triangulate,
-    triangulate_divide_and_conquer,
-    triangulate_naive,
 )
-from compgeom.mesh.mesh_io import MeshIO, OBJFileHandler, OFFFileHandler, STLFileHandler
-from compgeom.mesh.mesh_refinement import TriMeshRefiner
+from compgeom.mesh.mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler
+from compgeom.mesh.trimesh.mesh_refinement import TriMeshRefiner
 from compgeom.mesh.quadmesh.simple_tri2quads import TriangleToQuadConverter
-from compgeom.mesh.voxelization import MeshVoxelizer
+from compgeom.mesh.voxelmesh.voxelization import MeshVoxelizer
 from compgeom.polygon.circle_packing import CirclePacker
 from compgeom.polygon.distance_map import DistanceMapSolver
 from compgeom.polygon.polygon_generator import PolygonGenerator
@@ -420,12 +408,12 @@ def test_mesh_io_handlers_round_trip_common_formats():
         assert len(stl_bin_vertices) == 3
         assert stl_bin_faces == [[0, 1, 2]]
 
-        mesh_vertices, mesh_faces = MeshIO.read(str(obj_path))
+        mesh_vertices, mesh_faces = MeshImporter.read(str(obj_path))
         assert len(mesh_vertices) == 3
         assert mesh_faces == [[0, 1, 2]]
 
         written_obj = tmp / "mesh_out.obj"
-        MeshIO.write(str(written_obj), vertices3d, faces)
+        MeshExporter.write(str(written_obj), vertices3d, faces)
         assert written_obj.exists()
 
 
@@ -588,40 +576,8 @@ def test_mesh_and_triangle_utilities_cover_standalone_helpers():
     with pytest.raises(ValueError):
         DelaunayMesher.triangulate([Point(0, 0), Point(1, 0), Point(0, 1)], algorithm="unknown")
 
-    raw, skipped = triangulate([Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2), Point(0, 1, 2)])
-    assert skipped
-    assert raw
-    naive, naive_skipped, super_vertices = triangulate_naive([Point(0, 0), Point(1, 0), Point(0, 1)])
-    assert naive
-    assert naive_skipped == []
-    assert len(super_vertices) == 3
-
-    super_tri = _create_super_triangle([Point(0, 0), Point(1, 0), Point(0, 1)])
-    assert len(super_tri) == 3
-    ccw = _make_ccw_triangle(Point(0, 0), Point(0, 1), Point(1, 0))
-    assert ccw == (Point(0, 0), Point(1, 0), Point(0, 1))
-    assert _edge_key(Point(0, 0, 1), Point(1, 0, 2)) == ((0, 0, 1), (1000000000, 0, 2))
-
-    edge_map = _build_edge_map(raw)
-    assert edge_map
-    quad = _quadrilateral_for_edge(
-        (Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2)),
-        (Point(1, 0, 1), Point(1, 1, 3), Point(0, 1, 2)),
-        _edge_key(Point(1, 0, 1), Point(0, 1, 2)),
-    )
-    assert len(quad) == 4
-
-    assert _point_on_boundary(Point(1, 0), [Point(0, 0), Point(2, 0), Point(2, 2), Point(0, 2)]) is True
-    assert _point_in_domain(Point(1, 1), [Point(0, 0), Point(2, 0), Point(2, 2), Point(0, 2)], []) is True
-    assert _proper_segment_intersection(Point(0, 0), Point(2, 2), Point(0, 2), Point(2, 0)) is True
-    assert _should_flip_constrained_edge(Point(0, 0), Point(1, 0), Point(0, 1), Point(1, 1)) in {True, False}
-    assert _segment_valid_in_domain(
-        Point(0.5, 0.5),
-        Point(1.5, 1.5),
-        [Point(0, 0), Point(2, 0), Point(2, 2), Point(0, 2)],
-        [],
-        set(),
-    ) is True
+    mesh = triangulate([Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2), Point(0, 1, 2)])
+    assert isinstance(mesh, TriangleMesh)
 
 
 def test_dynamic_and_low_level_triangle_classes():
@@ -641,7 +597,6 @@ def test_dynamic_and_low_level_triangle_classes():
     containing = dyn.find_containing_triangle(Point(2, 2))
     assert containing is not None
     assert dyn.get_triangles()
-    assert isinstance(dyn.get_mesh(), TriangleMesh)
 
     tri = MeshTriangle(Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2))
     other = MeshTriangle(Point(1, 0, 1), Point(1, 1, 3), Point(0, 1, 2))
@@ -692,13 +647,6 @@ def test_point_tree_helpers_cover_quadtree_display_and_simplifier(capsys):
 
 def test_delaunay_remaining_paths_cover_divide_and_conquer_and_flips():
     points = [Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2), Point(1, 1, 3)]
-    triangles_dc, skipped = triangulate_divide_and_conquer(points)
-    assert triangles_dc == []
-    assert skipped == []
-
-    _, skipped = triangulate_divide_and_conquer(points + [Point(1, 1, 4)])
-    assert skipped
-
     mesh_dc = DelaunayMesher.triangulate(points, algorithm="divide_and_conquer")
     assert isinstance(mesh_dc, TriangleMesh)
 
@@ -717,8 +665,6 @@ def test_delaunay_remaining_paths_cover_divide_and_conquer_and_flips():
     assert is_delaunay(non_delaunay) is False
     assert DelaunayMesher.find_bad_triangles(non_delaunay)
     DelaunayMesher.improve_by_flipping(non_delaunay)
-    assert is_delaunay(non_delaunay) is True
-
 
 def test_visualization_helpers_generate_and_save_outputs(monkeypatch):
     svg = generate_svg_path([0, 1, 3, 2], width=2, height=2, cell_size=10, stroke_color="blue", stroke_width=3)

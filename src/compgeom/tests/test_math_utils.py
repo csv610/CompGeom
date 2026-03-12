@@ -10,9 +10,9 @@ from compgeom.kernel import (
     circle_area, circle_perimeter, is_convex_quad, quad_area, segment_midpoint
 )
 from compgeom.algo.space_filling_curves import (
-    peano_index_to_coords,
-    morton_index_to_coords,
-    hilbert_index_to_coords
+    _peano_index_to_coords,
+    _morton_index_to_coords,
+    _hilbert_index_to_coords
 )
 
 def test_cross_product():
@@ -144,9 +144,9 @@ def test_segment_props():
 
 def test_space_filling_curves():
     # Peano
-    assert peano_index_to_coords(0, 1) == (0, 0)
+    assert _peano_index_to_coords(0, 1) == (0, 0)
     # Morton
-    assert morton_index_to_coords(0) == (0, 0)
-    assert morton_index_to_coords(3) == (1, 1)
+    assert _morton_index_to_coords(0) == (0, 0)
+    assert _morton_index_to_coords(3) == (1, 1)
     # Hilbert
-    assert hilbert_index_to_coords(0, 1) == (0, 0)
+    assert _hilbert_index_to_coords(0, 1) == (0, 0)

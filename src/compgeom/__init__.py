@@ -8,12 +8,7 @@ from . import algo
 from . import graphics
 
 # 2. Flattened API - Foundations
-from .kernel.geometry import *
-from .kernel.math_utils import *
-from .kernel.triangle import *
-from .kernel.line_segment import *
-from .kernel.circle import *
-from .kernel.quad import *
+from .kernel import *
 
 # 3. Flattened API - Shapes and Basic Algos
 from .algo.bounding import *

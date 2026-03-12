@@ -122,7 +122,7 @@ class DomainMesher:
         # Generate raw Delaunay triangulation with jitter and rejection delegated to DelaunayMesher
         mesh = DelaunayMesher.triangulate(
             all_points, 
-            algorithm="edge_flip", 
+            algorithm="incremental", 
             jitter=jitter, 
             rejection_ratio=delaunay_rejection_ratio
         )

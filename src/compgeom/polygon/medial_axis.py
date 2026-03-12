@@ -73,7 +73,8 @@ def approximate_medial_axis(polygon, resolution=0.25):
         return {"samples": [], "centers": [], "segments": []}
 
     boundary_samples = sample_polygon_boundary(polygon, max_segment_length=resolution)
-    sampled_triangles, _ = triangulate(boundary_samples)
+    mesh_obj = triangulate(boundary_samples)
+    sampled_triangles = [(mesh_obj.vertices[f[0]], mesh_obj.vertices[f[1]], mesh_obj.vertices[f[2]]) for f in mesh_obj.faces]
     if not sampled_triangles:
         return {"samples": boundary_samples, "centers": [], "segments": []}
 
