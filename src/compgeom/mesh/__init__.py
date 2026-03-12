@@ -64,6 +64,7 @@ from .volmesh.volmesh_quality import TetMeshQuality
 from .surfmesh.mesh_booleans import MeshBooleans
 from .surfmesh.geodesics import MeshGeodesics
 
+from .surfmesh.molecular_geometry import MolecularGeometry
 from .surfmesh.cfd_analysis import CFDAnalysis
 from .surfmesh.topo_analysis import TopoAnalysis
 from .polymesh.polygon_booleans import PolygonBooleans
@@ -106,6 +107,9 @@ __all__ = [
     "MeshExporter",
     "MeshProcessing",
     "MeshQueries",
+    "MeshRegistration",
+    "MeshValidation",
+    "MolecularGeometry",
     "MeshTriangle",
     "MeshTopology",
     "MeshTransfer",
