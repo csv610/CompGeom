@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from typing import Iterable, TYPE_CHECKING, Tuple
 
-from ...kernel import Point, hilbert_key
+from ....kernel import Point, hilbert_key
 
 
 if TYPE_CHECKING:

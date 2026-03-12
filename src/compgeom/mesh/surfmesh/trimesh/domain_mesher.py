@@ -5,11 +5,11 @@ import math
 import random
 from typing import TYPE_CHECKING, List, Optional
 
-from ...kernel import Point
+from ....kernel import Point
 from .delaunay_triangulation import DelaunayMesher
 
 if TYPE_CHECKING:
-    from ..mesh import TriangleMesh
+    from ...mesh import TriangleMesh
 
 
 class DomainMesher:
@@ -52,7 +52,7 @@ class DomainMesher:
         else:
             num_points = num_internal_points
         
-        from ...polygon.polygon import is_point_in_polygon
+        from ....polygon.polygon import is_point_in_polygon
         
         internal_points = []
         buffer = segment_length * 0.5
@@ -131,8 +131,8 @@ class DomainMesher:
             return mesh
             
         # Filter triangles whose centroids are outside the outer_boundary
-        from ...polygon.polygon import is_point_in_polygon
-        from ..mesh import TriangleMesh
+        from ....polygon.polygon import is_point_in_polygon
+        from ...mesh import TriangleMesh
         
         final_faces = []
         for face in mesh.faces:

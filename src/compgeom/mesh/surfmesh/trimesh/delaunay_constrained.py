@@ -1,7 +1,7 @@
 """Constrained Delaunay Triangulation (CDT)."""
 
 from __future__ import annotations
-from ...kernel import EPSILON, Point, incircle_sign, is_on_segment, orientation_sign
+from ....kernel import EPSILON, Point, incircle_sign, is_on_segment, orientation_sign
 
 
 def _point_key(point: Point):
@@ -69,7 +69,7 @@ def _proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool
 
 
 def _point_in_domain(point: Point, outer_boundary: list[Point], holes: list[list[Point]]) -> bool:
-    from ...polygon.polygon import is_point_in_polygon
+    from ....polygon.polygon import is_point_in_polygon
     if not is_point_in_polygon(point, outer_boundary):
         return False
     for hole in holes:
@@ -100,7 +100,7 @@ def _segment_valid_in_domain(
 
 
 def constrained_delaunay_triangulation(outer_boundary: list[Point], holes: list[list[Point]] | None = None):
-    from ...polygon.polygon import triangulate_polygon_with_holes
+    from ....polygon.polygon import triangulate_polygon_with_holes
     holes = holes or []
     triangles, merged_polygon = triangulate_polygon_with_holes(outer_boundary, holes)
     constrained_edges = {

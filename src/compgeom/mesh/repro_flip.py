@@ -1,7 +1,7 @@
 
 import random
 from compgeom.kernel import Point
-from compgeom.mesh.trimesh.delaunay_triangulation import build_topology, is_delaunay, DelaunayMesher
+from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import build_topology, is_delaunay, DelaunayMesher
 
 def test_full_triangulate_flip(num_points=50):
     print(f"\n--- Testing full triangulate with flip algorithm ({num_points} points) ---")

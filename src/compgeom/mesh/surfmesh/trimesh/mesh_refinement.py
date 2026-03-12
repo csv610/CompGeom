@@ -6,8 +6,8 @@ import heapq
 import math
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ...kernel import Point, Point3D
-from ..mesh import TriangleMesh
+from ....kernel import Point, Point3D
+from ...mesh import TriangleMesh
 
 
 class TriMeshRefiner:

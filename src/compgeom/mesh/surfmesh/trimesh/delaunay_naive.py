@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import math
-from ...kernel import Point, contains_point, cross_product
+from ....kernel import Point, contains_point, cross_product
 from .utils import create_super_triangle
 
 

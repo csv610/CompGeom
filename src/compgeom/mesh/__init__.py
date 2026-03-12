@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .trimesh.delaunay_triangulation import (
+from .surfmesh.trimesh.delaunay_triangulation import (
     DTriangle,
     DelaunayMesher,
     DynamicDelaunay,
@@ -29,13 +29,16 @@ from .mesh import (
 )
 from .mesh_coloring import MeshColoring
 from .mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler
-from .trimesh.mesh_refinement import TriMeshRefiner
+from .surfmesh.trimesh.mesh_refinement import TriMeshRefiner
 from .mesh_reordering import CuthillMcKee
 from .mesh_transfer import MeshTransfer
-from .quadmesh.simple_tri2quads import TriangleToQuadConverter
+from .surfmesh.quadmesh.simple_tri2quads import TriangleToQuadConverter
 from .polymesh.voronoi_diagram import VoronoiDiagram
-from .voxelmesh.voxelization import MeshVoxelizer
-from .tetmesh.delaunay_tetmesh import DelaunayTetMesher, triangulate as triangulate_3d
+from .volmesh.voxelmesh.voxelization import MeshVoxelizer
+from .volmesh.tetmesh.delaunay_tetmesh import DelaunayTetMesher, triangulate as triangulate_3d
+
+from .surfmesh.surf_mesh_repair import SurfMeshRepair
+from .polymesh.point_winding_number import PolygonWinding, point_winding_number
 
 __all__ = [
     "CuthillMcKee",
@@ -65,6 +68,9 @@ __all__ = [
     "TriangleToQuadConverter",
     "Triangle",
     "VoronoiDiagram",
+    "SurfMeshRepair",
+    "PolygonWinding",
+    "point_winding_number",
     "euler_characteristic",
     "mesh_edges",
     "mesh_neighbors",

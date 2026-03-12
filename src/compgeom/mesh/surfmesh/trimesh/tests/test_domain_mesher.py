@@ -1,8 +1,8 @@
 
 import unittest
 import math
-from compgeom.mesh.trimesh.domain_mesher import DomainMesher
-from compgeom.mesh.trimesh.delaunay_topology import is_delaunay, build_topology
+from compgeom.mesh.surfmesh.trimesh.domain_mesher import DomainMesher
+from compgeom.mesh.surfmesh.trimesh.delaunay_topology import is_delaunay, build_topology
 from compgeom.kernel import Point
 
 class TestDomainMesher(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestDomainMesher(unittest.TestCase):
             tri_points.append((mesh.vertices[f[0]], mesh.vertices[f[1]], mesh.vertices[f[2]]))
         topo_mesh = build_topology(tri_points)
 
-        from compgeom.mesh.trimesh.delaunay_topology import get_nondelaunay_triangles
+        from compgeom.mesh.surfmesh.trimesh.delaunay_topology import get_nondelaunay_triangles
         bad = get_nondelaunay_triangles(topo_mesh)
         if bad:
             print(f"DEBUG: Found {len(bad)} non-Delaunay triangles out of {len(mesh.faces)}")

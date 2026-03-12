@@ -4,11 +4,11 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Optional, List, Tuple
 
-from ...kernel import Point3D
+from ....kernel import Point3D
 from .delaunay_mesh_incremental import triangulate_incremental_3d
 
 if TYPE_CHECKING:
-    from ..mesh import TetMesh
+    from ...mesh import TetMesh
 
 class DelaunayTetMesher:
     """
@@ -21,7 +21,7 @@ class DelaunayTetMesher:
         Performs Delaunay tetrahedralization.
         """
         if not points:
-            from ..mesh import TetMesh
+            from ...mesh import TetMesh
             return TetMesh([], [])
 
         skipped = []
@@ -31,7 +31,7 @@ class DelaunayTetMesher:
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
             
-        from ..mesh import TetMesh
+        from ...mesh import TetMesh
         # Convert tets (list of tuples of points) to TetMesh (indices)
         unique_points = []
         point_to_idx = {}

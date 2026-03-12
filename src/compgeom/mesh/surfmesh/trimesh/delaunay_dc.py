@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import math
-from ...kernel import Point, orientation_sign, in_circle, segment_angle as angle
+from ....kernel import Point, orientation_sign, in_circle, segment_angle as angle
 
 
 def triangulate_divide_and_conquer(points: list[Point]):

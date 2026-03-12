@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Dict, List, Set, Tuple, Union
 
-from ...kernel.geometry import Point, Point3D
-from ..mesh import TriangleMesh, QuadMesh
+from ....kernel.geometry import Point, Point3D
+from ...mesh import TriangleMesh, QuadMesh
 
 
 class TriangleToQuadConverter:

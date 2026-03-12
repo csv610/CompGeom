@@ -12,7 +12,7 @@ from ...kernel import (
     sub,
     triangle_circumcenter,
 )
-from ..trimesh.delaunay_triangulation import (
+from ..surfmesh.trimesh.delaunay_triangulation import (
     DTriangle,
     DelaunayMesher,
     DynamicDelaunay,
@@ -21,7 +21,7 @@ from ..trimesh.delaunay_triangulation import (
     build_topology,
     triangulate,
 )
-from ..trimesh.delaunay_mesh_incremental import IncrementalDelaunayMesher, IncrementalTriangle
+from ..surfmesh.trimesh.delaunay_mesh_incremental import IncrementalDelaunayMesher, IncrementalTriangle
 
 
 class VoronoiDiagram:

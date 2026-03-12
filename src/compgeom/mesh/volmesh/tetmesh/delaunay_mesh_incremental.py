@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Iterable, List, Set, Tuple, Optional, Dict
 
-from ...kernel import (
+from ....kernel import (
     EPSILON,
     Point3D,
     tetra_orientation_sign,
@@ -13,7 +13,7 @@ from ...kernel import (
 from .utils import PointGrid3D, create_super_tetrahedron
 
 if TYPE_CHECKING:
-    from ..mesh import TetMesh
+    from ...mesh import TetMesh
 
 class IncrementalTetrahedron:
     """A tetrahedron in the incremental Delaunay mesh."""

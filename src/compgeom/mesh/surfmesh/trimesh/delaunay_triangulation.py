@@ -5,7 +5,7 @@ import math
 from collections import deque
 from typing import TYPE_CHECKING
 
-from ...kernel import Point, in_circle, orientation_sign
+from ....kernel import Point, in_circle, orientation_sign
 from .delaunay_mesh_incremental import triangulate_incremental_fast
 from .delaunay_dc import triangulate_divide_and_conquer
 from .delaunay_naive import triangulate_naive, Triangle
@@ -20,7 +20,7 @@ from .delaunay_topology import (
 )
 
 if TYPE_CHECKING:
-    from ..mesh import TriangleMesh
+    from ...mesh import TriangleMesh
 
 
 class DelaunayMesher:
@@ -47,7 +47,7 @@ class DelaunayMesher:
             A TriangleMesh object.
         """
         if not points:
-            from ..mesh import TriangleMesh
+            from ...mesh import TriangleMesh
             return TriangleMesh.from_triangles([])
 
         # Calculate bounding box for jitter and rejection scaling
@@ -103,7 +103,7 @@ class DelaunayMesher:
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
             
-        from ..mesh import TriangleMesh
+        from ...mesh import TriangleMesh
         return TriangleMesh.from_triangles(triangles, skipped_points=skipped)
 
     @staticmethod
@@ -126,14 +126,14 @@ class DelaunayMesher:
         # Triangulate points of mesh2 into the structure of mesh1
         triangles, skipped = mesher.triangulate(mesh2.vertices, existing_mesh=mesh1)
         
-        from ..mesh import TriangleMesh
+        from ...mesh import TriangleMesh
         return TriangleMesh.from_triangles(triangles, skipped_points=skipped)
 
     @staticmethod
     def constrained_triangulate(outer_boundary: list[Point], holes: list[list[Point]] | None = None) -> TriangleMesh:
         """Performs Constrained Delaunay Triangulation."""
         triangles, _ = constrained_delaunay_triangulation(outer_boundary, holes)
-        from ..mesh import TriangleMesh
+        from ...mesh import TriangleMesh
         return TriangleMesh.from_triangles(triangles)
 
     @staticmethod

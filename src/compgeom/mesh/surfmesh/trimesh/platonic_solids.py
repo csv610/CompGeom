@@ -4,10 +4,10 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, List, Tuple
 
-from ...kernel import Point3D
+from ....kernel import Point3D
 
 if TYPE_CHECKING:
-    from ..mesh import TriangleMesh
+    from ...mesh import TriangleMesh
 
 
 class PlatonicSolid:
@@ -15,7 +15,7 @@ class PlatonicSolid:
 
     @staticmethod
     def _create_mesh(vertices: List[Point3D], faces: List[Tuple[int, int, int]]) -> TriangleMesh:
-        from ..mesh import TriangleMesh
+        from ...mesh import TriangleMesh
         return TriangleMesh(vertices, faces)
 
     @staticmethod

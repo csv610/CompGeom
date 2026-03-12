@@ -1,7 +1,7 @@
 import time
 import random
 from compgeom.kernel import Point3D
-from compgeom.mesh.tetmesh import tetmesher
+from compgeom.mesh.volmesh.tetmesh import tetmesher
 
 def test_large_random_points():
     num_points = 5000

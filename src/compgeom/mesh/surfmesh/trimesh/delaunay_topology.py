@@ -1,7 +1,7 @@
 """Topology and Delaunay property verification for triangular meshes."""
 
 from __future__ import annotations
-from ...kernel import Point, in_circle, cross_product
+from ....kernel import Point, in_circle, cross_product
 
 
 class MeshTriangle:
