@@ -32,6 +32,7 @@ A Python library and command-line suite for geometric modeling, mesh processing,
    - Distance Maps (Eikonal Equation / Fast Sweeping Method)
    - Medial Axis & Skeletal Structures
    - Planar Subdivisions (DCEL)
+   - Polygon Boolean Operations (Union)
 
 ### Part III: Mesh Processing & Modeling
 7. **Mesh Architecture**
@@ -63,6 +64,9 @@ A Python library and command-line suite for geometric modeling, mesh processing,
 14. **Visualization & Export**
     - SVG Generation
     - PNG Export (System Utility Support)
+    - Mesh Adjacency Matrix Visualization
+15. **Spatial Indexing**
+    - R-tree Implementation
 
 ---
 
@@ -204,6 +208,48 @@ mesh = MeshImporter.import_mesh("model.off")
 MeshExporter.export_mesh(mesh, "model.obj")
 MeshExporter.export_mesh(mesh, "model.stl")
 ```
+---
+
+
+### 9. Polygon Boolean Operations (Union)
+**Objective:** Compute the union of two overlapping polygons.
+
+```python
+from compgeom.polygon.polygon_boolean import polygon_union
+from compgeom import Point
+
+poly_a = [Point(0,0), Point(2,0), Point(2,2), Point(0,2)]
+poly_b = [Point(1,1), Point(3,1), Point(3,3), Point(1,3)]
+
+# Compute the union
+union_poly = polygon_union(poly_a, poly_b)
+```
+
+### 10. Spatial Indexing with R-tree
+**Objective:** Efficiently query spatial objects using an R-tree.
+
+```python
+from compgeom.index.rtree import RTree, BoundingBox
+
+tree = RTree[int](max_entries=16)
+bbox = BoundingBox.from_point(10.0, 10.0, padding=2.0)
+
+# Insert an item with its bounding box
+tree.insert(bbox, item=42)
+
+# Query intersecting bounding boxes
+results = tree.query(BoundingBox.from_point(11.0, 11.0, padding=1.0))
+```
+
+### 11. Mesh Adjacency Matrix Visualization
+**Objective:** Compute and visualize the spatial adjacency matrix of a mesh.
+
+```python
+from compgeom.graphics.mesh_adjacency_matrix import compute_adjacency_matrix
+# Utilizing the R-tree to compute spatial adjacency
+matrix = compute_adjacency_matrix(mesh)
+```
+
 ---
 
 ## Command-Line Interface (CLI) Quick-Start
