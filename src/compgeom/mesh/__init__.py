@@ -46,7 +46,7 @@ from .surfmesh.mesh_decimation import MeshDecimator
 from .surfmesh.halfedge_mesh import HalfEdgeMesh
 from .surfmesh.mesh_quality import MeshQuality
 from .surfmesh.curvature import MeshCurvature
-from .surfmesh.remesher import IsotropicRemesher
+from .surfmesh.remesher import IsotropicRemesher, AdaptiveRemesher
 from .surfmesh.alpha_shapes import AlphaShape
 from .surfmesh.parameterization import MeshParameterization
 from .surfmesh.convex_hull import ConvexHull3D
@@ -63,6 +63,7 @@ from .surfmesh.geodesics import MeshGeodesics
 __all__ = [
     "AABBTree",
     "AlphaShape",
+    "AdaptiveRemesher",
     "BoundingVolumes",
     "ConvexHull3D",
     "CuthillMcKee",

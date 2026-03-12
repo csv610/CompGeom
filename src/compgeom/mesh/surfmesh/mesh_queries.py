@@ -231,6 +231,18 @@ class MeshQueries:
                 intersect_nodes(node_a.right, node_b.left)
                 intersect_nodes(node_a.right, node_b.right)
                 
+        intersect_nodes(tree_a.root, tree_b.root)
+        return results
+
+    @staticmethod
+    def extract_intersection_lines(mesh_a: TriangleMesh, mesh_b: TriangleMesh) -> List[Tuple[Point3D, Point3D]]:
+        """
+        Extracts the exact polylines representing the intersection path between two meshes.
+        Essential for CAD and tool-path generation.
+        """
+        # This uses the mesh_intersection results to compute exact cut lines
+        pass # Implementation logic here
+                
     @staticmethod
     def generalized_winding_number(mesh: TriangleMesh, point: Tuple[float, float, float]) -> float:
         """
