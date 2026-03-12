@@ -64,6 +64,8 @@ from .volmesh.volmesh_quality import TetMeshQuality
 from .surfmesh.mesh_booleans import MeshBooleans
 from .surfmesh.geodesics import MeshGeodesics
 
+from .surfmesh.aerospace_geometry import AerospaceGeometry
+from .surfmesh.spacecraft_structures import SpacecraftStructures
 from .surfmesh.molecular_geometry import MolecularGeometry
 from .surfmesh.cfd_analysis import CFDAnalysis
 from .surfmesh.topo_analysis import TopoAnalysis
@@ -73,6 +75,7 @@ __all__ = [
     "AABBTree",
     "AlphaShape",
     "AdaptiveRemesher",
+    "AerospaceGeometry",
     "BoundingVolumes",
     "CFDAnalysis",
     "ConvexHull3D",
@@ -117,6 +120,7 @@ __all__ = [
     "OBJFileHandler",
     "OFFFileHandler",
     "STLFileHandler",
+    "SpacecraftStructures",
     "PLYFileHandler",
     "PolygonMesh",
     "PolygonWinding",
