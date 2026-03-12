@@ -28,7 +28,7 @@ from .mesh import (
     vertex_neighbors,
 )
 from .mesh_coloring import MeshColoring
-from .mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler
+from .mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler
 from .surfmesh.trimesh.mesh_refinement import TriMeshRefiner
 from .mesh_reordering import CuthillMcKee
 from .mesh_transfer import MeshTransfer
@@ -52,13 +52,13 @@ from .surfmesh.parameterization import MeshParameterization
 from .surfmesh.convex_hull import ConvexHull3D
 from .surfmesh.bounding_volumes import BoundingVolumes
 from .surfmesh.registration import MeshRegistration
+from .surfmesh.mesh_validation import MeshValidation
 from .polymesh.point_winding_number import PolygonWinding, point_winding_number
 from .volmesh.marching_cubes import MarchingCubes
 from .volmesh.volmesh_quality import TetMeshQuality
 
 from .surfmesh.mesh_booleans import MeshBooleans
 from .surfmesh.geodesics import MeshGeodesics
-from .mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler
 
 __all__ = [
     "AABBTree",
@@ -85,8 +85,7 @@ __all__ = [
     "MeshGeodesics",
     "MeshParameterization",
     "MeshRegistration",
-    "MeshParameterization",
-
+    "MeshValidation",
     "MeshImporter",
     "MeshExporter",
     "MeshProcessing",
@@ -99,7 +98,6 @@ __all__ = [
     "OFFFileHandler",
     "STLFileHandler",
     "PLYFileHandler",
-
     "PolygonMesh",
     "PolygonWinding",
     "QuadMesh",
@@ -121,4 +119,3 @@ __all__ = [
     "triangulate_3d",
     "vertex_neighbors",
 ]
-
