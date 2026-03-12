@@ -135,8 +135,56 @@ class MeshQueries:
                 
         distance = math.sqrt(min_dist_sq)
         
-        # Sign using ray parity
-        intersections = MeshQueries.ray_intersect(mesh, point, (0.0, 0.0, 1.0), use_spatial=use_spatial)
-        if len(intersections) % 2 == 1:
-            return -distance
-        return distance
+    @staticmethod
+    def slice_mesh(mesh: TriangleMesh, plane_origin: Tuple[float,float,float], plane_normal: Tuple[float,float,float]) -> List[Tuple[Point3D, Point3D]]:
+        """
+        Slices the mesh with a plane and returns a list of line segments (edges).
+        Segments represent the intersection of the surface with the plane.
+        """
+        # Normalize normal
+        nx, ny, nz = plane_normal
+        mag = math.sqrt(nx*nx + ny*ny + nz*nz)
+        if mag < 1e-9: return []
+        nx, ny, nz = nx/mag, ny/mag, nz/mag
+        
+        segments = []
+        
+        def get_dist(p):
+            return (p.x - plane_origin[0]) * nx + (p.y - plane_origin[1]) * ny + (getattr(p, 'z', 0.0) - plane_origin[2]) * nz
+
+        for face in mesh.faces:
+            v_idx = list(face)
+            pts = [mesh.vertices[i] for i in v_idx]
+            dists = [get_dist(p) for p in pts]
+            
+            # Intersection points for this triangle
+            intersect_pts = []
+            
+            for i in range(3):
+                u, v = i, (i+1)%3
+                d_u, d_v = dists[u], dists[v]
+                
+                # Check if edge crosses the plane
+                if (d_u > 0 and d_v < 0) or (d_u < 0 and d_v > 0):
+                    # Linear interpolation
+                    t = abs(d_u) / (abs(d_u) + abs(d_v))
+                    p_u, p_v = pts[u], pts[v]
+                    ix = p_u.x + t * (p_v.x - p_u.x)
+                    iy = p_u.y + t * (p_v.y - p_u.y)
+                    iz = getattr(p_u, 'z', 0.0) + t * (getattr(p_v, 'z', 0.0) - getattr(p_u, 'z', 0.0))
+                    intersect_pts.append(Point3D(ix, iy, iz))
+                elif abs(d_u) < 1e-9:
+                    # Vertex is on the plane
+                    p_u = pts[u]
+                    intersect_pts.append(Point3D(p_u.x, p_u.y, getattr(p_u, 'z', 0.0)))
+            
+            # Remove near-duplicates in intersect_pts
+            unique_pts = []
+            for p in intersect_pts:
+                if not any(math.sqrt((p.x-up.x)**2 + (p.y-up.y)**2 + (p.z-up.z)**2) < 1e-8 for up in unique_pts):
+                    unique_pts.append(p)
+            
+            if len(unique_pts) == 2:
+                segments.append((unique_pts[0], unique_pts[1]))
+                
+        return segments

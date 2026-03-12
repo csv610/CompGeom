@@ -49,6 +49,7 @@ from .surfmesh.curvature import MeshCurvature
 from .surfmesh.remesher import IsotropicRemesher
 from .polymesh.point_winding_number import PolygonWinding, point_winding_number
 from .volmesh.marching_cubes import MarchingCubes
+from .volmesh.volmesh_quality import TetMeshQuality
 
 __all__ = [
     "AABBTree",
@@ -83,6 +84,7 @@ __all__ = [
     "PolygonMesh",
     "QuadMesh",
     "TetMesh",
+    "TetMeshQuality",
     "TriMeshRefiner",
     "TriangleMesh",
     "TriangleToQuadConverter",
