@@ -38,6 +38,9 @@ from .volmesh.voxelmesh.voxelization import MeshVoxelizer
 from .volmesh.tetmesh.delaunay_tetmesh import DelaunayTetMesher, triangulate as triangulate_3d
 
 from .surfmesh.surf_mesh_repair import SurfMeshRepair
+from .surfmesh.mesh_analysis import MeshAnalysis
+from .surfmesh.mesh_processing import MeshProcessing
+from .surfmesh.mesh_queries import MeshQueries
 from .polymesh.point_winding_number import PolygonWinding, point_winding_number
 
 __all__ = [
@@ -50,9 +53,12 @@ __all__ = [
     "build_topology",
     "constrained_delaunay_triangulation",
     "Mesh",
+    "MeshAnalysis",
     "MeshColoring",
     "MeshImporter",
     "MeshExporter",
+    "MeshProcessing",
+    "MeshQueries",
     "MeshTriangle",
     "MeshTopology",
     "MeshTransfer",
