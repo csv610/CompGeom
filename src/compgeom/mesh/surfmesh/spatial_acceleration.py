@@ -61,19 +61,53 @@ class AABBTree:
         if len(face_indices) <= max_leaf:
             return node
             
-        # Split along the largest axis
-        axis = 0
-        extent = [bmax[i] - bmin[i] for i in range(3)]
-        if extent[1] > extent[0] and extent[1] > extent[2]: axis = 1
-        elif extent[2] > extent[0]: axis = 2
+        # Use Surface Area Heuristic (SAH) to find the best split
+        best_axis = -1
+        best_split_idx = -1
+        min_cost = float('inf')
         
-        # Sort faces by centroid along the axis
-        face_indices.sort(key=lambda idx: self.face_centroids[idx][axis])
-        mid = len(face_indices) // 2
+        # Calculate parent surface area
+        def sa(mn, mx):
+            d = (mx[0]-mn[0], mx[1]-mn[1], mx[2]-mn[2])
+            return 2.0 * (d[0]*d[1] + d[1]*d[2] + d[2]*d[0])
+            
+        parent_sa = sa(bmin, bmax)
+        
+        for axis in range(3):
+            # Sort by centroid along axis
+            face_indices.sort(key=lambda idx: self.face_centroids[idx][axis])
+            
+            # Evaluate split points (SAH)
+            # Cost = Traversal_Cost + SA_left/SA_parent * N_left + SA_right/SA_parent * N_right
+            # Here we simplify: Cost = SA_left * N_left + SA_right * N_right
+            for i in range(1, len(face_indices), max(1, len(face_indices)//8)):
+                # Left group AABB
+                lmin, lmax = [float('inf')]*3, [float('-inf')]*3
+                for idx in face_indices[:i]:
+                    fmn, fmx = self.face_aabbs[idx]
+                    for a in range(3):
+                        lmin[a], lmax[a] = min(lmin[a], fmn[a]), max(lmax[a], fmx[a])
+                
+                # Right group AABB
+                rmin, rmax = [float('inf')]*3, [float('-inf')]*3
+                for idx in face_indices[i:]:
+                    fmn, fmx = self.face_aabbs[idx]
+                    for a in range(3):
+                        rmin[a], rmax[a] = min(rmin[a], fmn[a]), max(rmax[a], fmx[a])
+                
+                cost = sa(lmin, lmax) * i + sa(rmin, rmax) * (len(face_indices)-i)
+                if cost < min_cost:
+                    min_cost = cost
+                    best_axis = axis
+                    best_split_idx = i
+                    
+        # Apply the best split found
+        face_indices.sort(key=lambda idx: self.face_centroids[idx][best_axis])
+        mid = best_split_idx
         
         node.left = self._build(face_indices[:mid], depth + 1, max_leaf)
         node.right = self._build(face_indices[mid:], depth + 1, max_leaf)
-        node.faces = [] # Clear non-leaf face lists
+        node.faces = [] 
         
         return node
 
