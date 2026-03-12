@@ -54,6 +54,10 @@ from .surfmesh.bounding_volumes import BoundingVolumes
 from .surfmesh.registration import MeshRegistration
 from .surfmesh.mesh_validation import MeshValidation
 from .polymesh.point_winding_number import PolygonWinding, point_winding_number
+from .polymesh.sweep_line import SweepLine
+from .polymesh.polygon_triangulation import PolygonTriangulation
+from .polymesh.minkowski import MinkowskiSum
+from .polymesh.vlsi_layout import VLSILayout
 from .volmesh.marching_cubes import MarchingCubes
 from .volmesh.volmesh_quality import TetMeshQuality
 
@@ -75,6 +79,10 @@ __all__ = [
     "HexMesh",
     "IsotropicRemesher",
     "MarchingCubes",
+    "MinkowskiSum",
+    "PolygonTriangulation",
+    "SweepLine",
+    "VLSILayout",
     "build_topology",
     "constrained_delaunay_triangulation",
     "Mesh",
