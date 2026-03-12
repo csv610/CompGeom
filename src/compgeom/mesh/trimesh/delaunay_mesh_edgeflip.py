@@ -16,7 +16,11 @@ from ...kernel import (
     cross_product,
     in_circle,
     incircle_sign,
+    robust_orientation,
+    robust_in_circle,
 )
+from .utils import PointGrid, create_super_triangle, hilbert_key
+
 
 if TYPE_CHECKING:
     from .mesh import TriangleMesh
@@ -54,65 +58,6 @@ class EdgeFlipTriangle:
         return -1
 
 
-class PointGrid:
-    """Simple 2D grid for fast nearest-neighbor search to seed visibility walks."""
-    def __init__(self, points: Iterable[Point]):
-        pts = list(points)
-        if not pts:
-            self.min_x = self.max_x = self.min_y = self.max_y = 0.0
-            self.grid = {}
-            self.cell_size = 1.0
-            self.num_cells = 1
-            return
-
-        self.min_x = min(p.x for p in pts)
-        self.max_x = max(p.x for p in pts)
-        self.min_y = min(p.y for p in pts)
-        self.max_y = max(p.y for p in pts)
-        
-        n = len(pts)
-        self.num_cells = int(math.sqrt(n)) + 1
-        self.cell_size = max((self.max_x - self.min_x) / self.num_cells, 
-                             (self.max_y - self.min_y) / self.num_cells, 
-                             0.1)
-        
-        self.grid: dict[tuple[int, int], list[Point]] = {}
-
-    def _get_cell(self, p: Point) -> tuple[int, int]:
-        return (int((p.x - self.min_x) / self.cell_size), 
-                int((p.y - self.min_y) / self.cell_size))
-
-    def add(self, p: Point):
-        cell = self._get_cell(p)
-        if cell not in self.grid:
-            self.grid[cell] = []
-        self.grid[cell].append(p)
-
-    def find_nearest(self, p: Point) -> Point | None:
-        if not self.grid:
-            return None
-            
-        cx, cy = self._get_cell(p)
-        nearest = None
-        min_dist_sq = float('inf')
-        
-        radius = 0
-        while not nearest and radius < self.num_cells:
-            for i in range(cx - radius, cx + radius + 1):
-                for j in range(cy - radius, cy + radius + 1):
-                    if abs(i - cx) != radius and abs(j - cy) != radius:
-                        continue
-                    cell_points = self.grid.get((i, j))
-                    if cell_points:
-                        for cp in cell_points:
-                            dist_sq = (p.x - cp.x)**2 + (p.y - cp.y)**2
-                            if dist_sq < min_dist_sq:
-                                min_dist_sq = dist_sq
-                                nearest = cp
-            radius += 1
-        return nearest
-
-
 class EdgeFlipDelaunayMesher:
     """
     Incremental Delaunay Mesher using the Edge Flip algorithm.
@@ -126,23 +71,6 @@ class EdgeFlipDelaunayMesher:
         self.skipped: list[tuple[Point, str]] = []
         self.root: EdgeFlipTriangle | None = None
         self.last_tri: EdgeFlipTriangle | None = None
-
-    def _create_super_triangle(self, points: Iterable[Point]) -> tuple[Point, Point, Point]:
-        xs = [p.x for p in points]
-        ys = [p.y for p in points]
-        min_x, max_x = min(xs), max(xs)
-        min_y, max_y = min(ys), max(ys)
-        
-        dx = max_x - min_x
-        dy = max_y - min_y
-        delta = max(dx, dy, 1.0) * 100
-        mid_x = (min_x + max_x) / 2
-        
-        return (
-            Point(mid_x, max_y + delta, id=-1),
-            Point(min_x - delta, min_y - delta, id=-2),
-            Point(max_x + delta, min_y - delta, id=-3),
-        )
 
     def _add_triangle(self, tri: EdgeFlipTriangle):
         self.active_triangles.add(tri)
@@ -161,107 +89,6 @@ class EdgeFlipDelaunayMesher:
             if v in self.vertex_to_triangles:
                 self.vertex_to_triangles[v].discard(tri)
 
-    def _robust_cross_product(self, a: Point, b: Point, p: Point) -> float:
-        """Adaptive exact cross product (orientation) with SOS tie-breaking."""
-        adx, ady = b.x - a.x, b.y - a.y
-        bdx, bdy = p.x - a.x, p.y - a.y
-        
-        det = adx * bdy - ady * bdx
-        # Dynamic error bound (Shewchuk style)
-        bound = 1e-14 * (abs(adx * bdy) + abs(ady * bdx))
-        
-        if abs(det) > bound:
-            return det
-            
-        # Exact arithmetic fallback using standard library fractions
-        import fractions
-        exact_det = (fractions.Fraction(b.x) - fractions.Fraction(a.x)) * (fractions.Fraction(p.y) - fractions.Fraction(a.y)) - \
-                    (fractions.Fraction(b.y) - fractions.Fraction(a.y)) * (fractions.Fraction(p.x) - fractions.Fraction(a.x))
-        
-        if exact_det != 0:
-            return float(exact_det)
-            
-        # Consistent tie-break using IDs
-        return 1e-15 if (a.id < b.id) else -1e-15
-
-    def _robust_in_circle(self, a: Point, b: Point, c: Point, d: Point) -> bool:
-        """In-circle test with a fast bounding box filter and Adaptive Precision arithmetic."""
-        # 1. Fast Circumcircle Bounding Box Filter
-        x1, y1 = a.x, a.y
-        x2, y2 = b.x, b.y
-        x3, y3 = c.x, c.y
-        
-        d_val = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
-        if abs(d_val) > 1e-12:
-            ox = ((x1**2 + y1**2) * (y2 - y3) + (x2**2 + y2**2) * (y3 - y1) + (x3**2 + y3**2) * (y1 - y2)) / d_val
-            oy = ((x1**2 + y1**2) * (x3 - x2) + (x2**2 + y2**2) * (x1 - x3) + (x3**2 + y3**2) * (x2 - x1)) / d_val
-            r2 = (x1 - ox)**2 + (y1 - oy)**2
-            r = math.sqrt(r2)
-            
-            if d.x < ox - r - 1e-9 or d.x > ox + r + 1e-9 or \
-               d.y < oy - r - 1e-9 or d.y > oy + r + 1e-9:
-                return False
-
-        # 2. Adaptive In-Circle Test (Shewchuk style error bound)
-        adx, ady = a.x - d.x, a.y - d.y
-        bdx, bdy = b.x - d.x, b.y - d.y
-        cdx, cdy = c.x - d.x, c.y - d.y
-
-        bdxcdy = bdx * cdy
-        cdxbdy = cdx * bdy
-        alift = adx * adx + ady * ady
-
-        cdxady = cdx * ady
-        adxcdy = adx * cdy
-        blift = bdx * bdx + bdy * bdy
-
-        adxbdy = adx * bdy
-        bdxady = bdx * ady
-        clift = cdx * cdx + cdy * cdy
-
-        det = (alift * (bdxcdy - cdxbdy) +
-               blift * (cdxady - adxcdy) +
-               clift * (adxbdy - bdxady))
-
-        permanent = (alift * (abs(bdxcdy) + abs(cdxbdy)) +
-                     blift * (abs(cdxady) + abs(adxcdy)) +
-                     clift * (abs(adxbdy) + abs(bdxady)))
-        
-        # Machine epsilon for float64 is ~1.11e-16. 1e-14 provides a safe relative bound.
-        err_bound = 1e-14 * permanent
-        
-        sign = 0
-        if abs(det) > err_bound:
-            sign = 1 if det > 0 else -1
-        else:
-            # 3. Exact Arithmetic Fallback using Fractions (avoid Decimal overhead/limitations)
-            import fractions
-            adx_f = fractions.Fraction(a.x) - fractions.Fraction(d.x)
-            ady_f = fractions.Fraction(a.y) - fractions.Fraction(d.y)
-            bdx_f = fractions.Fraction(b.x) - fractions.Fraction(d.x)
-            bdy_f = fractions.Fraction(b.y) - fractions.Fraction(d.y)
-            cdx_f = fractions.Fraction(c.x) - fractions.Fraction(d.x)
-            cdy_f = fractions.Fraction(c.y) - fractions.Fraction(d.y)
-            
-            alift_f = adx_f * adx_f + ady_f * ady_f
-            blift_f = bdx_f * bdx_f + bdy_f * bdy_f
-            clift_f = cdx_f * cdx_f + cdy_f * cdy_f
-            
-            exact_det = (alift_f * (bdx_f * cdy_f - cdx_f * bdy_f) +
-                         blift_f * (cdx_f * ady_f - adx_f * cdy_f) +
-                         clift_f * (adx_f * bdy_f - bdx_f * ady_f))
-                         
-            if exact_det > 0: sign = 1
-            elif exact_det < 0: sign = -1
-            else: sign = 0
-
-        if sign != 0:
-            return sign > 0
-            
-        # 4. SOS Tie-break using point IDs
-        max_id = max(a.id, b.id, c.id, d.id)
-        return d.id != max_id
-
     def _visibility_walk(self, point: Point, start_tri: EdgeFlipTriangle) -> EdgeFlipTriangle | None:
         curr = start_tri
         visited = {curr}
@@ -272,7 +99,7 @@ class EdgeFlipDelaunayMesher:
                 v1 = curr.vertices[(i + 1) % 3]
                 v2 = curr.vertices[(i + 2) % 3]
                 
-                if self._robust_cross_product(v1, v2, point) < -1e-10:
+                if robust_orientation(v1, v2, point) < -1e-10:
                     neighbor = curr.neighbors[i]
                     if neighbor and neighbor not in visited:
                         curr = neighbor
@@ -312,7 +139,7 @@ class EdgeFlipDelaunayMesher:
             c, a, b = t1.vertices[i1], t1.vertices[(i1+1)%3], t1.vertices[(i1+2)%3]
             d = t2.vertices[i2]
 
-            if self._robust_in_circle(a, b, c, d):
+            if robust_in_circle(a, b, c, d):
                 n_ac = t1.neighbors[(i1 + 2) % 3]
                 n_cb = t1.neighbors[(i1 + 1) % 3]
                 n_bd = t2.neighbors[(i2 + 2) % 3]
@@ -344,7 +171,7 @@ class EdgeFlipDelaunayMesher:
         if not self.grid:
             self.grid = PointGrid(pts)
             
-        sv = self._create_super_triangle(pts)
+        sv = create_super_triangle(pts)
         self.super_vertices = set(sv)
         self.root = EdgeFlipTriangle(*sv)
         self._add_triangle(self.root)
@@ -453,23 +280,6 @@ class EdgeFlipDelaunayMesher:
         # Note: This mesh doesn't have a super-triangle. 
         self.root = tri_list[0] if tri_list else None
 
-    def _hilbert_key(self, x: int, y: int, n: int) -> int:
-        """Calculate Hilbert curve order for a point in a n x n grid (n is power of 2)."""
-        d = 0
-        s = n // 2
-        while s > 0:
-            rx = (x & s) > 0
-            ry = (y & s) > 0
-            d += s * s * ((3 * rx) ^ ry)
-            # Rotate/Flip
-            if ry == 0:
-                if rx == 1:
-                    x = s - 1 - x
-                    y = s - 1 - y
-                x, y = y, x
-            s //= 2
-        return d
-
     def triangulate(self, points: list[Point], existing_mesh: TriangleMesh | None = None, spatial_sort: bool = True) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
         if not points and not existing_mesh: return [], []
         
@@ -506,7 +316,7 @@ class EdgeFlipDelaunayMesher:
             def get_order(p: Point):
                 hx = int((p.x - min_x) / range_x * (N_HILBERT - 1))
                 hy = int((p.y - min_y) / range_y * (N_HILBERT - 1))
-                return self._hilbert_key(hx, hy, N_HILBERT)
+                return hilbert_key(hx, hy, N_HILBERT)
 
             unique_points.sort(key=get_order)
 

@@ -66,6 +66,84 @@ def in_circle(a: Point, b: Point, c: Point, d: Point) -> bool:
     return incircle_sign(a, b, c, d) > 0
 
 
+
+def robust_in_circle(a: Point, b: Point, c: Point, d: Point) -> bool:
+    """In-circle test with a fast bounding box filter and exact fallback with SOS tie-breaking."""
+    # 1. Fast Circumcircle Bounding Box Filter
+    x1, y1 = a.x, a.y
+    x2, y2 = b.x, b.y
+    x3, y3 = c.x, c.y
+    
+    d_val = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
+    if abs(d_val) > 1e-12:
+        ox = ((x1**2 + y1**2) * (y2 - y3) + (x2**2 + y2**2) * (y3 - y1) + (x3**2 + y3**2) * (y1 - y2)) / d_val
+        oy = ((x1**2 + y1**2) * (x3 - x2) + (x2**2 + y2**2) * (x1 - x3) + (x3**2 + y3**2) * (x2 - x1)) / d_val
+        r2 = (x1 - ox)**2 + (y1 - oy)**2
+        r = math.sqrt(r2)
+        
+        if d.x < ox - r - 1e-9 or d.x > ox + r + 1e-9 or \
+           d.y < oy - r - 1e-9 or d.y > oy + r + 1e-9:
+            return False
+
+    # 2. Adaptive In-Circle Test (Shewchuk style error bound)
+    adx, ady = a.x - d.x, a.y - d.y
+    bdx, bdy = b.x - d.x, b.y - d.y
+    cdx, cdy = c.x - d.x, c.y - d.y
+
+    bdxcdy = bdx * cdy
+    cdxbdy = cdx * bdy
+    alift = adx * adx + ady * ady
+
+    cdxady = cdx * ady
+    adxcdy = adx * cdy
+    blift = bdx * bdx + bdy * bdy
+
+    adxbdy = adx * bdy
+    bdxady = bdx * ady
+    clift = cdx * cdx + cdy * cdy
+
+    det = (alift * (bdxcdy - cdxbdy) +
+           blift * (cdxady - adxcdy) +
+           clift * (adxbdy - bdxady))
+
+    permanent = (alift * (abs(bdxcdy) + abs(cdxbdy)) +
+                 blift * (abs(cdxady) + abs(adxcdy)) +
+                 clift * (abs(adxbdy) + abs(bdxady)))
+    
+    err_bound = 1e-14 * permanent
+    
+    sign = 0
+    if abs(det) > err_bound:
+        sign = 1 if det > 0 else -1
+    else:
+        # 3. Exact Arithmetic Fallback using Fractions
+        import fractions
+        adx_f = fractions.Fraction(a.x) - fractions.Fraction(d.x)
+        ady_f = fractions.Fraction(a.y) - fractions.Fraction(d.y)
+        bdx_f = fractions.Fraction(b.x) - fractions.Fraction(d.x)
+        bdy_f = fractions.Fraction(b.y) - fractions.Fraction(d.y)
+        cdx_f = fractions.Fraction(c.x) - fractions.Fraction(d.x)
+        cdy_f = fractions.Fraction(c.y) - fractions.Fraction(d.y)
+        
+        alift_f = adx_f * adx_f + ady_f * ady_f
+        blift_f = bdx_f * bdx_f + bdy_f * bdy_f
+        clift_f = cdx_f * cdx_f + cdy_f * cdy_f
+        
+        exact_det = (alift_f * (bdx_f * cdy_f - cdx_f * bdy_f) +
+                     blift_f * (cdx_f * ady_f - adx_f * cdy_f) +
+                     clift_f * (adx_f * bdy_f - bdx_f * ady_f))
+                     
+        if exact_det > 0: sign = 1
+        elif exact_det < 0: sign = -1
+        else: sign = 0
+
+    if sign != 0:
+        return sign > 0
+        
+    # 4. SOS Tie-break using point IDs
+    max_id = max(a.id, b.id, c.id, d.id)
+    return d.id != max_id
+
 def from_two_points(p1: Point, p2: Point) -> tuple[Point, float]:
     """Return the smallest enclosing circle defined by two points."""
     from .geometry import Point
@@ -101,6 +179,7 @@ def perimeter(radius: float) -> float:
 
 
 __all__ = [
+    "robust_in_circle",
     "incircle_det",
     "incircle_sign",
     "in_circle",

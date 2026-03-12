@@ -85,12 +85,56 @@ def unrotate_2d(point: Point, cos_theta: float, sin_theta: float) -> Point:
     )
 
 
+
+
+def hilbert_key(x: int, y: int, n: int) -> int:
+    """Calculate Hilbert curve order for a point in a n x n grid (n is power of 2)."""
+    d = 0
+    s = n // 2
+    while s > 0:
+        rx = (x & s) > 0
+        ry = (y & s) > 0
+        d += s * s * ((3 * rx) ^ ry)
+        # Rotate/Flip
+        if ry == 0:
+            if rx == 1:
+                x = s - 1 - x
+                y = s - 1 - y
+            x, y = y, x
+        s //= 2
+    return d
+
+def robust_orientation(a: Point, b: Point, p: Point) -> float:
+    """Adaptive exact cross product (orientation) with SOS tie-breaking."""
+    adx, ady = b.x - a.x, b.y - a.y
+    bdx, bdy = p.x - a.x, p.y - a.y
+    
+    det = adx * bdy - ady * bdx
+    # Dynamic error bound (Shewchuk style)
+    bound = 1e-14 * (abs(adx * bdy) + abs(ady * bdx))
+    
+    if abs(det) > bound:
+        return det
+        
+    # Exact arithmetic fallback using standard library fractions
+    import fractions
+    exact_det = (fractions.Fraction(b.x) - fractions.Fraction(a.x)) * (fractions.Fraction(p.y) - fractions.Fraction(a.y)) - \
+                (fractions.Fraction(b.y) - fractions.Fraction(a.y)) * (fractions.Fraction(p.x) - fractions.Fraction(a.x))
+    
+    if exact_det != 0:
+        return float(exact_det)
+        
+    # Consistent tie-break using IDs
+    return 1e-15 if (a.id < b.id) else -1e-15
+
 def support(polygon: List[Point], direction: Point) -> Point:
     """Return the point in the polygon that is furthest in the given direction."""
     return max(polygon, key=lambda point: dot_product(point, direction))
 
 
 __all__ = [
+    "hilbert_key",
+    "robust_orientation",
     "EPSILON",
     "cross_product",
     "distance",

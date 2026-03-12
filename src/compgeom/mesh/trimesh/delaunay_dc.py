@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 import math
-from ...kernel import Point, orientation_sign, in_circle
-
-
-def _get_angle(p1: Point, p2: Point) -> float:
-    return math.atan2(p2.y - p1.y, p2.x - p1.x)
+from ...kernel import Point, orientation_sign, in_circle, segment_angle as angle
 
 
 def triangulate_divide_and_conquer(points: list[Point]):
@@ -91,7 +87,7 @@ class DivideAndConquerDelaunayMesher:
                     adj[v].extend([u, w])
                     adj[w].extend([u, v])
             for p in adj:
-                adj[p].sort(key=lambda neighbor: _get_angle(p, neighbor))
+                adj[p].sort(key=lambda neighbor: angle(p, neighbor))
             return adj
 
         mid = n // 2
@@ -127,8 +123,8 @@ class DivideAndConquerDelaunayMesher:
             if rd not in adj[ld]: adj[ld].append(rd)
             if ld not in adj[rd]: adj[rd].append(ld)
             
-            adj[ld].sort(key=lambda neighbor: _get_angle(ld, neighbor))
-            adj[rd].sort(key=lambda neighbor: _get_angle(rd, neighbor))
+            adj[ld].sort(key=lambda neighbor: angle(ld, neighbor))
+            adj[rd].sort(key=lambda neighbor: angle(rd, neighbor))
 
             lc = None
             idx_rd = adj[ld].index(rd)

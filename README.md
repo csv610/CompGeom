@@ -1,6 +1,6 @@
 # CompGeom: Computational Geometry Library
 
-A comprehensive Python library and command-line suite for geometric modeling, mesh processing, and spatial analysis.
+A Python library and command-line suite for geometric modeling, mesh processing, and spatial analysis.
 
 ## Table of Contents
 

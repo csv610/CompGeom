@@ -3,6 +3,7 @@
 from __future__ import annotations
 import math
 from ...kernel import Point, contains_point, cross_product
+from .utils import create_super_triangle
 
 
 class Triangle:
@@ -23,26 +24,12 @@ class Triangle:
             child.find_leaves_containing(point, found_leaves)
 
 
-def _create_super_triangle(points: list[Point]) -> tuple[Point, Point, Point]:
-    min_x = min(point.x for point in points)
-    max_x = max(point.x for point in points)
-    min_y = min(point.y for point in points)
-    max_y = max(point.y for point in points)
-    delta = max(max_x - min_x, max_y - min_y, 1.0) * 10
-    mid_x = (min_x + max_x) / 2
-    return (
-        Point(mid_x, max_y + delta, id=-1),
-        Point(min_x - delta, min_y - delta, id=-2),
-        Point(max_x + delta, min_y - delta, id=-3),
-    )
-
-
 def triangulate_naive(points: list[Point]):
-    """Creates a naive triangulation by iteratively splitting triangles."""
+    """Batch-oriented Naive Delaunay triangulation."""
     if not points:
-        return [], [], set()
+        return [], [], ()
 
-    super_triangle = _create_super_triangle(points)
+    super_triangle = create_super_triangle(points)
     super_triangle_vertices = set(super_triangle)
     skipped_points = []
     existing_points = set()

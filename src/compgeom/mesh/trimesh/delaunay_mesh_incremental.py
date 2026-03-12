@@ -12,6 +12,8 @@ from ...kernel import (
     cross_product,
     in_circle,
 )
+from .utils import PointGrid, create_super_triangle, hilbert_key
+
 
 if TYPE_CHECKING:
     from .mesh import TriangleMesh
@@ -38,66 +40,6 @@ class IncrementalTriangle:
         return True
 
 
-class PointGrid:
-    """Simple 2D grid for fast nearest-neighbor search."""
-    def __init__(self, points: Iterable[Point]):
-        pts = list(points)
-        if not pts:
-            self.min_x = self.max_x = self.min_y = self.max_y = 0.0
-            self.grid = {}
-            self.cell_size = 1.0
-            self.num_cells = 1
-            return
-
-        self.min_x = min(p.x for p in pts)
-        self.max_x = max(p.x for p in pts)
-        self.min_y = min(p.y for p in pts)
-        self.max_y = max(p.y for p in pts)
-        
-        n = len(pts)
-        self.num_cells = int(math.sqrt(n)) + 1
-        self.cell_size = max((self.max_x - self.min_x) / self.num_cells, 
-                             (self.max_y - self.min_y) / self.num_cells, 
-                             0.1)
-        
-        self.grid: dict[tuple[int, int], list[Point]] = {}
-
-    def _get_cell(self, p: Point) -> tuple[int, int]:
-        return (int((p.x - self.min_x) / self.cell_size), 
-                int((p.y - self.min_y) / self.cell_size))
-
-    def add(self, p: Point):
-        cell = self._get_cell(p)
-        if cell not in self.grid:
-            self.grid[cell] = []
-        self.grid[cell].append(p)
-
-    def find_nearest(self, p: Point) -> Point | None:
-        """Finds the nearest point in the grid to point p."""
-        if not self.grid:
-            return None
-            
-        cx, cy = self._get_cell(p)
-        nearest = None
-        min_dist_sq = float('inf')
-        
-        radius = 0
-        while not nearest and radius < self.num_cells:
-            for i in range(cx - radius, cx + radius + 1):
-                for j in range(cy - radius, cy + radius + 1):
-                    if abs(i - cx) != radius and abs(j - cy) != radius:
-                        continue
-                    cell_points = self.grid.get((i, j))
-                    if cell_points:
-                        for cp in cell_points:
-                            dist_sq = (p.x - cp.x)**2 + (p.y - cp.y)**2
-                            if dist_sq < min_dist_sq:
-                                min_dist_sq = dist_sq
-                                nearest = cp
-            radius += 1
-        return nearest
-
-
 class IncrementalDelaunayMesher:
     """
     Stateful Incremental Delaunay Mesher.
@@ -110,24 +52,6 @@ class IncrementalDelaunayMesher:
         self.super_vertices: set[Point] = set()
         self.skipped: list[tuple[Point, str]] = []
         self.root: IncrementalTriangle | None = None
-
-    def _create_super_triangle(self, points: Iterable[Point]) -> tuple[Point, Point, Point]:
-        """Creates a super-triangle that encloses all given points."""
-        xs = [p.x for p in points]
-        ys = [p.y for p in points]
-        min_x, max_x = min(xs), max(xs)
-        min_y, max_y = min(ys), max(ys)
-        
-        dx = max_x - min_x
-        dy = max_y - min_y
-        delta = max(dx, dy, 1.0) * 20
-        mid_x = (min_x + max_x) / 2
-        
-        return (
-            Point(mid_x, max_y + delta, id=-1),
-            Point(min_x - delta, min_y - delta, id=-2),
-            Point(max_x + delta, min_y - delta, id=-3),
-        )
 
     def _add_triangle_to_vertex_map(self, tri: IncrementalTriangle):
         for v in tri.vertices:
@@ -224,7 +148,7 @@ class IncrementalDelaunayMesher:
         if not self.grid:
             self.grid = PointGrid(pts)
             
-        sv = self._create_super_triangle(pts)
+        sv = create_super_triangle(pts)
         self.super_vertices = set(sv)
         self.root = IncrementalTriangle(*sv)
         self.active_triangles = {self.root}
@@ -287,22 +211,6 @@ class IncrementalDelaunayMesher:
                 final.append(tuple(t.vertices))
         return final
 
-    def _hilbert_key(self, x: int, y: int, n: int) -> int:
-        """Calculate Hilbert curve order for a point in a n x n grid (n is power of 2)."""
-        d = 0
-        s = n // 2
-        while s > 0:
-            rx = (x & s) > 0
-            ry = (y & s) > 0
-            d += s * s * ((3 * rx) ^ ry)
-            if ry == 0:
-                if rx == 1:
-                    x = s - 1 - x
-                    y = s - 1 - y
-                x, y = y, x
-            s //= 2
-        return d
-
     def triangulate(self, points: list[Point], spatial_sort: bool = True) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
         """Performs batch triangulation of all given points."""
         if not points:
@@ -335,7 +243,7 @@ class IncrementalDelaunayMesher:
             def get_order(p: Point):
                 hx = int((p.x - min_x) / range_x * (N_HILBERT - 1))
                 hy = int((p.y - min_y) / range_y * (N_HILBERT - 1))
-                return self._hilbert_key(hx, hy, N_HILBERT)
+                return hilbert_key(hx, hy, N_HILBERT)
 
             unique_points.sort(key=get_order)
 

@@ -213,6 +213,24 @@ class TriangleMesh(Mesh):
         return self._elements
 
     @classmethod
+    def from_triangles(cls, triangles: List[Tuple[Point, Point, Point]], skipped_points: Optional[List[Tuple[Point, str]]] = None) -> TriangleMesh:
+        """Converts a list of Point triangles to a TriangleMesh object."""
+        unique_points = []
+        point_to_idx = {}
+        
+        for tri in triangles:
+            for p in tri:
+                if p not in point_to_idx:
+                    point_to_idx[p] = len(unique_points)
+                    unique_points.append(p)
+        
+        faces = []
+        for tri in triangles:
+            faces.append((point_to_idx[tri[0]], point_to_idx[tri[1]], point_to_idx[tri[2]]))
+            
+        return cls(unique_points, faces, skipped_points=skipped_points)
+
+    @classmethod
     def from_file(cls, filename: str) -> TriangleMesh:
         """Creates a TriangleMesh from a file (OBJ, OFF, STL)."""
         from .mesh_io import MeshImporter, OBJFileHandler
@@ -345,6 +363,24 @@ class QuadMesh(Mesh):
         return self._elements
 
     @classmethod
+    def from_triangles(cls, triangles: List[Tuple[Point, Point, Point]], skipped_points: Optional[List[Tuple[Point, str]]] = None) -> TriangleMesh:
+        """Converts a list of Point triangles to a TriangleMesh object."""
+        unique_points = []
+        point_to_idx = {}
+        
+        for tri in triangles:
+            for p in tri:
+                if p not in point_to_idx:
+                    point_to_idx[p] = len(unique_points)
+                    unique_points.append(p)
+        
+        faces = []
+        for tri in triangles:
+            faces.append((point_to_idx[tri[0]], point_to_idx[tri[1]], point_to_idx[tri[2]]))
+            
+        return cls(unique_points, faces, skipped_points=skipped_points)
+
+    @classmethod
     def from_file(cls, filename: str) -> QuadMesh:
         """Creates a QuadMesh from a file (OBJ, OFF, STL)."""
         from .mesh_io import MeshImporter
@@ -441,6 +477,24 @@ class PolygonMesh(Mesh):
     @property
     def faces(self) -> List[Tuple[int, ...]]:
         return self._elements
+
+    @classmethod
+    def from_triangles(cls, triangles: List[Tuple[Point, Point, Point]], skipped_points: Optional[List[Tuple[Point, str]]] = None) -> TriangleMesh:
+        """Converts a list of Point triangles to a TriangleMesh object."""
+        unique_points = []
+        point_to_idx = {}
+        
+        for tri in triangles:
+            for p in tri:
+                if p not in point_to_idx:
+                    point_to_idx[p] = len(unique_points)
+                    unique_points.append(p)
+        
+        faces = []
+        for tri in triangles:
+            faces.append((point_to_idx[tri[0]], point_to_idx[tri[1]], point_to_idx[tri[2]]))
+            
+        return cls(unique_points, faces, skipped_points=skipped_points)
 
     @classmethod
     def from_file(cls, filename: str) -> PolygonMesh:
@@ -565,6 +619,7 @@ __all__ = [
     "QuadMesh",
     "TetMesh",
     "TriangleMesh",
+    "from_triangles",
     "euler_characteristic",
     "mesh_edges",
     "mesh_neighbors",

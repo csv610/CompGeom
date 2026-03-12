@@ -25,6 +25,7 @@ from .circle import (
     incircle_det,
     incircle_sign,
     in_circle,
+    robust_in_circle,
     from_two_points as get_circle_two_points,
     from_three_points as get_circle_three_points,
     area as circle_area,
