@@ -38,3 +38,16 @@ from .quad import (
     split_to_triangles as split_quad_to_triangles,
     centroid as quad_centroid
 )
+
+from .tetrahedron import (
+    orientation as tetra_orientation,
+    orientation_sign as tetra_orientation_sign,
+    volume as tetra_volume,
+    contains_point as tetra_contains_point
+)
+
+from .sphere import (
+    insphere_det,
+    insphere_sign,
+    in_sphere
+)

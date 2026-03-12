@@ -35,11 +35,13 @@ from .mesh_transfer import MeshTransfer
 from .quadmesh.simple_tri2quads import TriangleToQuadConverter
 from .polymesh.voronoi_diagram import VoronoiDiagram
 from .voxelmesh.voxelization import MeshVoxelizer
+from .tetmesh.delaunay_tetmesh import DelaunayTetMesher, triangulate as triangulate_3d
 
 __all__ = [
     "CuthillMcKee",
     "DTriangle",
     "DelaunayMesher",
+    "DelaunayTetMesher",
     "DynamicDelaunay",
     "HexMesh",
     "build_topology",
@@ -69,5 +71,6 @@ __all__ = [
     "mesh_vertices",
     "triangle_neighbors",
     "triangulate",
+    "triangulate_3d",
     "vertex_neighbors",
 ]
