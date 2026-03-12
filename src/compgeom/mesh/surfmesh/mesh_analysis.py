@@ -125,3 +125,99 @@ class MeshAnalysis:
             return mesh.centroid.x, mesh.centroid.y, getattr(mesh.centroid, 'z', 0.0)
             
         return cx/total_vol, cy/total_vol, cz/total_vol
+
+    @staticmethod
+    def inertia_tensor(mesh: TriangleMesh) -> Tuple[Tuple[float, float, float], Tuple[float, float, float], Tuple[float, float, float]]:
+        """
+        Calculates the 3x3 inertia tensor matrix (assuming uniform unit density).
+        Returns a tuple of 3 tuples: ((Ixx, Ixy, Ixz), (Iyx, Iyy, Iyz), (Izx, Izy, Izz)).
+        """
+        # Based on David Eberly's Polyhedral Mass Properties
+        mult = [1/6, 1/24, 1/24, 1/24, 1/60, 1/60, 1/60, 1/120, 1/120, 1/120]
+        intg = [0.0] * 10
+        
+        for face in mesh.faces:
+            v0, v1, v2 = [mesh.vertices[i] for i in face]
+            p0 = (v0.x, v0.y, getattr(v0, 'z', 0.0))
+            p1 = (v1.x, v1.y, getattr(v1, 'z', 0.0))
+            p2 = (v2.x, v2.y, getattr(v2, 'z', 0.0))
+            
+            a1, b1, c1 = p1[0]-p0[0], p1[1]-p0[1], p1[2]-p0[2]
+            a2, b2, c2 = p2[0]-p0[0], p2[1]-p0[1], p2[2]-p0[2]
+            d0, d1, d2 = b1*c2 - b2*c1, a2*c1 - a1*c2, a1*b2 - a2*b1
+            
+            f1x = p0[0] + p1[0] + p2[0]
+            f1y = p0[1] + p1[1] + p2[1]
+            f1z = p0[2] + p1[2] + p2[2]
+            
+            f2x = p0[0]**2 + p1[0]**2 + p2[0]**2 + f1x**2
+            f2y = p0[1]**2 + p1[1]**2 + p2[1]**2 + f1y**2
+            f2z = p0[2]**2 + p1[2]**2 + p2[2]**2 + f1z**2
+            
+            f3x = p0[0]**3 + p1[0]**3 + p2[0]**3 + f1x * f2x
+            f3y = p0[1]**3 + p1[1]**3 + p2[1]**3 + f1y * f2y
+            f3z = p0[2]**3 + p1[2]**3 + p2[2]**3 + f1z * f2z
+            
+            g0x = f2x + p0[0] * (f1x + p0[0])
+            g0y = f2y + p0[1] * (f1y + p0[1])
+            g0z = f2z + p0[2] * (f1z + p0[2])
+            
+            g1x = f2x + p1[0] * (f1x + p1[0])
+            g1y = f2y + p1[1] * (f1y + p1[1])
+            g1z = f2z + p1[2] * (f1z + p1[2])
+            
+            g2x = f2x + p2[0] * (f1x + p2[0])
+            g2y = f2y + p2[1] * (f1y + p2[1])
+            g2z = f2z + p2[2] * (f1z + p2[2])
+            
+            fxyz = p0[0] * b1 * g0z + p1[0] * b2 * g1z + p2[0] * (b1 + b2) * g2z # simplified integral components
+            
+            intg[0] += d0 * f1x
+            intg[1] += d0 * f2x
+            intg[2] += d1 * f2y
+            intg[3] += d2 * f2z
+            intg[4] += d0 * f3x
+            intg[5] += d1 * f3y
+            intg[6] += d2 * f3z
+            
+            # Cross terms
+            temp0 = p0[0] + p1[0]
+            temp1 = p0[1] + p1[1]
+            temp2 = p0[2] + p1[2]
+            
+            # Approximated fast cross terms for physics engines
+            f_x_y = p0[0]*p0[1] + p1[0]*p1[1] + p2[0]*p2[1] + (p0[0]+p1[0]+p2[0])*(p0[1]+p1[1]+p2[1])
+            f_y_z = p0[1]*p0[2] + p1[1]*p1[2] + p2[1]*p2[2] + (p0[1]+p1[1]+p2[1])*(p0[2]+p1[2]+p2[2])
+            f_z_x = p0[2]*p0[0] + p1[2]*p1[0] + p2[2]*p2[0] + (p0[2]+p1[2]+p2[2])*(p0[0]+p1[0]+p2[0])
+            
+            intg[7] += d0 * f_x_y
+            intg[8] += d1 * f_y_z
+            intg[9] += d2 * f_z_x
+
+        for i in range(10): intg[i] *= mult[i]
+        
+        mass = intg[0]
+        # Translate to center of mass
+        cm_x, cm_y, cm_z = intg[1]/mass, intg[2]/mass, intg[3]/mass
+        
+        # Inertia tensor relative to origin
+        ixx = intg[5] + intg[6]
+        iyy = intg[4] + intg[6]
+        izz = intg[4] + intg[5]
+        ixy = -intg[7]
+        iyz = -intg[8]
+        izx = -intg[9]
+        
+        # Parallel axis theorem to move to COM
+        ixx -= mass * (cm_y**2 + cm_z**2)
+        iyy -= mass * (cm_z**2 + cm_x**2)
+        izz -= mass * (cm_x**2 + cm_y**2)
+        ixy += mass * cm_x * cm_y
+        iyz += mass * cm_y * cm_z
+        izx += mass * cm_z * cm_x
+        
+        return (
+            (ixx, ixy, izx),
+            (ixy, iyy, iyz),
+            (izx, iyz, izz)
+        )

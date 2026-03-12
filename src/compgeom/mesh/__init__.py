@@ -48,11 +48,13 @@ from .surfmesh.mesh_quality import MeshQuality
 from .surfmesh.curvature import MeshCurvature
 from .surfmesh.remesher import IsotropicRemesher
 from .surfmesh.alpha_shapes import AlphaShape
+from .surfmesh.parameterization import MeshParameterization
 from .polymesh.point_winding_number import PolygonWinding, point_winding_number
 from .volmesh.marching_cubes import MarchingCubes
 from .volmesh.volmesh_quality import TetMeshQuality
 
 from .surfmesh.mesh_booleans import MeshBooleans
+from .surfmesh.geodesics import MeshGeodesics
 from .mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler
 
 __all__ = [
@@ -76,7 +78,8 @@ __all__ = [
     "MeshCurvature",
     "MeshDecimator",
     "MeshGeodesics",
-    "MeshQuality",
+    "MeshParameterization",
+
     "MeshImporter",
     "MeshExporter",
     "MeshProcessing",

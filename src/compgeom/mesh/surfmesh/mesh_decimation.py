@@ -26,6 +26,7 @@ class MeshDecimator:
         # Q = sum(p * p^T) where p is the plane [a, b, c, d]
         v_quadrics = [np.zeros((4, 4)) for _ in range(len(vertices))]
         
+        # Face planes
         for f_idx, f in faces.items():
             p0, p1, p2 = vertices[f[0]], vertices[f[1]], vertices[f[2]]
             normal = np.cross(p1 - p0, p2 - p0)
@@ -37,6 +38,40 @@ class MeshDecimator:
             K = np.outer(plane, plane)
             for v_idx in f:
                 v_quadrics[v_idx] += K
+                
+        # Boundary constraints
+        # Find boundary edges (shared by exactly 1 face)
+        edge_to_faces = defaultdict(list)
+        for f_idx, f in faces.items():
+            for i in range(3):
+                u, v = sorted((f[i], f[(i+1)%3]))
+                edge_to_faces[(u, v)].append(f_idx)
+                
+        boundary_edges = [(u, v, f_list[0]) for (u, v), f_list in edge_to_faces.items() if len(f_list) == 1]
+        
+        # Add boundary penalty quadrics
+        boundary_weight = 1000.0
+        for u, v, f_idx in boundary_edges:
+            f = faces[f_idx]
+            p0, p1, p2 = vertices[f[0]], vertices[f[1]], vertices[f[2]]
+            face_normal = np.cross(p1 - p0, p2 - p0)
+            if np.linalg.norm(face_normal) < 1e-12: continue
+            face_normal = face_normal / np.linalg.norm(face_normal)
+            
+            edge_vec = vertices[v] - vertices[u]
+            if np.linalg.norm(edge_vec) < 1e-12: continue
+            edge_dir = edge_vec / np.linalg.norm(edge_vec)
+            
+            # The constraint plane is perpendicular to both the face and the edge
+            bound_normal = np.cross(edge_dir, face_normal)
+            bound_normal = bound_normal / np.linalg.norm(bound_normal)
+            
+            d = -np.dot(bound_normal, vertices[u])
+            bound_plane = np.array([bound_normal[0], bound_normal[1], bound_normal[2], d])
+            K_bound = np.outer(bound_plane, bound_plane) * boundary_weight
+            
+            v_quadrics[u] += K_bound
+            v_quadrics[v] += K_bound
                 
         # 2. Compute cost for each edge
         def get_edge_info(u, v):
