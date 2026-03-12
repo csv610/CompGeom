@@ -43,7 +43,10 @@ from .surfmesh.mesh_processing import MeshProcessing
 from .surfmesh.mesh_queries import MeshQueries
 from .surfmesh.spatial_acceleration import AABBTree
 from .surfmesh.mesh_decimation import MeshDecimator
+from .surfmesh.curvature import MeshCurvature
+from .surfmesh.remesher import IsotropicRemesher
 from .polymesh.point_winding_number import PolygonWinding, point_winding_number
+from .volmesh.marching_cubes import MarchingCubes
 
 __all__ = [
     "AABBTree",
@@ -53,11 +56,14 @@ __all__ = [
     "DelaunayTetMesher",
     "DynamicDelaunay",
     "HexMesh",
+    "IsotropicRemesher",
+    "MarchingCubes",
     "build_topology",
     "constrained_delaunay_triangulation",
     "Mesh",
     "MeshAnalysis",
     "MeshColoring",
+    "MeshCurvature",
     "MeshDecimator",
     "MeshImporter",
     "MeshExporter",
