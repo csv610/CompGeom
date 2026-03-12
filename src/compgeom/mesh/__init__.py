@@ -64,6 +64,8 @@ from .volmesh.volmesh_quality import TetMeshQuality
 from .surfmesh.mesh_booleans import MeshBooleans
 from .surfmesh.geodesics import MeshGeodesics
 
+from .surfmesh.radar_engineering import RadarEngineering
+from .surfmesh.drafting_tools import DraftingTools
 from .surfmesh.aerospace_geometry import AerospaceGeometry
 from .surfmesh.medical_device import MedicalDeviceGeometry
 from .surfmesh.spacecraft_structures import SpacecraftStructures
