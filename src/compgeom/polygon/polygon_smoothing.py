@@ -3,10 +3,82 @@
 from __future__ import annotations
 
 import math
+import cmath
 from typing import List, Optional, Tuple
 
 from ..kernel import Point
 from ..kernel import distance
+
+
+def fourier_smooth(
+    polygon: List[Point], 
+    n_harmonics: int = 10,
+    resample_points: int = 128
+) -> List[Point]:
+    """
+    Smooths a polygon using the Fourier method.
+    
+    1. Resamples the polygon into resample_points.
+    2. Computes the Discrete Fourier Transform (DFT) of the vertices (as complex numbers).
+    3. Retains only the first n_harmonics low-frequency components.
+    4. Computes the inverse DFT to get the smoothed boundary.
+    
+    Args:
+        polygon: List of points defining the polygon.
+        n_harmonics: Number of low-frequency components to keep.
+        resample_points: Number of points to resample the polygon into for DFT.
+        
+    Returns:
+        A list of smoothed points.
+    """
+    if len(polygon) < 3:
+        return polygon
+
+    # 1. Resample
+    resampled = PolygonalMeanCurvatureFlow.resample_polygon(polygon, resample_points)
+    n = len(resampled)
+    
+    # 2. Represent as complex numbers
+    z = [complex(p.x, p.y) for p in resampled]
+    
+    # 3. DFT
+    # Z_m = sum_{k=0}^{n-1} z_k * exp(-i 2pi m k / n)
+    # We only need the first n_harmonics components (0 to n_harmonics-1)
+    # and the corresponding negative frequencies (n-n_harmonics+1 to n-1)
+    # Actually, let's compute all and zero out the ones we don't want.
+    
+    # Simple DFT implementation (O(n^2))
+    # For resample_points around 128-256, this is fine.
+    Z = []
+    for m in range(n):
+        sum_val = complex(0, 0)
+        for k in range(n):
+            angle = -2 * math.pi * m * k / n
+            sum_val += z[k] * cmath.exp(complex(0, angle))
+        Z.append(sum_val)
+        
+    # 4. Low-pass filter
+    # Keep components 0...n_harmonics and n-n_harmonics+1...n-1
+    # DC component is m=0
+    # Positive frequencies 1...n_harmonics
+    # Negative frequencies n-n_harmonics...n-1
+    for m in range(n):
+        if n_harmonics < m < n - n_harmonics:
+            Z[m] = complex(0, 0)
+            
+    # 5. Inverse DFT
+    # z_k = (1/n) * sum_{m=0}^{n-1} Z_m * exp(i 2pi m k / n)
+    smoothed_points = []
+    for k in range(n):
+        sum_val = complex(0, 0)
+        for m in range(n):
+            angle = 2 * math.pi * m * k / n
+            sum_val += Z[m] * cmath.exp(complex(0, angle))
+        
+        val = sum_val / n
+        smoothed_points.append(Point(val.real, val.imag))
+        
+    return smoothed_points
 
 
 class PolygonalMeanCurvatureFlow:
@@ -137,4 +209,4 @@ class PolygonalMeanCurvatureFlow:
         return current
 
 
-__all__ = ["PolygonalMeanCurvatureFlow"]
+__all__ = ["PolygonalMeanCurvatureFlow", "fourier_smooth"]

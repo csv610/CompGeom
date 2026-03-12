@@ -15,6 +15,10 @@ from .polygon import (
     triangulate_polygon_with_holes,
 )
 from .polygon_decomposer import PolygonDecomposer
+from .polygon_similarity import are_similar
+from .polygon_matching import reorder_to_match
+from .polygon_simplification import resolve_self_intersections as make_simple
+from .polygon_polynomial import approximate_polynomials
 from .polygon_factory import generate_random_convex_polygon, generate_simple_polygon
 from .polygon_metrics import get_convex_diameter, get_polygon_properties, get_reflex_vertices, is_convex
 from .polygon_path import shortest_path_in_polygon
@@ -22,7 +26,7 @@ from .polygon_visibility import polygon_kernel, visibility_polygon
 from .polygon_guards import PolygonGuards, guard_polygon, solve_art_gallery
 from .polygon_generator import PolygonGenerator
 from .circle_packing import CirclePacker
-from .polygon_smoothing import PolygonalMeanCurvatureFlow
+from .polygon_smoothing import PolygonalMeanCurvatureFlow, fourier_smooth
 from .distance_map import DistanceMapSolver
 from .medial_axis import approximate_medial_axis
 from .planar import (
@@ -48,11 +52,16 @@ __all__ = [
     "DistanceMapSolver",
     "PolygonDecomposer",
     "PolygonalMeanCurvatureFlow",
+    "fourier_smooth",
     "PolygonGenerator",
     "PolygonGuards",
     "Polygon",
     "PolygonProperties",
     "approximate_medial_axis",
+    "approximate_polynomials",
+    "are_similar",
+    "reorder_to_match",
+    "make_simple",
     "build_polygon_dcel",
     "generate_points_in_triangle",
     "generate_random_convex_polygon",

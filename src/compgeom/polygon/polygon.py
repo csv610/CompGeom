@@ -102,6 +102,33 @@ class Polygon:
 
         return is_convex(self.as_list())
 
+    def is_similar(self, other: Polygon, tolerance: float = 1e-7, auto_clean: bool = True) -> bool:
+        from .polygon_similarity import are_similar
+
+        return are_similar(self, other, tolerance, auto_clean)
+
+    def reorder_to_match(
+        self, other: Polygon, allow_reflection: bool = True, auto_clean: bool = True
+    ) -> list[Point]:
+        from .polygon_matching import reorder_to_match
+
+        return reorder_to_match(self, other, allow_reflection, auto_clean)
+
+    def make_simple(self) -> Polygon:
+        from .polygon_simplification import resolve_self_intersections
+
+        return Polygon(resolve_self_intersections(self))
+
+    def approximate_polynomials(self, order: int) -> tuple[list[float], list[float]]:
+        from .polygon_polynomial import approximate_polynomials
+
+        return approximate_polynomials(self, order)
+
+    def fourier_smooth(self, n_harmonics: int = 10, resample_points: int = 128) -> Polygon:
+        from .polygon_smoothing import fourier_smooth
+
+        return Polygon(fourier_smooth(self.as_list(), n_harmonics, resample_points))
+
     def reflex_vertices(self) -> list[Point]:
         from .polygon_metrics import get_reflex_vertices
 
