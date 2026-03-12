@@ -67,27 +67,61 @@ class MeshAnalysis:
         return res
 
     @staticmethod
-    def detect_feature_edges(mesh: TriangleMesh, angle_threshold_degrees: float = 30.0) -> List[Tuple[int, int]]:
-        """Detects sharp edges based on the dihedral angle between adjacent faces."""
-        face_normals = MeshAnalysis.compute_face_normals(mesh)
-        edge_to_faces = defaultdict(list)
-        for i, face in enumerate(mesh.faces):
-            for j in range(3):
-                edge = tuple(sorted((face[j], face[(j+1)%3])))
-                edge_to_faces[edge].append(i)
-                
-        threshold_cos = math.cos(math.radians(angle_threshold_degrees))
-        feature_edges = []
-        
-        for edge, faces in edge_to_faces.items():
-            if len(faces) == 1:
-                # Boundary edges are always features
-                feature_edges.append(edge)
-            elif len(faces) == 2:
-                n1 = face_normals[faces[0]]
-                n2 = face_normals[faces[1]]
-                dot = n1[0]*n2[0] + n1[1]*n2[1] + n1[2]*n2[2]
-                if dot < threshold_cos:
-                    feature_edges.append(edge)
-                    
-        return feature_edges
+    def total_area(mesh: TriangleMesh) -> float:
+        """Calculates the total surface area of the mesh."""
+        total = 0.0
+        for face in mesh.faces:
+            v0, v1, v2 = [mesh.vertices[i] for i in face]
+            ux, uy, uz = v1.x-v0.x, v1.y-v0.y, getattr(v1, 'z', 0.0)-getattr(v0, 'z', 0.0)
+            vx, vy, vz = v2.x-v0.x, v2.y-v0.y, getattr(v2, 'z', 0.0)-getattr(v0, 'z', 0.0)
+            cx = uy*vz - uz*vy
+            cy = uz*vx - ux*vz
+            cz = ux*vy - uy*vx
+            total += 0.5 * math.sqrt(cx*cx + cy*cy + cz*cz)
+        return total
+
+    @staticmethod
+    def total_volume(mesh: TriangleMesh) -> float:
+        """Calculates the total volume enclosed by the surface using the divergence theorem."""
+        total = 0.0
+        for face in mesh.faces:
+            v0, v1, v2 = [mesh.vertices[i] for i in face]
+            # p0 dot (p1 cross p2) / 6
+            p0 = (v0.x, v0.y, getattr(v0, 'z', 0.0))
+            p1 = (v1.x, v1.y, getattr(v1, 'z', 0.0))
+            p2 = (v2.x, v2.y, getattr(v2, 'z', 0.0))
+            total += (p0[0] * (p1[1]*p2[2] - p1[2]*p2[1]) + 
+                      p0[1] * (p1[2]*p2[0] - p1[0]*p2[2]) + 
+                      p0[2] * (p1[0]*p2[1] - p1[1]*p2[0])) / 6.0
+        return total
+
+    @staticmethod
+    def center_of_mass(mesh: TriangleMesh) -> Tuple[float, float, float]:
+        """Calculates the center of mass (centroid) of the volume enclosed by the surface."""
+        total_vol = 0.0
+        cx, cy, cz = 0.0, 0.0, 0.0
+        for face in mesh.faces:
+            v0, v1, v2 = [mesh.vertices[i] for i in face]
+            p0 = (v0.x, v0.y, getattr(v0, 'z', 0.0))
+            p1 = (v1.x, v1.y, getattr(v1, 'z', 0.0))
+            p2 = (v2.x, v2.y, getattr(v2, 'z', 0.0))
+            
+            # Volume of tet formed with origin
+            vol = (p0[0] * (p1[1]*p2[2] - p1[2]*p2[1]) + 
+                   p0[1] * (p1[2]*p2[0] - p1[0]*p2[2]) + 
+                   p0[2] * (p1[0]*p2[1] - p1[1]*p2[0])) / 6.0
+            
+            # Centroid of this tet
+            tx = (p0[0] + p1[0] + p2[0]) / 4.0
+            ty = (p0[1] + p1[1] + p2[1]) / 4.0
+            tz = (p0[2] + p1[2] + p2[2]) / 4.0
+            
+            cx += tx * vol
+            cy += ty * vol
+            cz += tz * vol
+            total_vol += vol
+            
+        if abs(total_vol) < 1e-12:
+            return mesh.centroid.x, mesh.centroid.y, getattr(mesh.centroid, 'z', 0.0)
+            
+        return cx/total_vol, cy/total_vol, cz/total_vol

@@ -231,5 +231,31 @@ class MeshQueries:
                 intersect_nodes(node_a.right, node_b.left)
                 intersect_nodes(node_a.right, node_b.right)
                 
-        intersect_nodes(tree_a.root, tree_b.root)
-        return results
+    @staticmethod
+    def generalized_winding_number(mesh: TriangleMesh, point: Tuple[float, float, float]) -> float:
+        """
+        Calculates the Generalized Winding Number of a point with respect to the mesh.
+        Robust for meshes with holes or self-intersections.
+        Value ~1.0 inside, ~0.0 outside.
+        """
+        wn = 0.0
+        px, py, pz = point
+        
+        for face in mesh.faces:
+            v0, v1, v2 = [mesh.vertices[idx] for idx in face]
+            a = (v0.x - px, v0.y - py, getattr(v0, 'z', 0.0) - pz)
+            b = (v1.x - px, v1.y - py, getattr(v1, 'z', 0.0) - pz)
+            c = (v2.x - px, v2.y - py, getattr(v2, 'z', 0.0) - pz)
+            
+            ma, mb, mc = math.sqrt(sum(x*x for x in a)), math.sqrt(sum(x*x for x in b)), math.sqrt(sum(x*x for x in c))
+            
+            # Determinant
+            det = a[0]*(b[1]*c[2]-b[2]*c[1]) - a[1]*(b[0]*c[2]-b[2]*c[0]) + a[2]*(b[0]*c[1]-b[1]*c[0])
+            
+            # Solid angle omega
+            div = ma*mb*mc + (a[0]*b[0]+a[1]*b[1]+a[2]*b[2])*mc + (a[0]*c[0]+a[1]*c[1]+a[2]*c[2])*mb + (b[0]*c[0]+b[1]*c[1]+b[2]*c[2])*ma
+            
+            omega = 2.0 * math.atan2(det, div)
+            wn += omega
+            
+        return wn / (4.0 * math.pi)

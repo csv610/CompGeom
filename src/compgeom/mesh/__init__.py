@@ -53,7 +53,7 @@ from .volmesh.marching_cubes import MarchingCubes
 from .volmesh.volmesh_quality import TetMeshQuality
 
 from .surfmesh.mesh_booleans import MeshBooleans
-from .surfmesh.geodesics import MeshGeodesics
+from .mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler
 
 __all__ = [
     "AABBTree",
@@ -88,6 +88,8 @@ __all__ = [
     "OBJFileHandler",
     "OFFFileHandler",
     "STLFileHandler",
+    "PLYFileHandler",
+
     "PolygonMesh",
     "PolygonWinding",
     "QuadMesh",

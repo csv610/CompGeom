@@ -8,115 +8,108 @@ from ..mesh import TriangleMesh
 from ...kernel import Point3D
 
 class MeshDecimator:
-    """Simplifies triangle meshes by iteratively collapsing edges."""
+    """Simplifies triangle meshes using Quadric Error Metrics (QEM)."""
 
     @staticmethod
     def decimate(mesh: TriangleMesh, target_faces: int) -> TriangleMesh:
         """
-        Reduces face count by collapsing shortest edges.
-        Ensures mesh remains manifold during collapse.
+        Reduces face count using QEM to preserve geometric features.
         """
+        import numpy as np
         if len(mesh.faces) <= target_faces:
             return mesh
             
-        vertices = list(mesh.vertices)
-        # Using dict to track active faces as tuples
-        faces = {i: face for i, face in enumerate(mesh.faces)}
+        vertices = [np.array([v.x, v.y, getattr(v, 'z', 0.0)]) for v in mesh.vertices]
+        faces = {i: list(face) for i, face in enumerate(mesh.faces)}
         
-        # Build connectivity
+        # 1. Compute initial quadrics for each vertex
+        # Q = sum(p * p^T) where p is the plane [a, b, c, d]
+        v_quadrics = [np.zeros((4, 4)) for _ in range(len(vertices))]
+        
+        for f_idx, f in faces.items():
+            p0, p1, p2 = vertices[f[0]], vertices[f[1]], vertices[f[2]]
+            normal = np.cross(p1 - p0, p2 - p0)
+            norm = np.linalg.norm(normal)
+            if norm < 1e-12: continue
+            n = normal / norm
+            d = -np.dot(n, p0)
+            plane = np.array([n[0], n[1], n[2], d])
+            K = np.outer(plane, plane)
+            for v_idx in f:
+                v_quadrics[v_idx] += K
+                
+        # 2. Compute cost for each edge
+        def get_edge_info(u, v):
+            Q = v_quadrics[u] + v_quadrics[v]
+            # Find optimal position: solve Q * v_opt = [0, 0, 0, 1]^T
+            # Simplified: use midpoint or the better of u, v
+            mid = (vertices[u] + vertices[v]) / 2.0
+            def error(p):
+                p_homog = np.array([p[0], p[1], p[2], 1.0])
+                return np.dot(p_homog, np.dot(Q, p_homog))
+            
+            e_mid = error(mid)
+            return e_mid, mid
+
         v2f = defaultdict(set)
-        for f_idx, face in faces.items():
-            for v in face:
-                v2f[v].add(f_idx)
-                
-        def get_edge_key(u, v):
-            return tuple(sorted((u, v)))
+        for f_idx, f in faces.items():
+            for v in f: v2f[v].add(f_idx)
             
-        def get_dist_sq(u, v):
-            p1, p2 = vertices[u], vertices[v]
-            return (p1.x-p2.x)**2 + (p1.y-p2.y)**2 + (getattr(p1, 'z', 0.0)-getattr(p2, 'z', 0.0))**2
-
-        # Priority queue of edges
         edges_heap = []
-        all_edges = set()
-        for face in faces.values():
+        edge_set = set()
+        for f in faces.values():
             for i in range(3):
-                edge = get_edge_key(face[i], face[(i+1)%3])
-                if edge not in all_edges:
-                    all_edges.add(edge)
-                    heapq.heappush(edges_heap, (get_dist_sq(*edge), edge))
+                u, v = sorted((f[i], f[(i+1)%3]))
+                if (u, v) not in edge_set:
+                    edge_set.add((u, v))
+                    cost, pos = get_edge_info(u, v)
+                    heapq.heappush(edges_heap, (cost, u, v))
 
-        faces_to_remove = len(mesh.faces) - target_faces
-        removed_faces_count = 0
+        # 3. Iteratively collapse edges
+        collapsed_verts = {}
+        removed_count = 0
+        target_to_remove = len(mesh.faces) - target_faces
         
-        collapsed_verts = {} # maps old_idx to new_idx
-
-        while edges_heap and removed_faces_count < faces_to_remove:
-            cost, (u, v) = heapq.heappop(edges_heap)
+        while edges_heap and removed_count < target_to_remove:
+            cost, u, v = heapq.heappop(edges_heap)
+            if u in collapsed_verts or v in collapsed_verts: continue
             
-            # Check if vertices still exist and aren't already collapsed
-            if u in collapsed_verts or v in collapsed_verts:
-                continue
-                
-            # Manifold preservation: Link condition (Simplified)
-            # Both vertices must share exactly 2 common neighbors (for interior edges)
-            common_neighbors = set()
-            for f_idx in v2f[u]:
-                common_neighbors.update(faces[f_idx])
-            neighbor_v = set()
-            for f_idx in v2f[v]:
-                neighbor_v.update(faces[f_idx])
-            common_neighbors &= neighbor_v
-            common_neighbors.discard(u)
-            common_neighbors.discard(v)
+            # Check Link Condition (simplified manifold check)
+            common = v2f[u] & v2f[v]
+            if len(common) > 2: continue 
             
-            if len(common_neighbors) > 2:
-                continue # Skip to avoid non-manifold
-                
-            # Perform collapse: Move u to midpoint, remove v
-            p1, p2 = vertices[u], vertices[v]
-            new_pt = Point3D((p1.x+p2.x)/2, (p1.y+p2.y)/2, (getattr(p1, 'z', 0.0)+getattr(p2, 'z', 0.0))/2)
-            vertices[u] = new_pt
+            # Collapse v into u
+            _, new_pos = get_edge_info(u, v)
+            vertices[u] = new_pos
+            v_quadrics[u] += v_quadrics[v]
             collapsed_verts[v] = u
             
-            # Update faces sharing v to share u
-            involved_faces = list(v2f[v])
-            for f_idx in involved_faces:
-                old_face = faces[f_idx]
-                new_face = tuple(u if x == v else x for x in old_face)
-                
-                if len(set(new_face)) < 3:
-                    # Degenerate face (edge we just collapsed)
-                    for vertex in old_face:
-                        v2f[vertex].discard(f_idx)
+            involved = list(v2f[v])
+            for f_idx in involved:
+                old_f = faces[f_idx]
+                new_f = [u if x == v else x for x in old_f]
+                if len(set(new_f)) < 3:
+                    # Degenerate
+                    for vid in old_f: v2f[vid].discard(f_idx)
                     del faces[f_idx]
-                    removed_faces_count += 1
+                    removed_count += 1
                 else:
-                    faces[f_idx] = new_face
+                    faces[f_idx] = new_f
                     v2f[u].add(f_idx)
-                    for vertex in old_face:
-                        if vertex != v:
-                            v2f[vertex].add(f_idx)
-            
-            # Update edges heap for neighbors of u? (Skipped for performance in this simple version)
-
-        # Rebuild final mesh
-        final_vertices = []
+                    for vid in new_f: v2f[vid].add(f_idx)
+                    
+        # 4. Final reconstruction
+        final_v = []
         old_to_final = {}
         for i, v in enumerate(vertices):
             if i not in collapsed_verts:
-                old_to_final[i] = len(final_vertices)
-                final_vertices.append(v)
+                old_to_final[i] = len(final_v)
+                final_v.append(Point3D(v[0], v[1], v[2]))
         
-        # Resolve collapsed mapping
         for old, new in collapsed_verts.items():
             curr = new
-            while curr in collapsed_verts:
-                curr = collapsed_verts[curr]
+            while curr in collapsed_verts: curr = collapsed_verts[curr]
             old_to_final[old] = old_to_final[curr]
             
-        final_faces = []
-        for face in faces.values():
-            final_faces.append(tuple(old_to_final[idx] for idx in face))
-            
-        return TriangleMesh(final_vertices, final_faces)
+        final_f = [tuple(old_to_final[i] for i in f) for f in faces.values()]
+        return TriangleMesh(final_v, final_f)
