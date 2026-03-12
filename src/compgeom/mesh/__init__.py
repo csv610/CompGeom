@@ -65,6 +65,7 @@ from .surfmesh.mesh_booleans import MeshBooleans
 from .surfmesh.geodesics import MeshGeodesics
 
 from .surfmesh.aerospace_geometry import AerospaceGeometry
+from .surfmesh.medical_device import MedicalDeviceGeometry
 from .surfmesh.spacecraft_structures import SpacecraftStructures
 from .surfmesh.molecular_geometry import MolecularGeometry
 from .surfmesh.cfd_analysis import CFDAnalysis
@@ -88,6 +89,7 @@ __all__ = [
     "HexMesh",
     "IsotropicRemesher",
     "MarchingCubes",
+    "MedicalDeviceGeometry",
     "MinkowskiSum",
     "PolygonBooleans",
     "PolygonTriangulation",
