@@ -187,4 +187,49 @@ class MeshQueries:
             if len(unique_pts) == 2:
                 segments.append((unique_pts[0], unique_pts[1]))
                 
-        return segments
+    @staticmethod
+    def mesh_intersection(mesh_a: TriangleMesh, mesh_b: TriangleMesh) -> List[Tuple[int, int]]:
+        """
+        Detects intersections between two meshes.
+        Returns a list of (face_idx_a, face_idx_b) pairs that intersect.
+        """
+        from .spatial_acceleration import AABBTree
+        from .surf_mesh_repair import SurfMeshRepair
+        
+        tree_a = AABBTree(mesh_a)
+        tree_b = AABBTree(mesh_b)
+        
+        results = []
+        
+        def intersect_nodes(node_a, node_b):
+            if not node_a or not node_b:
+                return
+            
+            # AABB overlap check
+            if (node_a.bmin[0] > node_b.bmax[0] or node_b.bmin[0] > node_a.bmax[0] or
+                node_a.bmin[1] > node_b.bmax[1] or node_b.bmin[1] > node_a.bmax[1] or
+                node_a.bmin[2] > node_b.bmax[2] or node_b.bmin[2] > node_a.bmax[2]):
+                return
+            
+            if node_a.is_leaf() and node_b.is_leaf():
+                # Test all face pairs in leaf nodes
+                for fa_idx in node_a.faces:
+                    for fb_idx in node_b.faces:
+                        pts_a = [mesh_a.vertices[i] for i in mesh_a.faces[fa_idx]]
+                        pts_b = [mesh_b.vertices[i] for i in mesh_b.faces[fb_idx]]
+                        if SurfMeshRepair._tri_tri_intersect(pts_a, pts_b):
+                            results.append((fa_idx, fb_idx))
+            elif node_a.is_leaf():
+                intersect_nodes(node_a, node_b.left)
+                intersect_nodes(node_a, node_b.right)
+            elif node_b.is_leaf():
+                intersect_nodes(node_a.left, node_b)
+                intersect_nodes(node_a.right, node_b)
+            else:
+                intersect_nodes(node_a.left, node_b.left)
+                intersect_nodes(node_a.left, node_b.right)
+                intersect_nodes(node_a.right, node_b.left)
+                intersect_nodes(node_a.right, node_b.right)
+                
+        intersect_nodes(tree_a.root, tree_b.root)
+        return results

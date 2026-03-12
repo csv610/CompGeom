@@ -256,6 +256,59 @@ class MeshProcessing:
                 new_faces.append((v2, e20, e12))
                 new_faces.append((e01, e12, e20))
                 
-            current_mesh = TriangleMesh(new_verts, new_faces)
+    @staticmethod
+    def mesh_offset(mesh: TriangleMesh, distance: float, create_solid: bool = False) -> TriangleMesh:
+        """
+        Offsets the mesh surface by a given distance along vertex normals.
+        If create_solid is True, it creates a thickened shell with closed walls.
+        """
+        from .mesh_analysis import MeshAnalysis
+        
+        # 1. Compute weighted vertex normals
+        v_normals = MeshAnalysis.compute_vertex_normals(mesh)
+        
+        # 2. Create offset vertices
+        offset_verts = []
+        for i, v in enumerate(mesh.vertices):
+            nx, ny, nz = v_normals[i]
+            ov = Point3D(v.x + nx * distance, v.y + ny * distance, getattr(v, 'z', 0.0) + nz * distance)
+            offset_verts.append(ov)
             
-        return current_mesh
+        if not create_solid:
+            return TriangleMesh(offset_verts, mesh.faces)
+            
+        # 3. Create a solid shell (thickening)
+        # Combine original and offset vertices
+        total_verts = list(mesh.vertices) + offset_verts
+        num_v = len(mesh.vertices)
+        
+        new_faces = list(mesh.faces) # Original faces
+        # Add offset faces (reversed orientation for outward normals)
+        for face in mesh.faces:
+            new_faces.append((face[0] + num_v, face[2] + num_v, face[1] + num_v))
+            
+        # 4. Connect boundaries if the mesh is open
+        edge_counts = defaultdict(int)
+        for face in mesh.faces:
+            for i in range(3):
+                edge = tuple(sorted((face[i], face[(i+1)%3])))
+                edge_counts[edge] += 1
+                
+        boundary_edges = [e for e, c in edge_counts.items() if c == 1]
+        
+        # For each boundary edge (u, v), add two triangles connecting to (u', v')
+        # We need the directed boundary edge to ensure correct orientation
+        directed_boundary = []
+        for face in mesh.faces:
+            for i in range(3):
+                u, v = face[i], face[(i+1)%3]
+                if edge_counts[tuple(sorted((u, v)))] == 1:
+                    directed_boundary.append((u, v))
+                    
+        for u, v in directed_boundary:
+            u_prime, v_prime = u + num_v, v + num_v
+            # Wall triangles
+            new_faces.append((u, v, v_prime))
+            new_faces.append((u, v_prime, u_prime))
+            
+        return TriangleMesh(total_verts, new_faces)

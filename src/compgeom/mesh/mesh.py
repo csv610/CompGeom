@@ -185,6 +185,74 @@ class Mesh(ABC):
         
         return (min_x, min_y), (max_x, max_y)
 
+    def translate(self, dx: float, dy: float, dz: float = 0.0):
+        """Translates all vertices by (dx, dy, dz)."""
+        is_3d = isinstance(self._vertices[0], Point3D)
+        for i, v in enumerate(self._vertices):
+            if is_3d:
+                self._vertices[i] = Point3D(v.x + dx, v.y + dy, v.z + dz, getattr(v, 'id', -1))
+            else:
+                self._vertices[i] = Point(v.x + dx, v.y + dy, getattr(v, 'id', -1))
+        self._topology = MeshTopology(self)
+
+    def scale(self, sx: float, sy: float, sz: float = 1.0):
+        """Scales all vertices by (sx, sy, sz)."""
+        is_3d = isinstance(self._vertices[0], Point3D)
+        for i, v in enumerate(self._vertices):
+            if is_3d:
+                self._vertices[i] = Point3D(v.x * sx, v.y * sy, v.z * sz, getattr(v, 'id', -1))
+            else:
+                self._vertices[i] = Point(v.x * sx, v.y * sy, getattr(v, 'id', -1))
+        self._topology = MeshTopology(self)
+
+    def rotate(self, angle_deg: float, axis: str = 'z'):
+        """Rotates the mesh around an axis ('x', 'y', or 'z') by given degrees."""
+        import math
+        rad = math.radians(angle_deg)
+        cos_a = math.cos(rad)
+        sin_a = math.sin(rad)
+        is_3d = isinstance(self._vertices[0], Point3D)
+        
+        for i, v in enumerate(self._vertices):
+            x, y = v.x, v.y
+            z = getattr(v, 'z', 0.0)
+            
+            if axis.lower() == 'x' and is_3d:
+                ny = y * cos_a - z * sin_a
+                nz = y * sin_a + z * cos_a
+                self._vertices[i] = Point3D(x, ny, nz, getattr(v, 'id', -1))
+            elif axis.lower() == 'y' and is_3d:
+                nx = x * cos_a + z * sin_a
+                nz = -x * sin_a + z * cos_a
+                self._vertices[i] = Point3D(nx, y, nz, getattr(v, 'id', -1))
+            else: # Default Z axis
+                nx = x * cos_a - y * sin_a
+                ny = x * sin_a + y * cos_a
+                if is_3d:
+                    self._vertices[i] = Point3D(nx, ny, z, getattr(v, 'id', -1))
+                else:
+                    self._vertices[i] = Point(nx, ny, getattr(v, 'id', -1))
+        self._topology = MeshTopology(self)
+
+    def normalize(self):
+        """Centers the mesh at the origin and scales it to fit within a unit cube [-1, 1]."""
+        bbox = self.bounding_box()
+        if not bbox: return
+        
+        (min_x, min_y, *min_z), (max_x, max_y, *max_z) = bbox
+        min_z = min_z[0] if min_z else 0.0
+        max_z = max_z[0] if max_z else 0.0
+        
+        # Center
+        cx, cy, cz = (min_x + max_x)/2, (min_y + max_y)/2, (min_z + max_z)/2
+        self.translate(-cx, -cy, -cz)
+        
+        # Scale
+        dx, dy, dz = max_x - min_x, max_y - min_y, max_z - min_z
+        max_dim = max(dx, dy, dz, 1e-9)
+        s = 2.0 / max_dim
+        self.scale(s, s, s)
+
     def reorder_nodes(self, new_node_indices: List[int]):
         """
         Renumbers the vertices and updates element connectivity.

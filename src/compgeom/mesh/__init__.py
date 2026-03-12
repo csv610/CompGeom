@@ -47,12 +47,14 @@ from .surfmesh.halfedge_mesh import HalfEdgeMesh
 from .surfmesh.mesh_quality import MeshQuality
 from .surfmesh.curvature import MeshCurvature
 from .surfmesh.remesher import IsotropicRemesher
+from .surfmesh.alpha_shapes import AlphaShape
 from .polymesh.point_winding_number import PolygonWinding, point_winding_number
 from .volmesh.marching_cubes import MarchingCubes
 from .volmesh.volmesh_quality import TetMeshQuality
 
 __all__ = [
     "AABBTree",
+    "AlphaShape",
     "CuthillMcKee",
     "DTriangle",
     "DelaunayMesher",
@@ -82,6 +84,7 @@ __all__ = [
     "OFFFileHandler",
     "STLFileHandler",
     "PolygonMesh",
+    "PolygonWinding",
     "QuadMesh",
     "TetMesh",
     "TetMeshQuality",
@@ -91,7 +94,6 @@ __all__ = [
     "Triangle",
     "VoronoiDiagram",
     "SurfMeshRepair",
-    "PolygonWinding",
     "point_winding_number",
     "euler_characteristic",
     "mesh_edges",
@@ -102,3 +104,4 @@ __all__ = [
     "triangulate_3d",
     "vertex_neighbors",
 ]
+
