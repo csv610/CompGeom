@@ -40,5 +40,7 @@ def main():
         OBJFileHandler.write(args.output, refined_mesh.vertices, refined_mesh.faces)
         print(f"Saved refined mesh to {args.output}")
 
+    return 0
+
 if __name__ == "__main__":
     main()

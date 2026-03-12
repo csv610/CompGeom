@@ -75,7 +75,9 @@ def main():
     
     if args.output:
         OBJFileHandler.write(args.output, new_mesh.vertices, new_mesh.faces)
-        print(f"Saved reordered mesh to {args.output}")
+        print(f"Saved reordered mesh to {args.output}") 
+
+    return 0
 
 if __name__ == "__main__":
     main()

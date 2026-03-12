@@ -41,7 +41,10 @@ def main():
     for i in indices[:20]:
         print(f"  {label} {i:3}: Color {coloring[i]}")
     if len(indices) > 20:
-        print(f"  ... and {len(indices)-20} more.")
+        print(f"  ... and {len(indices)-20} more.") 
 
+
+
+    return 0
 if __name__ == "__main__":
     main()
