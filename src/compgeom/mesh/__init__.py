@@ -49,6 +49,9 @@ from .surfmesh.curvature import MeshCurvature
 from .surfmesh.remesher import IsotropicRemesher
 from .surfmesh.alpha_shapes import AlphaShape
 from .surfmesh.parameterization import MeshParameterization
+from .surfmesh.convex_hull import ConvexHull3D
+from .surfmesh.bounding_volumes import BoundingVolumes
+from .surfmesh.registration import MeshRegistration
 from .polymesh.point_winding_number import PolygonWinding, point_winding_number
 from .volmesh.marching_cubes import MarchingCubes
 from .volmesh.volmesh_quality import TetMeshQuality
@@ -60,6 +63,8 @@ from .mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler,
 __all__ = [
     "AABBTree",
     "AlphaShape",
+    "BoundingVolumes",
+    "ConvexHull3D",
     "CuthillMcKee",
     "DTriangle",
     "DelaunayMesher",
@@ -78,6 +83,8 @@ __all__ = [
     "MeshCurvature",
     "MeshDecimator",
     "MeshGeodesics",
+    "MeshParameterization",
+    "MeshRegistration",
     "MeshParameterization",
 
     "MeshImporter",
