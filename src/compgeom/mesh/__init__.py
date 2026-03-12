@@ -43,6 +43,8 @@ from .surfmesh.mesh_processing import MeshProcessing
 from .surfmesh.mesh_queries import MeshQueries
 from .surfmesh.spatial_acceleration import AABBTree
 from .surfmesh.mesh_decimation import MeshDecimator
+from .surfmesh.halfedge_mesh import HalfEdgeMesh
+from .surfmesh.mesh_quality import MeshQuality
 from .surfmesh.curvature import MeshCurvature
 from .surfmesh.remesher import IsotropicRemesher
 from .polymesh.point_winding_number import PolygonWinding, point_winding_number
@@ -55,6 +57,7 @@ __all__ = [
     "DelaunayMesher",
     "DelaunayTetMesher",
     "DynamicDelaunay",
+    "HalfEdgeMesh",
     "HexMesh",
     "IsotropicRemesher",
     "MarchingCubes",
@@ -65,6 +68,7 @@ __all__ = [
     "MeshColoring",
     "MeshCurvature",
     "MeshDecimator",
+    "MeshQuality",
     "MeshImporter",
     "MeshExporter",
     "MeshProcessing",
