@@ -52,6 +52,9 @@ from .polymesh.point_winding_number import PolygonWinding, point_winding_number
 from .volmesh.marching_cubes import MarchingCubes
 from .volmesh.volmesh_quality import TetMeshQuality
 
+from .surfmesh.mesh_booleans import MeshBooleans
+from .surfmesh.geodesics import MeshGeodesics
+
 __all__ = [
     "AABBTree",
     "AlphaShape",
@@ -68,9 +71,11 @@ __all__ = [
     "constrained_delaunay_triangulation",
     "Mesh",
     "MeshAnalysis",
+    "MeshBooleans",
     "MeshColoring",
     "MeshCurvature",
     "MeshDecimator",
+    "MeshGeodesics",
     "MeshQuality",
     "MeshImporter",
     "MeshExporter",

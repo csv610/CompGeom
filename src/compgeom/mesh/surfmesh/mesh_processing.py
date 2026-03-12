@@ -133,6 +133,71 @@ class MeshProcessing:
                 new_faces.append((u, v, c_idx))
                 
     @staticmethod
+    def bilateral_smoothing(mesh: TriangleMesh, iterations: int = 1, sigma_c: float = 1.0, sigma_s: float = 0.1) -> TriangleMesh:
+        """
+        Applies feature-preserving bilateral smoothing to the mesh.
+        sigma_c: Spatial neighborhood variance (influences how far neighbors affect smoothing)
+        sigma_s: Signal variance (influences how much normals/features affect smoothing)
+        """
+        import math
+        from .mesh_analysis import MeshAnalysis
+        
+        vertices = list(mesh.vertices)
+        faces = mesh.faces
+        
+        # Build vertex-to-face and vertex-to-vertex adjacency
+        v2f = defaultdict(list)
+        adj = defaultdict(set)
+        for i, face in enumerate(faces):
+            for j in range(3):
+                u, v = face[j], face[(j+1)%3]
+                adj[u].add(v)
+                adj[v].add(u)
+                v2f[u].append(i)
+                v2f[v].append(i)
+                v2f[face[(j+2)%3]].append(i)
+                
+        new_vertices = [Point3D(v.x, v.y, getattr(v, 'z', 0.0)) for v in vertices]
+        
+        for _ in range(iterations):
+            # Recompute normals at each iteration
+            temp_mesh = TriangleMesh(new_vertices, faces)
+            v_normals = MeshAnalysis.compute_vertex_normals(temp_mesh)
+            
+            temp_verts = []
+            for i, p in enumerate(new_vertices):
+                n_i = v_normals[i]
+                sum_w = 0.0
+                sum_delta = 0.0
+                
+                for nb in adj[i]:
+                    q = new_vertices[nb]
+                    # Spatial distance
+                    t = math.sqrt((p.x-q.x)**2 + (p.y-q.y)**2 + (getattr(p, 'z', 0.0)-getattr(q, 'z', 0.0))**2)
+                    # Height/normal distance (projection of (p-q) onto normal)
+                    h = (q.x-p.x)*n_i[0] + (q.y-p.y)*n_i[1] + (getattr(q, 'z', 0.0)-getattr(p, 'z', 0.0))*n_i[2]
+                    
+                    wc = math.exp(- (t**2) / (2 * sigma_c**2))
+                    ws = math.exp(- (h**2) / (2 * sigma_s**2))
+                    w = wc * ws
+                    
+                    sum_w += w
+                    sum_delta += w * h
+                    
+                if sum_w > 1e-9:
+                    delta = sum_delta / sum_w
+                    nx = p.x + n_i[0] * delta
+                    ny = p.y + n_i[1] * delta
+                    nz = getattr(p, 'z', 0.0) + n_i[2] * delta
+                    temp_verts.append(Point3D(nx, ny, nz))
+                else:
+                    temp_verts.append(Point3D(p.x, p.y, getattr(p, 'z', 0.0)))
+                    
+            new_vertices = temp_verts
+            
+        return TriangleMesh(new_vertices, faces)
+
+    @staticmethod
     def taubin_smoothing(mesh: TriangleMesh, iterations: int = 10, lambda_factor: float = 0.5, mu_factor: float = -0.53) -> TriangleMesh:
         """
         Applies non-shrinking smoothing using the Taubin (lambda-mu) algorithm.
