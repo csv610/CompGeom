@@ -64,11 +64,16 @@ from .volmesh.volmesh_quality import TetMeshQuality
 from .surfmesh.mesh_booleans import MeshBooleans
 from .surfmesh.geodesics import MeshGeodesics
 
+from .surfmesh.cfd_analysis import CFDAnalysis
+from .surfmesh.topo_analysis import TopoAnalysis
+from .polymesh.polygon_booleans import PolygonBooleans
+
 __all__ = [
     "AABBTree",
     "AlphaShape",
     "AdaptiveRemesher",
     "BoundingVolumes",
+    "CFDAnalysis",
     "ConvexHull3D",
     "CuthillMcKee",
     "DTriangle",
@@ -80,8 +85,10 @@ __all__ = [
     "IsotropicRemesher",
     "MarchingCubes",
     "MinkowskiSum",
+    "PolygonBooleans",
     "PolygonTriangulation",
     "SweepLine",
+    "TopoAnalysis",
     "VLSILayout",
     "build_topology",
     "constrained_delaunay_triangulation",
