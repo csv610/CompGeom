@@ -54,7 +54,7 @@ def sample_polygon_boundary(polygon, max_segment_length=0.25):
 
 def triangle_centroid(triangle):
     a, b, c = triangle
-    return Point2D((a.x + b.x) / 3.0, (a.y + b.y) / 3.0)
+    return Point2D((a.x + b.x + c.x) / 3.0, (a.y + b.y + c.y) / 3.0)
 
 
 def point_key(point):
