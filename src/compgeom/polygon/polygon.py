@@ -11,7 +11,12 @@ from ..kernel import (
     Point3D,
     is_on_segment,
 )
-from .polygon_utils import ensure_ccw, ensure_cw
+from .poly_square import poly_square as _poly_square
+from .polygon_utils import (
+    ensure_ccw,
+    ensure_cw,
+    rotate_polygon as _rotate_polygon,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +55,16 @@ class Polygon:
 
         area, centroid, orientation = get_polygon_properties(self.as_list())
         return PolygonProperties(area, centroid, orientation)
+
+    def rotate(self, angle: float, center: Point2D | None = None) -> Polygon:
+        return Polygon(_rotate_polygon(self.as_list(), angle, center))
+
+    def poly_square(self, segment_index: int = 0) -> Polygon:
+        return Polygon(_poly_square(self.as_list(), segment_index))
+
+    def orient_to_cardinal(self, segment_index: int = 0) -> Polygon:
+        """Alias for poly_square."""
+        return self.poly_square(segment_index)
 
     def contains_point(self, point: Point2D) -> bool:
         polygon = self.vertices
@@ -263,6 +278,19 @@ def generate_points_in_triangle(
     return samples
 
 
+def rotate_polygon(polygon: list[Point2D], angle: float, center: Point2D | None = None) -> list[Point2D]:
+    return _rotate_polygon(polygon, angle, center)
+
+
+def poly_square(polygon: list[Point2D], segment_index: int = 0) -> list[Point2D]:
+    return _poly_square(polygon, segment_index)
+
+
+def orient_to_cardinal(polygon: list[Point2D], segment_index: int = 0) -> list[Point2D]:
+    """Alias for poly_square."""
+    return poly_square(polygon, segment_index)
+
+
 def get_convex_diameter(polygon: List[Point2D]) -> float:
     from .polygon_metrics import get_convex_diameter as _get_convex_diameter
 
@@ -314,7 +342,10 @@ __all__ = [
     "is_convex",
     "is_ear",
     "is_point_in_polygon",
+    "orient_to_cardinal",
+    "poly_square",
     "polygon_kernel",
+    "rotate_polygon",
     "shortest_path_in_polygon",
     "triangulate_polygon",
     "triangulate_polygon_with_holes",

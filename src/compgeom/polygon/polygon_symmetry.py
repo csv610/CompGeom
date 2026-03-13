@@ -7,6 +7,7 @@ from typing import Sequence
 
 from ..kernel import Point2D
 from .polygon import Polygon
+from .polygon_utils import rotate_polygon
 
 
 def get_moments(vertices: Sequence[Point2D]) -> tuple[float, float, float, float]:
@@ -71,43 +72,12 @@ def orient_polygon_for_symmetry(polygon: Polygon) -> Polygon:
     # We want to align a principal axis with the Y-axis.
     # The current principal axis is at angle theta.
     # To bring it to Y-axis (pi/2), we need to rotate by (pi/2 - theta).
-    # However, there are two principal axes (perpendicular).
-    # We can try both theta_rot1 = pi/2 - theta and theta_rot2 = -theta
-    # and see which one "looks" more symmetric or just pick one.
-    # Usually, we want the "long" axis to be vertical for Y-symmetry if possible,
-    # or just any principal axis.
     
-    # Let's try to align one principal axis with Y.
-    # The principal moments are:
-    # I1, I2 = (Ix + Iy)/2 +/- sqrt(((Ix-Iy)/2)^2 + Ixy^2)
-    # The angle theta points to one of them.
-    
-    rotation_angle = -theta # This aligns the principal axis with the X-axis
-    # If we want it aligned with Y, we rotate by pi/2 - theta.
-    
-    # To maximize symmetry about Y, we should check which orientation is better.
-    # For now, let's align the principal axis that has the SMALLEST moment of inertia
-    # with the Y axis (meaning it's "stretched" along Y).
-    
-    # If Iy > Ix, then the shape is already more stretched along X (mostly).
-    # Wait, Iy = sum x^2 dA. If Iy is large, it means points are far from Y axis.
-    
-    # Let's just pick one and the user can adjust if needed, 
-    # but let's try to be smart.
-    
-    def rotate_points(pts: list[Point2D], angle: float) -> list[Point2D]:
-        cos_a = math.cos(angle)
-        sin_a = math.sin(angle)
-        return [
-            Point2D(p.x * cos_a - p.y * sin_a, p.x * sin_a + p.y * cos_a)
-            for p in pts
-        ]
-
     # Candidate 1: Aligns principal axis with X
-    pts1 = rotate_points(translated_vertices, -theta)
+    pts1 = rotate_polygon(translated_vertices, -theta, Point2D(0, 0))
     
     # Candidate 2: Aligns principal axis with Y
-    pts2 = rotate_points(pts1, math.pi / 2)
+    pts2 = rotate_polygon(pts1, math.pi / 2, Point2D(0, 0))
 
     def calculate_asymmetry_y(pts: list[Point2D]) -> float:
         # Sum of x-coordinates should be 0 for a symmetric-ish shape

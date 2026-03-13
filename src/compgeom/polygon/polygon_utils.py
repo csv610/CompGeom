@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Callable
 
 from ..kernel import Point2D, cross_product, is_on_segment
@@ -15,6 +16,27 @@ def ensure_ccw(polygon: list[Point2D]) -> list[Point2D]:
 
 def ensure_cw(polygon: list[Point2D]) -> list[Point2D]:
     return polygon if signed_area_twice(polygon) <= 0 else list(reversed(polygon))
+
+
+def rotate_polygon(polygon: list[Point2D], angle: float, center: Point2D | None = None) -> list[Point2D]:
+    """Rotate a polygon by a given angle (in radians) around a center point."""
+    if not polygon:
+        return []
+    if center is None:
+        # Import here to avoid circular dependency
+        from .polygon_metrics import get_polygon_properties
+
+        _, center, _ = get_polygon_properties(polygon)
+
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    return [
+        Point2D(
+            (p.x - center.x) * cos_a - (p.y - center.y) * sin_a + center.x,
+            (p.x - center.x) * sin_a + (p.y - center.y) * cos_a + center.y,
+        )
+        for p in polygon
+    ]
 
 
 def same_point(a: Point2D, b: Point2D, tolerance: float = 1e-7) -> bool:
@@ -93,6 +115,7 @@ __all__ = [
     "ensure_ccw",
     "ensure_cw",
     "point_on_boundary",
+    "rotate_polygon",
     "same_point",
     "segment_inside_boundaries",
 ]
