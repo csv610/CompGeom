@@ -207,7 +207,8 @@ def format_point(point: Point2D) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Analyze a demo line arrangement.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in rectangle arrangement.")
+    args = parser.parse_args(argv)
     segments = [
         (Point2D(0.0, 0.0), Point2D(1.0, 0.0)),
         (Point2D(1.0, 0.0), Point2D(1.0, 1.0)),

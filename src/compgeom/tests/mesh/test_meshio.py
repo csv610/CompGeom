@@ -2,7 +2,7 @@ import os
 import pytest
 from compgeom.kernel import Point2D, Point3D
 from compgeom.mesh.mesh import TriangleMesh
-from compgeom.mesh.mesh_io import OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler, MeshImporter, MeshExporter
+from compgeom.mesh.meshio import OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler, MeshImporter, MeshExporter
 
 @pytest.fixture
 def sample_mesh_data():

@@ -19,7 +19,7 @@ from .polygon_similarity import are_similar
 from .polygon_matching import reorder_to_match
 from .polygon_simplification import resolve_self_intersections as make_simple
 from .polygon_polynomial import approximate_polynomials
-from .polygon_factory import generate_random_convex_polygon, generate_simple_polygon
+from .polygon_generator import generate_random_convex_polygon, generate_simple_polygon
 from .polygon_metrics import get_convex_diameter, get_polygon_properties, get_reflex_vertices, is_convex
 from .polygon_path import shortest_path_in_polygon
 from .polygon_visibility import polygon_kernel, visibility_polygon

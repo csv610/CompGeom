@@ -461,4 +461,9 @@ class MeshExporter:
         cls._handlers[ext].write(filename, vertices, faces, **kwargs)
 
 
-__all__ = ["MeshImporter", "MeshExporter", "OBJFileHandler", "OFFFileHandler", "STLFileHandler", "PLYFileHandler"]
+__all__ = ["from_file", "MeshImporter", "MeshExporter", "OBJFileHandler", "OFFFileHandler", "STLFileHandler", "PLYFileHandler"]
+
+def from_file(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
+    """Reads a mesh from a file using the OFF handler."""
+    return OFFFileHandler.read(filename)
+

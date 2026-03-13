@@ -9,7 +9,8 @@ from compgeom.cli._shared import demo_polygon
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Test whether a demo point lies inside a demo polygon.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Run the built-in query.")
+    args = parser.parse_args(argv)
     target = Point2D(2.0, 2.0)
     polygon = demo_polygon()
     is_in = is_point_in_polygon(target, polygon)

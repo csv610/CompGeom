@@ -285,7 +285,7 @@ if __name__ == "__main__":
     import random
     import time
     from ...graphics.geo_plot import GeomPlot
-    from ..mesh_io import MeshExporter
+    from ..meshio import MeshExporter
 
     parser = argparse.ArgumentParser(description="Generate and plot a Voronoi Diagram.")
     parser.add_argument("-n", "--points", type=int, default=50, help="Number of random points (default: 50)")

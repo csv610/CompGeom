@@ -8,7 +8,8 @@ from compgeom.mesh.delaunay_triangulation import triangulate
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Create a triangle mesh from demo points.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in point cloud.")
+    args = parser.parse_args(argv)
     points = demo_points()
     triangles, skipped = triangulate(points)
     if skipped:

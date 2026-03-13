@@ -28,7 +28,7 @@ from .mesh import (
     vertex_neighbors,
 )
 from .mesh_coloring import MeshColoring
-from .mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler
+from .meshio import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler, from_file
 from .surfmesh.trimesh.mesh_refinement import TriMeshRefiner
 from .mesh_reordering import CuthillMcKee
 from .mesh_transfer import MeshTransfer
@@ -94,13 +94,13 @@ __all__ = [
     "MeshDecimator",
     "MeshParameterization",
     "MeshRegistration",
-    "MeshValidation",
+    "MeshValidation", "from_file",
     "MeshImporter",
     "MeshExporter",
     "MeshProcessing",
     "MeshQueries",
     "MeshRegistration",
-    "MeshValidation",
+    "MeshValidation", "from_file",
     "MeshTriangle",
     "MeshTopology",
     "MeshTransfer",

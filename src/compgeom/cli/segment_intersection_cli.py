@@ -9,7 +9,8 @@ from compgeom.cli._shared import demo_points
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Test intersection between two demo segments.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in segments.")
+    args = parser.parse_args(argv)
     points = demo_points()
     p1, q1 = points[0], points[4]
     p2, q2 = Point2D(-0.5, 2.5), Point2D(4.0, 0.5)

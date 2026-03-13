@@ -8,7 +8,8 @@ from compgeom.cli._shared import demo_points
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Compute the convex hull of a demo point set.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in point set.")
+    args = parser.parse_args(argv)
     points = demo_points()
     hull = GrahamScan().generate(points)
     print(f"Convex Hull (Graham Scan) has {len(hull)} vertices:")

@@ -45,7 +45,8 @@ def parse_mesh(lines: list[str]) -> list[tuple[object, object, object]]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Compute Euler characteristic for a demo mesh.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in mesh demo.")
+    args = parser.parse_args(argv)
     triangles = parse_mesh(demo_mesh_lines())
     result = euler_characteristic(triangles)
     print("Mesh Topology:")

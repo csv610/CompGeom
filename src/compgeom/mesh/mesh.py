@@ -301,7 +301,7 @@ class TriangleMesh(Mesh):
     @classmethod
     def from_file(cls, filename: str) -> TriangleMesh:
         """Creates a TriangleMesh from a file (OBJ, OFF, STL)."""
-        from .mesh_io import MeshImporter, OBJFileHandler
+        from .meshio import MeshImporter, OBJFileHandler
         vertices, faces = MeshImporter.read(filename)
         # Ensure triangles
         tri_faces = OBJFileHandler.triangulate_faces(faces)
@@ -451,7 +451,7 @@ class QuadMesh(Mesh):
     @classmethod
     def from_file(cls, filename: str) -> QuadMesh:
         """Creates a QuadMesh from a file (OBJ, OFF, STL)."""
-        from .mesh_io import MeshImporter
+        from .meshio import MeshImporter
         vertices, faces = MeshImporter.read(filename)
         # Assumes faces are quads
         return cls(vertices, faces)
@@ -567,7 +567,7 @@ class PolygonMesh(Mesh):
     @classmethod
     def from_file(cls, filename: str) -> PolygonMesh:
         """Creates a PolygonMesh from a file (OBJ, OFF, STL)."""
-        from .mesh_io import MeshImporter
+        from .meshio import MeshImporter
         vertices, faces = MeshImporter.read(filename)
         return cls(vertices, [tuple(f) for f in faces])
 
@@ -576,7 +576,7 @@ class PolygonMesh(Mesh):
         Converts the polygon mesh into a triangle mesh using fan triangulation.
         Each polygon with n vertices is split into n-2 triangles.
         """
-        from .mesh_io import OBJFileHandler
+        from .meshio import OBJFileHandler
         tri_faces = OBJFileHandler.triangulate_faces(self._elements)
         return TriangleMesh(self._vertices, tri_faces)
 

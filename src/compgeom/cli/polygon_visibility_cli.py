@@ -206,7 +206,8 @@ def format_point(point: Point2D) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Compute visible boundary segments for a demo polygon.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in polygon and query.")
+    args = parser.parse_args(argv)
     query = Point2D(1.0, 2.5)
     polygon = [
         Point2D(0.0, 0.0),

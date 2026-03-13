@@ -7,7 +7,8 @@ from compgeom.mesh.delaunay_triangulation import DelaunayMesher, build_topology
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run Delaunay edge flips on a demo mesh.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in mesh demo.")
+    args = parser.parse_args(argv)
     points_map, triangles_data, reading_points = {}, [], True
     for line in demo_mesh_lines():
         line = line.strip()

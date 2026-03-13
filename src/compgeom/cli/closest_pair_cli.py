@@ -8,7 +8,8 @@ from compgeom.cli._shared import demo_points
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Find the closest pair in a demo point set.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in demo points.")
+    args = parser.parse_args(argv)
     points = demo_points()
     dist, (p1, p2) = closest_pair(points)
     print(f"Closest Pair: {p1} and {p2}\nDistance:     {dist:.6f}")

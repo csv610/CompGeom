@@ -18,7 +18,8 @@ def is_point_inside_circle(point, a, b, c):
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate basic geometric predicates.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in predicate demo.")
+    args = parser.parse_args(argv)
     a = Point2D(0.0, 0.0)
     b = Point2D(1.0, 0.0)
     c = Point2D(0.0, 1.0)

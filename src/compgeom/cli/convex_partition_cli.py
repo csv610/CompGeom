@@ -8,7 +8,8 @@ from compgeom.cli._shared import demo_polygon
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Partition a demo polygon into convex pieces.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in demo polygon.")
+    args = parser.parse_args(argv)
     points = demo_polygon()
     partitions, polygon = hertel_mehlhorn(points)
     print(f"Polygon partitioned into {len(partitions)} convex pieces.")

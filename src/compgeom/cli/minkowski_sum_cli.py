@@ -8,7 +8,8 @@ from compgeom.cli._shared import demo_polygon
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Compute the Minkowski sum of two demo polygons.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in polygons.")
+    args = parser.parse_args(argv)
     polygon_a = demo_polygon()[:4]
     polygon_b = [point.__class__(point.x * 0.5, point.y * 0.5) for point in demo_polygon()[2:6]]
     result = minkowski_sum(polygon_a, polygon_b)

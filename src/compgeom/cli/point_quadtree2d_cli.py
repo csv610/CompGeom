@@ -8,7 +8,8 @@ from compgeom.cli._shared import demo_points
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build a 2D point quadtree from demo points.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in point cloud.")
+    args = parser.parse_args(argv)
     points = demo_points()
     qt = PointQuadtree()
     for point in points:

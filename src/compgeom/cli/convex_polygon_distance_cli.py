@@ -29,7 +29,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Measure the minimum distance between two demo convex polygons."
     )
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in demo polygons.")
+    args = parser.parse_args(argv)
     polygon_a = demo_polygon()[:4]
     polygon_b = [point.__class__(point.x + 8.0, point.y + 1.5) for point in demo_polygon()[:4]]
     distance = _polygon_distance(polygon_a, polygon_b)

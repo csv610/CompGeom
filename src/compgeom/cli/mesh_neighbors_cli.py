@@ -56,7 +56,8 @@ def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point2D, Point2D, Poi
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Inspect neighbor relationships in a demo mesh.")
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in mesh demo.")
+    args = parser.parse_args(argv)
     lines = [*demo_mesh_lines(), "P 1\n", "F 0\n"]
     triangles, query_vertex, query_triangle = parse_mesh_query(lines)
 

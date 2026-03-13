@@ -161,7 +161,7 @@ class Polygon:
         x_range: tuple[float, float] = (0, 100),
         y_range: tuple[float, float] = (0, 100),
     ) -> Polygon:
-        from .polygon_factory import random_convex_polygon
+        from .polygon_generator import random_convex_polygon
 
         return random_convex_polygon(num_points, x_range, y_range, polygon_cls=cls)
 
@@ -172,7 +172,7 @@ class Polygon:
         x_range: tuple[float, float] = (0, 100),
         y_range: tuple[float, float] = (0, 100),
     ) -> Polygon:
-        from .polygon_factory import simple_polygon
+        from .polygon_generator import simple_polygon
 
         return simple_polygon(n_points, x_range, y_range, polygon_cls=cls)
 def get_polygon_properties(polygon: list[Point2D]) -> tuple[float, Point2D, str]:
@@ -220,7 +220,7 @@ def generate_random_convex_polygon(
     x_range: tuple[float, float] = (0, 100),
     y_range: tuple[float, float] = (0, 100),
 ) -> list[Point2D]:
-    from .polygon_factory import generate_random_convex_polygon as _generate_random_convex_polygon
+    from .polygon_generator import generate_random_convex_polygon as _generate_random_convex_polygon
 
     return _generate_random_convex_polygon(num_points, x_range, y_range)
 
@@ -236,7 +236,7 @@ def generate_simple_polygon(
     x_range: tuple[float, float] = (0, 100),
     y_range: tuple[float, float] = (0, 100),
 ) -> list[Point2D]:
-    from .polygon_factory import generate_simple_polygon as _generate_simple_polygon
+    from .polygon_generator import generate_simple_polygon as _generate_simple_polygon
 
     return _generate_simple_polygon(n_points, x_range, y_range)
 

@@ -23,7 +23,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Compute the smallest enclosing circle for generated 2D points."
     )
-    parser.parse_args()
+    parser.add_argument("--demo", action="store_true", help="Use the built-in demo points.")
+    args = parser.parse_args()
     points = [Point2D(point.x, point.y) for point in demo_points()]
     random.shuffle(points)
     center, radius = welzl(list(points), [])

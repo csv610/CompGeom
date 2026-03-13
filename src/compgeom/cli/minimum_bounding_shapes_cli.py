@@ -10,7 +10,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Compute minimum bounding shapes for a demo point set."
     )
-    parser.parse_args(argv)
+    parser.add_argument("--demo", action="store_true", help="Use the built-in point set.")
+    args = parser.parse_args(argv)
     points = demo_points()
     circle_center, circle_radius = minimum_enclosing_circle(points)
     box = minimum_bounding_box(points)
