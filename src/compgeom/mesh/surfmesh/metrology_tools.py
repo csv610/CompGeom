@@ -3,8 +3,19 @@ import random
 import math
 from typing import List, Tuple, Optional
 
-from ..mesh import TriangleMesh
-from ...kernel import Point3D
+try:
+    from ..mesh import TriangleMesh
+    from ...kernel import Point3D
+except ImportError:
+    class TriangleMesh:
+        def __init__(self, vertices=None, faces=None):
+            self.vertices = vertices or []
+            self.faces = faces or []
+    class Point3D:
+        def __init__(self, x=0.0, y=0.0, z=0.0):
+            self.x = x
+            self.y = y
+            self.z = z
 
 class MetrologyTools:
     """Provides algorithms for industrial inspection and primitive fitting."""
@@ -51,3 +62,19 @@ class MetrologyTools:
                 best_plane = (nx, ny, nz, d)
                 
         return best_plane, best_inliers
+
+def main():
+    print("--- metrology_tools.py Demo ---")
+    points = [
+        Point3D(0,0,0), Point3D(1,0,0), Point3D(0,1,0), Point3D(0.5,0.5,0),
+        Point3D(2,2,10) # Outlier
+    ]
+    tools = MetrologyTools()
+    plane, inliers = tools.fit_plane_ransac(points)
+    print(f"Fitted plane: {plane}")
+    print(f"Number of inliers: {len(inliers)}")
+    
+    print("Demo completed successfully.")
+
+if __name__ == "__main__":
+    main()

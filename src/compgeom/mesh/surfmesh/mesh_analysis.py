@@ -4,6 +4,7 @@ import math
 from typing import List, Tuple, Dict
 
 from ..mesh import TriangleMesh
+from ...kernel import Point3D
 
 class MeshAnalysis:
     """Provides algorithms for analyzing surface meshes."""
@@ -216,8 +217,91 @@ class MeshAnalysis:
         iyz += mass * cm_y * cm_z
         izx += mass * cm_z * cm_x
         
-        return (
-            (ixx, ixy, izx),
-            (ixy, iyy, iyz),
-            (izx, iyz, izz)
-        )
+    @staticmethod
+    def estimate_point_normals(points: List[Point3D], k_neighbors: int = 10) -> List[Tuple[float, float, float]]:
+        """Estimates normals for a point cloud using local PCA."""
+        try:
+            import numpy as np
+            from scipy.spatial import cKDTree
+        except ImportError:
+            raise ImportError("Normal estimation requires 'numpy' and 'scipy'.")
+
+        pts = np.array([[p.x, p.y, getattr(p, 'z', 0.0)] for p in points])
+        tree = cKDTree(pts)
+        normals = []
+        
+        for i in range(len(pts)):
+            # Find neighbors
+            _, idx = tree.query(pts[i], k=k_neighbors)
+            neighbors = pts[idx]
+            
+            # Local PCA
+            centroid = np.mean(neighbors, axis=0)
+            centered = neighbors - centroid
+            cov = np.dot(centered.T, centered)
+            
+            eigenvalues, eigenvectors = np.linalg.eigh(cov)
+            # Normal is the eigenvector corresponding to the smallest eigenvalue
+            n = eigenvectors[:, 0]
+            normals.append(tuple(n))
+            
+        return normals
+
+    @staticmethod
+    def hausdorff_distance(mesh_a: TriangleMesh, mesh_b: TriangleMesh, sample_count: int = 1000) -> float:
+        """
+        Calculates the approximate Hausdorff distance between two meshes.
+        dH(A, B) = max( sup_{a in A} inf_{b in B} d(a,b), sup_{b in B} inf_{a in A} d(a,b) )
+        """
+        from .mesh_queries import MeshQueries
+        
+        def one_way_dist(m1, m2):
+            max_d = 0.0
+            # Sample points on m1 (using vertices for simplicity)
+            indices = list(range(len(m1.vertices)))
+            if len(indices) > sample_count:
+                import random
+                indices = random.sample(indices, sample_count)
+                
+            for idx in indices:
+                p = m1.vertices[idx]
+                p_coord = (p.x, p.y, getattr(p, 'z', 0.0))
+                # inf_{b in B} d(a,b) is the SDF magnitude
+                dist = abs(MeshQueries.compute_sdf(m2, p_coord))
+                max_d = max(max_d, dist)
+            return max_d
+
+        return max(one_way_dist(mesh_a, mesh_b), one_way_dist(mesh_b, mesh_a))
+
+    @staticmethod
+    def generate_report(mesh: TriangleMesh) -> str:
+        """Generates a comprehensive geometric and topological report."""
+        area = MeshAnalysis.total_area(mesh)
+        volume = MeshAnalysis.total_volume(mesh)
+        com = MeshAnalysis.center_of_mass(mesh)
+        is_watertight = mesh.is_watertight()
+        
+        # Euler characteristic
+        v = len(mesh.vertices)
+        f = len(mesh.faces)
+        edges = set()
+        for face in mesh.faces:
+            edges.add(tuple(sorted((face[0], face[1]))))
+            edges.add(tuple(sorted((face[1], face[2]))))
+            edges.add(tuple(sorted((face[2], face[0]))))
+        e = len(edges)
+        euler = v - e + f
+        
+        lines = [
+            "--- Mesh Analysis Report ---",
+            f"Vertices: {v}",
+            f"Faces:    {f}",
+            f"Edges:    {e}",
+            f"Euler Characteristic: {euler} (Genus: {(2-euler)//2})",
+            f"Watertight: {'Yes' if is_watertight else 'No'}",
+            f"Surface Area: {area:.6f}",
+            f"Volume:       {volume:.6f}",
+            f"Center of Mass: ({com[0]:.4f}, {com[1]:.4f}, {com[2]:.4f})",
+            "----------------------------"
+        ]
+        return "\n".join(lines)

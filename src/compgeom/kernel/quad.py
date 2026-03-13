@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Tuple, List
 
 if TYPE_CHECKING:
-    from .geometry import Point
+    from .point import Point
 
 from .math_utils import (
     EPSILON, 
@@ -39,7 +39,7 @@ def split_to_triangles(p1: Point, p2: Point, p3: Point, p4: Point) -> list[tuple
 
 def centroid(p1: Point, p2: Point, p3: Point, p4: Point) -> Point:
     """Return the centroid of a quadrilateral."""
-    from .geometry import Point
+    from .point import Point
     return Point(
         (p1.x + p2.x + p3.x + p4.x) / 4.0,
         (p1.y + p2.y + p3.y + p4.y) / 4.0

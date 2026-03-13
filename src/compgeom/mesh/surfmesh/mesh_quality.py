@@ -1,6 +1,6 @@
 """Mesh quality metrics for surface meshes."""
 import math
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from ..mesh import TriangleMesh
 

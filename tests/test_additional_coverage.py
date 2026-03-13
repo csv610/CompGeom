@@ -78,9 +78,9 @@ from compgeom.mesh.delaunay_triangulation import (
     triangulate,
 )
 from compgeom.mesh.mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler
-from compgeom.mesh.trimesh.mesh_refinement import TriMeshRefiner
-from compgeom.mesh.quadmesh.simple_tri2quads import TriangleToQuadConverter
-from compgeom.mesh.voxelmesh.voxelization import MeshVoxelizer
+from compgeom.mesh.surfmesh.trimesh.mesh_refinement import TriMeshRefiner
+from compgeom.mesh.surfmesh.quadmesh.simple_tri2quads import TriangleToQuadConverter
+from compgeom.mesh.volmesh.voxelmesh.voxelization import MeshVoxelizer
 from compgeom.polygon.circle_packing import CirclePacker
 from compgeom.polygon.distance_map import DistanceMapSolver
 from compgeom.polygon.polygon_generator import PolygonGenerator

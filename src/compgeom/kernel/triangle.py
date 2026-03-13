@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING, Tuple, List, Any
 from decimal import Decimal
 
 if TYPE_CHECKING:
-    from .geometry import Point
+    from .point import Point
 
 from .math_utils import (
     EPSILON, 
@@ -48,7 +48,7 @@ def area(a: Point, b: Point, c: Point) -> float:
 
 def circumcenter(a: Point, b: Point, c: Point) -> Optional[Point]:
     """Return the circumcenter of triangle ABC, or None if collinear."""
-    from .geometry import Point
+    from .point import Point
     denominator = 2 * (
         a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)
     )
@@ -70,7 +70,7 @@ def circumcenter(a: Point, b: Point, c: Point) -> Optional[Point]:
 
 def incenter(a: Point, b: Point, c: Point) -> Point:
     """Return the incenter of triangle ABC."""
-    from .geometry import Point
+    from .point import Point
     la = distance(b, c)
     lb = distance(a, c)
     lc = distance(a, b)

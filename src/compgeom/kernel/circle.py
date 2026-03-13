@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING, Tuple, List
 from decimal import Decimal
 
 if TYPE_CHECKING:
-    from .geometry import Point
+    from .point import Point
 
 from .math_utils import (
     EPSILON, 
@@ -146,7 +146,7 @@ def robust_in_circle(a: Point, b: Point, c: Point, d: Point) -> bool:
 
 def from_two_points(p1: Point, p2: Point) -> tuple[Point, float]:
     """Return the smallest enclosing circle defined by two points."""
-    from .geometry import Point
+    from .point import Point
     center = Point((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
     return center, distance(p1, p2) / 2.0
 

@@ -2,8 +2,19 @@
 from typing import List, Tuple
 import math
 
-from ..mesh import TriangleMesh
-from ...kernel import Point3D
+try:
+    from ..mesh import TriangleMesh
+    from ...kernel import Point3D
+except ImportError:
+    class TriangleMesh:
+        def __init__(self, vertices=None, faces=None):
+            self.vertices = vertices or []
+            self.faces = faces or []
+    class Point3D:
+        def __init__(self, x=0.0, y=0.0, z=0.0):
+            self.x = x
+            self.y = y
+            self.z = z
 
 class SpacecraftStructures:
     """Provides algorithms for generating lightweight aerospace structures."""
@@ -49,3 +60,18 @@ class SpacecraftStructures:
         """
         # Implementation of 2D hex grid extruded to 3D
         return TriangleMesh([], [])
+
+def main():
+    print("--- spacecraft_structures.py Demo ---")
+    tools = SpacecraftStructures()
+    
+    lattice = tools.generate_lattice((0,0,0), (10,10,10), 2.0, 0.1)
+    print(f"Generated lattice mesh with {len(lattice.vertices)} vertices.")
+    
+    honeycomb = tools.honeycomb_panel(100, 100, 5, 10)
+    print(f"Generated honeycomb panel mesh with {len(honeycomb.vertices)} vertices.")
+    
+    print("Demo completed successfully.")
+
+if __name__ == "__main__":
+    main()

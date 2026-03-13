@@ -1,5 +1,5 @@
 """Spatial queries: ray intersection and distances."""
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import math
 
 from ..mesh import TriangleMesh
@@ -52,7 +52,7 @@ class MeshQueries:
         Accelerated by AABBTree by default.
         """
         if use_spatial:
-            from .spatial_acceleration import AABBTree
+            from .app.spatial_acceleration import AABBTree
             tree = AABBTree(mesh)
             return tree.ray_intersect(origin, direction)
             
@@ -193,7 +193,7 @@ class MeshQueries:
         Detects intersections between two meshes.
         Returns a list of (face_idx_a, face_idx_b) pairs that intersect.
         """
-        from .spatial_acceleration import AABBTree
+        from .app.spatial_acceleration import AABBTree
         from .surf_mesh_repair import SurfMeshRepair
         
         tree_a = AABBTree(mesh_a)

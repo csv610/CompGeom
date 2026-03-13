@@ -6,10 +6,10 @@ import math
 from decimal import getcontext
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
-if TYPE_CHECKING:
-    from .geometry import Point, Point3D
+from .point import EPSILON
 
-EPSILON = 1e-9
+if TYPE_CHECKING:
+    from .point import Point, Point3D
 
 # Set precision once for the module
 getcontext().prec = 50
@@ -25,7 +25,7 @@ def dot_product(a: Point, b: Point) -> float:
 
 
 def sub(a: Point, b: Point) -> Point:
-    from .geometry import Point
+    from .point import Point
 
     return Point(a.x - b.x, a.y - b.y)
 
@@ -65,7 +65,7 @@ def signed_area_twice(polygon: List[Point]) -> float:
 
 def rotate_2d(point: Point, cos_theta: float, sin_theta: float) -> Point:
     """Rotate a point by an angle given by its cosine and sine."""
-    from .geometry import Point
+    from .point import Point
 
     return Point(
         point.x * cos_theta + point.y * sin_theta,
@@ -76,7 +76,7 @@ def rotate_2d(point: Point, cos_theta: float, sin_theta: float) -> Point:
 
 def unrotate_2d(point: Point, cos_theta: float, sin_theta: float) -> Point:
     """Unrotate a point by an angle given by its cosine and sine."""
-    from .geometry import Point
+    from .point import Point
 
     return Point(
         point.x * cos_theta - point.y * sin_theta,

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Optional
 
+from .point import Point, Point3D
 from .math_utils import (
     EPSILON,
     cross_product,
@@ -17,50 +17,6 @@ from .math_utils import (
 
 
 import math
-
-@dataclass(frozen=True, eq=False, slots=True)
-class Point:
-    x: float
-    y: float
-    id: int = -1
-
-    def __repr__(self) -> str:
-        return f"P{self.id}({self.x}, {self.y})"
-
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, Point)
-            and math.isclose(self.x, other.x, abs_tol=EPSILON)
-            and math.isclose(self.y, other.y, abs_tol=EPSILON)
-        )
-
-    def __hash__(self) -> int:
-        return hash((round(self.x / EPSILON), round(self.y / EPSILON)))
-
-
-@dataclass(frozen=True, eq=False, slots=True)
-class Point3D:
-    x: float
-    y: float
-    z: float
-    id: int = -1
-
-    def __repr__(self) -> str:
-        return f"P{self.id}({self.x}, {self.y}, {self.z})"
-
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, Point3D)
-            and math.isclose(self.x, other.x, abs_tol=EPSILON)
-            and math.isclose(self.y, other.y, abs_tol=EPSILON)
-            and math.isclose(self.z, other.z, abs_tol=EPSILON)
-        )
-
-    def __hash__(self) -> int:
-        return hash(
-            (round(self.x / EPSILON), round(self.y / EPSILON), round(self.z / EPSILON))
-        )
-
 
 def clip_polygon(polygon: list[Point], line_start: Point, line_end: Point) -> list[Point]:
     """Clip a polygon against the left half-plane of the directed line."""

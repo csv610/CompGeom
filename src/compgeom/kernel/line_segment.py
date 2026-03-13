@@ -3,7 +3,7 @@ import math
 from typing import Optional, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
-    from .geometry import Point
+    from .point import Point
 
 from .math_utils import (
     EPSILON, 
@@ -17,7 +17,7 @@ from .math_utils import (
 
 def intersect_lines(p1: Point, p2: Point, p3: Point, p4: Point) -> Optional[Point]:
     """Return the line-line intersection, or ``None`` for parallel lines."""
-    from .geometry import Point
+    from .point import Point
     denominator = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x)
     if abs(denominator) < 1e-12:
         return None
@@ -81,7 +81,7 @@ def intersect_ray(
     origin: Point, angle: float, start: Point, end: Point
 ) -> tuple[float, Point] | None:
     """Return the intersection distance and point between a ray and a segment."""
-    from .geometry import Point
+    from .point import Point
     direction = Point(math.cos(angle), math.sin(angle))
     edge = sub(end, start)
     delta = sub(start, origin)
@@ -104,7 +104,7 @@ def intersect_ray(
 
 def midpoint(p1: Point, p2: Point) -> Point:
     """Return the midpoint of a line segment."""
-    from .geometry import Point
+    from .point import Point
     return Point((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
 
 

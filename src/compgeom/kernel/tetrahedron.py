@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING, Tuple, List, Any
 from decimal import Decimal
 
 if TYPE_CHECKING:
-    from .geometry import Point3D
+    from .point import Point3D
 
 from .math_utils import (
     EPSILON,
