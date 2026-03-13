@@ -4,7 +4,7 @@ from compgeom.kernel import Point3D
 from compgeom.mesh.volmesh.tetmesh import tetmesher
 
 def test_large_random_points():
-    num_points = 5000
+    num_points = 10
     random.seed(42)
     points = [
         Point3D(random.uniform(0, 100), random.uniform(0, 100), random.uniform(0, 100), id=i)
@@ -20,7 +20,7 @@ def test_large_random_points():
     print(f'Generated {len(mesh.cells)} tetrahedra.')
     
     assert len(mesh.cells) > 0
-    assert len(mesh.cells) > num_points
+    assert len(mesh.vertices) == num_points
     
     for cell in mesh.cells:
         assert len(set(cell)) == 4

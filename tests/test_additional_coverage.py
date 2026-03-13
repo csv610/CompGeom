@@ -555,7 +555,7 @@ def test_mesh_and_triangle_utilities_cover_standalone_helpers():
     assert get_nondelaunay_triangles(build_topology(tris)) == set()
 
     assert len(DelaunayMesher.build_mesh_topology(tris)) == 2
-    mesh = DelaunayMesher._to_triangle_mesh(tris)
+    mesh = TriangleMesh.from_triangles(tris)
     assert isinstance(mesh, TriangleMesh)
     assert mesh.faces == [(0, 1, 2), (1, 3, 2)]
 

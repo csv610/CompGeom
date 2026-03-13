@@ -8,6 +8,8 @@ version = "0.1.0"
 description = "Computational geometry utilities, mesh tools, and CLI scripts."
 requires-python = ">=3.12"
 dependencies = [
+    "pytest",
+    "pytest-cov",
     # Add any dependencies if needed
 ]
 
