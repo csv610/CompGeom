@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom import EPSILON, Point2D, length, sub
 from compgeom import is_point_in_polygon
 from compgeom.cli._shared import demo_polygon
@@ -356,8 +358,17 @@ def format_point(point):
     return f"({point.x:.6f}, {point.y:.6f})"
 
 
-def main() -> int:
-    operation = "union"
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Apply a boolean operation to two demo polygons.")
+    parser.add_argument(
+        "--operation",
+        choices=["intersection", "union", "difference", "xor"],
+        default="union",
+        help="Boolean operation to evaluate.",
+    )
+    args = parser.parse_args(argv)
+
+    operation = args.operation
     poly1 = demo_polygon()[:4]
     poly2 = [Point2D(point.x + 1.5, point.y + 0.5) for point in demo_polygon()[2:6]]
     try:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom import Point2D
 from ._shared import demo_mesh_lines
 from compgeom.algo.path import shortest_path
@@ -65,8 +67,16 @@ def format_point(point: Point2D) -> str:
     return f"({point.x:.6f}, {point.y:.6f})"
 
 
-def main() -> int:
-    mode = "true"
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Compute a shortest path across a demo mesh.")
+    parser.add_argument(
+        "--mode",
+        default="true",
+        help="Shortest-path mode forwarded to the path solver.",
+    )
+    args = parser.parse_args(argv)
+
+    mode = args.mode
     triangles, source, target = parse_mesh_query([*demo_mesh_lines(), "Q\n", "0.1 0.1\n", "0.9 0.9\n"])
 
     try:

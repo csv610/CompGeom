@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom import PointQuadtree
 from compgeom.cli._shared import demo_points
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Build a 2D point quadtree from demo points.")
+    parser.parse_args(argv)
     points = demo_points()
     qt = PointQuadtree()
     for point in points:

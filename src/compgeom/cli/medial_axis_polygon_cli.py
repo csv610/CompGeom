@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom import approximate_medial_axis
 from compgeom.cli._shared import demo_polygon, format_point
 
 
-def main() -> int:
-    resolution = 0.25
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Approximate the medial axis of a demo polygon.")
+    parser.add_argument("--resolution", type=float, default=0.25, help="Boundary sampling resolution.")
+    args = parser.parse_args(argv)
+
+    resolution = args.resolution
     polygon = demo_polygon()
     result = approximate_medial_axis(polygon, resolution=resolution)
     print("Approximate Medial Axis:")

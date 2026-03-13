@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom.algo.points_sampling import PointSampler
 
 
-def main() -> int:
-    width, height = 6.0, 4.0
-    n_points = 100
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Generate random points inside a rectangle.")
+    parser.add_argument("--width", type=float, default=6.0, help="Rectangle width.")
+    parser.add_argument("--height", type=float, default=4.0, help="Rectangle height.")
+    parser.add_argument("--count", type=int, default=100, help="Number of points to generate.")
+    args = parser.parse_args(argv)
+
+    width, height = args.width, args.height
+    n_points = args.count
 
     points = PointSampler.in_rectangle(width, height, n_points)
     print(

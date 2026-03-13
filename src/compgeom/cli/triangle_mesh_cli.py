@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom.cli._shared import demo_points
 from compgeom.mesh.delaunay_triangulation import triangulate
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Create a triangle mesh from demo points.")
+    parser.parse_args(argv)
     points = demo_points()
     triangles, skipped = triangulate(points)
     if skipped:

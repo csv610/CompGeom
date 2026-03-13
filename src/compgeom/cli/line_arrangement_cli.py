@@ -1,3 +1,4 @@
+import argparse
 import math
 
 from compgeom import EPSILON, Point2D, cross_product, is_on_segment, length, sub
@@ -204,7 +205,9 @@ def format_point(point: Point2D) -> str:
     return f"({point.x:.6f}, {point.y:.6f})"
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Analyze a demo line arrangement.")
+    parser.parse_args(argv)
     segments = [
         (Point2D(0.0, 0.0), Point2D(1.0, 0.0)),
         (Point2D(1.0, 0.0), Point2D(1.0, 1.0)),

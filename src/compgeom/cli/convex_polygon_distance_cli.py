@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom import Point2D, dist_point_to_segment, is_point_in_polygon
 from compgeom.cli._shared import demo_polygon
 
@@ -23,7 +25,11 @@ def _polygon_distance(polygon_a: list[Point2D], polygon_b: list[Point2D]) -> flo
     return best
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Measure the minimum distance between two demo convex polygons."
+    )
+    parser.parse_args(argv)
     polygon_a = demo_polygon()[:4]
     polygon_b = [point.__class__(point.x + 8.0, point.y + 1.5) for point in demo_polygon()[:4]]
     distance = _polygon_distance(polygon_a, polygon_b)

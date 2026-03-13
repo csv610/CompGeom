@@ -1,11 +1,22 @@
-import sys
+import argparse
+
 from compgeom import generate_random_convex_polygon
 
-def main():
-    num_samples = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 20
-    hull = generate_random_convex_polygon(num_samples)
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Generate a random convex polygon.")
+    parser.add_argument(
+        "--samples",
+        type=int,
+        default=20,
+        help="Number of random samples used to generate the polygon.",
+    )
+    args = parser.parse_args(argv)
+
+    hull = generate_random_convex_polygon(args.samples)
     print(f"Generated Random Convex Polygon with {len(hull)} vertices:")
-    for p in hull: print(f"{p.x:.4f} {p.y:.4f}")
+    for point in hull:
+        print(f"{point.x:.4f} {point.y:.4f}")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

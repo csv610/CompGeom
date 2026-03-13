@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom.cli._shared import demo_mesh_lines, parse_point_fields
 from compgeom.mesh.delaunay_triangulation import DelaunayMesher, build_topology
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run Delaunay edge flips on a demo mesh.")
+    parser.parse_args(argv)
     points_map, triangles_data, reading_points = {}, [], True
     for line in demo_mesh_lines():
         line = line.strip()

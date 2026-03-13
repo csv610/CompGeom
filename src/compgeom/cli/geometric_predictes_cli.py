@@ -1,3 +1,5 @@
+import argparse
+
 from compgeom import Point2D, contains_point, in_circle, orientation_sign
 
 
@@ -14,7 +16,9 @@ def is_point_inside_circle(point, a, b, c):
     return in_circle(a, b, c, point)
 
 
-def main():
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Evaluate basic geometric predicates.")
+    parser.parse_args(argv)
     a = Point2D(0.0, 0.0)
     b = Point2D(1.0, 0.0)
     c = Point2D(0.0, 1.0)
@@ -24,7 +28,8 @@ def main():
     print("orientation(a, b, c) =", orientation_sign(a, b, c))
     print("is_point_inside_triangle =", is_point_inside_triangle(p_triangle, a, b, c))
     print("is_point_inside_circle =", is_point_inside_circle(p_circle, a, b, c))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

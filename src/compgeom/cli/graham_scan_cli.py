@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom import GrahamScan
 from compgeom.cli._shared import demo_points
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Compute the convex hull of a demo point set.")
+    parser.parse_args(argv)
     points = demo_points()
     hull = GrahamScan().generate(points)
     print(f"Convex Hull (Graham Scan) has {len(hull)} vertices:")

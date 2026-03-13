@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom import minimum_bounding_box, minimum_enclosing_circle
 from compgeom.cli._shared import demo_points, format_point
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Compute minimum bounding shapes for a demo point set."
+    )
+    parser.parse_args(argv)
     points = demo_points()
     circle_center, circle_radius = minimum_enclosing_circle(points)
     box = minimum_bounding_box(points)

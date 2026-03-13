@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom import euler_characteristic
 from compgeom.cli._shared import demo_mesh_lines, parse_point_fields
 
@@ -41,7 +43,9 @@ def parse_mesh(lines: list[str]) -> list[tuple[object, object, object]]:
     return triangles
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Compute Euler characteristic for a demo mesh.")
+    parser.parse_args(argv)
     triangles = parse_mesh(demo_mesh_lines())
     result = euler_characteristic(triangles)
     print("Mesh Topology:")

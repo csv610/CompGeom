@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import math
 from dataclasses import dataclass
 
@@ -271,9 +272,16 @@ class ReflectionViewer:
         self.root.mainloop()
 
 
-def main() -> int:
-    origin = Point2D(2.0, 2.0)
-    direction = Point2D(1.0, 0.3)
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Animate ray reflections inside a demo polygon.")
+    parser.add_argument("--origin-x", type=float, default=2.0, help="Ray origin x-coordinate.")
+    parser.add_argument("--origin-y", type=float, default=2.0, help="Ray origin y-coordinate.")
+    parser.add_argument("--direction-x", type=float, default=1.0, help="Ray direction x-component.")
+    parser.add_argument("--direction-y", type=float, default=0.3, help="Ray direction y-component.")
+    args = parser.parse_args(argv)
+
+    origin = Point2D(args.origin_x, args.origin_y)
+    direction = Point2D(args.direction_x, args.direction_y)
     polygon = demo_polygon()
 
     try:

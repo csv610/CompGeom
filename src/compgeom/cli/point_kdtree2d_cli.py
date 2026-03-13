@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import argparse
+
 from compgeom import build_kdtree, display_kdtree
 from compgeom.cli._shared import demo_points
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Build a 2D KD-tree from demo points.")
+    parser.parse_args(argv)
     points = demo_points()
     root = build_kdtree(points)
     print(f"2D KD-Tree built with {len(points)} points.\n")
