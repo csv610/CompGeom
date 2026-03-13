@@ -8,12 +8,12 @@ from collections import defaultdict
 if TYPE_CHECKING:
     from .polygon import Polygon
 
-from ..kernel import Point, cross_product, distance
+from ..kernel import Point2D, cross_product, distance
 from .line_segment import proper_segment_intersection
 from .polygon_utils import same_point, cleanup_polygon
 
 
-def _intersect_segments(p1: Point, p2: Point, p3: Point, p4: Point) -> Point | None:
+def _intersect_segments(p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) -> Point2D | None:
     """Return the intersection point of two segments, if it exists."""
     # Using the line intersection formula and checking if it's on both segments
     denom = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x)
@@ -29,10 +29,10 @@ def _intersect_segments(p1: Point, p2: Point, p3: Point, p4: Point) -> Point | N
         - (p1.y - p2.y) * (p3.x * p4.y - p3.y * p4.x)
     ) / denom
     
-    intersect = Point(px, py)
+    intersect = Point2D(px, py)
     
     # Check if point is on both segments
-    def on_segment(p: Point, a: Point, b: Point) -> bool:
+    def on_segment(p: Point2D, a: Point2D, b: Point2D) -> bool:
         return (min(a.x, b.x) - 1e-9 <= p.x <= max(a.x, b.x) + 1e-9 and
                 min(a.y, b.y) - 1e-9 <= p.y <= max(a.y, b.y) + 1e-9)
                 
@@ -40,7 +40,7 @@ def _intersect_segments(p1: Point, p2: Point, p3: Point, p4: Point) -> Point | N
         return intersect
     return None
 
-def resolve_self_intersections(polygon: Polygon) -> list[Point]:
+def resolve_self_intersections(polygon: Polygon) -> list[Point2D]:
     """
     Resolves self-intersections in a polygon by splitting segments at intersection
     points and returning a simple boundary. 
@@ -82,7 +82,7 @@ def resolve_self_intersections(polygon: Polygon) -> list[Point]:
     # 2. Build the graph of sub-segments
     graph = defaultdict(list)
     
-    def get_key(p: Point) -> tuple[float, float]:
+    def get_key(p: Point2D) -> tuple[float, float]:
         return (round(p.x, 9), round(p.y, 9))
 
     for i in range(n):
@@ -117,7 +117,7 @@ def resolve_self_intersections(polygon: Polygon) -> list[Point]:
     start_node = min(all_points, key=lambda p: (p.x, p.y))
     
     curr = start_node
-    prev = Point(curr.x, curr.y - 1.0) # Virtual point to start the "turn" calculation
+    prev = Point2D(curr.x, curr.y - 1.0) # Virtual point to start the "turn" calculation
     
     result = []
     visited_edges = set()
@@ -131,7 +131,7 @@ def resolve_self_intersections(polygon: Polygon) -> list[Point]:
             break
             
         # Find the neighbor that makes the widest right turn
-        def get_angle(p: Point, center: Point, reference: Point) -> float:
+        def get_angle(p: Point2D, center: Point2D, reference: Point2D) -> float:
             import math
             v1 = (reference.x - center.x, reference.y - center.y)
             v2 = (p.x - center.x, p.y - center.y)

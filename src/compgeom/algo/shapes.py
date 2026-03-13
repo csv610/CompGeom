@@ -6,7 +6,7 @@ import math
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple, Union
 
-from ..kernel import Point, Point3D
+from ..kernel import Point2D, Point3D
 from ..kernel import distance, distance_3d, signed_area_twice
 
 
@@ -15,7 +15,7 @@ class Shape(ABC):
 
     @property
     @abstractmethod
-    def centroid(self) -> Union[Point, Point3D]:
+    def centroid(self) -> Union[Point2D, Point3D]:
         """Returns the geometric center of the shape."""
         pass
 
@@ -61,7 +61,7 @@ class Shape3D(Shape):
 class LineSegment(Shape):
     """A directed line segment between two points (2D or 3D)."""
 
-    def __init__(self, start: Union[Point, Point3D], end: Union[Point, Point3D]):
+    def __init__(self, start: Union[Point2D, Point3D], end: Union[Point2D, Point3D]):
         self.start = start
         self.end = end
 
@@ -76,14 +76,14 @@ class LineSegment(Shape):
         return self.length
 
     @property
-    def centroid(self) -> Union[Point, Point3D]:
+    def centroid(self) -> Union[Point2D, Point3D]:
         if isinstance(self.start, Point3D) and isinstance(self.end, Point3D):
             return Point3D(
                 (self.start.x + self.end.x) / 2.0,
                 (self.start.y + self.end.y) / 2.0,
                 (self.start.z + self.end.z) / 2.0,
             )
-        return Point(
+        return Point2D(
             (self.start.x + self.end.x) / 2.0, (self.start.y + self.end.y) / 2.0
         )
 
@@ -94,12 +94,12 @@ class LineSegment(Shape):
 class Ray(Shape):
     """A ray defined by an origin and a direction point (2D or 3D)."""
 
-    def __init__(self, origin: Union[Point, Point3D], direction_pt: Union[Point, Point3D]):
+    def __init__(self, origin: Union[Point2D, Point3D], direction_pt: Union[Point2D, Point3D]):
         self.origin = origin
         self.direction_pt = direction_pt
 
     @property
-    def centroid(self) -> Union[Point, Point3D]:
+    def centroid(self) -> Union[Point2D, Point3D]:
         return self.origin
 
     @property
@@ -113,7 +113,7 @@ class Ray(Shape):
 class Circle(Shape2D):
     """A circle defined by a center and a radius."""
 
-    def __init__(self, center: Point, radius: float):
+    def __init__(self, center: Point2D, radius: float):
         self._center = center
         self._radius = radius
 
@@ -122,7 +122,7 @@ class Circle(Shape2D):
         return self._radius
 
     @property
-    def centroid(self) -> Point:
+    def centroid(self) -> Point2D:
         return self._center
 
     @property
@@ -145,7 +145,7 @@ class Circle(Shape2D):
 class Rectangle(Shape2D):
     """An axis-aligned rectangle defined by a center, width, and height."""
 
-    def __init__(self, center: Point, width: float, height: float):
+    def __init__(self, center: Point2D, width: float, height: float):
         self._center = center
         self._width = width
         self._height = height
@@ -159,7 +159,7 @@ class Rectangle(Shape2D):
         return self._height
 
     @property
-    def centroid(self) -> Point:
+    def centroid(self) -> Point2D:
         return self._center
 
     @property
@@ -175,14 +175,14 @@ class Rectangle(Shape2D):
         return 2 * (self._width + self._height)
 
     @property
-    def vertices(self) -> List[Point]:
+    def vertices(self) -> List[Point2D]:
         """Returns the four corners of the rectangle."""
         hw, hh = self._width / 2.0, self._height / 2.0
         return [
-            Point(self._center.x - hw, self._center.y - hh),
-            Point(self._center.x + hw, self._center.y - hh),
-            Point(self._center.x + hw, self._center.y + hh),
-            Point(self._center.x - hw, self._center.y + hh),
+            Point2D(self._center.x - hw, self._center.y - hh),
+            Point2D(self._center.x + hw, self._center.y - hh),
+            Point2D(self._center.x + hw, self._center.y + hh),
+            Point2D(self._center.x - hw, self._center.y + hh),
         ]
 
     def __repr__(self) -> str:
@@ -192,7 +192,7 @@ class Rectangle(Shape2D):
 class Square(Rectangle):
     """A square defined by a center and a side length."""
 
-    def __init__(self, center: Point, side_length: float):
+    def __init__(self, center: Point2D, side_length: float):
         super().__init__(center, side_length, side_length)
 
     @property
@@ -206,14 +206,14 @@ class Square(Rectangle):
 class Triangle(Shape2D):
     """A triangle defined by three vertices."""
 
-    def __init__(self, a: Point, b: Point, c: Point):
+    def __init__(self, a: Point2D, b: Point2D, c: Point2D):
         self.a = a
         self.b = b
         self.c = c
 
     @property
-    def centroid(self) -> Point:
-        return Point((self.a.x + self.b.x + self.c.x) / 3.0, (self.a.y + self.b.y + self.c.y) / 3.0)
+    def centroid(self) -> Point2D:
+        return Point2D((self.a.x + self.b.x + self.c.x) / 3.0, (self.a.y + self.b.y + self.c.y) / 3.0)
 
     @property
     def diameter(self) -> float:

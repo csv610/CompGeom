@@ -2,17 +2,17 @@
 import math
 from typing import List
 
-from ...kernel import Point
+from ...kernel import Point2D
 
 class MinkowskiSum:
     """Calculates the Minkowski sum of two convex polygons."""
 
     @staticmethod
-    def _polar_angle(p1: Point, p2: Point) -> float:
+    def _polar_angle(p1: Point2D, p2: Point2D) -> float:
         return math.atan2(p2.y - p1.y, p2.x - p1.x)
 
     @staticmethod
-    def compute_convex(poly1: List[Point], poly2: List[Point]) -> List[Point]:
+    def compute_convex(poly1: List[Point2D], poly2: List[Point2D]) -> List[Point2D]:
         """
         Computes the exact Minkowski sum of two convex polygons in O(N+M) time.
         Polygons must be ordered counter-clockwise.
@@ -40,14 +40,14 @@ class MinkowskiSum:
         
         # We need to process n + m vertices
         for _ in range(n + m):
-            sum_poly.append(Point(poly1[i].x + poly2[j].x, poly1[i].y + poly2[j].y))
+            sum_poly.append(Point2D(poly1[i].x + poly2[j].x, poly1[i].y + poly2[j].y))
             
             p1_next = poly1[(i + 1) % n]
             p2_next = poly2[(j + 1) % m]
             
             # Edge vectors
-            v1 = Point(p1_next.x - poly1[i].x, p1_next.y - poly1[i].y)
-            v2 = Point(p2_next.x - poly2[j].x, p2_next.y - poly2[j].y)
+            v1 = Point2D(p1_next.x - poly1[i].x, p1_next.y - poly1[i].y)
+            v2 = Point2D(p2_next.x - poly2[j].x, p2_next.y - poly2[j].y)
             
             # Cross product to determine which edge is "further right"
             cross = v1.x * v2.y - v1.y * v2.x

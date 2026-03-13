@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ..kernel import Point, Point3D
+from ..kernel import Point2D, Point3D
 from ..kernel import distance
 from .mesh import TriangleMesh
 
@@ -14,7 +14,7 @@ class MeshTransfer:
     """Transfers triangulation from one polygonal domain to another with minimum distortion."""
 
     @staticmethod
-    def transfer(source_mesh: TriangleMesh, target_polygon: List[Point]) -> TriangleMesh:
+    def transfer(source_mesh: TriangleMesh, target_polygon: List[Point2D]) -> TriangleMesh:
         """
         Transfers the topology of source_mesh to the domain defined by target_polygon.
         Uses Harmonic Mapping (Barycentric Mapping) to minimize distortion.
@@ -75,7 +75,7 @@ class MeshTransfer:
         # 4. Map source boundary vertices to target boundary positions
         new_vertices_coords = [None] * len(source_mesh.vertices)
         
-        def interpolate_target(t: float) -> Point:
+        def interpolate_target(t: float) -> Point2D:
             # t is normalized distance [0, 1]
             # Find which segment of target_polygon it falls into
             for i in range(len(normalized_target) - 1):
@@ -83,7 +83,7 @@ class MeshTransfer:
                     segment_t = (t - normalized_target[i]) / (normalized_target[i+1] - normalized_target[i])
                     p1 = target_polygon[i]
                     p2 = target_polygon[(i+1) % len(target_polygon)]
-                    return Point(
+                    return Point2D(
                         p1.x + segment_t * (p2.x - p1.x),
                         p1.y + segment_t * (p2.y - p1.y)
                     )
@@ -99,7 +99,7 @@ class MeshTransfer:
         boundary_indices = set(cycle)
         for i in range(len(source_mesh.vertices)):
             if i not in boundary_indices:
-                new_vertices_coords[i] = Point(target_centroid_x, target_centroid_y)
+                new_vertices_coords[i] = Point2D(target_centroid_x, target_centroid_y)
 
         # 6. Iterative Harmonic Solver (Gauss-Seidel)
         # Solve Laplace equation: L V = 0 where L is Laplacian operator
@@ -123,7 +123,7 @@ class MeshTransfer:
                 diff = abs(new_vertices_coords[i].x - new_x) + abs(new_vertices_coords[i].y - new_y)
                 max_diff = max(max_diff, diff)
                 
-                new_vertices_coords[i] = Point(new_x, new_y, i)
+                new_vertices_coords[i] = Point2D(new_x, new_y, i)
             
             if max_diff < 1e-6:
                 break

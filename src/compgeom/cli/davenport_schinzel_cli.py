@@ -1,6 +1,6 @@
 import argparse
 import sys
-from compgeom import Point
+from compgeom import Point2D
 from compgeom import DavenportSchinzel
 from compgeom import save_svg, save_png
 
@@ -19,7 +19,7 @@ def main():
             
         segments = []
         for i in range(0, len(raw), 4):
-            segments.append((Point(raw[i], raw[i+1]), Point(raw[i+2], raw[i+3])))
+            segments.append((Point2D(raw[i], raw[i+1]), Point2D(raw[i+2], raw[i+3])))
             
     except ValueError:
         print("Error: Coordinates must be numeric.")

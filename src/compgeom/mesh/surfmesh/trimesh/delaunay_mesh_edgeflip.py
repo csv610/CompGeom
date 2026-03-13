@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Iterable
 
 from ....kernel import (
     EPSILON,
-    Point,
+    Point2D,
     contains_point,
     cross_product,
     in_circle,
@@ -30,7 +30,7 @@ class EdgeFlipTriangle:
     """A triangle with adjacency information for edge flipping."""
     __slots__ = ("vertices", "neighbors")
 
-    def __init__(self, v1: Point, v2: Point, v3: Point):
+    def __init__(self, v1: Point2D, v2: Point2D, v3: Point2D):
         # Ensure CCW orientation
         if cross_product(v1, v2, v3) < 0:
             self.vertices = [v1, v3, v2]
@@ -40,7 +40,7 @@ class EdgeFlipTriangle:
         # neighbor[i] shares edge (vertices[(i+1)%3], vertices[(i+2)%3])
         self.neighbors: list[EdgeFlipTriangle | None] = [None, None, None]
 
-    def contains_point(self, point: Point) -> bool:
+    def contains_point(self, point: Point2D) -> bool:
         """Geometric containment check using cross products."""
         # Use a consistent epsilon for containment robustness
         for i in range(3):
@@ -48,7 +48,7 @@ class EdgeFlipTriangle:
                 return False
         return True
 
-    def get_edge_index(self, v1: Point, v2: Point) -> int:
+    def get_edge_index(self, v1: Point2D, v2: Point2D) -> int:
         """Finds the index i such that neighbors[i] is the triangle sharing edge (v1, v2)."""
         for i in range(3):
             va = self.vertices[(i + 1) % 3]
@@ -63,12 +63,12 @@ class EdgeFlipDelaunayMesher:
     Incremental Delaunay Mesher using the Edge Flip algorithm.
     Optimized for numerical robustness and triangle reuse.
     """
-    def __init__(self, points_for_grid: Iterable[Point] | None = None):
+    def __init__(self, points_for_grid: Iterable[Point2D] | None = None):
         self.active_triangles: set[EdgeFlipTriangle] = set()
-        self.vertex_to_triangles: dict[Point, set[EdgeFlipTriangle]] = {}
+        self.vertex_to_triangles: dict[Point2D, set[EdgeFlipTriangle]] = {}
         self.grid = PointGrid(points_for_grid) if points_for_grid else None
-        self.super_vertices: set[Point] = set()
-        self.skipped: list[tuple[Point, str]] = []
+        self.super_vertices: set[Point2D] = set()
+        self.skipped: list[tuple[Point2D, str]] = []
         self.root: EdgeFlipTriangle | None = None
         self.last_tri: EdgeFlipTriangle | None = None
 
@@ -89,7 +89,7 @@ class EdgeFlipDelaunayMesher:
             if v in self.vertex_to_triangles:
                 self.vertex_to_triangles[v].discard(tri)
 
-    def _visibility_walk(self, point: Point, start_tri: EdgeFlipTriangle) -> EdgeFlipTriangle | None:
+    def _visibility_walk(self, point: Point2D, start_tri: EdgeFlipTriangle) -> EdgeFlipTriangle | None:
         curr = start_tri
         visited = {curr}
         
@@ -116,7 +116,7 @@ class EdgeFlipDelaunayMesher:
                         return t
                 return None
 
-    def _update_neighbor(self, neighbor: EdgeFlipTriangle | None, v1: Point, v2: Point, new_tri: EdgeFlipTriangle):
+    def _update_neighbor(self, neighbor: EdgeFlipTriangle | None, v1: Point2D, v2: Point2D, new_tri: EdgeFlipTriangle):
         """Updates neighbor's adjacency pointer if it shares the edge (v1, v2)."""
         if neighbor:
             idx = neighbor.get_edge_index(v1, v2)
@@ -164,7 +164,7 @@ class EdgeFlipDelaunayMesher:
 
                 suspect_edges.extend([(t1, 0), (t1, 2), (t2, 0), (t2, 1)])
 
-    def initialize(self, points: Iterable[Point]):
+    def initialize(self, points: Iterable[Point2D]):
         pts = list(points)
         if not pts: return
         
@@ -179,7 +179,7 @@ class EdgeFlipDelaunayMesher:
         # Ensure super-vertices are in the grid to seed walks if necessary
         for v in sv: self.grid.add(v)
 
-    def _split_triangle(self, p: Point, target: EdgeFlipTriangle):
+    def _split_triangle(self, p: Point2D, target: EdgeFlipTriangle):
         """Splits a triangle into three by inserting a point inside."""
         v0, v1, v2 = target.vertices
         n0, n1, n2 = target.neighbors 
@@ -204,7 +204,7 @@ class EdgeFlipDelaunayMesher:
         
         return t0, t1, t2
 
-    def add_point(self, p: Point):
+    def add_point(self, p: Point2D):
         if not self.root:
             raise RuntimeError("Mesher not initialized.")
             
@@ -239,7 +239,7 @@ class EdgeFlipDelaunayMesher:
         if self.grid:
             self.grid.add(p)
 
-    def get_triangles(self) -> list[tuple[Point, Point, Point]]:
+    def get_triangles(self) -> list[tuple[Point2D, Point2D, Point2D]]:
         return [tuple(t.vertices) for t in self.active_triangles 
                 if not any(v in self.super_vertices for v in t.vertices)]
 
@@ -280,7 +280,7 @@ class EdgeFlipDelaunayMesher:
         # Note: This mesh doesn't have a super-triangle. 
         self.root = tri_list[0] if tri_list else None
 
-    def triangulate(self, points: list[Point], existing_mesh: TriangleMesh | None = None, spatial_sort: bool = True) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+    def triangulate(self, points: list[Point2D], existing_mesh: TriangleMesh | None = None, spatial_sort: bool = True) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[tuple[Point2D, str]]]:
         if not points and not existing_mesh: return [], []
         
         unique_points = []
@@ -313,7 +313,7 @@ class EdgeFlipDelaunayMesher:
             
             # Grid size for Hilbert: 2^16 resolution
             N_HILBERT = 1 << 16
-            def get_order(p: Point):
+            def get_order(p: Point2D):
                 hx = int((p.x - min_x) / range_x * (N_HILBERT - 1))
                 hy = int((p.y - min_y) / range_y * (N_HILBERT - 1))
                 return hilbert_key(hx, hy, N_HILBERT)
@@ -332,7 +332,7 @@ class EdgeFlipDelaunayMesher:
         return self.get_triangles(), skipped_initial + self.skipped
 
 
-def triangulate_edgeflip(points: list[Point], spatial_sort: bool = True) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+def triangulate_edgeflip(points: list[Point2D], spatial_sort: bool = True) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[tuple[Point2D, str]]]:
     """Convenience wrapper for EdgeFlipDelaunayMesher."""
     mesher = EdgeFlipDelaunayMesher()
     return mesher.triangulate(points, spatial_sort=spatial_sort)

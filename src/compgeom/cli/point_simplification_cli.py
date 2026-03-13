@@ -2,7 +2,7 @@ import argparse
 import random
 import time
 import sys
-from compgeom import Point, Point3D
+from compgeom import Point2D, Point3D
 from compgeom import PointSimplifier
 
 def main():
@@ -16,7 +16,7 @@ def main():
     
     print(f"Generating {args.n} random {args.dim} points...")
     if args.dim == "2d":
-        points = [Point(random.uniform(0, 1000), random.uniform(0, 1000), i) for i in range(args.n)]
+        points = [Point2D(random.uniform(0, 1000), random.uniform(0, 1000), i) for i in range(args.n)]
     else:
         points = [Point3D(random.uniform(0, 1000), random.uniform(0, 1000), random.uniform(0, 1000), i) for i in range(args.n)]
         

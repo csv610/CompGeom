@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING, Tuple, List
 from decimal import Decimal
 
 if TYPE_CHECKING:
-    from .point import Point
+    from .point import Point2D
 
 from .math_utils import (
     EPSILON, 
@@ -12,7 +12,7 @@ from .math_utils import (
 )
 
 # Robust decimal incircle predicate helper
-def _decimal_incircle(a: Point, b: Point, c: Point, d: Point) -> Decimal:
+def _decimal_incircle(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> Decimal:
     adx_d = Decimal(a.x) - Decimal(d.x)
     ady_d = Decimal(a.y) - Decimal(d.y)
     bdx_d = Decimal(b.x) - Decimal(d.x)
@@ -25,7 +25,7 @@ def _decimal_incircle(a: Point, b: Point, c: Point, d: Point) -> Decimal:
         + (cdx_d * cdx_d + cdy_d * cdy_d) * (adx_d * bdy_d - bdx_d * ady_d)
     )
 
-def incircle_det(a: Point, b: Point, c: Point, d: Point) -> float:
+def incircle_det(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> float:
     """Return the determinant for the incircle test."""
     adx, ady = a.x - d.x, a.y - d.y
     bdx, bdy = b.x - d.x, b.y - d.y
@@ -41,7 +41,7 @@ def incircle_det(a: Point, b: Point, c: Point, d: Point) -> float:
     return float(_decimal_incircle(a, b, c, d))
 
 
-def incircle_sign(a: Point, b: Point, c: Point, d: Point) -> int:
+def incircle_sign(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> int:
     """Return the sign of the incircle test (1: inside, -1: outside, 0: on)."""
     from .triangle import orientation_sign
     determinant = incircle_det(a, b, c, d)
@@ -61,13 +61,13 @@ def incircle_sign(a: Point, b: Point, c: Point, d: Point) -> int:
     return 0
 
 
-def in_circle(a: Point, b: Point, c: Point, d: Point) -> bool:
+def in_circle(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
     """Test if point d is inside the circumcircle of triangle ABC."""
     return incircle_sign(a, b, c, d) > 0
 
 
 
-def robust_in_circle(a: Point, b: Point, c: Point, d: Point) -> bool:
+def robust_in_circle(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
     """In-circle test with a fast bounding box filter and exact fallback with SOS tie-breaking."""
     # 1. Fast Circumcircle Bounding Box Filter
     x1, y1 = a.x, a.y
@@ -144,14 +144,14 @@ def robust_in_circle(a: Point, b: Point, c: Point, d: Point) -> bool:
     max_id = max(a.id, b.id, c.id, d.id)
     return d.id != max_id
 
-def from_two_points(p1: Point, p2: Point) -> tuple[Point, float]:
+def from_two_points(p1: Point2D, p2: Point2D) -> tuple[Point2D, float]:
     """Return the smallest enclosing circle defined by two points."""
-    from .point import Point
-    center = Point((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
+    from .point import Point2D
+    center = Point2D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
     return center, distance(p1, p2) / 2.0
 
 
-def from_three_points(p1: Point, p2: Point, p3: Point) -> tuple[Point, float]:
+def from_three_points(p1: Point2D, p2: Point2D, p3: Point2D) -> tuple[Point2D, float]:
     """Return the circumcircle defined by three points."""
     from .triangle import circumcenter
     center = circumcenter(p1, p2, p3)

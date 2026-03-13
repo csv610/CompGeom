@@ -6,7 +6,7 @@ import os
 # Ensure the library is in the python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from compgeom.kernel import Point
+from compgeom.kernel import Point2D
 from compgeom.mesh.delaunay_triangulation import DelaunayMesher
 from compgeom.mesh.voronoi_diagram import VoronoiDiagram
 from compgeom.mesh.mesh_coloring import MeshColoring
@@ -24,7 +24,7 @@ def run_benchmarks():
     for n in sizes:
         # Generate random 2D points within a range
         points = [
-            Point(random.uniform(0, 10000), random.uniform(0, 10000), id=i) 
+            Point2D(random.uniform(0, 10000), random.uniform(0, 10000), id=i) 
             for i in range(n)
         ]
 

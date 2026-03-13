@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Iterable, Sequence
 
-from compgeom import Point
+from compgeom import Point2D
 
 
 def read_stdin_lines() -> list[str]:
@@ -19,8 +19,8 @@ def print_lines(lines: Iterable[str]) -> None:
         print(line)
 
 
-def parse_points(lines: Iterable[str], *, with_ids: bool = False) -> list[Point]:
-    points: list[Point] = []
+def parse_points(lines: Iterable[str], *, with_ids: bool = False) -> list[Point2D]:
+    points: list[Point2D] = []
     for line in lines:
         point = parse_point_line(line, point_id=len(points) if not with_ids else None, with_id=with_ids)
         if point is not None:
@@ -33,7 +33,7 @@ def parse_point_line(
     *,
     point_id: int | None = None,
     with_id: bool = False,
-) -> Point | None:
+) -> Point2D | None:
     return parse_point_fields(line.strip().split(), point_id=point_id, with_id=with_id)
 
 
@@ -42,26 +42,26 @@ def parse_point_fields(
     *,
     point_id: int | None = None,
     with_id: bool = False,
-) -> Point | None:
+) -> Point2D | None:
     expected = 3 if with_id else 2
     if len(fields) < expected:
         return None
 
     try:
         if with_id:
-            return Point(float(fields[1]), float(fields[2]), int(fields[0]))
+            return Point2D(float(fields[1]), float(fields[2]), int(fields[0]))
         if point_id is None:
-            return Point(float(fields[0]), float(fields[1]))
-        return Point(float(fields[0]), float(fields[1]), point_id)
+            return Point2D(float(fields[0]), float(fields[1]))
+        return Point2D(float(fields[0]), float(fields[1]), point_id)
     except ValueError:
         return None
 
 
-def format_point(point: Point) -> str:
+def format_point(point: Point2D) -> str:
     return f"({point.x:.6f}, {point.y:.6f})"
 
 
-def demo_points() -> list[Point]:
+def demo_points() -> list[Point2D]:
     coordinates = [
         (0.0, 0.0),
         (2.0, 1.0),
@@ -70,10 +70,10 @@ def demo_points() -> list[Point]:
         (3.5, 2.5),
         (2.25, 2.0),
     ]
-    return [Point(x, y, index) for index, (x, y) in enumerate(coordinates)]
+    return [Point2D(x, y, index) for index, (x, y) in enumerate(coordinates)]
 
 
-def demo_polygon() -> list[Point]:
+def demo_polygon() -> list[Point2D]:
     coordinates = [
         (0.0, 0.0),
         (5.0, 0.0),
@@ -82,7 +82,7 @@ def demo_polygon() -> list[Point]:
         (1.5, 4.0),
         (-1.0, 2.0),
     ]
-    return [Point(x, y, index) for index, (x, y) in enumerate(coordinates)]
+    return [Point2D(x, y, index) for index, (x, y) in enumerate(coordinates)]
 
 
 def demo_mesh_lines() -> list[str]:

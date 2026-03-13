@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 
-from ..kernel import EPSILON, Point, cross_product
+from ..kernel import EPSILON, Point2D, cross_product
 from ..kernel import distance
 
 
@@ -13,12 +13,12 @@ class ConvexHullGenerator(ABC):
     """Abstract base class for convex hull algorithms."""
 
     @abstractmethod
-    def generate(self, points: list[Point]) -> list[Point]:
+    def generate(self, points: list[Point2D]) -> list[Point2D]:
         """Generate the convex hull for a set of points."""
         pass
 
     @staticmethod
-    def is_convex_hull(points: list[Point], hull: list[Point]) -> bool:
+    def is_convex_hull(points: list[Point2D], hull: list[Point2D]) -> bool:
         if not hull:
             return len(set(points)) == 0
 
@@ -47,13 +47,13 @@ class ConvexHullGenerator(ABC):
 
 
 class GrahamScan(ConvexHullGenerator):
-    def generate(self, points: list[Point]) -> list[Point]:
+    def generate(self, points: list[Point2D]) -> list[Point2D]:
         if len(points) <= 2:
             return points
 
         anchor = min(points, key=lambda point: (point.y, point.x))
 
-        def polar_order(point: Point):
+        def polar_order(point: Point2D):
             if point == anchor:
                 return (-math.inf, 0)
             return (
@@ -61,7 +61,7 @@ class GrahamScan(ConvexHullGenerator):
                 (point.x - anchor.x) ** 2 + (point.y - anchor.y) ** 2,
             )
 
-        hull: list[Point] = []
+        hull: list[Point2D] = []
         for point in sorted(points, key=polar_order):
             while len(hull) >= 2 and cross_product(hull[-2], hull[-1], point) <= 0:
                 hull.pop()
@@ -70,18 +70,18 @@ class GrahamScan(ConvexHullGenerator):
 
 
 class MonotoneChain(ConvexHullGenerator):
-    def generate(self, points: list[Point]) -> list[Point]:
+    def generate(self, points: list[Point2D]) -> list[Point2D]:
         if len(points) <= 2:
             return points
 
         ordered_points = sorted(points, key=lambda point: (point.x, point.y))
-        lower: list[Point] = []
+        lower: list[Point2D] = []
         for point in ordered_points:
             while len(lower) >= 2 and cross_product(lower[-2], lower[-1], point) <= 0:
                 lower.pop()
             lower.append(point)
 
-        upper: list[Point] = []
+        upper: list[Point2D] = []
         for point in reversed(ordered_points):
             while len(upper) >= 2 and cross_product(upper[-2], upper[-1], point) <= 0:
                 upper.pop()
@@ -91,7 +91,7 @@ class MonotoneChain(ConvexHullGenerator):
 
 
 class QuickHull(ConvexHullGenerator):
-    def generate(self, points: list[Point]) -> list[Point]:
+    def generate(self, points: list[Point2D]) -> list[Point2D]:
         if len(points) <= 2:
             return points
 
@@ -102,10 +102,10 @@ class QuickHull(ConvexHullGenerator):
         leftmost = unique_points[0]
         rightmost = unique_points[-1]
 
-        def distance_from_line(a: Point, b: Point, p: Point) -> float:
+        def distance_from_line(a: Point2D, b: Point2D, p: Point2D) -> float:
             return abs(cross_product(a, b, p))
 
-        def build_hull(a: Point, b: Point, candidates: list[Point]) -> list[Point]:
+        def build_hull(a: Point2D, b: Point2D, candidates: list[Point2D]) -> list[Point2D]:
             if not candidates:
                 return []
 
@@ -126,7 +126,7 @@ class QuickHull(ConvexHullGenerator):
 
 
 class Chan(ConvexHullGenerator):
-    def generate(self, points: list[Point]) -> list[Point]:
+    def generate(self, points: list[Point2D]) -> list[Point2D]:
         unique_points = sorted(set(points), key=lambda point: (point.x, point.y))
         if len(unique_points) <= 2:
             return unique_points
@@ -160,7 +160,7 @@ class Chan(ConvexHullGenerator):
 
             t += 1
 
-    def _next_hull_point(self, current: Point, candidate: Point, challenger: Point) -> Point:
+    def _next_hull_point(self, current: Point2D, candidate: Point2D, challenger: Point2D) -> Point2D:
         turn = cross_product(current, candidate, challenger)
         if turn < -EPSILON:
             return challenger

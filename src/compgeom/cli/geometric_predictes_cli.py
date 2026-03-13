@@ -1,4 +1,4 @@
-from compgeom import Point, contains_point, in_circle, orientation_sign
+from compgeom import Point2D, contains_point, in_circle, orientation_sign
 
 
 def is_point_inside_triangle(point, a, b, c):
@@ -15,11 +15,11 @@ def is_point_inside_circle(point, a, b, c):
 
 
 def main():
-    a = Point(0.0, 0.0)
-    b = Point(1.0, 0.0)
-    c = Point(0.0, 1.0)
-    p_triangle = Point(0.2, 0.2)
-    p_circle = Point(0.2, 0.2)
+    a = Point2D(0.0, 0.0)
+    b = Point2D(1.0, 0.0)
+    c = Point2D(0.0, 1.0)
+    p_triangle = Point2D(0.2, 0.2)
+    p_circle = Point2D(0.2, 0.2)
 
     print("orientation(a, b, c) =", orientation_sign(a, b, c))
     print("is_point_inside_triangle =", is_point_inside_triangle(p_triangle, a, b, c))

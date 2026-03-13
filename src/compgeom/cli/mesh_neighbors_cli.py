@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from compgeom import Point
+from compgeom import Point2D
 from compgeom import mesh_neighbors
 from ._shared import demo_mesh_lines, parse_point_fields
 
 
-def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point, Point, Point]], int | None, int | None]:
+def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point2D, Point2D, Point2D]], int | None, int | None]:
     points_map = {}
     triangles = []
     reading_points = True

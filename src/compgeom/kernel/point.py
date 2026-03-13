@@ -106,5 +106,3 @@ class Point3D:
 
     def distance_to(self, other: Point3D) -> float:
         return math.sqrt((self.x - other.x)**2 + (self.y - other.y)**2 + (self.z - other.z)**2)
-
-Point = Point2D

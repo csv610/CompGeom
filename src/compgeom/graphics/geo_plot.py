@@ -6,12 +6,12 @@ import struct
 import zlib
 from typing import List, Tuple, Union
 
-from ..kernel import Point, Point3D
+from ..kernel import Point2D, Point3D
 from ..mesh.mesh import Mesh
 from ..mesh.voronoi_diagram import VoronoiDiagram
 from ..polygon.polygon import Polygon
 
-GeometricObject = Union[Mesh, VoronoiDiagram, Polygon, List[Point], List[Point3D]]
+GeometricObject = Union[Mesh, VoronoiDiagram, Polygon, List[Point2D], List[Point3D]]
 
 
 class GeomPlot:
@@ -47,10 +47,10 @@ class GeomPlot:
 
     @staticmethod
     def _is_point_list(value: object) -> bool:
-        return isinstance(value, list) and (not value or isinstance(value[0], (Point, Point3D)))
+        return isinstance(value, list) and (not value or isinstance(value[0], (Point2D, Point3D)))
 
     @staticmethod
-    def _extract_points(obj: GeometricObject) -> list[Point]:
+    def _extract_points(obj: GeometricObject) -> list[Point2D]:
         if isinstance(obj, Mesh):
             return list(obj.vertices)
         if isinstance(obj, VoronoiDiagram):
@@ -66,7 +66,7 @@ class GeomPlot:
 
     @staticmethod
     def _get_bounds(objects: list[GeometricObject]) -> Tuple[float, float, float, float]:
-        points: list[Point] = []
+        points: list[Point2D] = []
         for obj in objects:
             points.extend(GeomPlot._extract_points(obj))
         if not points:

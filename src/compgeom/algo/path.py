@@ -5,19 +5,19 @@ from __future__ import annotations
 import heapq
 from collections import defaultdict
 
-from ..kernel import EPSILON, Point, contains_point, cross_product, is_on_segment, length, sub
+from ..kernel import EPSILON, Point2D, contains_point, cross_product, is_on_segment, length, sub
 from ..mesh.mesh import mesh_edges
 
 
-def point_key(point: Point):
+def point_key(point: Point2D):
     return (round(point.x / EPSILON), round(point.y / EPSILON), point.id)
 
 
-def distance(a: Point, b: Point) -> float:
+def distance(a: Point2D, b: Point2D) -> float:
     return length(sub(a, b))
 
 
-def triangle_contains_point(triangle, point: Point) -> bool:
+def triangle_contains_point(triangle, point: Point2D) -> bool:
     class _TriangleView:
         def __init__(self, vertices):
             self.vertices = vertices
@@ -25,11 +25,11 @@ def triangle_contains_point(triangle, point: Point) -> bool:
     return contains_point(_TriangleView(triangle), point)
 
 
-def locate_containing_triangles(triangles, point: Point):
+def locate_containing_triangles(triangles, point: Point2D):
     return [index for index, triangle in enumerate(triangles) if triangle_contains_point(triangle, point)]
 
 
-def point_in_mesh(triangles, point: Point) -> bool:
+def point_in_mesh(triangles, point: Point2D) -> bool:
     return bool(locate_containing_triangles(triangles, point))
 
 
@@ -84,7 +84,7 @@ def dijkstra(graph, start, goal):
     return path, distances[goal]
 
 
-def edge_shortest_path(triangles, source: Point, target: Point):
+def edge_shortest_path(triangles, source: Point2D, target: Point2D):
     if not point_in_mesh(triangles, source):
         raise ValueError("Source point is outside the mesh.")
     if not point_in_mesh(triangles, target):
@@ -143,11 +143,11 @@ def boundary_edges(triangles):
     return [edge_points[key] for key, owners in edge_to_triangles.items() if len(owners) == 1]
 
 
-def orientation(a: Point, b: Point, c: Point) -> float:
+def orientation(a: Point2D, b: Point2D, c: Point2D) -> float:
     return cross_product(a, b, c)
 
 
-def proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool:
+def proper_segment_intersection(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
     o1 = orientation(a, b, c)
     o2 = orientation(a, b, d)
     o3 = orientation(c, d, a)
@@ -164,8 +164,8 @@ def proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool:
     return (o1 > EPSILON) != (o2 > EPSILON) and (o3 > EPSILON) != (o4 > EPSILON)
 
 
-def segment_inside_mesh(triangles, p: Point, q: Point, mesh_boundary_edges):
-    midpoint = Point((p.x + q.x) / 2.0, (p.y + q.y) / 2.0)
+def segment_inside_mesh(triangles, p: Point2D, q: Point2D, mesh_boundary_edges):
+    midpoint = Point2D((p.x + q.x) / 2.0, (p.y + q.y) / 2.0)
     if not point_in_mesh(triangles, midpoint) and not any(is_on_segment(midpoint, a, b) for a, b in mesh_boundary_edges):
         return False
 
@@ -178,7 +178,7 @@ def segment_inside_mesh(triangles, p: Point, q: Point, mesh_boundary_edges):
     return True
 
 
-def true_shortest_path(triangles, source: Point, target: Point):
+def true_shortest_path(triangles, source: Point2D, target: Point2D):
     if not point_in_mesh(triangles, source):
         raise ValueError("Source point is outside the mesh.")
     if not point_in_mesh(triangles, target):
@@ -212,7 +212,7 @@ def true_shortest_path(triangles, source: Point, target: Point):
     return [nodes[node] for node in node_path], total_length
 
 
-def shortest_path(triangles, source: Point, target: Point, mode: str = "true"):
+def shortest_path(triangles, source: Point2D, target: Point2D, mode: str = "true"):
     mode = mode.lower()
     if mode == "true":
         return true_shortest_path(triangles, source, target)

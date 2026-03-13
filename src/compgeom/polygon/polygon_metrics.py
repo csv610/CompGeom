@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import math
 
-from ..kernel import Point, cross_product
+from ..kernel import Point2D, cross_product
 from ..kernel import distance
 from .polygon import Polygon, PolygonProperties
 
 
-def get_polygon_properties(polygon: list[Point]) -> tuple[float, Point, str]:
+def get_polygon_properties(polygon: list[Point2D]) -> tuple[float, Point2D, str]:
     n = len(polygon)
     if n < 3:
-        properties = PolygonProperties(0.0, Point(0, 0), "Degenerate")
+        properties = PolygonProperties(0.0, Point2D(0, 0), "Degenerate")
         return properties.area, properties.centroid, properties.orientation
 
     area_twice = 0.0
@@ -28,16 +28,16 @@ def get_polygon_properties(polygon: list[Point]) -> tuple[float, Point, str]:
 
     area = area_twice / 2.0
     if abs(area) < 1e-12:
-        properties = PolygonProperties(0.0, Point(0, 0), "Degenerate")
+        properties = PolygonProperties(0.0, Point2D(0, 0), "Degenerate")
         return properties.area, properties.centroid, properties.orientation
 
     centroid_x /= 6.0 * area
     centroid_y /= 6.0 * area
     orientation = "CCW" if area > 0 else "CW"
-    return abs(area), Point(centroid_x, centroid_y), orientation
+    return abs(area), Point2D(centroid_x, centroid_y), orientation
 
 
-def is_convex(polygon: list[Point]) -> bool:
+def is_convex(polygon: list[Point2D]) -> bool:
     if len(polygon) < 3:
         return True
 
@@ -49,7 +49,7 @@ def is_convex(polygon: list[Point]) -> bool:
     return all(non_zero_turns) or not any(non_zero_turns)
 
 
-def get_reflex_vertices(polygon: list[Point]) -> list[Point]:
+def get_reflex_vertices(polygon: list[Point2D]) -> list[Point2D]:
     if len(polygon) < 3:
         return []
 
@@ -64,7 +64,7 @@ def get_reflex_vertices(polygon: list[Point]) -> list[Point]:
     return reflex
 
 
-def get_convex_diameter(polygon: list[Point]) -> float:
+def get_convex_diameter(polygon: list[Point2D]) -> float:
     if len(polygon) < 2:
         return 0.0
     if len(polygon) == 2:

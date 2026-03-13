@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List, Tuple
 if TYPE_CHECKING:
     from .polygon import Polygon
 
-from ..kernel import Point
+from ..kernel import Point2D
 
 
 def solve_linear_system(matrix: List[List[float]], b: List[float]) -> List[float]:

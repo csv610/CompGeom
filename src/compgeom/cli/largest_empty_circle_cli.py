@@ -1,6 +1,6 @@
 import argparse
 import sys
-from compgeom import Point
+from compgeom import Point2D
 from compgeom import LargestEmptyCircle
 from compgeom import save_png, save_svg
 
@@ -19,7 +19,7 @@ def main():
             
         points = []
         for i in range(0, len(raw), 2):
-            points.append(Point(raw[i], raw[i+1], i//2))
+            points.append(Point2D(raw[i], raw[i+1], i//2))
             
     except ValueError:
         print("Error: Coordinates must be numeric.")

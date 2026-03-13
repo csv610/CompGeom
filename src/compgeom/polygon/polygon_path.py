@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import heapq
 
-from ..kernel import EPSILON, Point
+from ..kernel import EPSILON, Point2D
 from ..kernel import distance
 from .polygon import Polygon
 from .polygon_utils import point_on_boundary, segment_inside_boundaries
 
 
-def segment_inside_polygon(polygon: list[Point], start: Point, end: Point) -> bool:
+def segment_inside_polygon(polygon: list[Point2D], start: Point2D, end: Point2D) -> bool:
     polygon_shape = Polygon(polygon)
     return segment_inside_boundaries(
         start,
@@ -21,8 +21,8 @@ def segment_inside_polygon(polygon: list[Point], start: Point, end: Point) -> bo
 
 
 def shortest_path_in_polygon(
-    polygon: list[Point], source: Point, target: Point
-) -> tuple[list[Point], float]:
+    polygon: list[Point2D], source: Point2D, target: Point2D
+) -> tuple[list[Point2D], float]:
     polygon_shape = Polygon(polygon)
     if not polygon_shape.contains_point(source):
         raise ValueError("Source point must lie inside or on the boundary of the polygon.")

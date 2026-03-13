@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import Callable, Dict, Generic, Iterable, List, Optional, Sequence, Set, Tuple, TypeVar, Union
 
-from ..kernel import Point, Point3D
+from ..kernel import Point2D, Point3D
 from ..kernel import distance, distance_3d
 
 T = TypeVar("T")
@@ -14,7 +14,7 @@ T = TypeVar("T")
 
 @dataclass
 class QuadNode:
-    point: Point
+    point: Point2D
     nw: "QuadNode | None" = None
     ne: "QuadNode | None" = None
     sw: "QuadNode | None" = None
@@ -26,14 +26,14 @@ class PointQuadtree:
         self.root: QuadNode | None = None
         self.count = 0
 
-    def insert(self, point: Point) -> bool:
+    def insert(self, point: Point2D) -> bool:
         if self.root is None:
             self.root = QuadNode(point)
             self.count += 1
             return True
         return self._insert_recursive(self.root, point)
 
-    def _insert_recursive(self, node: QuadNode, point: Point) -> bool:
+    def _insert_recursive(self, node: QuadNode, point: Point2D) -> bool:
         if point.x == node.point.x and point.y == node.point.y:
             return False
 
@@ -46,7 +46,7 @@ class PointQuadtree:
         return self._insert_recursive(child, point)
 
     @staticmethod
-    def _get_quadrant_name(origin: Point, point: Point) -> str:
+    def _get_quadrant_name(origin: Point2D, point: Point2D) -> str:
         if point.x >= origin.x:
             return "ne" if point.y >= origin.y else "se"
         return "nw" if point.y >= origin.y else "sw"
@@ -66,13 +66,13 @@ class PointQuadtree:
 
 @dataclass
 class KDNode:
-    point: Point
+    point: Point2D
     axis: int
     left: "KDNode | None" = None
     right: "KDNode | None" = None
 
 
-def build_kdtree(points: list[Point], depth: int = 0):
+def build_kdtree(points: list[Point2D], depth: int = 0):
     if not points:
         return None
 
@@ -101,13 +101,13 @@ def range_search(
     max_x: float,
     min_y: float,
     max_y: float,
-) -> list[Point]:
+) -> list[Point2D]:
     """Return points inside an axis-aligned query rectangle from a KD-tree."""
     if node is None:
         return []
 
     point = node.point
-    result: list[Point] = []
+    result: list[Point2D] = []
     if min_x <= point.x <= max_x and min_y <= point.y <= max_y:
         result.append(point)
 
@@ -294,7 +294,7 @@ class PointSimplifier:
     """Simplifies large point sets by decimation."""
 
     @staticmethod
-    def get_bounding_box(points: Iterable[Union[Point, Point3D]]) -> Tuple:
+    def get_bounding_box(points: Iterable[Union[Point2D, Point3D]]) -> Tuple:
         """Finds the axis-aligned bounding box for a set of points."""
         min_x = min_y = min_z = float("inf")
         max_x = max_y = max_z = float("-inf")
@@ -316,10 +316,10 @@ class PointSimplifier:
 
     @staticmethod
     def simplify(
-        points: List[Union[Point, Point3D]], 
+        points: List[Union[Point2D, Point3D]], 
         ratio: float,
         protected_ids: Optional[Set[int]] = None
-    ) -> List[Union[Point, Point3D]]:
+    ) -> List[Union[Point2D, Point3D]]:
         """
         Simplifies points by keeping only one point per grid cell.
         Also checks neighboring cells to ensure Euclidean distance > threshold.
@@ -344,7 +344,7 @@ class PointSimplifier:
         if threshold <= 0:
             return points
 
-        grid: Dict[Tuple, Union[Point, Point3D]] = {}
+        grid: Dict[Tuple, Union[Point2D, Point3D]] = {}
         simplified_points = []
         
         # Determine neighborhood offsets

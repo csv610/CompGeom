@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import List, Tuple
 
-from ..kernel import Point, dist_point_to_segment
+from ..kernel import Point2D, dist_point_to_segment
 from .polygon import is_point_in_polygon, get_polygon_properties
 
 
@@ -13,7 +13,7 @@ class CirclePacker:
     """Packs circles into a given polygon optimally using a hexagonal grid."""
 
     @staticmethod
-    def pack(polygon: List[Point], radius: float) -> List[Point]:
+    def pack(polygon: List[Point2D], radius: float) -> List[Point2D]:
         """
         Packs circles of a given radius into a polygon using hexagonal packing.
         
@@ -49,7 +49,7 @@ class CirclePacker:
             x = min_x + radius + x_offset
             
             while x <= max_x - radius:
-                center = Point(x, y)
+                center = Point2D(x, y)
                 
                 # 3. Check if circle is fully inside
                 if CirclePacker._is_circle_inside(center, radius, polygon):
@@ -62,7 +62,7 @@ class CirclePacker:
         return centers
 
     @staticmethod
-    def optimal_radius(polygon: List[Point], num_circles: int, tolerance: float = 1e-4) -> float:
+    def optimal_radius(polygon: List[Point2D], num_circles: int, tolerance: float = 1e-4) -> float:
         """
         Finds the maximum radius such that at least `num_circles` can be packed into the polygon.
         
@@ -111,7 +111,7 @@ class CirclePacker:
         return best_radius
 
     @staticmethod
-    def _is_circle_inside(center: Point, radius: float, polygon: List[Point]) -> bool:
+    def _is_circle_inside(center: Point2D, radius: float, polygon: List[Point2D]) -> bool:
         """Checks if a circle is entirely contained within a polygon."""
         # Center must be inside
         if not is_point_in_polygon(center, polygon):
@@ -128,7 +128,7 @@ class CirclePacker:
         return True
 
     @staticmethod
-    def calculate_efficiency(polygon: List[Point], centers: List[Point], radius: float) -> float:
+    def calculate_efficiency(polygon: List[Point2D], centers: List[Point2D], radius: float) -> float:
         """Calculates the ratio of packed circle area to polygon area."""
         if not centers:
             return 0.0
@@ -143,8 +143,8 @@ class CirclePacker:
 
     @staticmethod
     def visualize(
-        polygon: List[Point], 
-        centers: List[Point], 
+        polygon: List[Point2D], 
+        centers: List[Point2D], 
         radius: float,
         width: int = 800,
         height: int = 600,

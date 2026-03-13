@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import random
 
-from ..kernel import EPSILON, Point
+from ..kernel import EPSILON, Point2D
 from ..kernel import rotate_2d, unrotate_2d
 from ..polygon.convex_hull import GrahamScan
 from .proximity import welzl
@@ -13,7 +13,7 @@ from .proximity import welzl
 
 def minimum_enclosing_circle(points):
     if not points:
-        return Point(0, 0), 0.0
+        return Point2D(0, 0), 0.0
     shuffled = list(points)
     random.shuffle(shuffled)
     return welzl(shuffled, [])
@@ -21,10 +21,10 @@ def minimum_enclosing_circle(points):
 
 def rectangle_corners(min_x, max_x, min_y, max_y, cos_theta, sin_theta):
     corners = [
-        Point(min_x, min_y),
-        Point(max_x, min_y),
-        Point(max_x, max_y),
-        Point(min_x, max_y),
+        Point2D(min_x, min_y),
+        Point2D(max_x, min_y),
+        Point2D(max_x, max_y),
+        Point2D(min_x, max_y),
     ]
     return [unrotate_2d(corner, cos_theta, sin_theta) for corner in corners]
 
@@ -36,7 +36,7 @@ def minimum_bounding_box(points):
             "width": 0.0,
             "height": 0.0,
             "angle": 0.0,
-            "center": Point(0, 0),
+            "center": Point2D(0, 0),
             "corners": [],
         }
 
@@ -57,7 +57,7 @@ def minimum_bounding_box(points):
         dx = b.x - a.x
         dy = b.y - a.y
         angle = math.atan2(dy, dx)
-        center = Point((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
+        center = Point2D((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
         return {
             "area": 0.0,
             "width": math.hypot(dx, dy),
@@ -88,7 +88,7 @@ def minimum_bounding_box(points):
         area = width * height
 
         if best is None or area < best["area"]:
-            center_rotated = Point((min_x + max_x) / 2.0, (min_y + max_y) / 2.0)
+            center_rotated = Point2D((min_x + max_x) / 2.0, (min_y + max_y) / 2.0)
             best = {
                 "area": area,
                 "width": width,

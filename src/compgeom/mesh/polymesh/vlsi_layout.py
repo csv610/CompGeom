@@ -1,13 +1,13 @@
 """VLSI and Chip Design layout algorithms."""
 from typing import List, Tuple
 
-from ...kernel import Point
+from ...kernel import Point2D
 
 class VLSILayout:
     """Provides algorithms for Manhattan geometry and layout analysis."""
 
     @staticmethod
-    def is_orthogonal(polygon: List[Point]) -> bool:
+    def is_orthogonal(polygon: List[Point2D]) -> bool:
         """
         Checks if a polygon is rectilinear (Manhattan geometry).
         All edges must be strictly horizontal or vertical.
@@ -29,12 +29,12 @@ class VLSILayout:
         return True
 
     @staticmethod
-    def manhattan_distance(p1: Point, p2: Point) -> float:
+    def manhattan_distance(p1: Point2D, p2: Point2D) -> float:
         """Calculates the L1 (Manhattan) distance between two points."""
         return abs(p1.x - p2.x) + abs(p1.y - p2.y)
 
     @staticmethod
-    def design_rule_check(poly1: List[Point], poly2: List[Point], min_clearance: float) -> bool:
+    def design_rule_check(poly1: List[Point2D], poly2: List[Point2D], min_clearance: float) -> bool:
         """
         Basic Design Rule Check (DRC).
         Returns False if the minimum distance between any vertex of poly1 and any vertex of poly2

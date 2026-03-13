@@ -6,7 +6,7 @@ import math
 import random
 from typing import List, Tuple
 
-from ..kernel import Point
+from ..kernel import Point2D
 from .convex_hull import MonotoneChain
 from .polygon import generate_simple_polygon
 
@@ -15,16 +15,16 @@ class PolygonGenerator:
     """Provides methods for generating various types of polygons."""
 
     @staticmethod
-    def convex(n_points: int = 10, x_range: Tuple[float, float] = (0, 100), y_range: Tuple[float, float] = (0, 100)) -> List[Point]:
+    def convex(n_points: int = 10, x_range: Tuple[float, float] = (0, 100), y_range: Tuple[float, float] = (0, 100)) -> List[Point2D]:
         """Generates a random convex polygon with n_points."""
         points = [
-            Point(random.uniform(*x_range), random.uniform(*y_range), index)
+            Point2D(random.uniform(*x_range), random.uniform(*y_range), index)
             for index in range(n_points)
         ]
         return MonotoneChain().generate(points)
 
     @staticmethod
-    def concave(n_points: int = 15, x_range: Tuple[float, float] = (0, 100), y_range: Tuple[float, float] = (0, 100)) -> List[Point]:
+    def concave(n_points: int = 15, x_range: Tuple[float, float] = (0, 100), y_range: Tuple[float, float] = (0, 100)) -> List[Point2D]:
         """
         Generates a random simple (potentially concave) polygon.
         Uses radial sorting with coordinate perturbation to ensure simplicity.
@@ -32,14 +32,14 @@ class PolygonGenerator:
         return generate_simple_polygon(n_points, x_range, y_range)
 
     @staticmethod
-    def star_shaped(n_points: int = 15, center: Point = Point(50, 50), max_radius: float = 40.0) -> List[Point]:
+    def star_shaped(n_points: int = 15, center: Point2D = Point2D(50, 50), max_radius: float = 40.0) -> List[Point2D]:
         """Generates a random star-shaped polygon around a center point."""
         points = []
         for i in range(n_points):
             angle = 2.0 * math.pi * i / n_points
             # Randomly vary radius between 20% and 100% of max
             r = max_radius * (0.2 + 0.8 * random.random())
-            points.append(Point(
+            points.append(Point2D(
                 center.x + r * math.cos(angle),
                 center.y + r * math.sin(angle),
                 i
@@ -49,18 +49,18 @@ class PolygonGenerator:
     @staticmethod
     def sierpinski_triangle(
         depth: int,
-        p1: Point = Point(0, 0),
-        p2: Point = Point(100, 0),
-        p3: Point = Point(50, 86.6),
-    ) -> List[List[Point]]:
+        p1: Point2D = Point2D(0, 0),
+        p2: Point2D = Point2D(100, 0),
+        p3: Point2D = Point2D(50, 86.6),
+    ) -> List[List[Point2D]]:
         """
         Generates a Sierpinski triangle fractal up to the given depth.
         Returns a list of triangles (each as a list of 3 Points).
         """
-        def get_midpoint(a: Point, b: Point) -> Point:
-            return Point((a.x + b.x) / 2, (a.y + b.y) / 2)
+        def get_midpoint(a: Point2D, b: Point2D) -> Point2D:
+            return Point2D((a.x + b.x) / 2, (a.y + b.y) / 2)
 
-        def subdivide(d: int, a: Point, b: Point, c: Point) -> List[List[Point]]:
+        def subdivide(d: int, a: Point2D, b: Point2D, c: Point2D) -> List[List[Point2D]]:
             if d == 0:
                 return [[a, b, c]]
 
@@ -79,25 +79,25 @@ class PolygonGenerator:
     @staticmethod
     def koch_snowflake(
         depth: int,
-        p1: Point = Point(0, 0),
-        p2: Point = Point(100, 0),
-        p3: Point = Point(50, 86.6),
-    ) -> List[Point]:
+        p1: Point2D = Point2D(0, 0),
+        p2: Point2D = Point2D(100, 0),
+        p3: Point2D = Point2D(50, 86.6),
+    ) -> List[Point2D]:
         """
         Generates a Koch snowflake boundary up to the given depth.
         Returns a list of Points defining the closed boundary.
         """
-        def koch_curve(a: Point, b: Point, d: int) -> List[Point]:
+        def koch_curve(a: Point2D, b: Point2D, d: int) -> List[Point2D]:
             if d == 0:
                 return [a]
             
             dx, dy = b.x - a.x, b.y - a.y
-            m1 = Point(a.x + dx / 3, a.y + dy / 3)
-            m2 = Point(a.x + 2 * dx / 3, a.y + 2 * dy / 3)
+            m1 = Point2D(a.x + dx / 3, a.y + dy / 3)
+            m2 = Point2D(a.x + 2 * dx / 3, a.y + 2 * dy / 3)
             
             # Peak of the triangle (60 degrees)
             s32 = math.sqrt(3) / 6
-            peak = Point(
+            peak = Point2D(
                 (a.x + b.x) / 2 - dy * s32,
                 (a.y + b.y) / 2 + dx * s32
             )
@@ -116,19 +116,19 @@ class PolygonGenerator:
     @staticmethod
     def dragon_curve(
         depth: int,
-        p1: Point = Point(0, 0),
-        p2: Point = Point(100, 100),
-    ) -> List[Point]:
+        p1: Point2D = Point2D(0, 0),
+        p2: Point2D = Point2D(100, 100),
+    ) -> List[Point2D]:
         """
         Generates a Heighway Dragon curve up to the given depth.
         Returns a list of Points.
         """
-        def recurse(a: Point, b: Point, d: int, sign: int) -> List[Point]:
+        def recurse(a: Point2D, b: Point2D, d: int, sign: int) -> List[Point2D]:
             if d == 0:
                 return [a]
             
             # Midpoint rotated by 90 degrees
-            pm = Point(
+            pm = Point2D(
                 (a.x + b.x) / 2 - sign * (b.y - a.y) / 2,
                 (a.y + b.y) / 2 + sign * (b.x - a.x) / 2
             )
@@ -140,19 +140,19 @@ class PolygonGenerator:
     @staticmethod
     def de_rham_curve(
         depth: int,
-        p1: Point = Point(0, 0),
-        p2: Point = Point(100, 0),
+        p1: Point2D = Point2D(0, 0),
+        p2: Point2D = Point2D(100, 0),
         w: complex = complex(0.5, 0.5),
-    ) -> List[Point]:
+    ) -> List[Point2D]:
         """
         Generates a De Rham curve (e.g., Lévy C curve) up to the given depth.
         w is the complex parameter defining the transformation.
         """
         import cmath
 
-        def recurse(z1: complex, z2: complex, d: int) -> List[Point]:
+        def recurse(z1: complex, z2: complex, d: int) -> List[Point2D]:
             if d == 0:
-                return [Point(z1.real, z1.imag)]
+                return [Point2D(z1.real, z1.imag)]
             
             # Iterative mapping z -> f_i(z)
             zm = z1 + w * (z2 - z1)

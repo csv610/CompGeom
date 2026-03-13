@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Sequence
 if TYPE_CHECKING:
     from .polygon import Polygon
 
-from ..kernel import Point
+from ..kernel import Point2D
 from .polygon_utils import cleanup_polygon
 from .polygon_similarity import get_similarity_signature
 
@@ -18,7 +18,7 @@ def reorder_to_match(
     poly2: Polygon, 
     allow_reflection: bool = True,
     auto_clean: bool = True
-) -> list[Point]:
+) -> list[Point2D]:
     """
     Reorders (cyclically shifts and potentially reverses) the vertices of poly2 
     to maximally match poly1 based on their geometric shape (similarity signature).

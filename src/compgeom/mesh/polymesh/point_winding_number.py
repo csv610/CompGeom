@@ -5,10 +5,10 @@ import math
 from typing import List, Union, Tuple
 
 from ..mesh import PolygonMesh
-from ...kernel import Point, Point3D
+from ...kernel import Point2D, Point3D
 
 
-def point_winding_number(point: Union[Point, Point3D], polygon_vertices: List[Union[Point, Point3D]]) -> int:
+def point_winding_number(point: Union[Point2D, Point3D], polygon_vertices: List[Union[Point2D, Point3D]]) -> int:
     """
     Calculates the winding number of a point with respect to a polygon in 2D.
     
@@ -60,7 +60,7 @@ def is_left(v1x: float, v1y: float, v2x: float, v2y: float, px: float, py: float
     return (v2x - v1x) * (py - v1y) - (px - v1x) * (v2y - v1y)
 
 
-def is_point_inside_polygon(point: Union[Point, Point3D], polygon_vertices: List[Union[Point, Point3D]]) -> bool:
+def is_point_inside_polygon(point: Union[Point2D, Point3D], polygon_vertices: List[Union[Point2D, Point3D]]) -> bool:
     """Returns True if the point is inside the polygon (non-zero winding number)."""
     return point_winding_number(point, polygon_vertices) != 0
 
@@ -69,7 +69,7 @@ class PolygonWinding:
     """Helper for winding number queries on PolygonMesh objects."""
     
     @staticmethod
-    def winding_number(point: Union[Point, Point3D], mesh: PolygonMesh, face_idx: int) -> int:
+    def winding_number(point: Union[Point2D, Point3D], mesh: PolygonMesh, face_idx: int) -> int:
         """Calculates winding number for a specific face in a PolygonMesh."""
         face = mesh.faces[face_idx]
         vertices = [mesh.vertices[i] for i in face]

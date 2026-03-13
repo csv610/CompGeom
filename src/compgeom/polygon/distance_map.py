@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import List, Tuple, Union
 
-from ..kernel import Point, dist_point_to_segment
+from ..kernel import Point2D, dist_point_to_segment
 from ..polygon.polygon import get_polygon_properties
 
 
@@ -14,7 +14,7 @@ class DistanceMapSolver:
 
     @staticmethod
     def solve(
-        polygon: List[Point], 
+        polygon: List[Point2D], 
         resolution: int = 100, 
         padding: float = 0.1
     ) -> Tuple[List[List[float]], Tuple[float, float, float, float]]:
@@ -68,7 +68,7 @@ class DistanceMapSolver:
             for j in range(ny):
                 px = min_x + i * h
                 py = min_y + j * h
-                p = Point(px, py)
+                p = Point2D(px, py)
                 
                 for k in range(len(polygon)):
                     p1 = polygon[k]

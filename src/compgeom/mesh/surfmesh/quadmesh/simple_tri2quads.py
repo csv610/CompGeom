@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Set, Tuple, Union
 
-from ....kernel.geometry import Point, Point3D
+from ....kernel.geometry import Point2D, Point3D
 from ...mesh import TriangleMesh, QuadMesh
 
 
@@ -40,7 +40,7 @@ class TriangleToQuadConverter:
                     idx
                 )
             else:
-                mid = Point((v1.x + v2.x) / 2.0, (v1.y + v2.y) / 2.0, idx)
+                mid = Point2D((v1.x + v2.x) / 2.0, (v1.y + v2.y) / 2.0, idx)
                 
             new_vertices.append(mid)
             edge_midpoints[edge] = idx
@@ -68,7 +68,7 @@ class TriangleToQuadConverter:
                     c_idx
                 )
             else:
-                centroid = Point(
+                centroid = Point2D(
                     (p0.x + p1.x + p2.x) / 3.0,
                     (p0.y + p1.y + p2.y) / 3.0,
                     c_idx

@@ -1,12 +1,12 @@
 """Topology and Delaunay property verification for triangular meshes."""
 
 from __future__ import annotations
-from ....kernel import Point, in_circle, cross_product
+from ....kernel import Point2D, in_circle, cross_product
 
 
 class MeshTriangle:
     """A triangle in a mesh with connectivity information."""
-    def __init__(self, v1: Point, v2: Point, v3: Point):
+    def __init__(self, v1: Point2D, v2: Point2D, v3: Point2D):
         # Ensure CCW orientation
         self.vertices = [v1, v2, v3] if cross_product(v1, v2, v3) >= 0 else [v1, v3, v2]
         self.neighbors: list[MeshTriangle | None] = [None, None, None]
@@ -25,7 +25,7 @@ class MeshTriangle:
         return -1
 
 
-def build_topology(triangles: list[tuple[Point, Point, Point]]) -> list[MeshTriangle]:
+def build_topology(triangles: list[tuple[Point2D, Point2D, Point2D]]) -> list[MeshTriangle]:
     """Builds a mesh with neighborhood information from a list of triangles."""
     mesh = [MeshTriangle(*triangle) for triangle in triangles]
     edge_map = {}

@@ -1,11 +1,11 @@
 
 import random
-from compgeom.kernel import Point
+from compgeom.kernel import Point2D
 from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import build_topology, is_delaunay, DelaunayMesher
 
 def test_full_triangulate_flip(num_points=50):
     print(f"\n--- Testing full triangulate with flip algorithm ({num_points} points) ---")
-    points = [Point(random.uniform(0, 100), random.uniform(0, 100), id=i) for i in range(num_points)]
+    points = [Point2D(random.uniform(0, 100), random.uniform(0, 100), id=i) for i in range(num_points)]
     
     mesh_obj = DelaunayMesher.triangulate(points, algorithm="flip")
     
@@ -26,7 +26,7 @@ def test_full_triangulate_flip(num_points=50):
 
 def test_full_triangulate_dc(num_points=50):
     print(f"\n--- Testing full triangulate with divide and conquer algorithm ({num_points} points) ---")
-    points = [Point(random.uniform(0, 100), random.uniform(0, 100), id=i) for i in range(num_points)]
+    points = [Point2D(random.uniform(0, 100), random.uniform(0, 100), id=i) for i in range(num_points)]
     
     mesh_obj = DelaunayMesher.triangulate(points, algorithm="divide_and_conquer")
     

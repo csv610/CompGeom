@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ..kernel import Point, Point3D
+from ..kernel import Point2D, Point3D
 
 
 class MeshTopology:
@@ -109,14 +109,14 @@ class MeshTopology:
 class Mesh(ABC):
     """Abstract base class for all mesh types."""
 
-    def __init__(self, vertices: List[Union[Point, Point3D]], elements: List[Tuple[int, ...]], skipped_points: Optional[List[Tuple[Point, str]]] = None):
+    def __init__(self, vertices: List[Union[Point2D, Point3D]], elements: List[Tuple[int, ...]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None):
         self._vertices = vertices
         self._elements = elements
         self._skipped_points = skipped_points or []
         self._topology = MeshTopology(self)
 
     @property
-    def vertices(self) -> List[Union[Point, Point3D]]:
+    def vertices(self) -> List[Union[Point2D, Point3D]]:
         """Returns the list of vertices in the mesh."""
         return self._vertices
 
@@ -126,7 +126,7 @@ class Mesh(ABC):
         return self._elements
 
     @property
-    def skipped_points(self) -> List[Tuple[Point, str]]:
+    def skipped_points(self) -> List[Tuple[Point2D, str]]:
         """Returns points that were skipped during mesh generation (e.g., duplicates)."""
         return self._skipped_points
 
@@ -140,11 +140,11 @@ class Mesh(ABC):
         return len(self.topology.boundary_edges()) == 0
 
     @property
-    def centroid(self) -> Union[Point, Point3D]:
+    def centroid(self) -> Union[Point2D, Point3D]:
         """Returns the geometric center of all vertices."""
         n = len(self._vertices)
         if n == 0:
-            return Point(0, 0)
+            return Point2D(0, 0)
         
         sum_x = sum_y = sum_z = 0.0
         is_3d = isinstance(self._vertices[0], Point3D)
@@ -157,7 +157,7 @@ class Mesh(ABC):
         
         if is_3d:
             return Point3D(sum_x / n, sum_y / n, sum_z / n)
-        return Point(sum_x / n, sum_y / n)
+        return Point2D(sum_x / n, sum_y / n)
 
     def bounding_box(self) -> Tuple:
         """Returns the axis-aligned bounding box (min_coords, max_coords)."""
@@ -192,7 +192,7 @@ class Mesh(ABC):
             if is_3d:
                 self._vertices[i] = Point3D(v.x + dx, v.y + dy, v.z + dz, getattr(v, 'id', -1))
             else:
-                self._vertices[i] = Point(v.x + dx, v.y + dy, getattr(v, 'id', -1))
+                self._vertices[i] = Point2D(v.x + dx, v.y + dy, getattr(v, 'id', -1))
         self._topology = MeshTopology(self)
 
     def scale(self, sx: float, sy: float, sz: float = 1.0):
@@ -202,7 +202,7 @@ class Mesh(ABC):
             if is_3d:
                 self._vertices[i] = Point3D(v.x * sx, v.y * sy, v.z * sz, getattr(v, 'id', -1))
             else:
-                self._vertices[i] = Point(v.x * sx, v.y * sy, getattr(v, 'id', -1))
+                self._vertices[i] = Point2D(v.x * sx, v.y * sy, getattr(v, 'id', -1))
         self._topology = MeshTopology(self)
 
     def rotate(self, angle_deg: float, axis: str = 'z'):
@@ -231,7 +231,7 @@ class Mesh(ABC):
                 if is_3d:
                     self._vertices[i] = Point3D(nx, ny, z, getattr(v, 'id', -1))
                 else:
-                    self._vertices[i] = Point(nx, ny, getattr(v, 'id', -1))
+                    self._vertices[i] = Point2D(nx, ny, getattr(v, 'id', -1))
         self._topology = MeshTopology(self)
 
     def normalize(self):
@@ -281,7 +281,7 @@ class TriangleMesh(Mesh):
         return self._elements
 
     @classmethod
-    def from_triangles(cls, triangles: List[Tuple[Point, Point, Point]], skipped_points: Optional[List[Tuple[Point, str]]] = None) -> TriangleMesh:
+    def from_triangles(cls, triangles: List[Tuple[Point2D, Point2D, Point2D]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None) -> TriangleMesh:
         """Converts a list of Point triangles to a TriangleMesh object."""
         unique_points = []
         point_to_idx = {}
@@ -367,7 +367,7 @@ class TriangleMesh(Mesh):
             if isinstance(v1, Point3D) and isinstance(v2, Point3D):
                 mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, mid_idx)
             else:
-                mid = Point((v1.x+v2.x)/2, (v1.y+v2.y)/2, mid_idx)
+                mid = Point2D((v1.x+v2.x)/2, (v1.y+v2.y)/2, mid_idx)
             new_vertices.append(mid)
             mid_indices.append(mid_idx)
             
@@ -414,7 +414,7 @@ class TriangleMesh(Mesh):
             new_vertices = list(mesh.vertices)
             mid_idx = len(new_vertices)
             v1, v2 = mesh.vertices[edge[0]], mesh.vertices[edge[1]]
-            mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, mid_idx) if isinstance(v1, Point3D) else Point((v1.x+v2.x)/2, (v1.y+v2.y)/2, mid_idx)
+            mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, mid_idx) if isinstance(v1, Point3D) else Point2D((v1.x+v2.x)/2, (v1.y+v2.y)/2, mid_idx)
             new_vertices.append(mid)
             opposite = [v for v in face if v not in edge][0]
             new_faces = [(edge[0], mid, opposite), (edge[1], mid, opposite)]
@@ -431,7 +431,7 @@ class QuadMesh(Mesh):
         return self._elements
 
     @classmethod
-    def from_triangles(cls, triangles: List[Tuple[Point, Point, Point]], skipped_points: Optional[List[Tuple[Point, str]]] = None) -> TriangleMesh:
+    def from_triangles(cls, triangles: List[Tuple[Point2D, Point2D, Point2D]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None) -> TriangleMesh:
         """Converts a list of Point triangles to a TriangleMesh object."""
         unique_points = []
         point_to_idx = {}
@@ -547,7 +547,7 @@ class PolygonMesh(Mesh):
         return self._elements
 
     @classmethod
-    def from_triangles(cls, triangles: List[Tuple[Point, Point, Point]], skipped_points: Optional[List[Tuple[Point, str]]] = None) -> TriangleMesh:
+    def from_triangles(cls, triangles: List[Tuple[Point2D, Point2D, Point2D]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None) -> TriangleMesh:
         """Converts a list of Point triangles to a TriangleMesh object."""
         unique_points = []
         point_to_idx = {}
@@ -597,7 +597,7 @@ class PolygonMesh(Mesh):
 class TetMesh(Mesh):
     """A 3D volumetric mesh composed of tetrahedral cells."""
 
-    def __init__(self, vertices: List[Point3D], tets: List[Tuple[int, int, int, int]], skipped_points: Optional[List[Tuple[Point, str]]] = None):
+    def __init__(self, vertices: List[Point3D], tets: List[Tuple[int, int, int, int]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None):
         super().__init__(vertices, tets, skipped_points)
 
     @property
@@ -608,7 +608,7 @@ class TetMesh(Mesh):
 class HexMesh(Mesh):
     """A 3D volumetric mesh composed of hexahedral cells."""
 
-    def __init__(self, vertices: List[Point3D], hexas: List[Tuple[int, int, int, int, int, int, int, int]], skipped_points: Optional[List[Tuple[Point, str]]] = None):
+    def __init__(self, vertices: List[Point3D], hexas: List[Tuple[int, int, int, int, int, int, int, int]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None):
         super().__init__(vertices, hexas, skipped_points)
 
     @property

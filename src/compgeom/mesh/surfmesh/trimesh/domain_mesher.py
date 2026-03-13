@@ -5,7 +5,7 @@ import math
 import random
 from typing import TYPE_CHECKING, List, Optional
 
-from ....kernel import Point
+from ....kernel import Point2D
 from .delaunay_triangulation import DelaunayMesher
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ class DomainMesher:
     """Generates random triangle meshes for various 2D shapes with refined boundaries."""
 
     @staticmethod
-    def _discretize_segment(p1: Point, p2: Point, segment_length: float) -> List[Point]:
+    def _discretize_segment(p1: Point2D, p2: Point2D, segment_length: float) -> List[Point2D]:
         """Discretizes a line segment into smaller segments of roughly segment_length."""
         dx = p2.x - p1.x
         dy = p2.y - p1.y
@@ -26,16 +26,16 @@ class DomainMesher:
         points = []
         for i in range(num_segments + 1): # Include the end point
             t = i / num_segments
-            points.append(Point(p1.x + t * dx, p1.y + t * dy))
+            points.append(Point2D(p1.x + t * dx, p1.y + t * dy))
         return points
 
     @staticmethod
     def _generate_internal_points(
-        boundary: List[Point], 
+        boundary: List[Point2D], 
         segment_length: float, 
         num_internal_points: Optional[int] = None,
         rejection_ratio: float = 0.001
-    ) -> List[Point]:
+    ) -> List[Point2D]:
         """Generates random internal points within the bounding box of the boundary."""
         if not boundary:
             return []
@@ -67,7 +67,7 @@ class DomainMesher:
         
         while len(internal_points) < target_count and trials < max_trials:
             trials += 1
-            p = Point(
+            p = Point2D(
                 random.uniform(min_x + buffer, max_x - buffer),
                 random.uniform(min_y + buffer, max_y - buffer)
             )
@@ -78,11 +78,11 @@ class DomainMesher:
 
     @staticmethod
     def _create_mesh_from_boundary(
-        boundary_points: List[Point], 
+        boundary_points: List[Point2D], 
         segment_length: float,
         num_internal_points: Optional[int] = None,
         rejection_ratio: float = 0.001,
-        outer_boundary: Optional[List[Point]] = None,
+        outer_boundary: Optional[List[Point2D]] = None,
         jitter: bool = True
     ) -> TriangleMesh:
         """Helper to triangulate boundary and internal points."""
@@ -137,7 +137,7 @@ class DomainMesher:
         final_faces = []
         for face in mesh.faces:
             v0, v1, v2 = mesh.vertices[face[0]], mesh.vertices[face[1]], mesh.vertices[face[2]]
-            centroid = Point((v0.x + v1.x + v2.x) / 3.0, (v0.y + v1.y + v2.y) / 3.0)
+            centroid = Point2D((v0.x + v1.x + v2.x) / 3.0, (v0.y + v1.y + v2.y) / 3.0)
             if is_point_in_polygon(centroid, outer_boundary):
                 final_faces.append(face)
         
@@ -153,10 +153,10 @@ class DomainMesher:
     ) -> TriangleMesh:
         """Generates a refined triangle mesh for a square."""
         corners = [
-            Point(0, 0),
-            Point(length, 0),
-            Point(length, length),
-            Point(0, length)
+            Point2D(0, 0),
+            Point2D(length, 0),
+            Point2D(length, length),
+            Point2D(0, length)
         ]
         boundary = []
         for i in range(4):
@@ -176,10 +176,10 @@ class DomainMesher:
     ) -> TriangleMesh:
         """Generates a refined triangle mesh for a rectangle."""
         corners = [
-            Point(0, 0),
-            Point(width, 0),
-            Point(width, height),
-            Point(0, height)
+            Point2D(0, 0),
+            Point2D(width, 0),
+            Point2D(width, height),
+            Point2D(0, height)
         ]
         boundary = []
         for i in range(4):
@@ -199,9 +199,9 @@ class DomainMesher:
         """Generates a refined triangle mesh for an equilateral triangle."""
         h = side_length * math.sqrt(3) / 2
         corners = [
-            Point(0, 0),
-            Point(side_length, 0),
-            Point(side_length / 2, h)
+            Point2D(0, 0),
+            Point2D(side_length, 0),
+            Point2D(side_length / 2, h)
         ]
         boundary = []
         for i in range(3):
@@ -223,7 +223,7 @@ class DomainMesher:
         boundary = []
         for i in range(num_segments + 1):
             angle = 2 * math.pi * i / num_segments
-            boundary.append(Point(radius * math.cos(angle), radius * math.sin(angle)))
+            boundary.append(Point2D(radius * math.cos(angle), radius * math.sin(angle)))
         
         # For circle, the outer boundary is the same as the discretization points
         # to ensure it's filtered correctly.

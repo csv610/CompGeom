@@ -1,6 +1,6 @@
 import argparse
 import sys
-from compgeom import Point
+from compgeom import Point2D
 from compgeom import TriangleMesh, MeshColoring, OBJFileHandler
 
 def main():
@@ -15,7 +15,7 @@ def main():
         mesh = TriangleMesh.from_file(args.input)
     else:
         # Create a simple 2D triangulation: 2 triangles sharing an edge
-        vertices = [Point(0,0), Point(1,0), Point(1,1), Point(0,1)]
+        vertices = [Point2D(0,0), Point2D(1,0), Point2D(1,1), Point2D(0,1)]
         faces = [(0, 1, 2), (0, 2, 3)]
         mesh = TriangleMesh(vertices, faces)
         print("Using default simple 2D triangulation (2 triangles).")

@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING, Tuple, List, Any
 from decimal import Decimal
 
 if TYPE_CHECKING:
-    from .point import Point
+    from .point import Point2D
 
 from .math_utils import (
     EPSILON, 
@@ -12,14 +12,14 @@ from .math_utils import (
     distance,
 )
 
-def _decimal_orientation(a: Point, b: Point, c: Point) -> Decimal:
+def _decimal_orientation(a: Point2D, b: Point2D, c: Point2D) -> Decimal:
     ax, ay = Decimal(a.x), Decimal(a.y)
     bx, by = Decimal(b.x), Decimal(b.y)
     cx, cy = Decimal(c.x), Decimal(c.y)
     return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
 
 
-def orientation(a: Point, b: Point, c: Point) -> float:
+def orientation(a: Point2D, b: Point2D, c: Point2D) -> float:
     """Return the signed orientation determinant of the triangle ABC."""
     value = cross_product(a, b, c)
     if abs(value) > EPSILON:
@@ -27,7 +27,7 @@ def orientation(a: Point, b: Point, c: Point) -> float:
     return float(_decimal_orientation(a, b, c))
 
 
-def orientation_sign(a: Point, b: Point, c: Point) -> int:
+def orientation_sign(a: Point2D, b: Point2D, c: Point2D) -> int:
     value = orientation(a, b, c)
     if value > EPSILON:
         return 1
@@ -41,14 +41,14 @@ def orientation_sign(a: Point, b: Point, c: Point) -> int:
     return 0
 
 
-def area(a: Point, b: Point, c: Point) -> float:
+def area(a: Point2D, b: Point2D, c: Point2D) -> float:
     """Return the signed area of triangle ABC."""
     return 0.5 * cross_product(a, b, c)
 
 
-def circumcenter(a: Point, b: Point, c: Point) -> Optional[Point]:
+def circumcenter(a: Point2D, b: Point2D, c: Point2D) -> Optional[Point2D]:
     """Return the circumcenter of triangle ABC, or None if collinear."""
-    from .point import Point
+    from .point import Point2D
     denominator = 2 * (
         a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)
     )
@@ -65,25 +65,25 @@ def circumcenter(a: Point, b: Point, c: Point) -> Optional[Point]:
         + (b.x**2 + b.y**2) * (a.x - c.x)
         + (c.x**2 + c.y**2) * (b.x - a.x)
     ) / denominator
-    return Point(ux, uy)
+    return Point2D(ux, uy)
 
 
-def incenter(a: Point, b: Point, c: Point) -> Point:
+def incenter(a: Point2D, b: Point2D, c: Point2D) -> Point2D:
     """Return the incenter of triangle ABC."""
-    from .point import Point
+    from .point import Point2D
     la = distance(b, c)
     lb = distance(a, c)
     lc = distance(a, b)
     perimeter = la + lb + lc
     if perimeter < EPSILON:
         return a
-    return Point(
+    return Point2D(
         (la * a.x + lb * b.x + lc * c.x) / perimeter,
         (la * a.y + lb * b.y + lc * c.y) / perimeter
     )
 
 
-def inradius(a: Point, b: Point, c: Point) -> float:
+def inradius(a: Point2D, b: Point2D, c: Point2D) -> float:
     """Return the inradius of triangle ABC."""
     la = distance(b, c)
     lb = distance(a, c)
@@ -95,7 +95,7 @@ def inradius(a: Point, b: Point, c: Point) -> float:
     return area_val / s
 
 
-def contains_point(a: Any, b: Any = None, c: Point | None = None, d: Point | None = None) -> bool:
+def contains_point(a: Any, b: Any = None, c: Point2D | None = None, d: Point2D | None = None) -> bool:
     """
     Check if a point is inside a triangle.
     Supports both contains_point(triangle, point) and contains_point(v1, v2, v3, point).

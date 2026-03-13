@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..kernel import EPSILON, Point
+from ..kernel import EPSILON, Point2D
 from .polygon import is_point_in_polygon
 
 
 @dataclass
 class DCELVertex:
-    point: Point
+    point: Point2D
     incident_edge: "DCELHalfEdge | None" = None
 
 
@@ -42,7 +42,7 @@ class DCEL:
     faces: list[DCELFace]
 
 
-def _signed_area_twice(polygon: list[Point]) -> float:
+def _signed_area_twice(polygon: list[Point2D]) -> float:
     return sum(
         polygon[i].x * polygon[(i + 1) % len(polygon)].y
         - polygon[(i + 1) % len(polygon)].x * polygon[i].y
@@ -50,7 +50,7 @@ def _signed_area_twice(polygon: list[Point]) -> float:
     )
 
 
-def _ensure_orientation(polygon: list[Point], ccw: bool) -> list[Point]:
+def _ensure_orientation(polygon: list[Point2D], ccw: bool) -> list[Point2D]:
     area = _signed_area_twice(polygon)
     if ccw and area < 0:
         return list(reversed(polygon))
@@ -59,7 +59,7 @@ def _ensure_orientation(polygon: list[Point], ccw: bool) -> list[Point]:
     return list(polygon)
 
 
-def _link_cycle(face: DCELFace, points: list[Point]) -> tuple[list[DCELVertex], list[DCELHalfEdge], list[DCELHalfEdge]]:
+def _link_cycle(face: DCELFace, points: list[Point2D]) -> tuple[list[DCELVertex], list[DCELHalfEdge], list[DCELHalfEdge]]:
     vertices = [DCELVertex(point) for point in points]
     interior = [DCELHalfEdge(vertex) for vertex in vertices]
     exterior = [DCELHalfEdge(vertices[(i + 1) % len(vertices)]) for i in range(len(vertices))]
@@ -80,7 +80,7 @@ def _link_cycle(face: DCELFace, points: list[Point]) -> tuple[list[DCELVertex], 
     return vertices, interior, exterior
 
 
-def build_polygon_dcel(outer_boundary: list[Point], holes: list[list[Point]] | None = None) -> DCEL:
+def build_polygon_dcel(outer_boundary: list[Point2D], holes: list[list[Point2D]] | None = None) -> DCEL:
     if len(outer_boundary) < 3:
         raise ValueError("Outer boundary must contain at least 3 vertices.")
 
@@ -120,7 +120,7 @@ def build_polygon_dcel(outer_boundary: list[Point], holes: list[list[Point]] | N
     return DCEL(vertices=all_vertices, half_edges=all_edges, faces=[bounded_face, exterior_face])
 
 
-def face_cycle_points(start_edge: DCELHalfEdge | None) -> list[Point]:
+def face_cycle_points(start_edge: DCELHalfEdge | None) -> list[Point2D]:
     if start_edge is None:
         return []
     points = []
@@ -133,7 +133,7 @@ def face_cycle_points(start_edge: DCELHalfEdge | None) -> list[Point]:
     return points
 
 
-def face_contains_point(face: DCELFace, point: Point) -> bool:
+def face_contains_point(face: DCELFace, point: Point2D) -> bool:
     if face.is_exterior:
         return False
 
@@ -147,7 +147,7 @@ def face_contains_point(face: DCELFace, point: Point) -> bool:
     return True
 
 
-def locate_face(dcel: DCEL, point: Point) -> DCELFace:
+def locate_face(dcel: DCEL, point: Point2D) -> DCELFace:
     for face in dcel.faces:
         if face_contains_point(face, point):
             return face

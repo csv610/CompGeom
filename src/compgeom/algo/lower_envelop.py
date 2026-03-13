@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
-from ..kernel import EPSILON, Point
+from ..kernel import EPSILON, Point2D
 
 
 @dataclass
@@ -26,7 +26,7 @@ class DavenportSchinzel:
 
     @staticmethod
     def lower_envelope_segments(
-        segments: List[Tuple[Point, Point]]
+        segments: List[Tuple[Point2D, Point2D]]
     ) -> List[EnvelopeSegment]:
         """
         Computes the lower envelope of a set of line segments.
@@ -136,7 +136,7 @@ class DavenportSchinzel:
         return merged
 
     @staticmethod
-    def calculate_sequence(segments: List[Tuple[Point, Point]]) -> List[int]:
+    def calculate_sequence(segments: List[Tuple[Point2D, Point2D]]) -> List[int]:
         """
         Returns the Davenport-Schinzel sequence (order of segment IDs) 
         for the lower envelope of the given segments.

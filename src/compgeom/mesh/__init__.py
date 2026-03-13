@@ -37,7 +37,6 @@ from .polymesh.voronoi_diagram import VoronoiDiagram
 from .volmesh.voxelmesh.voxelization import MeshVoxelizer
 from .volmesh.tetmesh.delaunay_tetmesh import DelaunayTetMesher, triangulate as triangulate_3d
 
-from .surfmesh.surf_mesh_repair import SurfMeshRepair
 from .surfmesh.mesh_analysis import MeshAnalysis
 from .surfmesh.mesh_processing import MeshProcessing
 from .surfmesh.mesh_queries import MeshQueries
@@ -62,29 +61,14 @@ from .volmesh.marching_cubes import MarchingCubes
 from .volmesh.volmesh_quality import TetMeshQuality
 
 from .surfmesh.mesh_booleans import MeshBooleans
-from .surfmesh.geodesics import MeshGeodesics
 
-from .surfmesh.radar_engineering import RadarEngineering
-from .surfmesh.drafting_tools import DraftingTools
-from .surfmesh.metrology_tools import MetrologyTools
-from .surfmesh.robotics_geometry import RoboticsGeometry
-from .surfmesh.additive_mfg import AdditiveMfg
-from .surfmesh.solar_analysis import SolarAnalysis
-from .surfmesh.aerospace_geometry import AerospaceGeometry
-from .surfmesh.medical_device import MedicalDeviceGeometry
-from .surfmesh.spacecraft_structures import SpacecraftStructures
-from .surfmesh.molecular_geometry import MolecularGeometry
-from .surfmesh.cfd_analysis import CFDAnalysis
-from .surfmesh.topo_analysis import TopoAnalysis
 from .polymesh.polygon_booleans import PolygonBooleans
 
 __all__ = [
     "AABBTree",
     "AlphaShape",
     "AdaptiveRemesher",
-    "AerospaceGeometry",
     "BoundingVolumes",
-    "CFDAnalysis",
     "ConvexHull3D",
     "CuthillMcKee",
     "DTriangle",
@@ -95,12 +79,10 @@ __all__ = [
     "HexMesh",
     "IsotropicRemesher",
     "MarchingCubes",
-    "MedicalDeviceGeometry",
     "MinkowskiSum",
     "PolygonBooleans",
     "PolygonTriangulation",
     "SweepLine",
-    "TopoAnalysis",
     "VLSILayout",
     "build_topology",
     "constrained_delaunay_triangulation",
@@ -110,7 +92,6 @@ __all__ = [
     "MeshColoring",
     "MeshCurvature",
     "MeshDecimator",
-    "MeshGeodesics",
     "MeshParameterization",
     "MeshRegistration",
     "MeshValidation",
@@ -120,7 +101,6 @@ __all__ = [
     "MeshQueries",
     "MeshRegistration",
     "MeshValidation",
-    "MolecularGeometry",
     "MeshTriangle",
     "MeshTopology",
     "MeshTransfer",
@@ -128,7 +108,6 @@ __all__ = [
     "OBJFileHandler",
     "OFFFileHandler",
     "STLFileHandler",
-    "SpacecraftStructures",
     "PLYFileHandler",
     "PolygonMesh",
     "PolygonWinding",
@@ -140,7 +119,6 @@ __all__ = [
     "TriangleToQuadConverter",
     "Triangle",
     "VoronoiDiagram",
-    "SurfMeshRepair",
     "point_winding_number",
     "euler_characteristic",
     "mesh_edges",

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import deque
 from typing import List, Tuple
 
-from ..kernel import Point
+from ..kernel import Point2D
 
 
 class PolygonGuards:
@@ -13,18 +13,18 @@ class PolygonGuards:
 
     @staticmethod
     def guard_polygon(
-        triangles: List[Tuple[int, int, int]], vertices: List[Point]
-    ) -> List[Point]:
+        triangles: List[Tuple[int, int, int]], vertices: List[Point2D]
+    ) -> List[Point2D]:
         return guard_polygon(triangles, vertices)
 
     @staticmethod
-    def solve_art_gallery(polygon_input: List[Point]) -> List[Point]:
+    def solve_art_gallery(polygon_input: List[Point2D]) -> List[Point2D]:
         return solve_art_gallery(polygon_input)
 
 
 def guard_polygon(
-    triangles: List[Tuple[int, int, int]], vertices: List[Point]
-) -> List[Point]:
+    triangles: List[Tuple[int, int, int]], vertices: List[Point2D]
+) -> List[Point2D]:
     """
     Solves the art gallery problem using Chvátal's algorithm (3-coloring of triangulation).
     
@@ -69,7 +69,7 @@ def guard_polygon(
             queue.append(index)
 
     # Collect vertices by color group
-    groups: List[List[Point]] = [[], [], []]
+    groups: List[List[Point2D]] = [[], [], []]
     for vertex_index, color in colors.items():
         if vertex_index < len(vertices):
             groups[color].append(vertices[vertex_index])
@@ -78,7 +78,7 @@ def guard_polygon(
     return min(groups, key=len)
 
 
-def solve_art_gallery(polygon_input: List[Point]) -> List[Point]:
+def solve_art_gallery(polygon_input: List[Point2D]) -> List[Point2D]:
     """
     Standard interface to solve the art gallery problem for a list of points.
     

@@ -5,7 +5,7 @@ import math
 from collections import deque
 from typing import TYPE_CHECKING
 
-from ....kernel import Point, in_circle, orientation_sign
+from ....kernel import Point2D, in_circle, orientation_sign
 from .delaunay_mesh_incremental import triangulate_incremental_fast
 from .delaunay_dc import triangulate_divide_and_conquer
 from .delaunay_naive import triangulate_naive, Triangle
@@ -32,7 +32,7 @@ class DelaunayMesher:
     """
 
     @staticmethod
-    def triangulate(points: list[Point], algorithm: str = "incremental", spatial_sort: bool = True, jitter: bool = False, rejection_ratio: Optional[float] = None) -> TriangleMesh:
+    def triangulate(points: list[Point2D], algorithm: str = "incremental", spatial_sort: bool = True, jitter: bool = False, rejection_ratio: Optional[float] = None) -> TriangleMesh:
         """
         Performs Delaunay triangulation using the specified algorithm.
         
@@ -78,7 +78,7 @@ class DelaunayMesher:
             eps = scale * 1e-10
             jittered_points = []
             for p in points:
-                pj = Point(
+                pj = Point2D(
                     p.x + random.uniform(-eps, eps),
                     p.y + random.uniform(-eps, eps),
                     id=getattr(p, 'id', None)
@@ -130,7 +130,7 @@ class DelaunayMesher:
         return TriangleMesh.from_triangles(triangles, skipped_points=skipped)
 
     @staticmethod
-    def constrained_triangulate(outer_boundary: list[Point], holes: list[list[Point]] | None = None) -> TriangleMesh:
+    def constrained_triangulate(outer_boundary: list[Point2D], holes: list[list[Point2D]] | None = None) -> TriangleMesh:
         """Performs Constrained Delaunay Triangulation."""
         triangles, _ = constrained_delaunay_triangulation(outer_boundary, holes)
         from ...mesh import TriangleMesh
@@ -142,7 +142,7 @@ class DelaunayMesher:
         return DynamicDelaunay(width, height)
 
     @staticmethod
-    def build_mesh_topology(triangles: list[tuple[Point, Point, Point]]) -> list[MeshTriangle]:
+    def build_mesh_topology(triangles: list[tuple[Point2D, Point2D, Point2D]]) -> list[MeshTriangle]:
         """Builds a mesh with neighborhood information from a list of triangles."""
         return build_topology(triangles)
 
@@ -151,13 +151,13 @@ class DelaunayMesher:
         """Improves a triangulation by performing edge flips until it is Delaunay."""
         queue = deque()
 
-        def edge_key(u: Point, v: Point):
+        def edge_key(u: Point2D, v: Point2D):
             return tuple(sorted((u.id, v.id)))
 
-        def _make_ccw_triangle(a: Point, b: Point, c: Point):
+        def _make_ccw_triangle(a: Point2D, b: Point2D, c: Point2D):
             return (a, b, c) if orientation_sign(a, b, c) >= 0 else (a, c, b)
 
-        def build_triangle(vertices: tuple[Point, Point, Point], neighbors_by_edge):
+        def build_triangle(vertices: tuple[Point2D, Point2D, Point2D], neighbors_by_edge):
             v0, v1, v2 = _make_ccw_triangle(*vertices)
             ordered_vertices = [v0, v1, v2]
             ordered_neighbors = [
@@ -259,7 +259,7 @@ class DelaunayMesher:
         return get_nondelaunay_triangles(mesh)
 
 
-def triangulate(points: list[Point], algorithm: str = "incremental") -> TriangleMesh:
+def triangulate(points: list[Point2D], algorithm: str = "incremental") -> TriangleMesh:
     """Standalone shortcut for DelaunayMesher.triangulate."""
     return DelaunayMesher.triangulate(points, algorithm)
 

@@ -1,10 +1,10 @@
 import random
-from compgeom import Point
+from compgeom import Point2D
 from compgeom import DynamicDelaunay
 
 def main():
     dt = DynamicDelaunay()
-    points = [Point(random.randint(0, 100), random.randint(0, 100), i) for i in range(10)]
+    points = [Point2D(random.randint(0, 100), random.randint(0, 100), i) for i in range(10)]
     print("Adding points incrementally...")
     for p in points: dt.add_point(p)
     tris = dt.get_triangles()

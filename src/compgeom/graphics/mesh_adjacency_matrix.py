@@ -155,7 +155,7 @@ if __name__ == "__main__":
                 self.vertices = vertices
                 self.elements = elements
 
-        class Point:
+        class Point2D:
             def __init__(self, x, y):
                 self.x = x
                 self.y = y
@@ -164,7 +164,7 @@ if __name__ == "__main__":
         # 3 -- 2
         # | \  |
         # 0 -- 1
-        points = [Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1)]
+        points = [Point2D(0, 0), Point2D(1, 0), Point2D(1, 1), Point2D(0, 1)]
         dummy_mesh = DummyMesh(vertices=points, elements=[[0, 1, 2], [0, 2, 3]])
 
         visualize_adjacencies(dummy_mesh, "example", eps=1.1)

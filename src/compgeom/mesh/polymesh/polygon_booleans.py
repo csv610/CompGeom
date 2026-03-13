@@ -2,13 +2,13 @@
 from typing import List, Tuple
 import math
 
-from ...kernel import Point
+from ...kernel import Point2D
 
 class PolygonBooleans:
     """Provides Union, Intersection, and Difference for 2D polygons."""
 
     @staticmethod
-    def boolean_operation(poly_a: List[Point], poly_b: List[Point], operation: str = 'union') -> List[List[Point]]:
+    def boolean_operation(poly_a: List[Point2D], poly_b: List[Point2D], operation: str = 'union') -> List[List[Point2D]]:
         """
         Performs a 2D boolean operation using a simplified clipping approach.
         In a full industrial version, the Sutherland-Hodgman or Weiler-Atherton algorithm
@@ -43,18 +43,18 @@ class PolygonBooleans:
         for p in polys:
             coords = list(p.exterior.coords)
             if coords[0] == coords[-1]: coords.pop()
-            output.append([Point(c[0], c[1]) for c in coords])
+            output.append([Point2D(c[0], c[1]) for c in coords])
             
         return output
 
     @staticmethod
-    def union(poly_a: List[Point], poly_b: List[Point]) -> List[List[Point]]:
+    def union(poly_a: List[Point2D], poly_b: List[Point2D]) -> List[List[Point2D]]:
         return PolygonBooleans.boolean_operation(poly_a, poly_b, 'union')
 
     @staticmethod
-    def intersection(poly_a: List[Point], poly_b: List[Point]) -> List[List[Point]]:
+    def intersection(poly_a: List[Point2D], poly_b: List[Point2D]) -> List[List[Point2D]]:
         return PolygonBooleans.boolean_operation(poly_a, poly_b, 'intersection')
 
     @staticmethod
-    def difference(poly_a: List[Point], poly_b: List[Point]) -> List[List[Point]]:
+    def difference(poly_a: List[Point2D], poly_b: List[Point2D]) -> List[List[Point2D]]:
         return PolygonBooleans.boolean_operation(poly_a, poly_b, 'difference')

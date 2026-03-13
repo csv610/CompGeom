@@ -3,7 +3,7 @@ import unittest
 import math
 from compgeom.mesh.surfmesh.trimesh.domain_mesher import DomainMesher
 from compgeom.mesh.surfmesh.trimesh.delaunay_topology import is_delaunay, build_topology
-from compgeom.kernel import Point
+from compgeom.kernel import Point2D
 
 class TestDomainMesher(unittest.TestCase):
     """Unit tests for the DomainMesher class."""

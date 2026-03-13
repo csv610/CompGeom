@@ -4,13 +4,13 @@ import math
 from typing import List, Tuple, Set, Union
 
 from ..mesh import TriangleMesh
-from ...kernel import Point, Point3D
+from ...kernel import Point2D, Point3D
 
 class AlphaShape:
     """Reconstructs the concave hull of a point set using the alpha-shape algorithm."""
 
     @staticmethod
-    def compute_2d(points: List[Point], alpha: float) -> List[Tuple[int, int]]:
+    def compute_2d(points: List[Point2D], alpha: float) -> List[Tuple[int, int]]:
         """
         Computes the 2D alpha shape. Returns a list of boundary edges.
         alpha: Radius of the rolling ball. Large alpha approaches convex hull.

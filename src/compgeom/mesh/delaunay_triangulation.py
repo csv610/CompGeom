@@ -1,3 +1,3 @@
-"""Proxy for trimesh/delaunay_triangulation.py to maintain backward compatibility."""
+"""Backward-compatible exports for 2D Delaunay triangulation utilities."""
 
-from .surfmesh.trimesh.delaunay_triangulation import *
+from .surfmesh.trimesh.delaunay_triangulation import *  # noqa: F401,F403

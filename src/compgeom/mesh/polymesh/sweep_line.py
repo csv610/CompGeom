@@ -2,13 +2,13 @@
 from typing import List, Tuple, Set
 import math
 
-from ...kernel import Point
+from ...kernel import Point2D
 
 class SweepLine:
     """Provides sweep-line algorithms essential for EDA and layout analysis."""
 
     @staticmethod
-    def segment_intersections(segments: List[Tuple[Point, Point]]) -> List[Point]:
+    def segment_intersections(segments: List[Tuple[Point2D, Point2D]]) -> List[Point2D]:
         """
         Finds all intersection points among a set of 2D line segments.
         Uses a simplified sweep-line approach.
@@ -54,7 +54,7 @@ class SweepLine:
                 
             if (in_range(x, a.x, b.x) and in_range(y, a.y, b.y) and
                 in_range(x, c.x, d.x) and in_range(y, c.y, d.y)):
-                return Point(x, y)
+                return Point2D(x, y)
             return None
 
         # Sweep process

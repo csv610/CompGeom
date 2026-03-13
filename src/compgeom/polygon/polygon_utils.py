@@ -4,24 +4,24 @@ from __future__ import annotations
 
 from typing import Callable
 
-from ..kernel import Point, cross_product, is_on_segment
+from ..kernel import Point2D, cross_product, is_on_segment
 from ..kernel import signed_area_twice
 from .line_segment import proper_segment_intersection
 
 
-def ensure_ccw(polygon: list[Point]) -> list[Point]:
+def ensure_ccw(polygon: list[Point2D]) -> list[Point2D]:
     return polygon if signed_area_twice(polygon) >= 0 else list(reversed(polygon))
 
 
-def ensure_cw(polygon: list[Point]) -> list[Point]:
+def ensure_cw(polygon: list[Point2D]) -> list[Point2D]:
     return polygon if signed_area_twice(polygon) <= 0 else list(reversed(polygon))
 
 
-def same_point(a: Point, b: Point, tolerance: float = 1e-7) -> bool:
+def same_point(a: Point2D, b: Point2D, tolerance: float = 1e-7) -> bool:
     return abs(a.x - b.x) <= tolerance and abs(a.y - b.y) <= tolerance
 
 
-def point_on_boundary(point: Point, polygon: list[Point]) -> bool:
+def point_on_boundary(point: Point2D, polygon: list[Point2D]) -> bool:
     n = len(polygon)
     if n == 0:
         return False
@@ -31,11 +31,11 @@ def point_on_boundary(point: Point, polygon: list[Point]) -> bool:
     return False
 
 
-def cleanup_polygon(points: list[Point]) -> list[Point]:
+def cleanup_polygon(points: list[Point2D]) -> list[Point2D]:
     if not points:
         return []
 
-    cleaned: list[Point] = []
+    cleaned: list[Point2D] = []
     for point in points:
         if cleaned and same_point(point, cleaned[-1]):
             continue
@@ -44,7 +44,7 @@ def cleanup_polygon(points: list[Point]) -> list[Point]:
     if len(cleaned) > 1 and same_point(cleaned[0], cleaned[-1]):
         cleaned.pop()
 
-    simplified: list[Point] = []
+    simplified: list[Point2D] = []
     for point in cleaned:
         if len(simplified) < 2:
             simplified.append(point)
@@ -63,13 +63,13 @@ def cleanup_polygon(points: list[Point]) -> list[Point]:
 
 
 def segment_inside_boundaries(
-    start: Point,
-    end: Point,
-    boundaries: list[list[Point]],
-    midpoint_inside: Callable[[Point], bool],
-    allow_boundary_endpoint: Point | None = None,
+    start: Point2D,
+    end: Point2D,
+    boundaries: list[list[Point2D]],
+    midpoint_inside: Callable[[Point2D], bool],
+    allow_boundary_endpoint: Point2D | None = None,
 ) -> bool:
-    midpoint = Point((start.x + end.x) / 2.0, (start.y + end.y) / 2.0)
+    midpoint = Point2D((start.x + end.x) / 2.0, (start.y + end.y) / 2.0)
     if not midpoint_inside(midpoint):
         return False
 

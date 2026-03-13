@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 import math
-from ....kernel import Point, orientation_sign, in_circle, segment_angle as angle
+from ....kernel import Point2D, orientation_sign, in_circle, segment_angle as angle
 
 
-def triangulate_divide_and_conquer(points: list[Point]):
+def triangulate_divide_and_conquer(points: list[Point2D]):
     """Delaunay Triangulation using the Divide and Conquer algorithm."""
     mesher = DivideAndConquerDelaunayMesher()
     return mesher.triangulate(points)
@@ -16,10 +16,10 @@ class DivideAndConquerDelaunayMesher:
     Delaunay Triangulation Mesher using the Divide and Conquer algorithm.
     """
     def __init__(self):
-        self.points: list[Point] = []
-        self.skipped: list[tuple[Point, str]] = []
+        self.points: list[Point2D] = []
+        self.skipped: list[tuple[Point2D, str]] = []
 
-    def triangulate(self, points: list[Point]) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+    def triangulate(self, points: list[Point2D]) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[tuple[Point2D, str]]]:
         """
         Performs Delaunay triangulation of the given points.
         
@@ -66,7 +66,7 @@ class DivideAndConquerDelaunayMesher:
         
         return triangles, self.skipped
 
-    def _dc_triangulate(self, points: list[Point]) -> dict[Point, list[Point]]:
+    def _dc_triangulate(self, points: list[Point2D]) -> dict[Point2D, list[Point2D]]:
         n = len(points)
         if n <= 3:
             adj = {p: [] for p in points}

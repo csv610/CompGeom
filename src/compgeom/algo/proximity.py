@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from ..kernel import (
     EPSILON,
-    Point,
+    Point2D,
     cross_product,
     dist_point_to_segment,
     dot_product,
@@ -31,7 +31,7 @@ class ClosestPair:
     """Algorithms for finding the closest pair of points in a set."""
 
     @staticmethod
-    def divide_and_conquer(points: List[Point]) -> Tuple[float, Tuple[Optional[Point], Optional[Point]]]:
+    def divide_and_conquer(points: List[Point2D]) -> Tuple[float, Tuple[Optional[Point2D], Optional[Point2D]]]:
         """Traditional O(N log N) divide and conquer algorithm."""
         if not points:
             return float("inf"), (None, None)
@@ -43,8 +43,8 @@ class ClosestPair:
 
     @staticmethod
     def _divide_and_conquer_recursive(
-        points_x: List[Point], points_y: List[Point]
-    ) -> Tuple[float, Tuple[Optional[Point], Optional[Point]]]:
+        points_x: List[Point2D], points_y: List[Point2D]
+    ) -> Tuple[float, Tuple[Optional[Point2D], Optional[Point2D]]]:
         n = len(points_x)
         if n <= 3:
             min_dist = float("inf")
@@ -88,9 +88,9 @@ class ClosestPair:
 
     @staticmethod
     def grid_based_massive(
-        points_iterator: Iterable[Point], 
+        points_iterator: Iterable[Point2D], 
         sample_size: int = 1000
-    ) -> Tuple[float, Tuple[Point, Point]]:
+    ) -> Tuple[float, Tuple[Point2D, Point2D]]:
         """
         O(N) randomized grid-based algorithm for massive datasets.
         Suitable for billions of points as it can process them in a stream.
@@ -108,9 +108,9 @@ class ClosestPair:
 
         best_d, best_pair = ClosestPair.divide_and_conquer(points_list)
         
-        grid: Dict[Tuple[int, int], Point] = {}
+        grid: Dict[Tuple[int, int], Point2D] = {}
         
-        def add_to_grid(p: Point, d: float):
+        def add_to_grid(p: Point2D, d: float):
             gx, gy = int(p.x / d), int(p.y / d)
             local_best_d = d
             local_pair = None
@@ -148,7 +148,7 @@ class LargestEmptyCircle:
     """Finds the largest circle whose center is within the convex hull and encloses no points."""
 
     @staticmethod
-    def find(points: List[Point]) -> Tuple[Point, float]:
+    def find(points: List[Point2D]) -> Tuple[Point2D, float]:
         """
         Returns (center, radius) of the largest empty circle.
         Complexity: O(N log N) due to Delaunay Triangulation.
@@ -156,9 +156,9 @@ class LargestEmptyCircle:
         if len(points) < 3:
             if len(points) == 2:
                 p1, p2 = points
-                center = Point((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
+                center = Point2D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
                 return center, distance(p1, p2) / 2.0
-            return Point(0, 0), 0.0
+            return Point2D(0, 0), 0.0
 
         hull = GrahamScan().generate(points)
         from ..mesh.delaunay_triangulation import triangulate
@@ -183,7 +183,7 @@ class LargestEmptyCircle:
         for i in range(len(hull)):
             p1 = hull[i]
             p2 = hull[(i + 1) % len(hull)]
-            mid = Point((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
+            mid = Point2D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
             min_d = min(distance(mid, p) for p in points)
             if min_d > max_radius:
                 max_radius = min_d
@@ -192,7 +192,7 @@ class LargestEmptyCircle:
         return best_center, max_radius
 
     @staticmethod
-    def visualize(points: List[Point], center: Point, radius: float) -> str:
+    def visualize(points: List[Point2D], center: Point2D, radius: float) -> str:
         """Generates an SVG visualization of the points and the LEC."""
         all_x = [p.x for p in points] + [center.x - radius, center.x + radius]
         all_y = [p.y for p in points] + [center.y - radius, center.y + radius]
@@ -225,12 +225,12 @@ class LargestEmptyCircle:
         return "\n".join(svg)
 
 
-def closest_pair(points: list[Point]):
+def closest_pair(points: list[Point2D]):
     """Wrapper for ClosestPair.divide_and_conquer."""
     return ClosestPair.divide_and_conquer(points)
 
 
-def do_intersect(p1: Point, q1: Point, p2: Point, q2: Point) -> bool:
+def do_intersect(p1: Point2D, q1: Point2D, p2: Point2D, q2: Point2D) -> bool:
     o1 = math_orientation(p1, q1, p2)
     o2 = math_orientation(p1, q1, q2)
     o3 = math_orientation(p2, q2, p1)
@@ -252,7 +252,7 @@ def do_intersect(p1: Point, q1: Point, p2: Point, q2: Point) -> bool:
     )
 
 
-def farthest_pair(points: list[Point]):
+def farthest_pair(points: list[Point2D]):
     hull = GrahamScan().generate(points)
     if len(hull) == 0:
         return 0, (None, None)
@@ -291,10 +291,10 @@ def farthest_pair(points: list[Point]):
     return max_distance, pair
 
 
-def welzl(points: list[Point], boundary: list[Point]):
+def welzl(points: list[Point2D], boundary: list[Point2D]):
     if not points or len(boundary) == 3:
         if not boundary:
-            return Point(0, 0), 0
+            return Point2D(0, 0), 0
         if len(boundary) == 1:
             return boundary[0], 0
         if len(boundary) == 2:
@@ -314,11 +314,11 @@ def welzl(points: list[Point], boundary: list[Point]):
     return result
 
 
-def minkowski_sum(poly1: list[Point], poly2: list[Point]) -> list[Point]:
+def minkowski_sum(poly1: list[Point2D], poly2: list[Point2D]) -> list[Point2D]:
     if not poly1 or not poly2:
         return []
 
-    def prepare_polygon(polygon: list[Point]) -> list[Point]:
+    def prepare_polygon(polygon: list[Point2D]) -> list[Point2D]:
         area_twice = signed_area_twice(polygon)
         ordered = polygon if area_twice >= 0 else list(reversed(polygon))
         start_index = min(
@@ -331,12 +331,12 @@ def minkowski_sum(poly1: list[Point], poly2: list[Point]) -> list[Point]:
     p1.append(p1[0])
     p2.append(p2[0])
 
-    result: list[Point] = []
+    result: list[Point2D] = []
     i = j = 0
     n = len(p1) - 1
     m = len(p2) - 1
     while i < n or j < m:
-        result.append(Point(p1[i % n].x + p2[j % m].x, p1[i % n].y + p2[j % m].y))
+        result.append(Point2D(p1[i % n].x + p2[j % m].x, p1[i % n].y + p2[j % m].y))
         if i < n and j < m:
             angle1 = (
                 math.atan2(p1[i + 1].y - p1[i].y, p1[i + 1].x - p1[i].x) % (2 * math.pi)

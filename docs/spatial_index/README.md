@@ -12,14 +12,14 @@ This package now includes several core data structures used in computational geo
 Use the KD-tree when you need repeated orthogonal range queries over a static point set, such as selecting all sampled points inside a map window or view frustum slice.
 
 ```python
-from compgeom import Point, build_kdtree, range_search
+from compgeom import Point2D, build_kdtree, range_search
 
 points = [
-    Point(0, 0),
-    Point(2, 1),
-    Point(3, 4),
-    Point(5, 2),
-    Point(6, 5),
+    Point2D(0, 0),
+    Point2D(2, 1),
+    Point2D(3, 4),
+    Point2D(5, 2),
+    Point2D(6, 5),
 ]
 
 root = build_kdtree(points)

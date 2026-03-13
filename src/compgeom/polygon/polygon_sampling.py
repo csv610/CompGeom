@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from typing import Sequence, List, Tuple
-from ..kernel import Point, distance
+from ..kernel import Point2D, distance
 from .polygon import Polygon
 
-def get_perimeter_distances(vertices: Sequence[Point]) -> List[float]:
+def get_perimeter_distances(vertices: Sequence[Point2D]) -> List[float]:
     """Calculate cumulative distance along the perimeter of the polygon."""
     n = len(vertices)
     if n == 0:
@@ -24,8 +24,8 @@ def get_perimeter_distances(vertices: Sequence[Point]) -> List[float]:
 def sample_polygon_boundary(
     polygon: Polygon, 
     num_samples: int, 
-    fixed_nodes: Sequence[Point] | None = None
-) -> List[Tuple[Point, float]]:
+    fixed_nodes: Sequence[Point2D] | None = None
+) -> List[Tuple[Point2D, float]]:
     """
     Uniformly samples the boundary of a closed polygon.
     Returns a list of (Point, t) where t is the parametric coordinate in [0, 1).
@@ -79,7 +79,7 @@ def sample_polygon_boundary(
                     sampled_points.append((p1, t))
                 else:
                     ratio = (dist - cum_dists[i]) / seg_len
-                    new_p = Point(
+                    new_p = Point2D(
                         p1.x + ratio * (p2.x - p1.x),
                         p1.y + ratio * (p2.y - p1.y)
                     )
@@ -88,7 +88,7 @@ def sample_polygon_boundary(
                 
     return sampled_points
 
-def get_parametric_coordinate(vertices: Sequence[Point], point: Point) -> float | None:
+def get_parametric_coordinate(vertices: Sequence[Point2D], point: Point2D) -> float | None:
     """Find the parametric coordinate t in [0, 1) for a point on the polygon boundary."""
     from ..kernel import is_on_segment
     

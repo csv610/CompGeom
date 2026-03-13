@@ -2,20 +2,20 @@ from __future__ import annotations
 
 import math
 
-from compgeom import EPSILON, Point, cross_product, is_on_segment
+from compgeom import EPSILON, Point2D, cross_product, is_on_segment
 from compgeom import is_point_in_polygon
 from ._shared import print_lines
 
 
-def _dot(a: Point, b: Point) -> float:
+def _dot(a: Point2D, b: Point2D) -> float:
     return a.x * b.x + a.y * b.y
 
 
-def _sub(a: Point, b: Point) -> Point:
-    return Point(a.x - b.x, a.y - b.y)
+def _sub(a: Point2D, b: Point2D) -> Point2D:
+    return Point2D(a.x - b.x, a.y - b.y)
 
 
-def _signed_area_twice(polygon: list[Point]) -> float:
+def _signed_area_twice(polygon: list[Point2D]) -> float:
     return sum(
         polygon[i].x * polygon[(i + 1) % len(polygon)].y
         - polygon[(i + 1) % len(polygon)].x * polygon[i].y
@@ -23,19 +23,19 @@ def _signed_area_twice(polygon: list[Point]) -> float:
     )
 
 
-def _ensure_ccw(polygon: list[Point]) -> list[Point]:
+def _ensure_ccw(polygon: list[Point2D]) -> list[Point2D]:
     return polygon if _signed_area_twice(polygon) >= 0 else list(reversed(polygon))
 
 
-def _parse_point(text: str, label: str) -> Point:
+def _parse_point(text: str, label: str) -> Point2D:
     parts = text.split()
     if len(parts) != 2:
         raise ValueError(f"Invalid {label}: expected 2 numbers, got {len(parts)}.")
     x, y = map(float, parts)
-    return Point(x, y)
+    return Point2D(x, y)
 
 
-def parse_input(lines: list[str]) -> tuple[Point, list[Point]]:
+def parse_input(lines: list[str]) -> tuple[Point2D, list[Point2D]]:
     cleaned = [line.strip() for line in lines if line.strip()]
     if len(cleaned) < 4:
         raise ValueError("Expected at least 4 non-empty lines: query point and 3 polygon vertices.")
@@ -51,7 +51,7 @@ def parse_input(lines: list[str]) -> tuple[Point, list[Point]]:
     return query, polygon
 
 
-def _segment_parameters(a: Point, b: Point, c: Point, d: Point) -> tuple[float, float] | None:
+def _segment_parameters(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> tuple[float, float] | None:
     ab = _sub(b, a)
     cd = _sub(d, c)
     denominator = ab.x * cd.y - ab.y * cd.x
@@ -64,7 +64,7 @@ def _segment_parameters(a: Point, b: Point, c: Point, d: Point) -> tuple[float, 
     return t, u
 
 
-def _proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool:
+def _proper_segment_intersection(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
     o1 = cross_product(a, b, c)
     o2 = cross_product(a, b, d)
     o3 = cross_product(c, d, a)
@@ -81,13 +81,13 @@ def _proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool
     return (o1 > EPSILON) != (o2 > EPSILON) and (o3 > EPSILON) != (o4 > EPSILON)
 
 
-def _segment_sample_class(query: Point, target: Point, polygon: list[Point], from_inside: bool) -> bool:
-    midpoint = Point((query.x + target.x) / 2.0, (query.y + target.y) / 2.0)
+def _segment_sample_class(query: Point2D, target: Point2D, polygon: list[Point2D], from_inside: bool) -> bool:
+    midpoint = Point2D((query.x + target.x) / 2.0, (query.y + target.y) / 2.0)
     midpoint_inside = is_point_in_polygon(midpoint, polygon)
     return midpoint_inside if from_inside else not midpoint_inside
 
 
-def is_boundary_point_visible(query: Point, target: Point, polygon: list[Point]) -> bool:
+def is_boundary_point_visible(query: Point2D, target: Point2D, polygon: list[Point2D]) -> bool:
     from_inside = is_point_in_polygon(query, polygon)
     hit_boundary = False
 
@@ -113,7 +113,7 @@ def is_boundary_point_visible(query: Point, target: Point, polygon: list[Point])
     return hit_boundary and _segment_sample_class(query, target, polygon, from_inside)
 
 
-def _ray_hits_edge_parameter(query: Point, through: Point, edge_start: Point, edge_end: Point) -> float | None:
+def _ray_hits_edge_parameter(query: Point2D, through: Point2D, edge_start: Point2D, edge_end: Point2D) -> float | None:
     direction = _sub(through, query)
     if abs(direction.x) <= EPSILON and abs(direction.y) <= EPSILON:
         return None
@@ -142,8 +142,8 @@ def _dedupe_parameters(values: list[float]) -> list[float]:
     return deduped
 
 
-def visible_boundary_segments(query: Point, polygon: list[Point]) -> list[tuple[Point, Point]]:
-    segments: list[tuple[Point, Point]] = []
+def visible_boundary_segments(query: Point2D, polygon: list[Point2D]) -> list[tuple[Point2D, Point2D]]:
+    segments: list[tuple[Point2D, Point2D]] = []
 
     for edge_index, start in enumerate(polygon):
         end = polygon[(edge_index + 1) % len(polygon)]
@@ -162,15 +162,15 @@ def visible_boundary_segments(query: Point, polygon: list[Point]) -> list[tuple[
                 continue
 
             midpoint_param = (left + right) / 2.0
-            midpoint = Point(
+            midpoint = Point2D(
                 start.x + midpoint_param * edge_vector.x,
                 start.y + midpoint_param * edge_vector.y,
             )
             if not is_boundary_point_visible(query, midpoint, polygon):
                 continue
 
-            left_point = Point(start.x + left * edge_vector.x, start.y + left * edge_vector.y)
-            right_point = Point(start.x + right * edge_vector.x, start.y + right * edge_vector.y)
+            left_point = Point2D(start.x + left * edge_vector.x, start.y + left * edge_vector.y)
+            right_point = Point2D(start.x + right * edge_vector.x, start.y + right * edge_vector.y)
             if math.hypot(right_point.x - left_point.x, right_point.y - left_point.y) <= 1e-7:
                 continue
             segments.append((left_point, right_point))
@@ -178,11 +178,11 @@ def visible_boundary_segments(query: Point, polygon: list[Point]) -> list[tuple[
     return _merge_adjacent_segments(segments)
 
 
-def _merge_adjacent_segments(segments: list[tuple[Point, Point]]) -> list[tuple[Point, Point]]:
+def _merge_adjacent_segments(segments: list[tuple[Point2D, Point2D]]) -> list[tuple[Point2D, Point2D]]:
     if not segments:
         return []
 
-    merged: list[tuple[Point, Point]] = []
+    merged: list[tuple[Point2D, Point2D]] = []
     for start, end in segments:
         if not merged:
             merged.append((start, end))
@@ -199,21 +199,21 @@ def _merge_adjacent_segments(segments: list[tuple[Point, Point]]) -> list[tuple[
     return merged
 
 
-def format_point(point: Point) -> str:
+def format_point(point: Point2D) -> str:
     return f"({point.x:.6f}, {point.y:.6f})"
 
 
 def main() -> int:
-    query = Point(1.0, 2.5)
+    query = Point2D(1.0, 2.5)
     polygon = [
-        Point(0.0, 0.0),
-        Point(5.0, 0.0),
-        Point(5.0, 1.0),
-        Point(2.0, 1.0),
-        Point(2.0, 4.0),
-        Point(5.0, 4.0),
-        Point(5.0, 5.0),
-        Point(0.0, 5.0),
+        Point2D(0.0, 0.0),
+        Point2D(5.0, 0.0),
+        Point2D(5.0, 1.0),
+        Point2D(2.0, 1.0),
+        Point2D(2.0, 4.0),
+        Point2D(5.0, 4.0),
+        Point2D(5.0, 5.0),
+        Point2D(0.0, 5.0),
     ]
 
     segments = visible_boundary_segments(query, polygon)

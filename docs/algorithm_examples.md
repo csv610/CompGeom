@@ -7,12 +7,12 @@ This guide collects complete Python examples for the algorithms called out in th
 ### Geometric predicates
 
 ```python
-from compgeom import Point, incircle_sign, orientation_sign
+from compgeom import Point2D, incircle_sign, orientation_sign
 
-a = Point(0.0, 0.0)
-b = Point(2.0, 0.0)
-c = Point(0.0, 2.0)
-p = Point(0.5, 0.5)
+a = Point2D(0.0, 0.0)
+b = Point2D(2.0, 0.0)
+c = Point2D(0.0, 2.0)
+p = Point2D(0.5, 0.5)
 
 turn = orientation_sign(a, b, c)
 inside = incircle_sign(a, b, c, p)
@@ -24,13 +24,13 @@ print(inside)  # 1 means inside the circumcircle
 ### Minimum enclosing shapes
 
 ```python
-from compgeom import Point, minimum_bounding_box, minimum_enclosing_circle
+from compgeom import Point2D, minimum_bounding_box, minimum_enclosing_circle
 
 points = [
-    Point(0, 1),
-    Point(1, 0),
-    Point(0, -1),
-    Point(-1, 0),
+    Point2D(0, 1),
+    Point2D(1, 0),
+    Point2D(0, -1),
+    Point2D(-1, 0),
 ]
 
 center, radius = minimum_enclosing_circle(points)
@@ -45,13 +45,13 @@ print(box["width"], box["height"], box["area"])
 ### Polygon properties and diameter
 
 ```python
-from compgeom import Point, get_convex_diameter, get_polygon_properties
+from compgeom import Point2D, get_convex_diameter, get_polygon_properties
 
 polygon = [
-    Point(0, 0),
-    Point(4, 0),
-    Point(4, 3),
-    Point(0, 3),
+    Point2D(0, 0),
+    Point2D(4, 0),
+    Point2D(4, 3),
+    Point2D(0, 3),
 ]
 
 area, centroid, is_clockwise = get_polygon_properties(polygon)
@@ -66,19 +66,19 @@ print(diameter)
 ### Point in polygon and visibility polygon
 
 ```python
-from compgeom import Point, is_point_in_polygon, visibility_polygon
+from compgeom import Point2D, is_point_in_polygon, visibility_polygon
 
 polygon = [
-    Point(0, 0),
-    Point(5, 0),
-    Point(5, 1),
-    Point(2, 1),
-    Point(2, 4),
-    Point(5, 4),
-    Point(5, 5),
-    Point(0, 5),
+    Point2D(0, 0),
+    Point2D(5, 0),
+    Point2D(5, 1),
+    Point2D(2, 1),
+    Point2D(2, 4),
+    Point2D(5, 4),
+    Point2D(5, 5),
+    Point2D(0, 5),
 ]
-query = Point(1, 2.5)
+query = Point2D(1, 2.5)
 
 print(is_point_in_polygon(query, polygon))
 
@@ -90,15 +90,15 @@ for vertex in visible:
 ### Convex hull: Graham scan and monotone chain
 
 ```python
-from compgeom import Point, graham_scan, monotone_chain
+from compgeom import Point2D, graham_scan, monotone_chain
 
 points = [
-    Point(0, 0),
-    Point(2, 0),
-    Point(1, 1),
-    Point(2, 2),
-    Point(0, 2),
-    Point(1, 0.5),
+    Point2D(0, 0),
+    Point2D(2, 0),
+    Point2D(1, 1),
+    Point2D(2, 2),
+    Point2D(0, 2),
+    Point2D(1, 0.5),
 ]
 
 hull_a = graham_scan(points)
@@ -122,11 +122,11 @@ from compgeom import (
 
 # Orthogonal range query on sampled geometry points.
 points = [
-    Point(0, 0),
-    Point(2, 1),
-    Point(3, 4),
-    Point(5, 2),
-    Point(6, 5),
+    Point2D(0, 0),
+    Point2D(2, 1),
+    Point2D(3, 4),
+    Point2D(5, 2),
+    Point2D(6, 5),
 ]
 
 root = build_kdtree(points)
@@ -178,14 +178,14 @@ print(len(resampled), len(smoothed))
 ### Concave part identification and convex decomposition
 
 ```python
-from compgeom import Point, ConvexDecomposer, get_reflex_vertices, hertel_mehlhorn
+from compgeom import Point2D, ConvexDecomposer, get_reflex_vertices, hertel_mehlhorn
 
 polygon = [
-    Point(0, 0),
-    Point(6, 0),
-    Point(6, 5),
-    Point(3, 2),
-    Point(0, 5),
+    Point2D(0, 0),
+    Point2D(6, 0),
+    Point2D(6, 5),
+    Point2D(3, 2),
+    Point2D(0, 5),
 ]
 
 reflex_vertices = get_reflex_vertices(polygon)
@@ -199,14 +199,14 @@ print(len(pieces_a), len(pieces_b))
 ### Art gallery problem
 
 ```python
-from compgeom import Point, solve_art_gallery
+from compgeom import Point2D, solve_art_gallery
 
 polygon = [
-    Point(0, 0),
-    Point(6, 0),
-    Point(6, 5),
-    Point(3, 2),
-    Point(0, 5),
+    Point2D(0, 0),
+    Point2D(6, 0),
+    Point2D(6, 5),
+    Point2D(3, 2),
+    Point2D(0, 5),
 ]
 
 guards = solve_art_gallery(polygon)
@@ -216,19 +216,19 @@ print(guards)
 ### Polygon triangulation with holes
 
 ```python
-from compgeom import Point, triangulate_polygon_with_holes
+from compgeom import Point2D, triangulate_polygon_with_holes
 
 outer = [
-    Point(0, 0),
-    Point(6, 0),
-    Point(6, 6),
-    Point(0, 6),
+    Point2D(0, 0),
+    Point2D(6, 0),
+    Point2D(6, 6),
+    Point2D(0, 6),
 ]
 holes = [[
-    Point(2, 2),
-    Point(4, 2),
-    Point(4, 4),
-    Point(2, 4),
+    Point2D(2, 2),
+    Point2D(4, 2),
+    Point2D(4, 4),
+    Point2D(2, 4),
 ]]
 
 triangles, merged_boundary = triangulate_polygon_with_holes(outer, holes)
@@ -240,17 +240,17 @@ print(len(merged_boundary))
 ### Shortest path inside a polygon
 
 ```python
-from compgeom import Point, shortest_path_in_polygon
+from compgeom import Point2D, shortest_path_in_polygon
 
 polygon = [
-    Point(0, 0),
-    Point(4, 0),
-    Point(4, 4),
-    Point(2, 2),
-    Point(0, 4),
+    Point2D(0, 0),
+    Point2D(4, 0),
+    Point2D(4, 4),
+    Point2D(2, 2),
+    Point2D(0, 4),
 ]
 
-path, length = shortest_path_in_polygon(polygon, Point(1, 3), Point(3, 3))
+path, length = shortest_path_in_polygon(polygon, Point2D(1, 3), Point2D(3, 3))
 
 print(path)
 print(length)
@@ -259,13 +259,13 @@ print(length)
 ### Circle packing
 
 ```python
-from compgeom import CirclePacker, Point
+from compgeom import CirclePacker, Point2D
 
 polygon = [
-    Point(0, 0),
-    Point(10, 0),
-    Point(10, 6),
-    Point(0, 6),
+    Point2D(0, 0),
+    Point2D(10, 0),
+    Point2D(10, 6),
+    Point2D(0, 6),
 ]
 
 centers = CirclePacker.pack(polygon, radius=0.75)
@@ -278,13 +278,13 @@ print(round(efficiency, 2))
 ### Distance maps
 
 ```python
-from compgeom import DistanceMapSolver, Point
+from compgeom import DistanceMapSolver, Point2D
 
 polygon = [
-    Point(0, 0),
-    Point(4, 0),
-    Point(4, 3),
-    Point(0, 3),
+    Point2D(0, 0),
+    Point2D(4, 0),
+    Point2D(4, 3),
+    Point2D(0, 3),
 ]
 
 grid, extent = DistanceMapSolver.solve(polygon, resolution=30)
@@ -298,13 +298,13 @@ print(svg[:80])
 ### Medial axis approximation
 
 ```python
-from compgeom import Point, approximate_medial_axis
+from compgeom import Point2D, approximate_medial_axis
 
 polygon = [
-    Point(0, 0),
-    Point(2, 0),
-    Point(2, 2),
-    Point(0, 2),
+    Point2D(0, 0),
+    Point2D(2, 0),
+    Point2D(2, 2),
+    Point2D(0, 2),
 ]
 
 medial_axis = approximate_medial_axis(polygon, resolution=0.5)
@@ -317,21 +317,21 @@ print(len(medial_axis["segments"]))
 ### Planar subdivision with a DCEL
 
 ```python
-from compgeom import Point, build_polygon_dcel, locate_face
+from compgeom import Point2D, build_polygon_dcel, locate_face
 
 dcel = build_polygon_dcel(
-    [Point(0, 0), Point(6, 0), Point(6, 6), Point(0, 6)],
+    [Point2D(0, 0), Point2D(6, 0), Point2D(6, 6), Point2D(0, 6)],
     holes=[[
-        Point(2, 2),
-        Point(4, 2),
-        Point(4, 4),
-        Point(2, 4),
+        Point2D(2, 2),
+        Point2D(4, 2),
+        Point2D(4, 4),
+        Point2D(2, 4),
     ]],
 )
 
-inside = locate_face(dcel, Point(1, 1))
-hole = locate_face(dcel, Point(3, 3))
-outside = locate_face(dcel, Point(7, 1))
+inside = locate_face(dcel, Point2D(1, 1))
+hole = locate_face(dcel, Point2D(3, 3))
+outside = locate_face(dcel, Point2D(7, 1))
 
 print(len(dcel.vertices), len(dcel.half_edges), len(dcel.faces))
 print(inside.is_exterior, hole.is_exterior, outside.is_exterior)
@@ -342,13 +342,13 @@ print(inside.is_exterior, hole.is_exterior, outside.is_exterior)
 ### Mesh topology and adjacency queries
 
 ```python
-from compgeom import Point, TriangleMesh
+from compgeom import Point2D, TriangleMesh
 
 vertices = [
-    Point(0, 0, 0),
-    Point(1, 0, 1),
-    Point(0, 1, 2),
-    Point(1, 1, 3),
+    Point2D(0, 0, 0),
+    Point2D(1, 0, 1),
+    Point2D(0, 1, 2),
+    Point2D(1, 1, 3),
 ]
 faces = [(0, 1, 2), (1, 3, 2)]
 
@@ -362,11 +362,11 @@ print(mesh.topology.boundary_edges())
 ### Euler characteristic and standalone mesh-neighbor helpers
 
 ```python
-from compgeom import Point, euler_characteristic, mesh_neighbors
+from compgeom import Point2D, euler_characteristic, mesh_neighbors
 
 triangles = [
-    (Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2)),
-    (Point(1, 0, 1), Point(1, 1, 3), Point(0, 1, 2)),
+    (Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2)),
+    (Point2D(1, 0, 1), Point2D(1, 1, 3), Point2D(0, 1, 2)),
 ]
 
 neighbors = mesh_neighbors(triangles)
@@ -380,10 +380,10 @@ print(chi)
 ### Mesh refinement
 
 ```python
-from compgeom import Point, TriMeshRefiner, TriangleMesh
+from compgeom import Point2D, TriMeshRefiner, TriangleMesh
 
 mesh = TriangleMesh(
-    [Point(0, 0, 0), Point(2, 0, 1), Point(0, 2, 2)],
+    [Point2D(0, 0, 0), Point2D(2, 0, 1), Point2D(0, 2, 2)],
     [(0, 1, 2)],
 )
 
@@ -397,14 +397,14 @@ print(len(uniform.vertices), len(uniform.faces))
 ### Mesh reordering
 
 ```python
-from compgeom import CuthillMcKee, Point, TriangleMesh
+from compgeom import CuthillMcKee, Point2D, TriangleMesh
 
 mesh = TriangleMesh(
     [
-        Point(0, 0, 0),
-        Point(1, 0, 1),
-        Point(0, 1, 2),
-        Point(1, 1, 3),
+        Point2D(0, 0, 0),
+        Point2D(1, 0, 1),
+        Point2D(0, 1, 2),
+        Point2D(1, 1, 3),
     ],
     [(0, 1, 2), (1, 3, 2)],
 )
@@ -419,14 +419,14 @@ print(mesh.faces)
 ### Mesh coloring
 
 ```python
-from compgeom import MeshColoring, Point, TriangleMesh
+from compgeom import MeshColoring, Point2D, TriangleMesh
 
 mesh = TriangleMesh(
     [
-        Point(0, 0, 0),
-        Point(1, 0, 1),
-        Point(0, 1, 2),
-        Point(1, 1, 3),
+        Point2D(0, 0, 0),
+        Point2D(1, 0, 1),
+        Point2D(0, 1, 2),
+        Point2D(1, 1, 3),
     ],
     [(0, 1, 2), (1, 3, 2)],
 )
@@ -441,10 +441,10 @@ print(element_colors)
 ### Triangle-to-quad conversion
 
 ```python
-from compgeom import Point, TriangleMesh, TriangleToQuadConverter
+from compgeom import Point2D, TriangleMesh, TriangleToQuadConverter
 
 mesh = TriangleMesh(
-    [Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2)],
+    [Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2)],
     [(0, 1, 2)],
 )
 
@@ -457,24 +457,24 @@ print(quad_mesh.elements)
 ### Mesh topology transfer
 
 ```python
-from compgeom import MeshTransfer, Point, TriangleMesh
+from compgeom import MeshTransfer, Point2D, TriangleMesh
 
 source = TriangleMesh(
     [
-        Point(0, 0, 0),
-        Point(1, 0, 1),
-        Point(1, 1, 2),
-        Point(0, 1, 3),
+        Point2D(0, 0, 0),
+        Point2D(1, 0, 1),
+        Point2D(1, 1, 2),
+        Point2D(0, 1, 3),
     ],
     [(0, 1, 2), (0, 2, 3)],
 )
 
 target_boundary = [
-    Point(0, 0),
-    Point(2, 0),
-    Point(2, 1),
-    Point(1, 2),
-    Point(0, 1),
+    Point2D(0, 0),
+    Point2D(2, 0),
+    Point2D(2, 1),
+    Point2D(1, 2),
+    Point2D(0, 1),
 ]
 
 transferred = MeshTransfer.transfer(source, target_boundary)
@@ -495,10 +495,10 @@ from compgeom import (
 )
 
 points = [
-    Point(0, 0, 0),
-    Point(1, 0, 1),
-    Point(0, 1, 2),
-    Point(1, 1, 3),
+    Point2D(0, 0, 0),
+    Point2D(1, 0, 1),
+    Point2D(0, 1, 2),
+    Point2D(1, 1, 3),
 ]
 
 triangles, skipped = triangulate(points)
@@ -506,7 +506,7 @@ cdt_triangles, constrained_edges = constrained_delaunay_triangulation(
     get_square_boundary(size=4, center=(2, 2))
 )
 voronoi = get_voronoi_cells(
-    [Point(1, 1), Point(3, 1), Point(2, 3)],
+    [Point2D(1, 1), Point2D(3, 1), Point2D(2, 3)],
     get_square_boundary(size=4, center=(2, 2)),
 )
 
@@ -518,12 +518,12 @@ print(len(voronoi))
 ### Dynamic Delaunay insertion
 
 ```python
-from compgeom import DynamicDelaunay, Point
+from compgeom import DynamicDelaunay, Point2D
 
 triangulation = DynamicDelaunay(width=10, height=10)
-triangulation.add_point(Point(2, 2, 0))
-triangulation.add_point(Point(8, 2, 1))
-triangulation.add_point(Point(5, 8, 2))
+triangulation.add_point(Point2D(2, 2, 0))
+triangulation.add_point(Point2D(8, 2, 1))
+triangulation.add_point(Point2D(5, 8, 2))
 
 print(len(triangulation.get_triangles()))
 ```
@@ -531,14 +531,14 @@ print(len(triangulation.get_triangles()))
 ### Shortest path on a triangle mesh
 
 ```python
-from compgeom import Point, shortest_path
+from compgeom import Point2D, shortest_path
 
 triangles = [
-    (Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2)),
-    (Point(1, 0, 1), Point(1, 1, 3), Point(0, 1, 2)),
+    (Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2)),
+    (Point2D(1, 0, 1), Point2D(1, 1, 3), Point2D(0, 1, 2)),
 ]
 
-path, length = shortest_path(triangles, Point(0, 0, 0), Point(1, 1, 3), mode="edges")
+path, length = shortest_path(triangles, Point2D(0, 0, 0), Point2D(1, 1, 3), mode="edges")
 
 print(path)
 print(length)
@@ -549,11 +549,11 @@ print(length)
 ### Point sampling
 
 ```python
-from compgeom import Point, Point3D, PointSampler
+from compgeom import Point2D, Point3D, PointSampler
 
-disk = PointSampler.in_circle(Point(0, 0), radius=2.0, n_points=5)
+disk = PointSampler.in_circle(Point2D(0, 0), radius=2.0, n_points=5)
 rectangle = PointSampler.in_rectangle(width=4.0, height=2.0, n_points=5)
-triangle = PointSampler.in_triangle(Point(0, 0), Point(2, 0), Point(0, 2), n_points=5)
+triangle = PointSampler.in_triangle(Point2D(0, 0), Point2D(2, 0), Point2D(0, 2), n_points=5)
 cube = PointSampler.in_cube(side_length=2.0, n_points=5, center=Point3D(0, 0, 0))
 sphere = PointSampler.on_sphere(Point3D(0, 0, 0), radius=1.0, n_points=5)
 
@@ -567,9 +567,9 @@ print(sphere)
 ### Point simplification
 
 ```python
-from compgeom import Point, PointSimplifier
+from compgeom import Point2D, PointSimplifier
 
-points = [Point(x / 10.0, y / 10.0, id=10 * x + y) for x in range(10) for y in range(10)]
+points = [Point2D(x / 10.0, y / 10.0, id=10 * x + y) for x in range(10) for y in range(10)]
 simplified = PointSimplifier.simplify(points, ratio=0.15, protected_ids={0, 99})
 
 print(len(points), len(simplified))
@@ -580,13 +580,13 @@ print(any(point.id == 99 for point in simplified))
 ### Quadtrees and KD-trees
 
 ```python
-from compgeom import Point, PointQuadtree, build_kdtree
+from compgeom import Point2D, PointQuadtree, build_kdtree
 
 points = [
-    Point(0, 0),
-    Point(2, 1),
-    Point(-1, 3),
-    Point(3, -2),
+    Point2D(0, 0),
+    Point2D(2, 1),
+    Point2D(-1, 3),
+    Point2D(3, -2),
 ]
 
 quadtree = PointQuadtree()
@@ -610,14 +610,14 @@ from compgeom import (
     minkowski_sum,
 )
 
-points = [Point(0, 0), Point(1, 0), Point(2, 0), Point(1, 2)]
+points = [Point2D(0, 0), Point2D(1, 0), Point2D(2, 0), Point2D(1, 2)]
 
 distance, pair = closest_pair(points)
 farthest = farthest_pair(points)
-intersects = do_intersect(Point(0, 0), Point(2, 2), Point(0, 2), Point(2, 0))
+intersects = do_intersect(Point2D(0, 0), Point2D(2, 2), Point2D(0, 2), Point2D(2, 0))
 sum_polygon = minkowski_sum(
-    [Point(0, 0), Point(1, 0), Point(0, 1)],
-    [Point(0, 0), Point(2, 0), Point(0, 2)],
+    [Point2D(0, 0), Point2D(1, 0), Point2D(0, 1)],
+    [Point2D(0, 0), Point2D(2, 0), Point2D(0, 2)],
 )
 
 print(distance, pair)
@@ -629,12 +629,12 @@ print(sum_polygon)
 ### Davenport-Schinzel lower envelope
 
 ```python
-from compgeom import DavenportSchinzel, Point
+from compgeom import DavenportSchinzel, Point2D
 
 segments = [
-    (Point(0, 4), Point(4, 0)),
-    (Point(0, 2), Point(4, 2)),
-    (Point(0, 0), Point(4, 4)),
+    (Point2D(0, 4), Point2D(4, 0)),
+    (Point2D(0, 2), Point2D(4, 2)),
+    (Point2D(0, 0), Point2D(4, 4)),
 ]
 
 envelope = DavenportSchinzel.lower_envelope_segments(segments)

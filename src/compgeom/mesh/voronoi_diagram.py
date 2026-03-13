@@ -1,3 +1,3 @@
-"""Proxy for polymesh/voronoi_diagram.py to maintain backward compatibility."""
+"""Backward-compatible exports for Voronoi diagram utilities."""
 
-from .polymesh.voronoi_diagram import *
+from .polymesh.voronoi_diagram import *  # noqa: F401,F403

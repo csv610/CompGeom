@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from compgeom import EPSILON, Point, length, sub
+from compgeom import EPSILON, Point2D, length, sub
 from compgeom import is_point_in_polygon
 from compgeom.cli._shared import demo_polygon
 from compgeom.cli.line_arrangement_cli import analyze_arrangement
@@ -23,7 +23,7 @@ def centroid(polygon):
     if abs(area) <= EPSILON:
         x = sum(point.x for point in polygon) / len(polygon)
         y = sum(point.y for point in polygon) / len(polygon)
-        return Point(x, y)
+        return Point2D(x, y)
 
     scale = 1.0 / (6.0 * area)
     cx = 0.0
@@ -33,7 +33,7 @@ def centroid(polygon):
         cross = p1.x * p2.y - p2.x * p1.y
         cx += (p1.x + p2.x) * cross
         cy += (p1.y + p2.y) * cross
-    return Point(cx * scale, cy * scale)
+    return Point2D(cx * scale, cy * scale)
 
 
 def representative_point(polygon):
@@ -43,18 +43,18 @@ def representative_point(polygon):
 
     p0 = polygon[0]
     p1 = polygon[1]
-    midpoint = Point((p0.x + p1.x) / 2.0, (p0.y + p1.y) / 2.0)
+    midpoint = Point2D((p0.x + p1.x) / 2.0, (p0.y + p1.y) / 2.0)
     edge = sub(p1, p0)
     edge_length = length(edge)
     if edge_length <= EPSILON:
         return midpoint
 
-    inward = Point(-edge.y / edge_length, edge.x / edge_length)
+    inward = Point2D(-edge.y / edge_length, edge.x / edge_length)
     offset = max(edge_length * 1e-6, 1e-6)
-    probe = Point(midpoint.x + inward.x * offset, midpoint.y + inward.y * offset)
+    probe = Point2D(midpoint.x + inward.x * offset, midpoint.y + inward.y * offset)
     if is_point_in_polygon(probe, polygon):
         return probe
-    return Point(midpoint.x - inward.x * offset, midpoint.y - inward.y * offset)
+    return Point2D(midpoint.x - inward.x * offset, midpoint.y - inward.y * offset)
 
 
 def polygon_edges(polygon):
@@ -86,7 +86,7 @@ def segment_intersection_points(seg1, seg2):
         t = (ac.x * cd.y - ac.y * cd.x) / denominator
         u = (ac.x * ab.y - ac.y * ab.x) / denominator
         if -EPSILON <= t <= 1 + EPSILON and -EPSILON <= u <= 1 + EPSILON:
-            return [Point(a.x + t * ab.x, a.y + t * ab.y)]
+            return [Point2D(a.x + t * ab.x, a.y + t * ab.y)]
         return []
 
     if abs((c.x - a.x) * ab.y - (c.y - a.y) * ab.x) > EPSILON:
@@ -216,7 +216,7 @@ def handle_no_intersection_case(operation, poly1, poly2):
 
 def segment_midpoint(segment):
     start, end = segment
-    return Point((start.x + end.x) / 2.0, (start.y + end.y) / 2.0)
+    return Point2D((start.x + end.x) / 2.0, (start.y + end.y) / 2.0)
 
 
 def segment_angle(start, end):
@@ -347,7 +347,7 @@ def parse_polygon(lines, start_index):
     polygon = []
     for _ in range(count):
         x_str, y_str = lines[start_index].split()[:2]
-        polygon.append(Point(float(x_str), float(y_str)))
+        polygon.append(Point2D(float(x_str), float(y_str)))
         start_index += 1
     return polygon, start_index
 
@@ -359,7 +359,7 @@ def format_point(point):
 def main() -> int:
     operation = "union"
     poly1 = demo_polygon()[:4]
-    poly2 = [Point(point.x + 1.5, point.y + 0.5) for point in demo_polygon()[2:6]]
+    poly2 = [Point2D(point.x + 1.5, point.y + 0.5) for point in demo_polygon()[2:6]]
     try:
         result = apply_boolean_operation(poly1, poly2, operation)
     except (ValueError, IndexError):

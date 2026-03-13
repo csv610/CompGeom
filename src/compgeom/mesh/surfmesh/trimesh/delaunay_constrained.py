@@ -1,18 +1,18 @@
 """Constrained Delaunay Triangulation (CDT)."""
 
 from __future__ import annotations
-from ....kernel import EPSILON, Point, incircle_sign, is_on_segment, orientation_sign
+from ....kernel import EPSILON, Point2D, incircle_sign, is_on_segment, orientation_sign
 
 
-def _point_key(point: Point):
+def _point_key(point: Point2D):
     return (round(point.x / EPSILON), round(point.y / EPSILON), point.id)
 
 
-def _edge_key(a: Point, b: Point):
+def _edge_key(a: Point2D, b: Point2D):
     return tuple(sorted((_point_key(a), _point_key(b))))
 
 
-def _make_ccw_triangle(a: Point, b: Point, c: Point):
+def _make_ccw_triangle(a: Point2D, b: Point2D, c: Point2D):
     return (a, b, c) if orientation_sign(a, b, c) >= 0 else (a, c, b)
 
 
@@ -33,7 +33,7 @@ def _quadrilateral_for_edge(first, second, shared_edge_key):
     return a, b, first_opposite, second_opposite
 
 
-def _should_flip_constrained_edge(a: Point, b: Point, c: Point, d: Point) -> bool:
+def _should_flip_constrained_edge(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
     if orientation_sign(c, a, d) == 0 or orientation_sign(c, d, b) == 0:
         return False
     if orientation_sign(c, a, b) == 0 or orientation_sign(d, a, b) == 0:
@@ -47,11 +47,11 @@ def _should_flip_constrained_edge(a: Point, b: Point, c: Point, d: Point) -> boo
     return incircle_sign(c, a, d, b) > 0 or incircle_sign(c, d, b, a) > 0
 
 
-def _point_on_boundary(point: Point, boundary: list[Point]) -> bool:
+def _point_on_boundary(point: Point2D, boundary: list[Point2D]) -> bool:
     return any(is_on_segment(point, boundary[index], boundary[(index + 1) % len(boundary)]) for index in range(len(boundary)))
 
 
-def _proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool:
+def _proper_segment_intersection(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
     o1 = orientation_sign(a, b, c)
     o2 = orientation_sign(a, b, d)
     o3 = orientation_sign(c, d, a)
@@ -68,7 +68,7 @@ def _proper_segment_intersection(a: Point, b: Point, c: Point, d: Point) -> bool
     return o1 != o2 and o3 != o4
 
 
-def _point_in_domain(point: Point, outer_boundary: list[Point], holes: list[list[Point]]) -> bool:
+def _point_in_domain(point: Point2D, outer_boundary: list[Point2D], holes: list[list[Point2D]]) -> bool:
     from ....polygon.polygon import is_point_in_polygon
     if not is_point_in_polygon(point, outer_boundary):
         return False
@@ -79,13 +79,13 @@ def _point_in_domain(point: Point, outer_boundary: list[Point], holes: list[list
 
 
 def _segment_valid_in_domain(
-    start: Point,
-    end: Point,
-    outer_boundary: list[Point],
-    holes: list[list[Point]],
+    start: Point2D,
+    end: Point2D,
+    outer_boundary: list[Point2D],
+    holes: list[list[Point2D]],
     constrained_segments: set,
 ) -> bool:
-    midpoint = Point((start.x + end.x) / 2.0, (start.y + end.y) / 2.0)
+    midpoint = Point2D((start.x + end.x) / 2.0, (start.y + end.y) / 2.0)
     if not _point_in_domain(midpoint, outer_boundary, holes):
         return False
 
@@ -99,7 +99,7 @@ def _segment_valid_in_domain(
     return True
 
 
-def constrained_delaunay_triangulation(outer_boundary: list[Point], holes: list[list[Point]] | None = None):
+def constrained_delaunay_triangulation(outer_boundary: list[Point2D], holes: list[list[Point2D]] | None = None):
     from ....polygon.polygon import triangulate_polygon_with_holes
     holes = holes or []
     triangles, merged_polygon = triangulate_polygon_with_holes(outer_boundary, holes)

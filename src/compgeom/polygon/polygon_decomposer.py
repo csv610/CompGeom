@@ -6,7 +6,7 @@ from collections import Counter
 from typing import List
 from .polygon import Polygon
 
-from ..kernel import EPSILON, Point, contains_point, cross_product, is_on_segment
+from ..kernel import EPSILON, Point2D, contains_point, cross_product, is_on_segment
 from ..kernel import distance
 from ..mesh.mesh import PolygonMesh
 from .line_segment import proper_segment_intersection
@@ -29,48 +29,48 @@ class PolygonDecomposer:
         ]
 
     @staticmethod
-    def triangulate(polygon: List[Point]) -> PolygonMesh:
+    def triangulate(polygon: List[Point2D]) -> PolygonMesh:
         """Triangulates a simple polygon and returns the result as a polygon mesh."""
         triangle_indices, _, vertices = _ear_clip(polygon)
         return PolygonMesh(vertices, triangle_indices)
 
     @staticmethod
-    def ear_clip_triangulation(polygon: List[Point]) -> PolygonMesh:
+    def ear_clip_triangulation(polygon: List[Point2D]) -> PolygonMesh:
         """Alias for triangulate."""
         return PolygonDecomposer.triangulate(polygon)
 
     @staticmethod
     def triangulate_indices(
-        polygon: List[Point],
-    ) -> tuple[list[tuple[int, int, int]], list[Point]]:
+        polygon: List[Point2D],
+    ) -> tuple[list[tuple[int, int, int]], list[Point2D]]:
         """Triangulates a polygon and returns indices and vertices separately."""
         triangle_indices, _, vertices = _ear_clip(polygon)
         return triangle_indices, vertices
 
     @staticmethod
-    def triangulation_with_diagonals(polygon: List[Point]) -> tuple[PolygonMesh, list[tuple[int, int]]]:
+    def triangulation_with_diagonals(polygon: List[Point2D]) -> tuple[PolygonMesh, list[tuple[int, int]]]:
         """Triangulates a polygon and returns the result as a polygon mesh and a list of diagonals."""
         triangle_indices, diagonals, vertices = _triangulation_with_diagonals(polygon)
         return PolygonMesh(vertices, triangle_indices), diagonals
 
     @staticmethod
     def triangulation_with_diagonals_indices(
-        polygon: List[Point],
-    ) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point]]:
+        polygon: List[Point2D],
+    ) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point2D]]:
         """Triangulates a polygon and returns triangles, diagonals, and vertices indices."""
         return _triangulation_with_diagonals(polygon)
 
     @staticmethod
     def triangulate_with_holes(
-        outer_boundary: List[Point],
-        holes: List[List[Point]] | None = None,
+        outer_boundary: List[Point2D],
+        holes: List[List[Point2D]] | None = None,
     ) -> PolygonMesh:
         """Triangulates a polygonal domain with holes and returns a polygon mesh."""
         triangles, _ = _triangulate_with_holes(outer_boundary, holes)
         return _mesh_from_point_faces(list(triangles))
 
     @staticmethod
-    def convex_decomposition(polygon: List[Point]) -> PolygonMesh:
+    def convex_decomposition(polygon: List[Point2D]) -> PolygonMesh:
         """Decomposes a simple polygon into convex parts and returns a polygon mesh."""
         if len(polygon) < 3:
             return PolygonMesh(list(polygon), [])
@@ -81,13 +81,13 @@ class PolygonDecomposer:
 
     @staticmethod
     def convex_decomposition_indices(
-        polygon: List[Point],
-    ) -> tuple[list[list[int]], list[Point]]:
+        polygon: List[Point2D],
+    ) -> tuple[list[list[int]], list[Point2D]]:
         """Decomposes a simple polygon into convex parts and returns indices and vertices separately."""
         return _hertel_mehlhorn(polygon)
 
     @staticmethod
-    def monotone_decomposition(polygon: List[Point]) -> PolygonMesh:
+    def monotone_decomposition(polygon: List[Point2D]) -> PolygonMesh:
         """Decomposes a simple polygon into y-monotone parts and returns a polygon mesh."""
         if len(polygon) < 3:
             return PolygonMesh(list(polygon), [])
@@ -96,7 +96,7 @@ class PolygonDecomposer:
         return PolygonMesh(vertices, _monotone_partitions(triangles, vertices))
 
     @staticmethod
-    def trapezoidal_decomposition(polygon: List[Point]) -> PolygonMesh:
+    def trapezoidal_decomposition(polygon: List[Point2D]) -> PolygonMesh:
         """Decomposes a simple polygon into vertical trapezoidal cells and returns a polygon mesh."""
         if len(polygon) < 3:
             return PolygonMesh(list(polygon), [])
@@ -105,7 +105,7 @@ class PolygonDecomposer:
         return _mesh_from_point_faces(_trapezoidal_faces(Polygon(polygon).ensure_ccw().as_list()))
 
     @staticmethod
-    def visibility_decomposition(polygon: List[Point]) -> PolygonMesh:
+    def visibility_decomposition(polygon: List[Point2D]) -> PolygonMesh:
         """Decomposes a simple polygon using non-crossing reflex-visibility diagonals and returns a mesh."""
         if len(polygon) < 3:
             return PolygonMesh(list(polygon), [])
@@ -115,11 +115,11 @@ class PolygonDecomposer:
 
 
 class _TriangleView:
-    def __init__(self, v1: Point, v2: Point, v3: Point):
+    def __init__(self, v1: Point2D, v2: Point2D, v3: Point2D):
         self.vertices = (v1, v2, v3)
 
 
-def _is_ear(a: Point, b: Point, c: Point, polygon: list[Point]) -> bool:
+def _is_ear(a: Point2D, b: Point2D, c: Point2D, polygon: list[Point2D]) -> bool:
     if cross_product(a, b, c) <= 0:
         return False
 
@@ -132,10 +132,10 @@ def _is_ear(a: Point, b: Point, c: Point, polygon: list[Point]) -> bool:
 
 
 def _ear_clip(
-    polygon: list[Point],
+    polygon: list[Point2D],
     *,
     collect_diagonals: bool = False,
-) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point]]:
+) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point2D]]:
     ordered = ensure_ccw(list(polygon))
     polygon_size = len(ordered)
     working_polygon = list(ordered)
@@ -169,9 +169,9 @@ def _ear_clip(
 
 
 def _triangulate_with_holes(
-    outer_boundary: list[Point],
-    holes: list[list[Point]] | None = None,
-) -> tuple[list[tuple[Point, Point, Point]], list[Point]]:
+    outer_boundary: list[Point2D],
+    holes: list[list[Point2D]] | None = None,
+) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[Point2D]]:
     holes = holes or []
     from .polygon import Polygon
 
@@ -185,12 +185,12 @@ def _triangulate_with_holes(
 
 
 def _triangulation_with_diagonals(
-    polygon: list[Point],
-) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point]]:
+    polygon: list[Point2D],
+) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point2D]]:
     return _ear_clip(polygon, collect_diagonals=True)
 
 
-def _hertel_mehlhorn(polygon_input: list[Point]) -> tuple[list[list[int]], list[Point]]:
+def _hertel_mehlhorn(polygon_input: list[Point2D]) -> tuple[list[list[int]], list[Point2D]]:
     triangles, diagonals, polygon = _triangulation_with_diagonals(polygon_input)
     partitions = [list(triangle) for triangle in triangles]
 
@@ -230,7 +230,7 @@ def _hertel_mehlhorn(polygon_input: list[Point]) -> tuple[list[list[int]], list[
     return partitions, polygon
 
 
-def _domain_contains_point(outer: list[Point], holes: list[list[Point]], point: Point) -> bool:
+def _domain_contains_point(outer: list[Point2D], holes: list[list[Point2D]], point: Point2D) -> bool:
     from .polygon import Polygon
 
     if not Polygon(outer).contains_point(point):
@@ -239,11 +239,11 @@ def _domain_contains_point(outer: list[Point], holes: list[list[Point]], point: 
 
 
 def _segment_inside_domain(
-    outer: list[Point],
-    holes: list[list[Point]],
-    start: Point,
-    end: Point,
-    allow_hole_endpoint: Point | None = None,
+    outer: list[Point2D],
+    holes: list[list[Point2D]],
+    start: Point2D,
+    end: Point2D,
+    allow_hole_endpoint: Point2D | None = None,
 ) -> bool:
     return segment_inside_boundaries(
         start,
@@ -254,7 +254,7 @@ def _segment_inside_domain(
     )
 
 
-def _splice_hole(outer: list[Point], hole: list[Point]) -> list[Point]:
+def _splice_hole(outer: list[Point2D], hole: list[Point2D]) -> list[Point2D]:
     hole_vertex_index = max(range(len(hole)), key=lambda index: (hole[index].x, -hole[index].y))
     hole_vertex = hole[hole_vertex_index]
 
@@ -270,7 +270,7 @@ def _splice_hole(outer: list[Point], hole: list[Point]) -> list[Point]:
     outer_vertex = outer[outer_index]
 
     rotated_hole = hole[hole_vertex_index:] + hole[:hole_vertex_index]
-    merged: list[Point] = []
+    merged: list[Point2D] = []
     merged.extend(outer[: outer_index + 1])
     merged.append(hole_vertex)
     merged.extend(rotated_hole[1:])
@@ -280,10 +280,10 @@ def _splice_hole(outer: list[Point], hole: list[Point]) -> list[Point]:
     return merged
 
 
-def _mesh_from_point_faces(point_faces: List[List[Point]] | List[tuple[Point, ...]]) -> PolygonMesh:
-    vertices: list[Point] = []
+def _mesh_from_point_faces(point_faces: List[List[Point2D]] | List[tuple[Point2D, ...]]) -> PolygonMesh:
+    vertices: list[Point2D] = []
     faces: list[tuple[int, ...]] = []
-    vertex_indices: dict[Point, int] = {}
+    vertex_indices: dict[Point2D, int] = {}
 
     for face in point_faces:
         indexed_face = []
@@ -299,7 +299,7 @@ def _mesh_from_point_faces(point_faces: List[List[Point]] | List[tuple[Point, ..
 
 def _ordered_face_from_triangles(
     triangles: list[tuple[int, int, int]],
-    vertices: list[Point],
+    vertices: list[Point2D],
 ) -> tuple[int, ...] | None:
     if not triangles:
         return None
@@ -346,7 +346,7 @@ def _ordered_face_from_triangles(
     return tuple(face)
 
 
-def _is_y_monotone(face: tuple[int, ...], vertices: list[Point]) -> bool:
+def _is_y_monotone(face: tuple[int, ...], vertices: list[Point2D]) -> bool:
     if len(face) <= 3:
         return True
 
@@ -374,7 +374,7 @@ def _share_triangle_edge(left: list[tuple[int, int, int]], right: list[tuple[int
 
 def _monotone_partitions(
     triangles: list[tuple[int, int, int]],
-    vertices: list[Point],
+    vertices: list[Point2D],
 ) -> list[tuple[int, ...]]:
     partitions = [{"triangles": [triangle], "face": tuple(triangle)} for triangle in triangles]
 
@@ -401,7 +401,7 @@ def _monotone_partitions(
     return [partition["face"] for partition in partitions]
 
 
-def _point_on_segment_at_x(start: Point, end: Point, x: float) -> Point | None:
+def _point_on_segment_at_x(start: Point2D, end: Point2D, x: float) -> Point2D | None:
     min_x = min(start.x, end.x) - EPSILON
     max_x = max(start.x, end.x) + EPSILON
     if x < min_x or x > max_x:
@@ -410,14 +410,14 @@ def _point_on_segment_at_x(start: Point, end: Point, x: float) -> Point | None:
         if abs(start.x - x) > EPSILON:
             return None
         lower, upper = sorted((start, end), key=lambda p: (p.y, p.x))
-        return Point(x, lower.y if lower.y == upper.y else lower.y)
+        return Point2D(x, lower.y if lower.y == upper.y else lower.y)
 
     t = (x - start.x) / (end.x - start.x)
     y = start.y + t * (end.y - start.y)
-    return Point(x, y)
+    return Point2D(x, y)
 
 
-def _vertical_line_intersections(polygon: list[Point], x: float) -> list[tuple[float, int]]:
+def _vertical_line_intersections(polygon: list[Point2D], x: float) -> list[tuple[float, int]]:
     hits: list[tuple[float, int]] = []
     n = len(polygon)
     for i in range(n):
@@ -436,8 +436,8 @@ def _vertical_line_intersections(polygon: list[Point], x: float) -> list[tuple[f
     return hits
 
 
-def _cleanup_face(points: list[Point]) -> list[Point]:
-    face: list[Point] = []
+def _cleanup_face(points: list[Point2D]) -> list[Point2D]:
+    face: list[Point2D] = []
     for point in points:
         if face and point == face[-1]:
             continue
@@ -447,12 +447,12 @@ def _cleanup_face(points: list[Point]) -> list[Point]:
     return face
 
 
-def _trapezoidal_faces(polygon: list[Point]) -> list[list[Point]]:
+def _trapezoidal_faces(polygon: list[Point2D]) -> list[list[Point2D]]:
     x_values = sorted({point.x for point in polygon})
     if len(x_values) < 2:
         return [polygon]
 
-    faces: list[list[Point]] = []
+    faces: list[list[Point2D]] = []
     for left_x, right_x in zip(x_values, x_values[1:]):
         if right_x - left_x <= EPSILON:
             continue
@@ -480,7 +480,7 @@ def _trapezoidal_faces(polygon: list[Point]) -> list[list[Point]]:
     return faces or [polygon]
 
 
-def _diagonal_crosses(diagonal: tuple[int, int], diagonals: list[tuple[int, int]], polygon: list[Point]) -> bool:
+def _diagonal_crosses(diagonal: tuple[int, int], diagonals: list[tuple[int, int]], polygon: list[Point2D]) -> bool:
     a, b = diagonal
     for c, d in diagonals:
         if {a, b}.intersection({c, d}):
@@ -510,7 +510,7 @@ def _split_face_by_diagonal(face: tuple[int, ...], diagonal: tuple[int, int]) ->
     return [tuple(first), tuple(second)]
 
 
-def _visibility_faces(polygon: list[Point]) -> list[tuple[int, ...]]:
+def _visibility_faces(polygon: list[Point2D]) -> list[tuple[int, ...]]:
     from .polygon import Polygon
 
     ordered = Polygon(polygon).ensure_ccw().as_list()

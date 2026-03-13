@@ -1,6 +1,6 @@
 import argparse
 import sys
-from compgeom import Point
+from compgeom import Point2D
 from compgeom import CirclePacker
 from compgeom import OBJFileHandler
 from compgeom import save_png, save_svg
@@ -10,7 +10,7 @@ def read_polygon(args):
         print(f"Reading polygon from {args.input}...")
         vertices, _ = OBJFileHandler.read(args.input)
         # Ensure they are 2D points for circle packing
-        return [Point(v.x, v.y) for v in vertices]
+        return [Point2D(v.x, v.y) for v in vertices]
     
     if hasattr(args, 'poly') and args.poly:
         try:
@@ -18,7 +18,7 @@ def read_polygon(args):
             if len(raw) % 2 != 0:
                 print("Error: Polygon needs pairs of coordinates (x1 y1).")
                 sys.exit(1)
-            return [Point(raw[i], raw[i+1]) for i in range(0, len(raw), 2)]
+            return [Point2D(raw[i], raw[i+1]) for i in range(0, len(raw), 2)]
         except ValueError:
             print("Error: Coordinates must be numeric.")
             sys.exit(1)

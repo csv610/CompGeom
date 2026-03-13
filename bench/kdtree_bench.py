@@ -6,7 +6,7 @@ import os
 # Ensure the library is in the python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from compgeom.kernel import Point
+from compgeom.kernel import Point2D
 from compgeom.algo.point_trees import build_kdtree, range_search, PointQuadtree
 
 def naive_range_search(points, min_x, max_x, min_y, max_y):
@@ -23,7 +23,7 @@ def run_benchmarks():
     for n in sizes:
         # Generate random 2D points in [0, 1000]
         points = [
-            Point(random.uniform(0, 1000), random.uniform(0, 1000), id=i) 
+            Point2D(random.uniform(0, 1000), random.uniform(0, 1000), id=i) 
             for i in range(n)
         ]
         

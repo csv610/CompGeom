@@ -5,9 +5,9 @@ from __future__ import annotations
 import math
 from typing import List, Set, Tuple
 
-from ..kernel import EPSILON, Point, triangle_circumcenter, length, sub
+from ..kernel import EPSILON, Point2D, triangle_circumcenter, length, sub
 from .polygon import is_point_in_polygon
-from ..mesh.delaunay_triangulation import build_topology, triangulate
+from ..mesh.surfmesh.trimesh.delaunay_triangulation import build_topology, triangulate
 
 
 def polygon_area(polygon):
@@ -34,7 +34,7 @@ def sample_polygon_boundary(polygon, max_segment_length=0.25):
 
     for index, start in enumerate(polygon):
         end = polygon[(index + 1) % len(polygon)]
-        samples.append(Point(start.x, start.y, next_id))
+        samples.append(Point2D(start.x, start.y, next_id))
         next_id += 1
 
         segment_len = edge_length(start, end)
@@ -42,7 +42,7 @@ def sample_polygon_boundary(polygon, max_segment_length=0.25):
         for step in range(1, subdivisions):
             t = step / subdivisions
             samples.append(
-                Point(
+                Point2D(
                     start.x + t * (end.x - start.x),
                     start.y + t * (end.y - start.y),
                     next_id,
@@ -54,7 +54,7 @@ def sample_polygon_boundary(polygon, max_segment_length=0.25):
 
 def triangle_centroid(triangle):
     a, b, c = triangle
-    return Point((a.x + b.x) / 3.0, (a.y + b.y) / 3.0)
+    return Point2D((a.x + b.x) / 3.0, (a.y + b.y) / 3.0)
 
 
 def point_key(point):
@@ -93,7 +93,7 @@ def approximate_medial_axis(polygon, resolution=0.25):
         if center is None or not is_point_in_polygon(center, polygon):
             continue
 
-        interior_centers[triangle_index] = Point(center.x, center.y, next_center_id)
+        interior_centers[triangle_index] = Point2D(center.x, center.y, next_center_id)
         centers.append(interior_centers[triangle_index])
         next_center_id += 1
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from compgeom import EPSILON, Point
+from compgeom import EPSILON, Point2D
 from compgeom import is_point_in_polygon
 from compgeom.cli._shared import demo_polygon
 
@@ -17,30 +17,30 @@ SEGMENTS_PER_FRAME = 3
 
 @dataclass(frozen=True)
 class RayState:
-    origin: Point
-    direction: Point
+    origin: Point2D
+    direction: Point2D
 
 
-def _cross(a: Point, b: Point) -> float:
+def _cross(a: Point2D, b: Point2D) -> float:
     return a.x * b.y - a.y * b.x
 
 
-def _dot(a: Point, b: Point) -> float:
+def _dot(a: Point2D, b: Point2D) -> float:
     return a.x * b.x + a.y * b.y
 
 
-def _length(vector: Point) -> float:
+def _length(vector: Point2D) -> float:
     return math.hypot(vector.x, vector.y)
 
 
-def _normalize(vector: Point) -> Point:
+def _normalize(vector: Point2D) -> Point2D:
     magnitude = _length(vector)
     if magnitude < EPSILON:
         raise ValueError("Ray direction must be non-zero.")
-    return Point(vector.x / magnitude, vector.y / magnitude)
+    return Point2D(vector.x / magnitude, vector.y / magnitude)
 
 
-def _signed_area_twice(polygon: list[Point]) -> float:
+def _signed_area_twice(polygon: list[Point2D]) -> float:
     return sum(
         polygon[index].x * polygon[(index + 1) % len(polygon)].y
         - polygon[(index + 1) % len(polygon)].x * polygon[index].y
@@ -48,11 +48,11 @@ def _signed_area_twice(polygon: list[Point]) -> float:
     )
 
 
-def _ensure_ccw(polygon: list[Point]) -> list[Point]:
+def _ensure_ccw(polygon: list[Point2D]) -> list[Point2D]:
     return polygon if _signed_area_twice(polygon) >= 0 else list(reversed(polygon))
 
 
-def parse_input(lines: list[str]) -> tuple[Point, Point, list[Point]]:
+def parse_input(lines: list[str]) -> tuple[Point2D, Point2D, list[Point2D]]:
     cleaned = [line.strip() for line in lines if line.strip()]
     if len(cleaned) < 5:
         raise ValueError(
@@ -74,22 +74,22 @@ def parse_input(lines: list[str]) -> tuple[Point, Point, list[Point]]:
     return origin, _normalize(direction), polygon
 
 
-def _parse_point(text: str, label: str) -> Point:
+def _parse_point(text: str, label: str) -> Point2D:
     parts = text.split()
     if len(parts) != 2:
         raise ValueError(f"Invalid {label}: expected 2 numbers, got {len(parts)}.")
     x, y = map(float, parts)
-    return Point(x, y)
+    return Point2D(x, y)
 
 
 def _ray_segment_intersection(
-    origin: Point,
-    direction: Point,
-    start: Point,
-    end: Point,
+    origin: Point2D,
+    direction: Point2D,
+    start: Point2D,
+    end: Point2D,
 ) -> tuple[float, float] | None:
-    edge = Point(end.x - start.x, end.y - start.y)
-    delta = Point(start.x - origin.x, start.y - origin.y)
+    edge = Point2D(end.x - start.x, end.y - start.y)
+    delta = Point2D(start.x - origin.x, start.y - origin.y)
     denominator = _cross(direction, edge)
     if abs(denominator) < EPSILON:
         return None
@@ -103,24 +103,24 @@ def _ray_segment_intersection(
     return distance, min(max(edge_factor, 0.0), 1.0)
 
 
-def _reflect(direction: Point, start: Point, end: Point) -> Point:
-    edge = Point(end.x - start.x, end.y - start.y)
+def _reflect(direction: Point2D, start: Point2D, end: Point2D) -> Point2D:
+    edge = Point2D(end.x - start.x, end.y - start.y)
     edge_length = _length(edge)
     if edge_length < EPSILON:
         raise ValueError("Polygon contains a degenerate edge.")
 
-    inward_normal = Point(-edge.y / edge_length, edge.x / edge_length)
+    inward_normal = Point2D(-edge.y / edge_length, edge.x / edge_length)
     scale = 2.0 * _dot(direction, inward_normal)
-    reflected = Point(
+    reflected = Point2D(
         direction.x - scale * inward_normal.x,
         direction.y - scale * inward_normal.y,
     )
     return _normalize(reflected)
 
 
-def advance_ray(state: RayState, polygon: list[Point]) -> tuple[Point, RayState]:
+def advance_ray(state: RayState, polygon: list[Point2D]) -> tuple[Point2D, RayState]:
     best_distance = math.inf
-    candidates: list[tuple[int, float, Point]] = []
+    candidates: list[tuple[int, float, Point2D]] = []
 
     for index, start in enumerate(polygon):
         end = polygon[(index + 1) % len(polygon)]
@@ -129,7 +129,7 @@ def advance_ray(state: RayState, polygon: list[Point]) -> tuple[Point, RayState]
             continue
 
         distance, factor = hit
-        intersection = Point(
+        intersection = Point2D(
             state.origin.x + distance * state.direction.x,
             state.origin.y + distance * state.direction.y,
         )
@@ -147,7 +147,7 @@ def advance_ray(state: RayState, polygon: list[Point]) -> tuple[Point, RayState]
         start = polygon[edge_index]
         end = polygon[(edge_index + 1) % len(polygon)]
         reflected = _reflect(state.direction, start, end)
-        probe = Point(
+        probe = Point2D(
             intersection.x + reflected.x * 1e-6,
             intersection.y + reflected.y * 1e-6,
         )
@@ -160,7 +160,7 @@ def advance_ray(state: RayState, polygon: list[Point]) -> tuple[Point, RayState]
     end = polygon[(edge_index + 1) % len(polygon)]
     reflected = _reflect(state.direction, start, end)
     next_state = RayState(
-        origin=Point(
+        origin=Point2D(
             intersection.x + reflected.x * 1e-6,
             intersection.y + reflected.y * 1e-6,
         ),
@@ -170,11 +170,11 @@ def advance_ray(state: RayState, polygon: list[Point]) -> tuple[Point, RayState]
 
 
 def simulate_reflections(
-    origin: Point,
-    direction: Point,
-    polygon: list[Point],
+    origin: Point2D,
+    direction: Point2D,
+    polygon: list[Point2D],
     steps: int,
-) -> list[Point]:
+) -> list[Point2D]:
     state = RayState(origin=origin, direction=_normalize(direction))
     points = [origin]
     for _ in range(steps):
@@ -184,7 +184,7 @@ def simulate_reflections(
 
 
 class ReflectionViewer:
-    def __init__(self, polygon: list[Point], origin: Point, direction: Point):
+    def __init__(self, polygon: list[Point2D], origin: Point2D, direction: Point2D):
         import tkinter as tk
 
         self.polygon = polygon
@@ -223,7 +223,7 @@ class ReflectionViewer:
         offset_y = CANVAS_MARGIN - min_y * scale + (CANVAS_HEIGHT - 2 * CANVAS_MARGIN - span_y * scale) / 2
         return scale, offset_x, offset_y
 
-    def _to_canvas(self, point: Point) -> tuple[float, float]:
+    def _to_canvas(self, point: Point2D) -> tuple[float, float]:
         x = point.x * self.scale + self.offset_x
         y = CANVAS_HEIGHT - (point.y * self.scale + self.offset_y)
         return x, y
@@ -239,7 +239,7 @@ class ReflectionViewer:
             width=2,
         )
 
-    def _draw_origin(self, origin: Point) -> None:
+    def _draw_origin(self, origin: Point2D) -> None:
         x, y = self._to_canvas(origin)
         radius = 4
         self.canvas.create_oval(
@@ -262,7 +262,7 @@ class ReflectionViewer:
 
         self.root.after(ANIMATION_DELAY_MS, self._animate)
 
-    def _draw_segment(self, start: Point, end: Point) -> None:
+    def _draw_segment(self, start: Point2D, end: Point2D) -> None:
         x1, y1 = self._to_canvas(start)
         x2, y2 = self._to_canvas(end)
         self.canvas.create_line(x1, y1, x2, y2, fill="white", width=2)
@@ -272,8 +272,8 @@ class ReflectionViewer:
 
 
 def main() -> int:
-    origin = Point(2.0, 2.0)
-    direction = Point(1.0, 0.3)
+    origin = Point2D(2.0, 2.0)
+    direction = Point2D(1.0, 0.3)
     polygon = demo_polygon()
 
     try:

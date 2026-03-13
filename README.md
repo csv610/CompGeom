@@ -104,9 +104,9 @@ smoothed = PolygonalMeanCurvatureFlow.smooth(resampled, iterations=200)
 **Objective:** Decompose a polygon into useful substructures and compute its visibility kernel.
 
 ```python
-from compgeom import Point, Polygon, PolygonDecomposer, polygon_kernel
+from compgeom import Point2D, Polygon, PolygonDecomposer, polygon_kernel
 
-polygon = [Point(0, 0), Point(4, 0), Point(4, 4), Point(2, 2), Point(0, 4)]
+polygon = [Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(2, 2), Point2D(0, 4)]
 
 tri_mesh = PolygonDecomposer.triangulate(polygon)
 convex_mesh = PolygonDecomposer.convex_decomposition(polygon)
@@ -141,7 +141,7 @@ from compgeom.mesh import TriangleMesh, MeshTransfer
 source = TriangleMesh.from_file("square_grid.obj")
 
 # 2. Define a new target boundary (e.g., an L-shape)
-target_poly = [Point(0,0), Point(2,0), Point(2,1), Point(1,1), Point(1,2), Point(0,2)]
+target_poly = [Point2D(0,0), Point2D(2,0), Point2D(2,1), Point2D(1,1), Point2D(1,2), Point2D(0,2)]
 
 # 3. Transfer the topology
 # This solves the discrete Laplace equation for internal vertex positions
@@ -184,7 +184,7 @@ voxels = MeshVoxelizer.voxelize(mesh, voxel_size=0.01, fill_interior=True)
 from compgeom.mesh.trimesh import DelaunayMesher, PlatonicSolid
 
 # 1. Generate points and triangulate using Edge Flip
-points = [Point(0,0), Point(1,0), Point(0,1), Point(1,1), Point(0.5, 0.5)]
+points = [Point2D(0,0), Point2D(1,0), Point2D(0,1), Point2D(1,1), Point2D(0.5, 0.5)]
 mesh1 = DelaunayMesher.triangulate(points, algorithm="edge_flip")
 
 # 2. Generate a Platonic Solid (e.g., Tetrahedron)
@@ -216,10 +216,10 @@ MeshExporter.export_mesh(mesh, "model.stl")
 
 ```python
 from compgeom.polygon.polygon_boolean import polygon_union
-from compgeom import Point
+from compgeom import Point2D
 
-poly_a = [Point(0,0), Point(2,0), Point(2,2), Point(0,2)]
-poly_b = [Point(1,1), Point(3,1), Point(3,3), Point(1,3)]
+poly_a = [Point2D(0,0), Point2D(2,0), Point2D(2,2), Point2D(0,2)]
+poly_b = [Point2D(1,1), Point2D(3,1), Point2D(3,3), Point2D(1,3)]
 
 # Compute the union
 union_poly = polygon_union(poly_a, poly_b)

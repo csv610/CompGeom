@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Iterable
 
 from ....kernel import (
     EPSILON,
-    Point,
+    Point2D,
     contains_point,
     cross_product,
     in_circle,
@@ -23,7 +23,7 @@ class IncrementalTriangle:
     """A triangle in the incremental Delaunay mesh with adjacency information."""
     __slots__ = ("vertices", "neighbors")
 
-    def __init__(self, v1: Point, v2: Point, v3: Point):
+    def __init__(self, v1: Point2D, v2: Point2D, v3: Point2D):
         # Ensure CCW orientation
         if cross_product(v1, v2, v3) < 0:
             self.vertices = [v1, v3, v2]
@@ -32,7 +32,7 @@ class IncrementalTriangle:
         # neighbors[i] is the triangle opposite to vertices[i]
         self.neighbors: list[IncrementalTriangle | None] = [None, None, None]
 
-    def contains_point(self, point: Point) -> bool:
+    def contains_point(self, point: Point2D) -> bool:
         """Geometric containment check using cross products."""
         for i in range(3):
             if cross_product(self.vertices[i], self.vertices[(i + 1) % 3], point) < -EPSILON:
@@ -45,12 +45,12 @@ class IncrementalDelaunayMesher:
     Stateful Incremental Delaunay Mesher.
     Uses spatial indexing for fast point location and visibility walks.
     """
-    def __init__(self, points_for_grid: Iterable[Point] | None = None):
+    def __init__(self, points_for_grid: Iterable[Point2D] | None = None):
         self.active_triangles: set[IncrementalTriangle] = set()
-        self.vertex_to_triangles: dict[Point, set[IncrementalTriangle]] = {}
+        self.vertex_to_triangles: dict[Point2D, set[IncrementalTriangle]] = {}
         self.grid = PointGrid(points_for_grid) if points_for_grid else None
-        self.super_vertices: set[Point] = set()
-        self.skipped: list[tuple[Point, str]] = []
+        self.super_vertices: set[Point2D] = set()
+        self.skipped: list[tuple[Point2D, str]] = []
         self.root: IncrementalTriangle | None = None
 
     def _add_triangle_to_vertex_map(self, tri: IncrementalTriangle):
@@ -59,12 +59,12 @@ class IncrementalDelaunayMesher:
                 self.vertex_to_triangles[v] = set()
             self.vertex_to_triangles[v].add(tri)
 
-    def _remove_triangle_from_vertex_map(self, tri: IncrementalTriangle, old_vertices: list[Point]):
+    def _remove_triangle_from_vertex_map(self, tri: IncrementalTriangle, old_vertices: list[Point2D]):
         for v in old_vertices:
             if v in self.vertex_to_triangles:
                 self.vertex_to_triangles[v].discard(tri)
 
-    def _visibility_walk(self, point: Point, start_tri: IncrementalTriangle) -> IncrementalTriangle | None:
+    def _visibility_walk(self, point: Point2D, start_tri: IncrementalTriangle) -> IncrementalTriangle | None:
         curr = start_tri
         visited = {curr}
         
@@ -91,7 +91,7 @@ class IncrementalDelaunayMesher:
                         return t
                 return None
 
-    def _legalize_edge(self, point: Point, tri: IncrementalTriangle, edge_idx: int):
+    def _legalize_edge(self, point: Point2D, tri: IncrementalTriangle, edge_idx: int):
         neighbor = tri.neighbors[edge_idx]
         if neighbor is None:
             return
@@ -140,7 +140,7 @@ class IncrementalDelaunayMesher:
             self._legalize_edge(point, tri, 0)
             self._legalize_edge(point, neighbor, 0)
 
-    def initialize(self, points: Iterable[Point]):
+    def initialize(self, points: Iterable[Point2D]):
         """Sets up the super-triangle and initial grid."""
         pts = list(points)
         if not pts: return
@@ -157,7 +157,7 @@ class IncrementalDelaunayMesher:
         }
         for v in sv: self.grid.add(v)
 
-    def add_point(self, p: Point):
+    def add_point(self, p: Point2D):
         """Adds a single point to the triangulation."""
         if not self.root:
             raise RuntimeError("Mesher not initialized. Call initialize() first.")
@@ -203,7 +203,7 @@ class IncrementalDelaunayMesher:
         
         self.grid.add(p)
 
-    def get_triangles(self) -> list[tuple[Point, Point, Point]]:
+    def get_triangles(self) -> list[tuple[Point2D, Point2D, Point2D]]:
         """Returns the final triangles, excluding those connected to the super-triangle."""
         final = []
         for t in self.active_triangles:
@@ -211,7 +211,7 @@ class IncrementalDelaunayMesher:
                 final.append(tuple(t.vertices))
         return final
 
-    def triangulate(self, points: list[Point], spatial_sort: bool = True) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+    def triangulate(self, points: list[Point2D], spatial_sort: bool = True) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[tuple[Point2D, str]]]:
         """Performs batch triangulation of all given points."""
         if not points:
             return [], []
@@ -240,7 +240,7 @@ class IncrementalDelaunayMesher:
             range_y = max_y - min_y if max_y != min_y else 1.0
             
             N_HILBERT = 1 << 16
-            def get_order(p: Point):
+            def get_order(p: Point2D):
                 hx = int((p.x - min_x) / range_x * (N_HILBERT - 1))
                 hy = int((p.y - min_y) / range_y * (N_HILBERT - 1))
                 return hilbert_key(hx, hy, N_HILBERT)
@@ -254,7 +254,7 @@ class IncrementalDelaunayMesher:
         return self.get_triangles(), skipped_initial + self.skipped
 
 
-def triangulate_incremental_fast(points: list[Point], spatial_sort: bool = True) -> tuple[list[tuple[Point, Point, Point]], list[tuple[Point, str]]]:
+def triangulate_incremental_fast(points: list[Point2D], spatial_sort: bool = True) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[tuple[Point2D, str]]]:
     """Convenience wrapper for IncrementalDelaunayMesher."""
     mesher = IncrementalDelaunayMesher()
     return mesher.triangulate(points, spatial_sort=spatial_sort)

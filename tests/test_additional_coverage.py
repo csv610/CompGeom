@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from compgeom import Point, Point3D, minimum_bounding_box, minimum_enclosing_circle
+from compgeom import Point2D, Point3D, minimum_bounding_box, minimum_enclosing_circle
 from compgeom.cli import _shared as cli_shared
 from compgeom.cli import line_arrangement_cli as line_cli
 from compgeom.cli import reflection_polygon_cli as reflection_cli
@@ -90,15 +90,15 @@ from compgeom.polygon.polygon_smoothing import PolygonalMeanCurvatureFlow
 
 def test_minimum_enclosing_shapes_handle_degenerate_inputs():
     center, radius = minimum_enclosing_circle([])
-    assert center == Point(0, 0)
+    assert center == Point2D(0, 0)
     assert radius == 0.0
 
-    single = minimum_bounding_box([Point(2, 3)])
+    single = minimum_bounding_box([Point2D(2, 3)])
     assert single["area"] == 0.0
-    assert single["center"] == Point(2, 3)
+    assert single["center"] == Point2D(2, 3)
     assert len(single["corners"]) == 4
 
-    segment = minimum_bounding_box([Point(0, 0), Point(4, 0)])
+    segment = minimum_bounding_box([Point2D(0, 0), Point2D(4, 0)])
     assert segment["area"] == 0.0
     assert math.isclose(segment["width"], 4.0, abs_tol=1e-9)
     assert segment["height"] == 0.0
@@ -106,9 +106,9 @@ def test_minimum_enclosing_shapes_handle_degenerate_inputs():
 
 def test_davenport_schinzel_envelope_and_sequence_cover_crossing_segments():
     segments = [
-        (Point(0, 3), Point(4, -1)),
-        (Point(0, 0), Point(4, 2)),
-        (Point(2, -1), Point(2, 3)),
+        (Point2D(0, 3), Point2D(4, -1)),
+        (Point2D(0, 0), Point2D(4, 2)),
+        (Point2D(2, -1), Point2D(2, 3)),
     ]
 
     envelope = DavenportSchinzel.lower_envelope_segments(segments)
@@ -138,15 +138,15 @@ def test_rectangle_packer_supports_empty_square_and_svg_visualization():
 def test_point_sampler_helpers_generate_points_in_expected_domains():
     random.seed(7)
 
-    disk_points = PointSampler.in_circle(Point(1, -1), 2.0, n_points=5)
-    circle_points = PointSampler.on_circle(Point(0, 0), 3.0, n_points=5)
-    rect_points = PointSampler.on_rectangle(6.0, 4.0, n_points=6, center=Point(1, 2))
-    line_points = PointSampler.on_line_segment(Point(0, 0), Point(2, 2), n_points=4)
+    disk_points = PointSampler.in_circle(Point2D(1, -1), 2.0, n_points=5)
+    circle_points = PointSampler.on_circle(Point2D(0, 0), 3.0, n_points=5)
+    rect_points = PointSampler.on_rectangle(6.0, 4.0, n_points=6, center=Point2D(1, 2))
+    line_points = PointSampler.on_line_segment(Point2D(0, 0), Point2D(2, 2), n_points=4)
     cube_points = PointSampler.in_cube(2.0, n_points=4, center=Point3D(1, 1, 1))
     sphere_points = PointSampler.on_sphere(Point3D(0, 0, 0), 2.0, n_points=8)
 
-    assert len(generate_points_in_circle(Point(0, 0), 1.0, 3)) == 3
-    assert len(generate_points_in_rectangle(2.0, 4.0, 3, Point(1, 1))) == 3
+    assert len(generate_points_in_circle(Point2D(0, 0), 1.0, 3)) == 3
+    assert len(generate_points_in_rectangle(2.0, 4.0, 3, Point2D(1, 1))) == 3
     assert len(disk_points) == 5
     assert len(circle_points) == 5
     assert len(rect_points) == 6
@@ -174,7 +174,7 @@ def test_point_sampler_helpers_generate_points_in_expected_domains():
 
 
 def test_mesh_coloring_reordering_and_voronoi_diagram_helpers():
-    vertices = [Point(0, 0), Point(1, 0), Point(0, 1), Point(1, 1)]
+    vertices = [Point2D(0, 0), Point2D(1, 0), Point2D(0, 1), Point2D(1, 1)]
     mesh = TriangleMesh(vertices, [(0, 1, 2), (1, 3, 2)])
 
     element_colors = MeshColoring.color_elements(mesh)
@@ -197,53 +197,53 @@ def test_mesh_coloring_reordering_and_voronoi_diagram_helpers():
     assert len(circle_boundary) == 8
     assert len(square_boundary) == 4
 
-    result = diagram.compute([Point(0, 0, 0), Point(2, 0, 1)], boundary_type="circle")
+    result = diagram.compute([Point2D(0, 0, 0), Point2D(2, 0, 1)], boundary_type="circle")
     assert len(diagram.cells) == 2
     assert result.vertices
     assert result.elements
 
 
 def test_proximity_helpers_cover_intersections_pairs_and_minkowski_sum():
-    points = [Point(0, 0), Point(2, 0), Point(2, 2), Point(0, 2), Point(1, 1.1)]
+    points = [Point2D(0, 0), Point2D(2, 0), Point2D(2, 2), Point2D(0, 2), Point2D(1, 1.1)]
 
     dist, pair = ClosestPair.divide_and_conquer(points)
     assert math.isclose(dist, math.hypot(1.0, 0.9), abs_tol=1e-9)
-    assert set(pair) == {Point(2, 2), Point(1, 1.1)}
+    assert set(pair) == {Point2D(2, 2), Point2D(1, 1.1)}
 
     stream_dist, stream_pair = ClosestPair.grid_based_massive(iter(points), sample_size=3)
     assert math.isclose(stream_dist, dist, abs_tol=1e-9)
-    assert Point(1, 1.1) in set(stream_pair)
+    assert Point2D(1, 1.1) in set(stream_pair)
 
-    assert do_intersect(Point(0, 0), Point(2, 2), Point(0, 2), Point(2, 0)) is True
-    assert do_intersect(Point(0, 0), Point(1, 0), Point(2, 0), Point(3, 0)) is False
+    assert do_intersect(Point2D(0, 0), Point2D(2, 2), Point2D(0, 2), Point2D(2, 0)) is True
+    assert do_intersect(Point2D(0, 0), Point2D(1, 0), Point2D(2, 0), Point2D(3, 0)) is False
 
     diameter, far_pair = farthest_pair(points[:4])
     assert math.isclose(diameter, math.sqrt(8), abs_tol=1e-9)
-    assert set(far_pair) in ({Point(0, 0), Point(2, 2)}, {Point(0, 2), Point(2, 0)})
+    assert set(far_pair) in ({Point2D(0, 0), Point2D(2, 2)}, {Point2D(0, 2), Point2D(2, 0)})
 
-    center, radius = welzl([Point(0, 0), Point(2, 0), Point(0, 2)], [])
-    assert center == Point(1, 1)
+    center, radius = welzl([Point2D(0, 0), Point2D(2, 0), Point2D(0, 2)], [])
+    assert center == Point2D(1, 1)
     assert math.isclose(radius, math.sqrt(2), abs_tol=1e-9)
 
-    lec_center, lec_radius = LargestEmptyCircle.find([Point(0, 0), Point(2, 0), Point(0, 2)])
+    lec_center, lec_radius = LargestEmptyCircle.find([Point2D(0, 0), Point2D(2, 0), Point2D(0, 2)])
     assert lec_center is not None
     assert lec_radius > 0
 
     sum_polygon = minkowski_sum(
-        [Point(0, 0), Point(2, 0), Point(2, 1), Point(0, 1)],
-        [Point(0, 0), Point(1, 0), Point(1, 2), Point(0, 2)],
+        [Point2D(0, 0), Point2D(2, 0), Point2D(2, 1), Point2D(0, 1)],
+        [Point2D(0, 0), Point2D(1, 0), Point2D(1, 2), Point2D(0, 2)],
     )
     coords = {(round(point.x, 6), round(point.y, 6)) for point in sum_polygon}
     assert coords == {(0, 0), (3, 0), (3, 3), (0, 3)}
 
 
 def test_polygon_smoothing_and_distance_map_helpers():
-    square = [Point(0, 0), Point(2, 0), Point(2, 2), Point(0, 2)]
+    square = [Point2D(0, 0), Point2D(2, 0), Point2D(2, 2), Point2D(0, 2)]
 
     resampled = PolygonalMeanCurvatureFlow.resample_polygon(square, 8)
     assert len(resampled) == 8
-    assert resampled[0] == Point(0, 0, 0)
-    assert resampled[2] == Point(2, 0, 2)
+    assert resampled[0] == Point2D(0, 0, 0)
+    assert resampled[2] == Point2D(2, 0, 2)
 
     smoothed = PolygonalMeanCurvatureFlow.smooth(square, iterations=5, time_step=0.1)
     assert len(smoothed) == 4
@@ -272,22 +272,22 @@ def test_polygon_smoothing_and_distance_map_helpers():
 
 def test_mesh_transfer_maps_boundary_to_target_polygon():
     vertices = [
-        Point(0, 0),
-        Point(1, 0),
-        Point(1, 1),
-        Point(0, 1),
-        Point(0.5, 0.5),
+        Point2D(0, 0),
+        Point2D(1, 0),
+        Point2D(1, 1),
+        Point2D(0, 1),
+        Point2D(0.5, 0.5),
     ]
     mesh = TriangleMesh(vertices, [(0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4)])
-    target = [Point(0, 0), Point(2, 0), Point(2, 1), Point(0, 1)]
+    target = [Point2D(0, 0), Point2D(2, 0), Point2D(2, 1), Point2D(0, 1)]
 
     transferred = MeshTransfer.transfer(mesh, target)
 
     assert transferred.faces == mesh.faces
-    assert transferred.vertices[0] == Point(0, 0)
-    assert transferred.vertices[1] == Point(1.5, 0)
-    assert transferred.vertices[2] == Point(2, 1)
-    assert transferred.vertices[3] == Point(0.5, 1)
+    assert transferred.vertices[0] == Point2D(0, 0)
+    assert transferred.vertices[1] == Point2D(1.5, 0)
+    assert transferred.vertices[2] == Point2D(2, 1)
+    assert transferred.vertices[3] == Point2D(0.5, 1)
     assert 0.0 <= transferred.vertices[4].x <= 2.0
     assert 0.0 <= transferred.vertices[4].y <= 1.0
 
@@ -343,7 +343,7 @@ def test_space_filling_curve_generators_and_visualization():
 
 def test_mesh_refinement_and_triangle_to_quad_conversion():
     mesh = TriangleMesh(
-        [Point(0, 0), Point(2, 0), Point(0, 2)],
+        [Point2D(0, 0), Point2D(2, 0), Point2D(0, 2)],
         [(0, 1, 2)],
     )
 
@@ -369,11 +369,11 @@ def test_mesh_refinement_and_triangle_to_quad_conversion():
     assert len(quad_mesh.faces) == 3
 
     centroid = quad_mesh.vertices[-1]
-    assert centroid == Point(2.0 / 3.0, 2.0 / 3.0, 6)
+    assert centroid == Point2D(2.0 / 3.0, 2.0 / 3.0, 6)
 
 
 def test_mesh_io_handlers_round_trip_common_formats():
-    vertices2d = [Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2)]
+    vertices2d = [Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2)]
     vertices3d = [Point3D(0, 0, 0, 0), Point3D(1, 0, 0, 1), Point3D(0, 1, 0, 2)]
     faces = [(0, 1, 2)]
 
@@ -418,11 +418,11 @@ def test_mesh_io_handlers_round_trip_common_formats():
 
 
 def test_geoplot_renders_mesh_polygon_voronoi_and_points():
-    mesh = TriangleMesh([Point(0, 0), Point(1, 0), Point(0, 1)], [(0, 1, 2)])
-    polygon = Polygon([Point(0, 0), Point(2, 0), Point(1, 1)])
+    mesh = TriangleMesh([Point2D(0, 0), Point2D(1, 0), Point2D(0, 1)], [(0, 1, 2)])
+    polygon = Polygon([Point2D(0, 0), Point2D(2, 0), Point2D(1, 1)])
     diagram = VoronoiDiagram()
-    diagram.compute([Point(0, 0, 0), Point(2, 0, 1)], boundary_type="square")
-    points = [Point(0, 0), Point(1, 1)]
+    diagram.compute([Point2D(0, 0, 0), Point2D(2, 0, 1)], boundary_type="square")
+    points = [Point2D(0, 0), Point2D(1, 1)]
 
     svg = GeomPlot.get_image([mesh, polygon, diagram, points], format="svg", width=200, height=200)
     png = GeomPlot.get_image([mesh, points], format="png", width=64, height=64)
@@ -439,13 +439,13 @@ def test_geoplot_renders_mesh_polygon_voronoi_and_points():
 
 
 def test_shape_objects_expose_expected_geometry():
-    seg2d = LineSegment(Point(0, 0), Point(3, 4))
+    seg2d = LineSegment(Point2D(0, 0), Point2D(3, 4))
     seg3d = LineSegment(Point3D(0, 0, 0), Point3D(1, 2, 2))
-    ray = Ray(Point(1, 1), Point(2, 3))
-    circle = Circle(Point(0, 0), 2)
-    rect = Rectangle(Point(1, 1), 4, 2)
-    square = Square(Point(0, 0), 3)
-    tri = Triangle(Point(0, 0), Point(4, 0), Point(0, 3))
+    ray = Ray(Point2D(1, 1), Point2D(2, 3))
+    circle = Circle(Point2D(0, 0), 2)
+    rect = Rectangle(Point2D(1, 1), 4, 2)
+    square = Square(Point2D(0, 0), 3)
+    tri = Triangle(Point2D(0, 0), Point2D(4, 0), Point2D(0, 3))
     plane = Plane(Point3D(0, 0, 0), (0, 0, 1))
     tetra = Tetrahedron(Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0), Point3D(0, 0, 1))
     sphere = Sphere(Point3D(0, 0, 0), 2)
@@ -465,11 +465,11 @@ def test_shape_objects_expose_expected_geometry():
 
     assert math.isclose(seg2d.length, 5.0, abs_tol=1e-9)
     assert math.isclose(seg3d.length, 3.0, abs_tol=1e-9)
-    assert ray.centroid == Point(1, 1)
+    assert ray.centroid == Point2D(1, 1)
     assert ray.diameter == float("inf")
     assert math.isclose(circle.area, 4 * math.pi, abs_tol=1e-9)
     assert math.isclose(circle.perimeter, 4 * math.pi, abs_tol=1e-9)
-    assert rect.vertices == [Point(-1, 0), Point(3, 0), Point(3, 2), Point(-1, 2)]
+    assert rect.vertices == [Point2D(-1, 0), Point2D(3, 0), Point2D(3, 2), Point2D(-1, 2)]
     assert square.side_length == 3
     assert math.isclose(tri.area, 6.0, abs_tol=1e-9)
     assert math.isclose(tri.perimeter, 12.0, abs_tol=1e-9)
@@ -483,7 +483,7 @@ def test_shape_objects_expose_expected_geometry():
 
 
 def test_circle_packer_handles_empty_and_packs_rectangle_domain():
-    polygon = [Point(0, 0), Point(4, 0), Point(4, 4), Point(0, 4)]
+    polygon = [Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(0, 4)]
 
     assert CirclePacker.pack([], 1.0) == []
     assert CirclePacker.pack(polygon, 0.0) == []
@@ -501,32 +501,32 @@ def test_circle_packer_handles_empty_and_packs_rectangle_domain():
 
 def test_mesh_core_helpers_cover_topology_and_even_element_repairs():
     triangle_mesh = TriangleMesh(
-        [Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1)],
+        [Point2D(0, 0), Point2D(1, 0), Point2D(1, 1), Point2D(0, 1)],
         [(0, 1, 2), (0, 2, 3)],
     )
     quad_mesh = QuadMesh(
-        [Point(0, 0), Point(1, 0), Point(2, 0), Point(2, 1), Point(1, 1), Point(0, 1)],
+        [Point2D(0, 0), Point2D(1, 0), Point2D(2, 0), Point2D(2, 1), Point2D(1, 1), Point2D(0, 1)],
         [(0, 1, 4, 5), (1, 2, 3, 4)],
     )
     polygon_mesh = PolygonMesh(
-        [Point(0, 0), Point(2, 0), Point(2, 1), Point(1, 2), Point(0, 1)],
+        [Point2D(0, 0), Point2D(2, 0), Point2D(2, 1), Point2D(1, 2), Point2D(0, 1)],
         [(0, 1, 2, 3, 4)],
     )
 
     assert triangle_mesh.euler_characteristic() == 1
-    assert triangle_mesh.centroid == Point(0.5, 0.5)
+    assert triangle_mesh.centroid == Point2D(0.5, 0.5)
     assert triangle_mesh.bounding_box() == ((0, 0), (1, 1))
     assert triangle_mesh.topology.boundary_edges() == [(0, 1), (1, 2), (2, 3), (0, 3)]
     assert triangle_mesh.topology.vertex_neighbors(0) == {1, 2, 3}
     assert triangle_mesh.topology.element_neighbors(0) == {1}
     assert triangle_mesh.topology.shared_edge_neighbors(0) == {1}
 
-    split_even = TriangleMesh([Point(0, 0), Point(2, 0), Point(0, 2)], [(0, 1, 2)]).ensure_even_elements()
+    split_even = TriangleMesh([Point2D(0, 0), Point2D(2, 0), Point2D(0, 2)], [(0, 1, 2)]).ensure_even_elements()
     assert len(split_even.faces) % 2 == 0
     assert len(split_even.vertices) > 3
 
     odd_two = TriangleMesh(
-        [Point(0, 0), Point(2, 0), Point(1, 1), Point(0, 2), Point(2, 2)],
+        [Point2D(0, 0), Point2D(2, 0), Point2D(1, 1), Point2D(0, 2), Point2D(2, 2)],
         [(0, 1, 2), (0, 2, 3), (1, 4, 2)],
     )
     even_two = odd_two.ensure_even_elements()
@@ -540,14 +540,14 @@ def test_mesh_core_helpers_cover_topology_and_even_element_repairs():
     assert polygon_mesh.euler_characteristic() == 1
 
     triangle_mesh.reorder_nodes([2, 1, 0, 3])
-    assert triangle_mesh.vertices[0] == Point(1, 1)
+    assert triangle_mesh.vertices[0] == Point2D(1, 1)
     assert set(triangle_mesh.elements) == {(2, 1, 0), (2, 0, 3)}
 
 
 def test_mesh_and_triangle_utilities_cover_standalone_helpers():
     tris = [
-        (Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2)),
-        (Point(1, 0, 1), Point(1, 1, 3), Point(0, 1, 2)),
+        (Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2)),
+        (Point2D(1, 0, 1), Point2D(1, 1, 3), Point2D(0, 1, 2)),
     ]
 
     assert len(build_topology(tris)) == 2
@@ -560,12 +560,12 @@ def test_mesh_and_triangle_utilities_cover_standalone_helpers():
     assert mesh.faces == [(0, 1, 2), (1, 3, 2)]
 
     tri_mesh = DelaunayMesher.triangulate(
-        [Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2), Point(1, 1, 3)],
+        [Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2), Point2D(1, 1, 3)],
         algorithm="incremental",
     )
     assert isinstance(tri_mesh, TriangleMesh)
     constrained = DelaunayMesher.constrained_triangulate(
-        [Point(0, 0), Point(2, 0), Point(2, 2), Point(0, 2)]
+        [Point2D(0, 0), Point2D(2, 0), Point2D(2, 2), Point2D(0, 2)]
     )
     assert isinstance(constrained, TriangleMesh)
     dynamic = DelaunayMesher.dynamic_triangulate(10, 10)
@@ -574,32 +574,32 @@ def test_mesh_and_triangle_utilities_cover_standalone_helpers():
     assert DelaunayMesher.find_bad_triangles(build_topology(tris)) == set()
 
     with pytest.raises(ValueError):
-        DelaunayMesher.triangulate([Point(0, 0), Point(1, 0), Point(0, 1)], algorithm="unknown")
+        DelaunayMesher.triangulate([Point2D(0, 0), Point2D(1, 0), Point2D(0, 1)], algorithm="unknown")
 
-    mesh = triangulate([Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2), Point(0, 1, 2)])
+    mesh = triangulate([Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2), Point2D(0, 1, 2)])
     assert isinstance(mesh, TriangleMesh)
 
 
 def test_dynamic_and_low_level_triangle_classes():
-    outer = DTriangle(Point(0, 0, 0), Point(5, 0, 1), Point(0, 5, 2))
-    neighbor = DTriangle(Point(5, 0, 1), Point(5, 5, 3), Point(0, 5, 2))
+    outer = DTriangle(Point2D(0, 0, 0), Point2D(5, 0, 1), Point2D(0, 5, 2))
+    neighbor = DTriangle(Point2D(5, 0, 1), Point2D(5, 5, 3), Point2D(0, 5, 2))
     outer.set_neighbor(0, neighbor)
     assert outer.n[0] is neighbor
-    assert neighbor.contains_point(Point(3, 3)) is True
-    assert neighbor.has_vertex(Point(5, 5, 3)) is True
+    assert neighbor.contains_point(Point2D(3, 3)) is True
+    assert neighbor.has_vertex(Point2D(5, 5, 3)) is True
 
     dyn = DynamicDelaunay(10, 10)
-    p0 = Point(1, 1, 0)
-    p1 = Point(3, 1, 1)
-    p2 = Point(2, 3, 2)
+    p0 = Point2D(1, 1, 0)
+    p1 = Point2D(3, 1, 1)
+    p2 = Point2D(2, 3, 2)
     for point in [p0, p1, p2]:
         dyn.add_point(point)
-    containing = dyn.find_containing_triangle(Point(2, 2))
+    containing = dyn.find_containing_triangle(Point2D(2, 2))
     assert containing is not None
     assert dyn.get_triangles()
 
-    tri = MeshTriangle(Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2))
-    other = MeshTriangle(Point(1, 0, 1), Point(1, 1, 3), Point(0, 1, 2))
+    tri = MeshTriangle(Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2))
+    other = MeshTriangle(Point2D(1, 0, 1), Point2D(1, 1, 3), Point2D(0, 1, 2))
     tri.neighbors[0] = other
     assert tri.get_edge(0) == (1, 2)
     assert tri.find_neighbor_index(other) == 0
@@ -607,25 +607,25 @@ def test_dynamic_and_low_level_triangle_classes():
 
 def test_point_tree_helpers_cover_quadtree_display_and_simplifier(capsys):
     quadtree = PointQuadtree()
-    assert quadtree.insert(Point(0, 0, 0)) is True
-    assert quadtree.insert(Point(1, 1, 1)) is True
-    assert quadtree.insert(Point(-1, 1, 2)) is True
-    assert quadtree.insert(Point(1, -1, 3)) is True
-    assert quadtree.insert(Point(-1, -1, 4)) is True
-    assert quadtree.insert(Point(0, 0, 9)) is False
+    assert quadtree.insert(Point2D(0, 0, 0)) is True
+    assert quadtree.insert(Point2D(1, 1, 1)) is True
+    assert quadtree.insert(Point2D(-1, 1, 2)) is True
+    assert quadtree.insert(Point2D(1, -1, 3)) is True
+    assert quadtree.insert(Point2D(-1, -1, 4)) is True
+    assert quadtree.insert(Point2D(0, 0, 9)) is False
     assert quadtree.count == 5
-    assert PointQuadtree._get_quadrant_name(Point(0, 0), Point(1, -1)) == "se"
+    assert PointQuadtree._get_quadrant_name(Point2D(0, 0), Point2D(1, -1)) == "se"
     quadtree.display()
     captured = capsys.readouterr().out
     assert "Root: P0(0, 0)" in captured
     assert "NE:" in captured and "NW:" in captured and "SE:" in captured and "SW:" in captured
 
-    kd = build_kdtree([Point(0, 0), Point(1, 1), Point(2, 2)])
+    kd = build_kdtree([Point2D(0, 0), Point2D(1, 1), Point2D(2, 2)])
     display_kdtree(kd)
     captured = capsys.readouterr().out
     assert "[Depth 0, Split X]" in captured
 
-    bbox2d, is_3d = PointSimplifier.get_bounding_box([Point(0, 0), Point(2, 3)])
+    bbox2d, is_3d = PointSimplifier.get_bounding_box([Point2D(0, 0), Point2D(2, 3)])
     assert bbox2d == (0, 2, 0, 3)
     assert is_3d is False
 
@@ -633,9 +633,9 @@ def test_point_tree_helpers_cover_quadtree_display_and_simplifier(capsys):
     assert bbox3d == (0, 2, 0, 3, 0, 4)
     assert is_3d is True
 
-    points2d = [Point(0, 0, 0), Point(0.05, 0.05, 1), Point(1, 1, 2), Point(2, 2, 3)]
+    points2d = [Point2D(0, 0, 0), Point2D(0.05, 0.05, 1), Point2D(1, 1, 2), Point2D(2, 2, 3)]
     simplified2d = PointSimplifier.simplify(points2d, ratio=0.5, protected_ids={1})
-    assert Point(0.05, 0.05, 1) in simplified2d
+    assert Point2D(0.05, 0.05, 1) in simplified2d
     assert len(simplified2d) < len(points2d)
     assert PointSimplifier.simplify(points2d, ratio=0.0) == points2d
     assert PointSimplifier.simplify([], ratio=0.2) == []
@@ -646,20 +646,20 @@ def test_point_tree_helpers_cover_quadtree_display_and_simplifier(capsys):
 
 
 def test_delaunay_remaining_paths_cover_divide_and_conquer_and_flips():
-    points = [Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2), Point(1, 1, 3)]
+    points = [Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2), Point2D(1, 1, 3)]
     mesh_dc = DelaunayMesher.triangulate(points, algorithm="divide_and_conquer")
     assert isinstance(mesh_dc, TriangleMesh)
 
     mesh_flip = DelaunayMesher.triangulate(
-        [Point(0, 0, 0), Point(1, 0, 1), Point(0, 1, 2), Point(1, 1, 3)],
+        [Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2), Point2D(1, 1, 3)],
         algorithm="flip",
     )
     assert isinstance(mesh_flip, TriangleMesh)
 
     non_delaunay = build_topology(
         [
-            (Point(0, 0, 0), Point(2, 0, 1), Point(0, 2, 2)),
-            (Point(2, 0, 1), Point(0.5, 0.5, 3), Point(0, 2, 2)),
+            (Point2D(0, 0, 0), Point2D(2, 0, 1), Point2D(0, 2, 2)),
+            (Point2D(2, 0, 1), Point2D(0.5, 0.5, 3), Point2D(0, 2, 2)),
         ]
     )
     assert is_delaunay(non_delaunay) is False
@@ -747,12 +747,12 @@ def test_cli_shared_helpers_and_polygon_generator(monkeypatch, capsys):
     cli_shared.print_lines(["alpha", "beta"])
     assert capsys.readouterr().out == "alpha\nbeta\n"
 
-    assert cli_shared.parse_points(["1 2", "bad", "3 4"]) == [Point(1, 2, 0), Point(3, 4, 1)]
-    assert cli_shared.parse_points(["7 1 2", "8 3 4"], with_ids=True) == [Point(1, 2, 7), Point(3, 4, 8)]
-    assert cli_shared.parse_point_line("1 2", point_id=5) == Point(1, 2, 5)
-    assert cli_shared.parse_point_fields(["9", "1", "2"], with_id=True) == Point(1, 2, 9)
+    assert cli_shared.parse_points(["1 2", "bad", "3 4"]) == [Point2D(1, 2, 0), Point2D(3, 4, 1)]
+    assert cli_shared.parse_points(["7 1 2", "8 3 4"], with_ids=True) == [Point2D(1, 2, 7), Point2D(3, 4, 8)]
+    assert cli_shared.parse_point_line("1 2", point_id=5) == Point2D(1, 2, 5)
+    assert cli_shared.parse_point_fields(["9", "1", "2"], with_id=True) == Point2D(1, 2, 9)
     assert cli_shared.parse_point_fields(["x", "y"]) is None
-    assert cli_shared.format_point(Point(1, 2)) == "(1.000000, 2.000000)"
+    assert cli_shared.format_point(Point2D(1, 2)) == "(1.000000, 2.000000)"
     assert len(cli_shared.demo_points()) == 6
     assert len(cli_shared.demo_polygon()) == 6
     assert cli_shared.demo_mesh_lines()[-1] == "1 3 2\n"
@@ -760,27 +760,27 @@ def test_cli_shared_helpers_and_polygon_generator(monkeypatch, capsys):
     random.seed(5)
     convex = PolygonGenerator.convex(8, (0, 10), (0, 10))
     concave = PolygonGenerator.concave(8, (0, 10), (0, 10))
-    star = PolygonGenerator.star_shaped(8, center=Point(0, 0), max_radius=10)
+    star = PolygonGenerator.star_shaped(8, center=Point2D(0, 0), max_radius=10)
     assert len(convex) >= 3
     assert len(concave) == 8
     assert len(star) == 8
 
 
 def test_polygon_boolean_helper_functions_cover_remaining_branches():
-    square = [Point(0, 0), Point(2, 0), Point(2, 2), Point(0, 2)]
-    shifted = [Point(3, 0), Point(5, 0), Point(5, 2), Point(3, 2)]
-    nested = [Point(0.5, 0.5), Point(1.5, 0.5), Point(1.5, 1.5), Point(0.5, 1.5)]
+    square = [Point2D(0, 0), Point2D(2, 0), Point2D(2, 2), Point2D(0, 2)]
+    shifted = [Point2D(3, 0), Point2D(5, 0), Point2D(5, 2), Point2D(3, 2)]
+    nested = [Point2D(0.5, 0.5), Point2D(1.5, 0.5), Point2D(1.5, 1.5), Point2D(0.5, 1.5)]
 
     assert math.isclose(centroid(square).x, 1.0, abs_tol=1e-9)
-    assert representative_point(square) == Point(1, 1)
-    assert polygon_edges(square)[0] == (Point(0, 0), Point(2, 0))
-    assert boolean_point_key(Point(1, 2)) == (1000000000, 2000000000)
-    assert point_on_segment(Point(1, 0), Point(0, 0), Point(2, 0)) is True
-    assert set(segment_intersection_points((Point(0, 0), Point(2, 0)), (Point(1, 0), Point(3, 0)))) == {Point(1, 0), Point(2, 0)}
+    assert representative_point(square) == Point2D(1, 1)
+    assert polygon_edges(square)[0] == (Point2D(0, 0), Point2D(2, 0))
+    assert boolean_point_key(Point2D(1, 2)) == (1000000000, 2000000000)
+    assert point_on_segment(Point2D(1, 0), Point2D(0, 0), Point2D(2, 0)) is True
+    assert set(segment_intersection_points((Point2D(0, 0), Point2D(2, 0)), (Point2D(1, 0), Point2D(3, 0)))) == {Point2D(1, 0), Point2D(2, 0)}
 
     split, intersections = split_polygon_edges_against_other(
         polygon_edges(square),
-        polygon_edges([Point(1, -1), Point(1, 3), Point(3, 3), Point(3, -1)]),
+        polygon_edges([Point2D(1, -1), Point2D(1, 3), Point2D(3, 3), Point2D(3, -1)]),
     )
     assert split
     assert intersections
@@ -793,10 +793,10 @@ def test_polygon_boolean_helper_functions_cover_remaining_branches():
 
     loops = trace_directed_loops(
         [
-            (Point(0, 0), Point(1, 0)),
-            (Point(1, 0), Point(1, 1)),
-            (Point(1, 1), Point(0, 1)),
-            (Point(0, 1), Point(0, 0)),
+            (Point2D(0, 0), Point2D(1, 0)),
+            (Point2D(1, 0), Point2D(1, 1)),
+            (Point2D(1, 1), Point2D(0, 1)),
+            (Point2D(0, 1), Point2D(0, 0)),
         ]
     )
     assert len(loops) == 1
@@ -805,25 +805,25 @@ def test_polygon_boolean_helper_functions_cover_remaining_branches():
     assert polygon_key(deduped[0]) == polygon_key(square)
     assert polygon_key(square) == polygon_key(list(reversed(square)))
     assert parse_polygon(["", "4", "0 0", "2 0", "2 2", "0 2"], 0)[0] == square
-    assert boolean_format_point(Point(1, 2)) == "(1.000000, 2.000000)"
+    assert boolean_format_point(Point2D(1, 2)) == "(1.000000, 2.000000)"
 
 
 def test_reflection_polygon_helpers_and_viewer(monkeypatch, capsys):
-    square = [Point(0, 0), Point(4, 0), Point(4, 4), Point(0, 4)]
+    square = [Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(0, 4)]
 
-    assert reflection_cli._normalize(Point(3, 4)) == Point(0.6, 0.8)
+    assert reflection_cli._normalize(Point2D(3, 4)) == Point2D(0.6, 0.8)
     with pytest.raises(ValueError):
-        reflection_cli._normalize(Point(0, 0))
+        reflection_cli._normalize(Point2D(0, 0))
 
     assert reflection_cli._signed_area_twice(list(reversed(square))) < 0
     assert reflection_cli._ensure_ccw(list(reversed(square))) == square
-    assert reflection_cli._parse_point("1 2", "origin") == Point(1, 2)
+    assert reflection_cli._parse_point("1 2", "origin") == Point2D(1, 2)
     with pytest.raises(ValueError):
         reflection_cli._parse_point("1 2 3", "origin")
 
     origin, direction, polygon = reflection_cli.parse_input(["1 1", "2 0", "0 0", "4 0", "4 4", "0 4"])
-    assert origin == Point(1, 1)
-    assert direction == Point(1, 0)
+    assert origin == Point2D(1, 1)
+    assert direction == Point2D(1, 0)
     assert polygon == square
 
     with pytest.raises(ValueError):
@@ -831,23 +831,23 @@ def test_reflection_polygon_helpers_and_viewer(monkeypatch, capsys):
     with pytest.raises(ValueError):
         reflection_cli.parse_input(["5 5", "1 0", "0 0", "4 0", "4 4", "0 4"])
 
-    assert reflection_cli._ray_segment_intersection(Point(1, 1), Point(1, 0), Point(4, 0), Point(4, 4)) == (3.0, 0.25)
-    assert reflection_cli._ray_segment_intersection(Point(1, 1), Point(0, 1), Point(0, 0), Point(4, 0)) is None
+    assert reflection_cli._ray_segment_intersection(Point2D(1, 1), Point2D(1, 0), Point2D(4, 0), Point2D(4, 4)) == (3.0, 0.25)
+    assert reflection_cli._ray_segment_intersection(Point2D(1, 1), Point2D(0, 1), Point2D(0, 0), Point2D(4, 0)) is None
 
-    reflected = reflection_cli._reflect(Point(1, -1), Point(0, 0), Point(4, 0))
-    assert reflected == Point(1 / math.sqrt(2), 1 / math.sqrt(2))
+    reflected = reflection_cli._reflect(Point2D(1, -1), Point2D(0, 0), Point2D(4, 0))
+    assert reflected == Point2D(1 / math.sqrt(2), 1 / math.sqrt(2))
     with pytest.raises(ValueError):
-        reflection_cli._reflect(Point(1, 0), Point(0, 0), Point(0, 0))
+        reflection_cli._reflect(Point2D(1, 0), Point2D(0, 0), Point2D(0, 0))
 
-    hit, next_state = reflection_cli.advance_ray(reflection_cli.RayState(Point(1, 1), Point(1, 0)), square)
-    assert hit == Point(4, 1)
-    assert next_state.direction == Point(-1, 0)
+    hit, next_state = reflection_cli.advance_ray(reflection_cli.RayState(Point2D(1, 1), Point2D(1, 0)), square)
+    assert hit == Point2D(4, 1)
+    assert next_state.direction == Point2D(-1, 0)
 
-    path = reflection_cli.simulate_reflections(Point(1, 1), Point(1, 0), square, steps=3)
-    assert path == [Point(1, 1), Point(4, 1), Point(0, 1), Point(4, 1)]
+    path = reflection_cli.simulate_reflections(Point2D(1, 1), Point2D(1, 0), square, steps=3)
+    assert path == [Point2D(1, 1), Point2D(4, 1), Point2D(0, 1), Point2D(4, 1)]
 
     with pytest.raises(ValueError):
-        reflection_cli.advance_ray(reflection_cli.RayState(Point(0, 0), Point(1, 0)), [Point(0, 0), Point(1, 0)])
+        reflection_cli.advance_ray(reflection_cli.RayState(Point2D(0, 0), Point2D(1, 0)), [Point2D(0, 0), Point2D(1, 0)])
 
     class FakeCanvas:
         def __init__(self, root, width, height, bg, highlightthickness):
@@ -896,7 +896,7 @@ def test_reflection_polygon_helpers_and_viewer(monkeypatch, capsys):
 
     fake_tk = FakeTkModule()
     monkeypatch.setitem(sys.modules, "tkinter", fake_tk)
-    viewer = reflection_cli.ReflectionViewer(square, Point(1, 1), Point(1, 0))
+    viewer = reflection_cli.ReflectionViewer(square, Point2D(1, 1), Point2D(1, 0))
     assert viewer.root.title_text == "Ray Reflection in a Polygon"
     assert viewer.canvas.polygons
     assert viewer.canvas.ovals
@@ -922,7 +922,7 @@ def test_reflection_polygon_helpers_and_viewer(monkeypatch, capsys):
 
 def test_voronoi_square_compute_and_triangle_to_quad_edge_reuse():
     diagram = VoronoiDiagram()
-    points = [Point(0, 0, 0), Point(2, 0, 1), Point(1, 2, 2)]
+    points = [Point2D(0, 0, 0), Point2D(2, 0, 1), Point2D(1, 2, 2)]
     mesh = diagram.compute(points)
 
     assert len(diagram.boundary) == 4
@@ -936,7 +936,7 @@ def test_voronoi_square_compute_and_triangle_to_quad_edge_reuse():
             assert -0.5 <= vertex.y <= 2.5
 
     mesh2d = TriangleMesh(
-        [Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1)],
+        [Point2D(0, 0), Point2D(1, 0), Point2D(1, 1), Point2D(0, 1)],
         [(0, 1, 2), (0, 2, 3)],
     )
     quads2d = TriangleToQuadConverter.convert(mesh2d)
@@ -945,7 +945,7 @@ def test_voronoi_square_compute_and_triangle_to_quad_edge_reuse():
     shared_midpoints = [
         index
         for index, vertex in enumerate(quads2d.vertices)
-        if isinstance(vertex, Point) and vertex == Point(0.5, 0.5, index)
+        if isinstance(vertex, Point2D) and vertex == Point2D(0.5, 0.5, index)
     ]
     assert shared_midpoints == [6]
 
@@ -959,26 +959,26 @@ def test_voronoi_square_compute_and_triangle_to_quad_edge_reuse():
 
 
 def test_line_arrangement_cli_helpers_and_main(capsys):
-    assert line_cli.point_key(Point(0.0, 0.0)) == (0, 0)
-    assert line_cli.polygon_key([Point(1, 0), Point(1, 1), Point(0, 1), Point(0, 0)]) == line_cli.polygon_key(
-        [Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1)]
+    assert line_cli.point_key(Point2D(0.0, 0.0)) == (0, 0)
+    assert line_cli.polygon_key([Point2D(1, 0), Point2D(1, 1), Point2D(0, 1), Point2D(0, 0)]) == line_cli.polygon_key(
+        [Point2D(0, 0), Point2D(1, 0), Point2D(1, 1), Point2D(0, 1)]
     )
-    assert math.isclose(line_cli.segment_parameter(Point(2, 0), Point(0, 0), Point(4, 0)), 0.5, abs_tol=1e-9)
-    assert math.isclose(line_cli.segment_parameter(Point(0, 3), Point(0, 0), Point(0, 6)), 0.5, abs_tol=1e-9)
-    assert math.isclose(line_cli.signed_polygon_area([Point(0, 0), Point(2, 0), Point(0, 2)]), 2.0, abs_tol=1e-9)
-    assert line_cli.canonical_segment((Point(1, 1), Point(0, 0))) == (Point(0, 0), Point(1, 1))
+    assert math.isclose(line_cli.segment_parameter(Point2D(2, 0), Point2D(0, 0), Point2D(4, 0)), 0.5, abs_tol=1e-9)
+    assert math.isclose(line_cli.segment_parameter(Point2D(0, 3), Point2D(0, 0), Point2D(0, 6)), 0.5, abs_tol=1e-9)
+    assert math.isclose(line_cli.signed_polygon_area([Point2D(0, 0), Point2D(2, 0), Point2D(0, 2)]), 2.0, abs_tol=1e-9)
+    assert line_cli.canonical_segment((Point2D(1, 1), Point2D(0, 0))) == (Point2D(0, 0), Point2D(1, 1))
 
-    crossing = line_cli.segment_intersection_points((Point(0, 0), Point(2, 2)), (Point(0, 2), Point(2, 0)))
-    overlap = line_cli.segment_intersection_points((Point(0, 0), Point(3, 0)), (Point(1, 0), Point(2, 0)))
-    separate = line_cli.segment_intersection_points((Point(0, 0), Point(1, 0)), (Point(0, 1), Point(1, 1)))
-    assert crossing == [Point(1, 1)]
-    assert set(overlap) == {Point(1, 0), Point(2, 0)}
+    crossing = line_cli.segment_intersection_points((Point2D(0, 0), Point2D(2, 2)), (Point2D(0, 2), Point2D(2, 0)))
+    overlap = line_cli.segment_intersection_points((Point2D(0, 0), Point2D(3, 0)), (Point2D(1, 0), Point2D(2, 0)))
+    separate = line_cli.segment_intersection_points((Point2D(0, 0), Point2D(1, 0)), (Point2D(0, 1), Point2D(1, 1)))
+    assert crossing == [Point2D(1, 1)]
+    assert set(overlap) == {Point2D(1, 0), Point2D(2, 0)}
     assert separate == []
 
     segments = [
-        (Point(0, 0), Point(2, 2)),
-        (Point(0, 2), Point(2, 0)),
-        (Point(0, 1), Point(2, 1)),
+        (Point2D(0, 0), Point2D(2, 2)),
+        (Point2D(0, 2), Point2D(2, 0)),
+        (Point2D(0, 1), Point2D(2, 1)),
     ]
     intersections = line_cli.find_intersection_points(segments)
     split = line_cli.split_segments(segments)
@@ -986,7 +986,7 @@ def test_line_arrangement_cli_helpers_and_main(capsys):
     faces = line_cli.trace_faces(vertices, neighbors)
     arrangement = line_cli.analyze_arrangement(segments)
 
-    assert Point(1, 1) in intersections
+    assert Point2D(1, 1) in intersections
     assert len(split) > len(segments)
     assert vertices
     assert all(neighbors.values())
@@ -996,21 +996,21 @@ def test_line_arrangement_cli_helpers_and_main(capsys):
     assert arrangement[2] == []
 
     square_segments = [
-        (Point(0, 0), Point(1, 0)),
-        (Point(1, 0), Point(1, 1)),
-        (Point(1, 1), Point(0, 1)),
-        (Point(0, 1), Point(0, 0)),
+        (Point2D(0, 0), Point2D(1, 0)),
+        (Point2D(1, 0), Point2D(1, 1)),
+        (Point2D(1, 1), Point2D(0, 1)),
+        (Point2D(0, 1), Point2D(0, 0)),
     ]
     _, split_square, polygons = line_cli.analyze_arrangement(square_segments)
     assert len(split_square) == 4
     assert len(polygons) == 1
 
     parsed = line_cli.parse_segments(["0 0 1 0", "", "1 0 1 1", "2 2 2 2"])
-    assert parsed == [(Point(0, 0), Point(1, 0)), (Point(1, 0), Point(1, 1))]
+    assert parsed == [(Point2D(0, 0), Point2D(1, 0)), (Point2D(1, 0), Point2D(1, 1))]
     with pytest.raises(ValueError):
         line_cli.parse_segments(["0 0 1"])
 
-    assert line_cli.format_point(Point(1, 2)) == "(1.000000, 2.000000)"
+    assert line_cli.format_point(Point2D(1, 2)) == "(1.000000, 2.000000)"
     assert line_cli.main() == 0
     out = capsys.readouterr().out
     assert "Intersection Points:" in out
@@ -1019,13 +1019,13 @@ def test_line_arrangement_cli_helpers_and_main(capsys):
 
 
 def test_shape_objects_cover_remaining_properties_and_repr():
-    seg2d = LineSegment(Point(0, 0), Point(2, 2))
+    seg2d = LineSegment(Point2D(0, 0), Point2D(2, 2))
     seg3d = LineSegment(Point3D(0, 0, 0), Point3D(2, 2, 2))
     ray = Ray(Point3D(0, 0, 0), Point3D(1, 1, 1))
-    circle = Circle(Point(1, 2), 3)
-    rect = Rectangle(Point(0, 0), 6, 8)
-    square = Square(Point(1, 1), 2)
-    tri = Triangle(Point(0, 0), Point(3, 0), Point(0, 4))
+    circle = Circle(Point2D(1, 2), 3)
+    rect = Rectangle(Point2D(0, 0), 6, 8)
+    square = Square(Point2D(1, 1), 2)
+    tri = Triangle(Point2D(0, 0), Point2D(3, 0), Point2D(0, 4))
     plane = Plane(Point3D(1, 2, 3), (0, 1, 0))
     tetra = Tetrahedron(Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0), Point3D(0, 0, 1))
     sphere = Sphere(Point3D(1, 1, 1), 3)
@@ -1043,22 +1043,22 @@ def test_shape_objects_cover_remaining_properties_and_repr():
         ]
     )
 
-    assert seg2d.centroid == Point(1, 1)
+    assert seg2d.centroid == Point2D(1, 1)
     assert seg3d.centroid == Point3D(1, 1, 1)
     assert seg2d.diameter == seg2d.length
     assert ray.centroid == Point3D(0, 0, 0)
     assert ray.diameter == float("inf")
     assert circle.radius == 3
-    assert circle.centroid == Point(1, 2)
+    assert circle.centroid == Point2D(1, 2)
     assert circle.diameter == 6
     assert rect.width == 6
     assert rect.height == 8
     assert math.isclose(rect.diameter, 10.0, abs_tol=1e-9)
     assert rect.area == 48
     assert rect.perimeter == 28
-    assert square.centroid == Point(1, 1)
+    assert square.centroid == Point2D(1, 1)
     assert square.side_length == 2
-    assert tri.centroid == Point(1, 4 / 3)
+    assert tri.centroid == Point2D(1, 4 / 3)
     assert math.isclose(tri.diameter, 5.0, abs_tol=1e-9)
     assert plane.centroid == Point3D(1, 2, 3)
     assert plane.diameter == float("inf")
@@ -1092,14 +1092,14 @@ def test_shape_objects_cover_remaining_properties_and_repr():
 
 
 def test_circle_packer_covers_edge_cases_and_efficiency():
-    square = [Point(0, 0), Point(4, 0), Point(4, 4), Point(0, 4)]
-    line_polygon = [Point(0, 0), Point(4, 0), Point(8, 0)]
+    square = [Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(0, 4)]
+    line_polygon = [Point2D(0, 0), Point2D(4, 0), Point2D(8, 0)]
 
     assert CirclePacker.optimal_radius(square, 0) == 0.0
     assert CirclePacker.optimal_radius(line_polygon, 2) == 0.0
-    assert CirclePacker._is_circle_inside(Point(5, 5), 0.5, square) is False
-    assert CirclePacker._is_circle_inside(Point(0.25, 0.25), 0.5, square) is False
-    assert CirclePacker.calculate_efficiency(line_polygon, [Point(1, 0)], 0.5) == 0.0
+    assert CirclePacker._is_circle_inside(Point2D(5, 5), 0.5, square) is False
+    assert CirclePacker._is_circle_inside(Point2D(0.25, 0.25), 0.5, square) is False
+    assert CirclePacker.calculate_efficiency(line_polygon, [Point2D(1, 0)], 0.5) == 0.0
 
     radius = CirclePacker.optimal_radius(square, 4, tolerance=1e-3)
     centers = CirclePacker.pack(square, radius)

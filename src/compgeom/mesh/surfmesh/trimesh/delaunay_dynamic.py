@@ -1,12 +1,12 @@
 """Dynamic Delaunay Triangulation for incremental point insertion."""
 
 from __future__ import annotations
-from ....kernel import EPSILON, Point, cross_product, in_circle
+from ....kernel import EPSILON, Point2D, cross_product, in_circle
 
 
 class DTriangle:
     """A triangle for dynamic Delaunay triangulation with neighbor management."""
-    def __init__(self, v1: Point, v2: Point, v3: Point):
+    def __init__(self, v1: Point2D, v2: Point2D, v3: Point2D):
         self.v = [v1, v2, v3] if cross_product(v1, v2, v3) >= 0 else [v1, v3, v2]
         self.n: list[DTriangle | None] = [None, None, None]
 
@@ -21,10 +21,10 @@ class DTriangle:
                 neighbor.n[index] = self
                 break
 
-    def has_vertex(self, point: Point) -> bool:
+    def has_vertex(self, point: Point2D) -> bool:
         return point in self.v
 
-    def contains_point(self, point: Point) -> bool:
+    def contains_point(self, point: Point2D) -> bool:
         return all(
             cross_product(self.v[index], self.v[(index + 1) % 3], point) >= -EPSILON
             for index in range(3)
@@ -34,14 +34,14 @@ class DTriangle:
 class DynamicDelaunay:
     """A class for managing incremental Delaunay triangulation."""
     def __init__(self, width: float = 1000, height: float = 1000):
-        s1 = Point(width / 2, height * 10, id=-1)
-        s2 = Point(-width * 10, -height * 10, id=-2)
-        s3 = Point(width * 10, -height * 10, id=-3)
+        s1 = Point2D(width / 2, height * 10, id=-1)
+        s2 = Point2D(-width * 10, -height * 10, id=-2)
+        s3 = Point2D(width * 10, -height * 10, id=-3)
         self.super_vertices = [s1, s2, s3]
         self.triangles = {DTriangle(s1, s2, s3)}
-        self.points: list[Point] = []
+        self.points: list[Point2D] = []
 
-    def find_containing_triangle(self, point: Point) -> DTriangle | None:
+    def find_containing_triangle(self, point: Point2D) -> DTriangle | None:
         if not self.triangles:
             return None
         current = next(iter(self.triangles))
@@ -57,7 +57,7 @@ class DynamicDelaunay:
                 return current
         return None
 
-    def add_point(self, point: Point):
+    def add_point(self, point: Point2D):
         triangle = self.find_containing_triangle(point)
         if triangle is None:
             return
@@ -87,7 +87,7 @@ class DynamicDelaunay:
         self.legalize_edge(point, t1, 0)
         self.legalize_edge(point, t2, 0)
 
-    def legalize_edge(self, point: Point, triangle: DTriangle, index: int):
+    def legalize_edge(self, point: Point2D, triangle: DTriangle, index: int):
         neighbor = triangle.n[index]
         if neighbor is None:
             return
@@ -125,7 +125,7 @@ class DynamicDelaunay:
         self.legalize_edge(point, triangle, 0)
         self.legalize_edge(point, neighbor, 0)
 
-    def get_triangles(self) -> list[tuple[Point, Point, Point]]:
+    def get_triangles(self) -> list[tuple[Point2D, Point2D, Point2D]]:
         return [
             tuple(triangle.v)
             for triangle in self.triangles

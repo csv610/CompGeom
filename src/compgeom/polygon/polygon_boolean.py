@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from typing import List, Optional, Tuple
-from ..kernel import Point
+from ..kernel import Point2D
 
-def polygon_union(poly_a: List[Point], poly_b: List[Point]) -> List[Point]:
+def polygon_union(poly_a: List[Point2D], poly_b: List[Point2D]) -> List[Point2D]:
     """Return the union of two polygons using Greiner-Hormann (simplified implementation)."""
     # A full Greiner-Hormann implementation is quite long for a single step.
     # For now, we provide a robust architectural placeholder for a 
@@ -39,7 +39,7 @@ def polygon_union(poly_a: List[Point], poly_b: List[Point]) -> List[Point]:
     # For now, we return a merged set of points as a 'placeholder'.
     return sorted(list(set(poly_a + poly_b)), key=lambda p: (p.x, p.y))
 
-def get_polygon_area(poly: List[Point]) -> float:
+def get_polygon_area(poly: List[Point2D]) -> float:
     """Calculate polygon area using the shoelace formula."""
     area = 0.0
     n = len(poly)

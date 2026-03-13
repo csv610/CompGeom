@@ -9,16 +9,16 @@ from typing import List, Tuple, Union, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from .mesh import Mesh
 
-from ..kernel import Point, Point3D
+from ..kernel import Point2D, Point3D
 
 
 class OBJFileHandler:
     """Reader and writer for Wavefront OBJ files."""
 
     @staticmethod
-    def read(filename: str) -> Tuple[List[Union[Point, Point3D]], List[List[int]]]:
+    def read(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
         """Reads an OBJ file and returns vertices and faces."""
-        vertices: List[Union[Point, Point3D]] = []
+        vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
 
         if not os.path.exists(filename):
@@ -40,7 +40,7 @@ class OBJFileHandler:
                     if len(coords) >= 3:
                         vertices.append(Point3D(coords[0], coords[1], coords[2], len(vertices)))
                     elif len(coords) == 2:
-                        vertices.append(Point(coords[0], coords[1], len(vertices)))
+                        vertices.append(Point2D(coords[0], coords[1], len(vertices)))
 
                 elif prefix == "f":
                     face = []
@@ -67,7 +67,7 @@ class OBJFileHandler:
         return tri_faces
 
     @staticmethod
-    def write(filename: str, vertices: Union[List[Union[Point, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None):
+    def write(filename: str, vertices: Union[List[Union[Point2D, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None):
         """Writes vertices and faces to an OBJ file."""
         if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
             mesh = vertices
@@ -91,9 +91,9 @@ class OFFFileHandler:
     """Reader and writer for Object File Format (OFF)."""
 
     @staticmethod
-    def read(filename: str) -> Tuple[List[Union[Point, Point3D]], List[List[int]]]:
+    def read(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
         """Reads an OFF file."""
-        vertices: List[Union[Point, Point3D]] = []
+        vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
 
         with open(filename, "r") as f:
@@ -117,7 +117,7 @@ class OFFFileHandler:
                 if len(coords) >= 3:
                     vertices.append(Point3D(coords[0], coords[1], coords[2], i))
                 else:
-                    vertices.append(Point(coords[0], coords[1], i))
+                    vertices.append(Point2D(coords[0], coords[1], i))
             
             for i in range(nf):
                 parts = list(map(int, lines[start_idx + nv + i].split()))
@@ -126,7 +126,7 @@ class OFFFileHandler:
         return vertices, faces
 
     @staticmethod
-    def write(filename: str, vertices: Union[List[Union[Point, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None):
+    def write(filename: str, vertices: Union[List[Union[Point2D, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None):
         """Writes vertices and faces to an OFF file."""
         if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
             mesh = vertices
@@ -147,7 +147,7 @@ class STLFileHandler:
     """Reader and writer for STL (Binary and ASCII)."""
 
     @staticmethod
-    def read(filename: str) -> Tuple[List[Union[Point, Point3D]], List[List[int]]]:
+    def read(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
         """Reads an STL file (detects binary or ASCII)."""
         with open(filename, "rb") as f:
             header = f.read(80)
@@ -166,8 +166,8 @@ class STLFileHandler:
             return file_size == 84 + count * 50
 
     @staticmethod
-    def _read_binary(filename: str) -> Tuple[List[Union[Point, Point3D]], List[List[int]]]:
-        vertices: List[Union[Point, Point3D]] = []
+    def _read_binary(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
+        vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
         v_map = {}
 
@@ -190,8 +190,8 @@ class STLFileHandler:
         return vertices, faces
 
     @staticmethod
-    def _read_ascii(filename: str) -> Tuple[List[Union[Point, Point3D]], List[List[int]]]:
-        vertices: List[Union[Point, Point3D]] = []
+    def _read_ascii(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
+        vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
         v_map = {}
         
@@ -213,7 +213,7 @@ class STLFileHandler:
         return vertices, faces
 
     @staticmethod
-    def write(filename: str, vertices: Union[List[Union[Point, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, binary: bool = True):
+    def write(filename: str, vertices: Union[List[Union[Point2D, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, binary: bool = True):
         """Writes a mesh to STL format (binary by default)."""
         if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
             mesh = vertices
@@ -236,7 +236,7 @@ class STLFileHandler:
             STLFileHandler._write_ascii(filename, vertices, tri_faces)
 
     @staticmethod
-    def _write_binary(filename: str, vertices: List[Union[Point, Point3D]], faces: List[Tuple[int, int, int]]):
+    def _write_binary(filename: str, vertices: List[Union[Point2D, Point3D]], faces: List[Tuple[int, int, int]]):
         with open(filename, "wb") as f:
             f.write(b"CompGeom Binary STL".ljust(80, b"\0"))
             f.write(struct.pack("<I", len(faces)))
@@ -249,7 +249,7 @@ class STLFileHandler:
                 f.write(struct.pack("<H", 0))
 
     @staticmethod
-    def _write_ascii(filename: str, vertices: List[Union[Point, Point3D]], faces: List[Tuple[int, int, int]]):
+    def _write_ascii(filename: str, vertices: List[Union[Point2D, Point3D]], faces: List[Tuple[int, int, int]]):
         with open(filename, "w") as f:
             f.write("solid compgeom\n")
             for face in faces:
@@ -268,9 +268,9 @@ class PLYFileHandler:
     """Reader and writer for Polygon File Format (PLY)."""
 
     @staticmethod
-    def read(filename: str) -> Tuple[List[Union[Point, Point3D]], List[List[int]]]:
+    def read(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
         """Reads a PLY file (ASCII and Binary Little Endian)."""
-        vertices: List[Union[Point, Point3D]] = []
+        vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
 
         with open(filename, "rb") as f:
@@ -312,7 +312,7 @@ class PLYFileHandler:
                             if len(coords) >= 3:
                                 vertices.append(Point3D(coords[0], coords[1], coords[2], i))
                             else:
-                                vertices.append(Point(coords[0], coords[1], i))
+                                vertices.append(Point2D(coords[0], coords[1], i))
                     elif element["name"] == "face":
                         for i in range(element["count"]):
                             line = f.readline().decode("ascii").strip()
@@ -347,7 +347,7 @@ class PLYFileHandler:
                             if found_z:
                                 vertices.append(Point3D(x, y, z, i))
                             else:
-                                vertices.append(Point(x, y, i))
+                                vertices.append(Point2D(x, y, i))
                     elif element["name"] == "face":
                         for _ in range(element["count"]):
                             list_prop = element["properties"][0]
@@ -369,7 +369,7 @@ class PLYFileHandler:
         return vertices, faces
 
     @staticmethod
-    def write(filename: str, vertices: Union[List[Union[Point, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, binary: bool = False):
+    def write(filename: str, vertices: Union[List[Union[Point2D, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, binary: bool = False):
         """Writes vertices and faces to a PLY file (ASCII by default)."""
         if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
             mesh = vertices
@@ -382,7 +382,7 @@ class PLYFileHandler:
             PLYFileHandler._write_ascii(filename, vertices, faces)
 
     @staticmethod
-    def _write_ascii(filename: str, vertices: List[Union[Point, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]]):
+    def _write_ascii(filename: str, vertices: List[Union[Point2D, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]]):
         with open(filename, "w") as f:
             f.write("ply\n")
             f.write("format ascii 1.0\n")
@@ -402,7 +402,7 @@ class PLYFileHandler:
                 f.write(f"{len(face)} " + " ".join(map(str, face)) + "\n")
 
     @staticmethod
-    def _write_binary(filename: str, vertices: List[Union[Point, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]]):
+    def _write_binary(filename: str, vertices: List[Union[Point2D, Point3D]], faces: List[Union[List[int], Tuple[int, ...]]]):
         with open(filename, "wb") as f:
             f.write(b"ply\n")
             f.write(b"format binary_little_endian 1.0\n")
@@ -434,7 +434,7 @@ class MeshImporter:
     }
 
     @classmethod
-    def read(cls, filename: str) -> Tuple[List[Union[Point, Point3D]], List[List[int]]]:
+    def read(cls, filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
         """Detects format from extension and reads the file."""
         ext = os.path.splitext(filename)[1].lower()
         if ext not in cls._handlers:
@@ -453,7 +453,7 @@ class MeshExporter:
     }
 
     @classmethod
-    def write(cls, filename: str, vertices: Union[List[Union[Point, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, **kwargs):
+    def write(cls, filename: str, vertices: Union[List[Union[Point2D, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, **kwargs):
         """Detects format from extension and writes the file."""
         ext = os.path.splitext(filename)[1].lower()
         if ext not in cls._handlers:

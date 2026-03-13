@@ -6,7 +6,7 @@ import math
 from typing import Iterable, Union
 
 from ...kernel import (
-    Point,
+    Point2D,
     clip_polygon,
     cross_product,
     sub,
@@ -31,11 +31,11 @@ class VoronoiDiagram:
     """
 
     def __init__(self):
-        self.points: list[Point] = []
-        self.boundary: list[Point] = []
-        self.cells: list[tuple[Point, list[Point]]] = []
+        self.points: list[Point2D] = []
+        self.boundary: list[Point2D] = []
+        self.cells: list[tuple[Point2D, list[Point2D]]] = []
 
-    def compute(self, points: list[Point], boundary_type: str = "square") -> "PolygonMesh":
+    def compute(self, points: list[Point2D], boundary_type: str = "square") -> "PolygonMesh":
         """
         Computes the Voronoi cells using the Delaunay Dual property.
         Returns a PolygonMesh object.
@@ -69,19 +69,19 @@ class VoronoiDiagram:
         mesher.triangulate(points)
         
         # 3. Precompute circumcenters for all active triangles
-        tri_to_cc: dict[IncrementalTriangle, Point] = {}
+        tri_to_cc: dict[IncrementalTriangle, Point2D] = {}
         for tri in mesher.active_triangles:
             cc = triangle_circumcenter(*tri.vertices)
             if cc is None: # Collinear fallback
                 v = tri.vertices
-                cc = Point((v[0].x + v[1].x + v[2].x) / 3, (v[0].y + v[1].y + v[2].y) / 3)
+                cc = Point2D((v[0].x + v[1].x + v[2].x) / 3, (v[0].y + v[1].y + v[2].y) / 3)
             tri_to_cc[tri] = cc
 
         self.cells = []
         unique_vertices = []
         vertex_to_idx = {}
 
-        def get_v_idx(p: Point) -> int:
+        def get_v_idx(p: Point2D) -> int:
             key = (round(p.x, 8), round(p.y, 8))
             if key not in vertex_to_idx:
                 vertex_to_idx[key] = len(unique_vertices)
@@ -158,7 +158,7 @@ class VoronoiDiagram:
                             
         return True
 
-    def _sort_star(self, site: Point, star: Iterable[IncrementalTriangle]) -> list[IncrementalTriangle]:
+    def _sort_star(self, site: Point2D, star: Iterable[IncrementalTriangle]) -> list[IncrementalTriangle]:
         """Sorts triangles around a site in CCW order using adjacency."""
         star_list = list(star)
         if not star_list: return []
@@ -224,7 +224,7 @@ class VoronoiDiagram:
         off_x = padding - min_x * scale + (width - 2*padding - data_w * scale) / 2
         off_y = padding - min_y * scale + (height - 2*padding - data_h * scale) / 2
 
-        def to_c(p: Point):
+        def to_c(p: Point2D):
             return off_x + p.x * scale, height - (off_y + p.y * scale)
 
         svg = [f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">']
@@ -247,23 +247,23 @@ class VoronoiDiagram:
         return "\n".join(svg)
 
     @staticmethod
-    def get_square_boundary(size: float = 100, center: tuple[float, float] = (50, 50)) -> list[Point]:
+    def get_square_boundary(size: float = 100, center: tuple[float, float] = (50, 50)) -> list[Point2D]:
         """Generates a square boundary polygon."""
         cx, cy = center
         half_size = size / 2
         return [
-            Point(cx - half_size, cy - half_size),
-            Point(cx + half_size, cy - half_size),
-            Point(cx + half_size, cy + half_size),
-            Point(cx - half_size, cy + half_size),
+            Point2D(cx - half_size, cy - half_size),
+            Point2D(cx + half_size, cy - half_size),
+            Point2D(cx + half_size, cy + half_size),
+            Point2D(cx - half_size, cy + half_size),
         ]
 
     @staticmethod
-    def get_circle_boundary(radius: float = 50, center: tuple[float, float] = (50, 50), n_segments: int = 64) -> list[Point]:
+    def get_circle_boundary(radius: float = 50, center: tuple[float, float] = (50, 50), n_segments: int = 64) -> list[Point2D]:
         """Generates a circular boundary polygon."""
         cx, cy = center
         return [
-            Point(cx + radius * math.cos(2 * math.pi * index / n_segments), 
+            Point2D(cx + radius * math.cos(2 * math.pi * index / n_segments), 
                   cy + radius * math.sin(2 * math.pi * index / n_segments))
             for index in range(n_segments)
         ]
@@ -295,7 +295,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Generate random points in a 1000x1000 area
-    points = [Point(random.uniform(0, 1000), random.uniform(0, 1000), id=i) for i in range(args.points)]
+    points = [Point2D(random.uniform(0, 1000), random.uniform(0, 1000), id=i) for i in range(args.points)]
 
     start = time.time()
     vd = VoronoiDiagram()

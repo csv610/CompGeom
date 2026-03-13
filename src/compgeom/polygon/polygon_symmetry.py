@@ -5,11 +5,11 @@ from __future__ import annotations
 import math
 from typing import Sequence
 
-from ..kernel import Point
+from ..kernel import Point2D
 from .polygon import Polygon
 
 
-def get_moments(vertices: Sequence[Point]) -> tuple[float, float, float, float]:
+def get_moments(vertices: Sequence[Point2D]) -> tuple[float, float, float, float]:
     """Calculate area and moments of inertia (Ix, Iy, Ixy) about the origin."""
     n = len(vertices)
     area = 0.0
@@ -50,7 +50,7 @@ def orient_polygon_for_symmetry(polygon: Polygon) -> Polygon:
     centroid = props.centroid
     
     translated_vertices = [
-        Point(p.x - centroid.x, p.y - centroid.y) for p in vertices
+        Point2D(p.x - centroid.x, p.y - centroid.y) for p in vertices
     ]
     
     # 2. Calculate moments of inertia about the centroid
@@ -95,11 +95,11 @@ def orient_polygon_for_symmetry(polygon: Polygon) -> Polygon:
     # Let's just pick one and the user can adjust if needed, 
     # but let's try to be smart.
     
-    def rotate_points(pts: list[Point], angle: float) -> list[Point]:
+    def rotate_points(pts: list[Point2D], angle: float) -> list[Point2D]:
         cos_a = math.cos(angle)
         sin_a = math.sin(angle)
         return [
-            Point(p.x * cos_a - p.y * sin_a, p.x * sin_a + p.y * cos_a)
+            Point2D(p.x * cos_a - p.y * sin_a, p.x * sin_a + p.y * cos_a)
             for p in pts
         ]
 
@@ -109,7 +109,7 @@ def orient_polygon_for_symmetry(polygon: Polygon) -> Polygon:
     # Candidate 2: Aligns principal axis with Y
     pts2 = rotate_points(pts1, math.pi / 2)
 
-    def calculate_asymmetry_y(pts: list[Point]) -> float:
+    def calculate_asymmetry_y(pts: list[Point2D]) -> float:
         # Sum of x-coordinates should be 0 for a symmetric-ish shape
         # but also we want the "spread" to be balanced.
         # A better measure: sum of distances of reflected points to the original points

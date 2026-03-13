@@ -6,12 +6,12 @@ import os
 # Ensure the library is in the python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from compgeom.kernel import Point
-from compgeom.kernel import Point, cross_product
+from compgeom.kernel import Point2D
+from compgeom.kernel import Point2D, cross_product
 from compgeom.polygon.convex_hull import ConvexHullGenerator, GrahamScan, MonotoneChain, QuickHull, Chan
 from compgeom.polygon.polygon import Polygon
 
-def verify_convex_hull(points: list[Point], hull: list[Point]) -> bool:
+def verify_convex_hull(points: list[Point2D], hull: list[Point2D]) -> bool:
     if not hull:
         return len(points) == 0
     
@@ -50,7 +50,7 @@ def run_benchmarks():
     for n in sizes:
         # Generate random 2D points in [0, 1000]
         points = [
-            Point(random.uniform(0, 1000), random.uniform(0, 1000), id=i) 
+            Point2D(random.uniform(0, 1000), random.uniform(0, 1000), id=i) 
             for i in range(n)
         ]
         

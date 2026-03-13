@@ -2,13 +2,13 @@
 from typing import List, Tuple
 import math
 
-from ...kernel import Point
+from ...kernel import Point2D
 
 class PolygonTriangulation:
     """Triangulates simple 2D polygons."""
 
     @staticmethod
-    def triangulate(polygon: List[Point]) -> List[Tuple[int, int, int]]:
+    def triangulate(polygon: List[Point2D]) -> List[Tuple[int, int, int]]:
         """
         Triangulates a simple polygon using the O(N^2) Ear Clipping method.
         Returns a list of tuples containing the indices of the vertices forming each triangle.

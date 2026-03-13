@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from compgeom import Point, dist_point_to_segment, is_point_in_polygon
+from compgeom import Point2D, dist_point_to_segment, is_point_in_polygon
 from compgeom.cli._shared import demo_polygon
 
 
-def _polygon_distance(polygon_a: list[Point], polygon_b: list[Point]) -> float:
+def _polygon_distance(polygon_a: list[Point2D], polygon_b: list[Point2D]) -> float:
     if any(is_point_in_polygon(point, polygon_b) for point in polygon_a):
         return 0.0
     if any(is_point_in_polygon(point, polygon_a) for point in polygon_b):

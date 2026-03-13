@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from compgeom import Point
+from compgeom import Point2D
 from ._shared import demo_mesh_lines
 from compgeom.algo.path import shortest_path
 
 
-def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point, Point, Point]], Point | None, Point | None]:
+def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point2D, Point2D, Point2D]], Point2D | None, Point2D | None]:
     points_map = {}
     triangles = []
     reading_points = True
@@ -29,9 +29,9 @@ def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point, Point, Point]]
 
         if reading_query:
             if source is None and len(parts) >= 2:
-                source = Point(float(parts[0]), float(parts[1]))
+                source = Point2D(float(parts[0]), float(parts[1]))
             elif target is None and len(parts) >= 2:
-                target = Point(float(parts[0]), float(parts[1]))
+                target = Point2D(float(parts[0]), float(parts[1]))
             continue
 
         if reading_points:
@@ -46,7 +46,7 @@ def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point, Point, Point]]
                     point_id = len(points_map)
                     x = float(parts[0])
                     y = float(parts[1])
-                points_map[point_id] = Point(x, y, point_id)
+                points_map[point_id] = Point2D(x, y, point_id)
             except ValueError:
                 continue
             continue
@@ -61,7 +61,7 @@ def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point, Point, Point]]
     return triangles, source, target
 
 
-def format_point(point: Point) -> str:
+def format_point(point: Point2D) -> str:
     return f"({point.x:.6f}, {point.y:.6f})"
 
 

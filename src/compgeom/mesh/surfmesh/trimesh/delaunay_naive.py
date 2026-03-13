@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 import math
-from ....kernel import Point, contains_point, cross_product
+from ....kernel import Point2D, contains_point, cross_product
 from .utils import create_super_triangle
 
 
 class Triangle:
     """A basic triangle class for point location."""
-    def __init__(self, v1: Point, v2: Point, v3: Point):
+    def __init__(self, v1: Point2D, v2: Point2D, v3: Point2D):
         self.vertices = (v1, v2, v3)
         self.children: list[Triangle] = []
         self.is_active = True
 
-    def find_leaves_containing(self, point: Point, found_leaves: set[Triangle]):
+    def find_leaves_containing(self, point: Point2D, found_leaves: set[Triangle]):
         if not contains_point(self, point):
             return
         if not self.children:
@@ -24,7 +24,7 @@ class Triangle:
             child.find_leaves_containing(point, found_leaves)
 
 
-def triangulate_naive(points: list[Point]):
+def triangulate_naive(points: list[Point2D]):
     """Batch-oriented Naive Delaunay triangulation."""
     if not points:
         return [], [], ()
@@ -43,7 +43,7 @@ def triangulate_naive(points: list[Point]):
     cell_size = span / max(math.sqrt(max(1, len(points))), 1.0)
 
     class _IndexedTriangle:
-        def __init__(self, vertices: tuple[Point, Point, Point]):
+        def __init__(self, vertices: tuple[Point2D, Point2D, Point2D]):
             self.vertices = vertices
             self.min_x = min(v.x for v in vertices)
             self.max_x = max(v.x for v in vertices)
@@ -87,7 +87,7 @@ def triangulate_naive(points: list[Point]):
                     del self.grid[cell]
             tri.cells = []
 
-        def query(self, point: Point):
+        def query(self, point: Point2D):
             ix, iy = self._cell_coords(point.x, point.y)
             seen = set()
             candidates = []
@@ -104,10 +104,10 @@ def triangulate_naive(points: list[Point]):
     spatial_index = _TriangleSpatialIndex(cell_size or 1.0)
     triangles_list: list[_IndexedTriangle] = []
 
-    def make_ccw(a: Point, b: Point, c: Point):
+    def make_ccw(a: Point2D, b: Point2D, c: Point2D):
         return (a, b, c) if cross_product(a, b, c) >= 0 else (a, c, b)
 
-    def add_triangle(vertices: tuple[Point, Point, Point]):
+    def add_triangle(vertices: tuple[Point2D, Point2D, Point2D]):
         entry = _IndexedTriangle(vertices)
         triangles_list.append(entry)
         spatial_index.add(entry)

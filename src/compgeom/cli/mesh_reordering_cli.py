@@ -1,6 +1,6 @@
 import argparse
 import sys
-from compgeom import Point
+from compgeom import Point2D
 from compgeom import TriangleMesh, CuthillMcKee, OBJFileHandler
 
 def calculate_dual_bandwidth(mesh: TriangleMesh):
@@ -34,7 +34,7 @@ def main():
     else:
         # Create a shuffled grid
         import random
-        vertices = [Point(x,y) for y in range(4) for x in range(4)]
+        vertices = [Point2D(x,y) for y in range(4) for x in range(4)]
         faces = []
         for j in range(3):
             for i in range(3):

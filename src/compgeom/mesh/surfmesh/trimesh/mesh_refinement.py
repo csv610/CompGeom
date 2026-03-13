@@ -6,7 +6,7 @@ import heapq
 import math
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ....kernel import Point, Point3D
+from ....kernel import Point2D, Point3D
 from ...mesh import TriangleMesh
 
 
@@ -14,7 +14,7 @@ class TriMeshRefiner:
     """Provides methods for refining and subdividing triangular meshes."""
 
     @staticmethod
-    def _calculate_face_area(v0: Union[Point, Point3D], v1: Union[Point, Point3D], v2: Union[Point, Point3D]) -> float:
+    def _calculate_face_area(v0: Union[Point2D, Point3D], v1: Union[Point2D, Point3D], v2: Union[Point2D, Point3D]) -> float:
         """Calculates the area of a 2D or 3D triangle."""
         ax, ay, az = v0.x, v0.y, getattr(v0, 'z', 0.0)
         bx, by, bz = v1.x, v1.y, getattr(v1, 'z', 0.0)
@@ -53,7 +53,7 @@ class TriMeshRefiner:
             if isinstance(v1, Point3D) and isinstance(v2, Point3D):
                 mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, idx)
             else:
-                mid = Point((v1.x+v2.x)/2, (v1.y+v2.y)/2, idx)
+                mid = Point2D((v1.x+v2.x)/2, (v1.y+v2.y)/2, idx)
                 
             new_vertices.append(mid)
             midpoints[edge] = idx
@@ -102,7 +102,7 @@ class TriMeshRefiner:
             if isinstance(v1, Point3D) and isinstance(v2, Point3D):
                 mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, idx)
             else:
-                mid = Point((v1.x+v2.x)/2, (v1.y+v2.y)/2, idx)
+                mid = Point2D((v1.x+v2.x)/2, (v1.y+v2.y)/2, idx)
                 
             vertices.append(mid)
             midpoints[edge] = idx

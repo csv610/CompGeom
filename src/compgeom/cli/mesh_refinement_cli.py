@@ -1,6 +1,6 @@
 import argparse
 import sys
-from compgeom import Point
+from compgeom import Point2D
 from compgeom import TriangleMesh, OBJFileHandler
 
 def main():
@@ -17,7 +17,7 @@ def main():
         mesh = TriangleMesh.from_file(args.input)
     else:
         # Single triangle with area ~0.433
-        vertices = [Point(0,0), Point(1,0), Point(0.5, 0.866)]
+        vertices = [Point2D(0,0), Point2D(1,0), Point2D(0.5, 0.866)]
         faces = [(0, 1, 2)]
         mesh = TriangleMesh(vertices, faces)
         print("Using default single 2D triangle.")

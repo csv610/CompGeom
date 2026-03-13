@@ -1,12 +1,12 @@
 import math
 
-from compgeom import EPSILON, Point, cross_product, is_on_segment, length, sub
+from compgeom import EPSILON, Point2D, cross_product, is_on_segment, length, sub
 
-def point_key(point: Point) -> tuple[int, int]:
+def point_key(point: Point2D) -> tuple[int, int]:
     return (round(point.x / EPSILON), round(point.y / EPSILON))
 
 
-def polygon_key(polygon: list[Point]) -> tuple[tuple[int, int], ...]:
+def polygon_key(polygon: list[Point2D]) -> tuple[tuple[int, int], ...]:
     keys = [point_key(point) for point in polygon]
     if not keys:
         return ()
@@ -18,7 +18,7 @@ def polygon_key(polygon: list[Point]) -> tuple[tuple[int, int], ...]:
     return min(candidates)
 
 
-def segment_parameter(point: Point, start: Point, end: Point) -> float:
+def segment_parameter(point: Point2D, start: Point2D, end: Point2D) -> float:
     dx = end.x - start.x
     dy = end.y - start.y
     if abs(dx) >= abs(dy):
@@ -26,7 +26,7 @@ def segment_parameter(point: Point, start: Point, end: Point) -> float:
     return 0.0 if abs(dy) < EPSILON else (point.y - start.y) / dy
 
 
-def signed_polygon_area(polygon: list[Point]) -> float:
+def signed_polygon_area(polygon: list[Point2D]) -> float:
     return 0.5 * sum(
         polygon[i].x * polygon[(i + 1) % len(polygon)].y
         - polygon[(i + 1) % len(polygon)].x * polygon[i].y
@@ -34,14 +34,14 @@ def signed_polygon_area(polygon: list[Point]) -> float:
     )
 
 
-def canonical_segment(segment: tuple[Point, Point]) -> tuple[Point, Point]:
+def canonical_segment(segment: tuple[Point2D, Point2D]) -> tuple[Point2D, Point2D]:
     start, end = segment
     return (start, end) if point_key(start) <= point_key(end) else (end, start)
 
 
 def segment_intersection_points(
-    seg1: tuple[Point, Point], seg2: tuple[Point, Point]
-) -> list[Point]:
+    seg1: tuple[Point2D, Point2D], seg2: tuple[Point2D, Point2D]
+) -> list[Point2D]:
     a, b = seg1
     c, d = seg2
     ab = sub(b, a)
@@ -53,7 +53,7 @@ def segment_intersection_points(
         t = (ac.x * cd.y - ac.y * cd.x) / denominator
         u = (ac.x * ab.y - ac.y * ab.x) / denominator
         if -EPSILON <= t <= 1 + EPSILON and -EPSILON <= u <= 1 + EPSILON:
-            return [Point(a.x + t * ab.x, a.y + t * ab.y)]
+            return [Point2D(a.x + t * ab.x, a.y + t * ab.y)]
         return []
 
     if abs(cross_product(a, b, c)) > EPSILON or abs(cross_product(a, b, d)) > EPSILON:
@@ -70,7 +70,7 @@ def segment_intersection_points(
     return list(unique.values())
 
 
-def find_intersection_points(segments: list[tuple[Point, Point]]) -> list[Point]:
+def find_intersection_points(segments: list[tuple[Point2D, Point2D]]) -> list[Point2D]:
     intersections = {}
     for i in range(len(segments)):
         for j in range(i + 1, len(segments)):
@@ -79,7 +79,7 @@ def find_intersection_points(segments: list[tuple[Point, Point]]) -> list[Point]
     return list(intersections.values())
 
 
-def split_segments(segments: list[tuple[Point, Point]]) -> list[tuple[Point, Point]]:
+def split_segments(segments: list[tuple[Point2D, Point2D]]) -> list[tuple[Point2D, Point2D]]:
     split_points = []
     for start, end in segments:
         split_points.append({point_key(start): start, point_key(end): end})
@@ -105,7 +105,7 @@ def split_segments(segments: list[tuple[Point, Point]]) -> list[tuple[Point, Poi
     return list(result.values())
 
 
-def build_graph(segments: list[tuple[Point, Point]]):
+def build_graph(segments: list[tuple[Point2D, Point2D]]):
     vertices = {}
     adjacency = {}
 
@@ -131,7 +131,7 @@ def build_graph(segments: list[tuple[Point, Point]]):
     return vertices, ordered_neighbors
 
 
-def trace_faces(vertices, ordered_neighbors) -> list[list[Point]]:
+def trace_faces(vertices, ordered_neighbors) -> list[list[Point2D]]:
     visited = set()
     polygons = []
 
@@ -173,8 +173,8 @@ def trace_faces(vertices, ordered_neighbors) -> list[list[Point]]:
 
 
 def analyze_arrangement(
-    segments: list[tuple[Point, Point]]
-) -> tuple[list[Point], list[tuple[Point, Point]], list[list[Point]]]:
+    segments: list[tuple[Point2D, Point2D]]
+) -> tuple[list[Point2D], list[tuple[Point2D, Point2D]], list[list[Point2D]]]:
     intersection_points = find_intersection_points(segments)
     split = split_segments(segments)
     vertices, ordered_neighbors = build_graph(split)
@@ -182,7 +182,7 @@ def analyze_arrangement(
     return intersection_points, split, polygons
 
 
-def parse_segments(lines: list[str]) -> list[tuple[Point, Point]]:
+def parse_segments(lines: list[str]) -> list[tuple[Point2D, Point2D]]:
     segments = []
     for line_number, line in enumerate(lines, start=1):
         parts = line.split()
@@ -192,24 +192,24 @@ def parse_segments(lines: list[str]) -> list[tuple[Point, Point]]:
             raise ValueError(f"Line {line_number}: expected 4 numbers, got {len(parts)}")
 
         x1, y1, x2, y2 = map(float, parts)
-        start = Point(x1, y1)
-        end = Point(x2, y2)
+        start = Point2D(x1, y1)
+        end = Point2D(x2, y2)
         if start == end:
             continue
         segments.append((start, end))
     return segments
 
 
-def format_point(point: Point) -> str:
+def format_point(point: Point2D) -> str:
     return f"({point.x:.6f}, {point.y:.6f})"
 
 
 def main() -> int:
     segments = [
-        (Point(0.0, 0.0), Point(1.0, 0.0)),
-        (Point(1.0, 0.0), Point(1.0, 1.0)),
-        (Point(1.0, 1.0), Point(0.0, 1.0)),
-        (Point(0.0, 1.0), Point(0.0, 0.0)),
+        (Point2D(0.0, 0.0), Point2D(1.0, 0.0)),
+        (Point2D(1.0, 0.0), Point2D(1.0, 1.0)),
+        (Point2D(1.0, 1.0), Point2D(0.0, 1.0)),
+        (Point2D(0.0, 1.0), Point2D(0.0, 0.0)),
     ]
 
     intersection_points, split, polygons = analyze_arrangement(segments)

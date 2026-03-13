@@ -1,6 +1,6 @@
 import argparse
 import sys
-from compgeom import Point
+from compgeom import Point2D
 from compgeom import generate_simple_polygon, PolygonalMeanCurvatureFlow
 from compgeom import OBJFileHandler
 from compgeom import save_png, save_svg
@@ -9,12 +9,12 @@ def read_polygon(args):
     if args.input:
         print(f"Reading polygon from {args.input}...")
         vertices, _ = OBJFileHandler.read(args.input)
-        return [Point(v.x, v.y) for v in vertices]
+        return [Point2D(v.x, v.y) for v in vertices]
     
     if args.poly:
         try:
             raw = [float(x) for x in args.poly]
-            return [Point(raw[i], raw[i+1], i//2) for i in range(0, len(raw), 2)]
+            return [Point2D(raw[i], raw[i+1], i//2) for i in range(0, len(raw), 2)]
         except (ValueError, IndexError):
             print("Error: Invalid polygon coordinates.")
             sys.exit(1)
@@ -77,7 +77,7 @@ def main():
         # Center original for comparison
         cx = sum(p.x for p in polygon) / len(polygon)
         cy = sum(p.y for p in polygon) / len(polygon)
-        centered_orig = [Point(p.x - cx, p.y - cy) for p in polygon]
+        centered_orig = [Point2D(p.x - cx, p.y - cy) for p in polygon]
 
         def to_pts(pts): return " ".join(f"{p.x},{-p.y}" for p in pts) 
         

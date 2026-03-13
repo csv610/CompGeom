@@ -3,7 +3,7 @@ import math
 from typing import Optional, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
-    from .point import Point
+    from .point import Point2D
 
 from .math_utils import (
     EPSILON, 
@@ -15,9 +15,9 @@ from .math_utils import (
     dot_product
 )
 
-def intersect_lines(p1: Point, p2: Point, p3: Point, p4: Point) -> Optional[Point]:
+def intersect_lines(p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) -> Optional[Point2D]:
     """Return the line-line intersection, or ``None`` for parallel lines."""
-    from .point import Point
+    from .point import Point2D
     denominator = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x)
     if abs(denominator) < 1e-12:
         return None
@@ -30,10 +30,10 @@ def intersect_lines(p1: Point, p2: Point, p3: Point, p4: Point) -> Optional[Poin
         (p1.x * p2.y - p1.y * p2.x) * (p3.y - p4.y)
         - (p1.y - p2.y) * (p3.x * p4.y - p3.y * p4.x)
     ) / denominator
-    return Point(px, py)
+    return Point2D(px, py)
 
 
-def distance_to_point(point: Point, start: Point, end: Point) -> float:
+def distance_to_point(point: Point2D, start: Point2D, end: Point2D) -> float:
     """Return the minimum distance from a point to a line segment."""
     dx = end.x - start.x
     dy = end.y - start.y
@@ -49,7 +49,7 @@ def distance_to_point(point: Point, start: Point, end: Point) -> float:
     return math.hypot(point.x - closest_x, point.y - closest_y)
 
 
-def contains_point(point: Point, start: Point, end: Point) -> bool:
+def contains_point(point: Point2D, start: Point2D, end: Point2D) -> bool:
     """Check if a point lies on a line segment."""
     if abs(cross_product(start, end, point)) > EPSILON:
         return False
@@ -59,7 +59,7 @@ def contains_point(point: Point, start: Point, end: Point) -> bool:
     )
 
 
-def intersect_proper(a: Point, b: Point, c: Point, d: Point) -> bool:
+def intersect_proper(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
     """Check if segments AB and CD intersect properly (not at endpoints)."""
     o1 = cross_product(a, b, c)
     o2 = cross_product(a, b, d)
@@ -78,11 +78,11 @@ def intersect_proper(a: Point, b: Point, c: Point, d: Point) -> bool:
 
 
 def intersect_ray(
-    origin: Point, angle: float, start: Point, end: Point
-) -> tuple[float, Point] | None:
+    origin: Point2D, angle: float, start: Point2D, end: Point2D
+) -> tuple[float, Point2D] | None:
     """Return the intersection distance and point between a ray and a segment."""
-    from .point import Point
-    direction = Point(math.cos(angle), math.sin(angle))
+    from .point import Point2D
+    direction = Point2D(math.cos(angle), math.sin(angle))
     edge = sub(end, start)
     delta = sub(start, origin)
     denominator = direction.x * edge.y - direction.y * edge.x
@@ -94,7 +94,7 @@ def intersect_ray(
     if ray_t < -EPSILON or edge_u < -EPSILON or edge_u > 1 + EPSILON:
         return None
 
-    intersection = Point(origin.x + ray_t * direction.x, origin.y + ray_t * direction.y)
+    intersection = Point2D(origin.x + ray_t * direction.x, origin.y + ray_t * direction.y)
     if distance(intersection, start) <= 1e-6:
         intersection = start
     elif distance(intersection, end) <= 1e-6:
@@ -102,13 +102,13 @@ def intersect_ray(
     return ray_t, intersection
 
 
-def midpoint(p1: Point, p2: Point) -> Point:
+def midpoint(p1: Point2D, p2: Point2D) -> Point2D:
     """Return the midpoint of a line segment."""
-    from .point import Point
-    return Point((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
+    from .point import Point2D
+    return Point2D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
 
 
-def angle(p1: Point, p2: Point) -> float:
+def angle(p1: Point2D, p2: Point2D) -> float:
     """Return the angle of the segment (p1 -> p2) in radians."""
     return math.atan2(p2.y - p1.y, p2.x - p1.x)
 

@@ -9,36 +9,36 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 from .point import EPSILON
 
 if TYPE_CHECKING:
-    from .point import Point, Point3D
+    from .point import Point2D, Point3D
 
 # Set precision once for the module
 getcontext().prec = 50
 
 
-def cross_product(origin: Point, a: Point, b: Point) -> float:
+def cross_product(origin: Point2D, a: Point2D, b: Point2D) -> float:
     """Return the signed area of OA x OB."""
     return (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x)
 
 
-def dot_product(a: Point, b: Point) -> float:
+def dot_product(a: Point2D, b: Point2D) -> float:
     return a.x * b.x + a.y * b.y
 
 
-def sub(a: Point, b: Point) -> Point:
-    from .point import Point
+def sub(a: Point2D, b: Point2D) -> Point2D:
+    from .point import Point2D
 
-    return Point(a.x - b.x, a.y - b.y)
+    return Point2D(a.x - b.x, a.y - b.y)
 
 
-def length_sq(point: Point) -> float:
+def length_sq(point: Point2D) -> float:
     return point.x**2 + point.y**2
 
 
-def length(point: Point) -> float:
+def length(point: Point2D) -> float:
     return math.hypot(point.x, point.y)
 
 
-def distance(a: Point, b: Point) -> float:
+def distance(a: Point2D, b: Point2D) -> float:
     """Return the Euclidean distance between two 2D points."""
     return math.hypot(a.x - b.x, a.y - b.y)
 
@@ -48,7 +48,7 @@ def distance_3d(a: Point3D, b: Point3D) -> float:
     return math.dist((a.x, a.y, a.z), (b.x, b.y, b.z))
 
 
-def signed_area_twice(polygon: List[Point]) -> float:
+def signed_area_twice(polygon: List[Point2D]) -> float:
     """Return twice the signed area of a polygon."""
     n = len(polygon)
     if n < 3:
@@ -63,22 +63,22 @@ def signed_area_twice(polygon: List[Point]) -> float:
     return area
 
 
-def rotate_2d(point: Point, cos_theta: float, sin_theta: float) -> Point:
+def rotate_2d(point: Point2D, cos_theta: float, sin_theta: float) -> Point2D:
     """Rotate a point by an angle given by its cosine and sine."""
-    from .point import Point
+    from .point import Point2D
 
-    return Point(
+    return Point2D(
         point.x * cos_theta + point.y * sin_theta,
         -point.x * sin_theta + point.y * cos_theta,
         point.id,
     )
 
 
-def unrotate_2d(point: Point, cos_theta: float, sin_theta: float) -> Point:
+def unrotate_2d(point: Point2D, cos_theta: float, sin_theta: float) -> Point2D:
     """Unrotate a point by an angle given by its cosine and sine."""
-    from .point import Point
+    from .point import Point2D
 
-    return Point(
+    return Point2D(
         point.x * cos_theta - point.y * sin_theta,
         point.x * sin_theta + point.y * cos_theta,
         point.id,
@@ -104,7 +104,7 @@ def hilbert_key(x: int, y: int, n: int) -> int:
         s //= 2
     return d
 
-def robust_orientation(a: Point, b: Point, p: Point) -> float:
+def robust_orientation(a: Point2D, b: Point2D, p: Point2D) -> float:
     """Adaptive exact cross product (orientation) with SOS tie-breaking."""
     adx, ady = b.x - a.x, b.y - a.y
     bdx, bdy = p.x - a.x, p.y - a.y
@@ -127,7 +127,7 @@ def robust_orientation(a: Point, b: Point, p: Point) -> float:
     # Consistent tie-break using IDs
     return 1e-15 if (a.id < b.id) else -1e-15
 
-def support(polygon: List[Point], direction: Point) -> Point:
+def support(polygon: List[Point2D], direction: Point2D) -> Point2D:
     """Return the point in the polygon that is furthest in the given direction."""
     return max(polygon, key=lambda point: dot_product(point, direction))
 

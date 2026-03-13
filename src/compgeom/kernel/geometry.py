@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .point import Point, Point3D
+from .point import Point2D, Point3D
 from .math_utils import (
     EPSILON,
     cross_product,
@@ -18,14 +18,14 @@ from .math_utils import (
 
 import math
 
-def clip_polygon(polygon: list[Point], line_start: Point, line_end: Point) -> list[Point]:
+def clip_polygon(polygon: list[Point2D], line_start: Point2D, line_end: Point2D) -> list[Point2D]:
     """Clip a polygon against the left half-plane of the directed line."""
     from .line_segment import intersect_lines
 
-    def is_inside(point: Point) -> bool:
+    def is_inside(point: Point2D) -> bool:
         return cross_product(line_start, line_end, point) >= -1e-12
 
-    clipped: list[Point] = []
+    clipped: list[Point2D] = []
     n = len(polygon)
     if n == 0:
         return clipped
@@ -54,7 +54,7 @@ def clip_polygon(polygon: list[Point], line_start: Point, line_end: Point) -> li
 
 __all__ = [
     "EPSILON",
-    "Point",
+    "Point2D",
     "Point3D",
     "clip_polygon",
     "cross_product",

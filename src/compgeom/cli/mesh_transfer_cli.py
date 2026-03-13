@@ -1,7 +1,7 @@
 import argparse
 import sys
 import math
-from compgeom import Point
+from compgeom import Point2D
 from compgeom import TriangleMesh, MeshTransfer, OBJFileHandler
 
 def main():
@@ -21,7 +21,7 @@ def main():
     if args.target:
         try:
             raw = [float(x) for x in args.target]
-            target_poly = [Point(raw[i], raw[i+1]) for i in range(0, len(raw), 2)]
+            target_poly = [Point2D(raw[i], raw[i+1]) for i in range(0, len(raw), 2)]
         except Exception as e:
             print(f"Error parsing target polygon: {e}")
             sys.exit(1)
@@ -32,7 +32,7 @@ def main():
         target_poly = []
         for i in range(n_segments):
             theta = 2.0 * math.pi * i / n_segments
-            target_poly.append(Point(0.5 + 0.5 * math.cos(theta), 0.5 + 0.5 * math.sin(theta)))
+            target_poly.append(Point2D(0.5 + 0.5 * math.cos(theta), 0.5 + 0.5 * math.sin(theta)))
             
     # 3. Perform transfer
     print("Transferring triangulation...")
