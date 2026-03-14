@@ -10,6 +10,8 @@ Welcome, students! This guide explores how abstract geometric principles are app
 **The Problem**: 3D printers cannot print in thin air; they need "supports" for overhanging parts.
 *   **Geometric Principle (Face Normal Analysis)**: Every triangle in a mesh has a "normal" vector $(\vec{n})$ pointing outward. We compare this to the gravity vector $(\vec{g} = [0, 0, -1])$ using the **Dot Product**: $\cos(\theta) = \vec{n} \cdot \vec{g}$.
 *   **Thresholding**: If the angle $\theta$ is greater than a threshold (e.g., 45°), the face is an "overhang."
+*   **Optimal Orientation (Quaternion Sampling)**: The number of supports depends heavily on the object's orientation. We use **Quaternion Sampling** to randomly rotate the mesh and find the orientation that minimizes the total number of overhang faces.
+*   **Structural Stability**: To prevent heavy structures from being printed above thin, unstable ones, we also optimize for **"Bottom-Heavy"** orientations. By minimizing the **Area-Weighted Average Height** (the Z-centroid of the surface), we ensure the object's bulk is as close to the print bed as possible, reducing bending and support requirements.
 *   **Metrics**: We use the mesh's **Bounding Box** ($Z_{max} - Z_{min}$) to calculate the number of layers, which combined with **Total Surface Area**, allows us to estimate material volume and print time.
 
 ### 2. Drafting & Mold Analysis (`drafting_tools.py`)
