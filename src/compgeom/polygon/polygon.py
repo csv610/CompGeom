@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass
-from typing import List, Sequence, Union
+from typing import List, Sequence
 
 from ..kernel import (
     Point2D,
@@ -175,6 +174,8 @@ class Polygon:
         from .polygon_generator import simple_polygon
 
         return simple_polygon(n_points, x_range, y_range, polygon_cls=cls)
+
+
 def get_polygon_properties(polygon: list[Point2D]) -> tuple[float, Point2D, str]:
     from .polygon_metrics import get_polygon_properties as _get_polygon_properties
 
@@ -211,10 +212,6 @@ def shortest_path_in_polygon(
     return _shortest_path_in_polygon(polygon, source, target)
 
 
-
-
-
-
 def generate_random_convex_polygon(
     num_points: int = 10,
     x_range: tuple[float, float] = (0, 100),
@@ -223,12 +220,6 @@ def generate_random_convex_polygon(
     from .polygon_generator import generate_random_convex_polygon as _generate_random_convex_polygon
 
     return _generate_random_convex_polygon(num_points, x_range, y_range)
-
-
-def is_convex(polygon: list[Point2D]) -> bool:
-    from .polygon_metrics import is_convex as _is_convex
-
-    return _is_convex(polygon)
 
 
 def generate_simple_polygon(
@@ -241,41 +232,27 @@ def generate_simple_polygon(
     return _generate_simple_polygon(n_points, x_range, y_range)
 
 
+def generate_points_in_triangle(
+    a: Point2D | Point3D,
+    b: Point2D | Point3D,
+    c: Point2D | Point3D,
+    n_points: int = 100,
+) -> list[Point2D | Point3D]:
+    from .polygon_generator import generate_points_in_triangle as _generate_points_in_triangle
+
+    return _generate_points_in_triangle(a, b, c, n_points)
+
+
+def is_convex(polygon: list[Point2D]) -> bool:
+    from .polygon_metrics import is_convex as _is_convex
+
+    return _is_convex(polygon)
+
+
 def get_reflex_vertices(polygon: list[Point2D]) -> list[Point2D]:
     from .polygon_metrics import get_reflex_vertices as _get_reflex_vertices
 
     return _get_reflex_vertices(polygon)
-
-
-def generate_points_in_triangle(
-    a: Union[Point2D, Point3D],
-    b: Union[Point2D, Point3D],
-    c: Union[Point2D, Point3D],
-    n_points: int = 100,
-) -> list[Union[Point2D, Point3D]]:
-    """Sample points uniformly from the interior of a triangle (2D or 3D)."""
-    is_3d = isinstance(a, Point3D) or isinstance(b, Point3D) or isinstance(c, Point3D)
-
-    samples: list[Union[Point2D, Point3D]] = []
-    for _ in range(n_points):
-        r1 = random.random()
-        r2 = random.random()
-        if r1 + r2 > 1:
-            r1, r2 = 1 - r1, 1 - r2
-
-        px = a.x + r1 * (b.x - a.x) + r2 * (c.x - a.x)
-        py = a.y + r1 * (b.y - a.y) + r2 * (c.y - a.y)
-
-        if is_3d:
-            az = getattr(a, "z", 0.0)
-            bz = getattr(b, "z", 0.0)
-            cz = getattr(c, "z", 0.0)
-            pz = az + r1 * (bz - az) + r2 * (cz - az)
-            samples.append(Point3D(px, py, pz))
-        else:
-            samples.append(Point2D(px, py))
-
-    return samples
 
 
 def rotate_polygon(polygon: list[Point2D], angle: float, center: Point2D | None = None) -> list[Point2D]:
@@ -328,7 +305,6 @@ def triangulate_polygon(
 
 
 __all__ = [
-    "ConvexHull",
     "Polygon",
     "PolygonProperties",
     "generate_points_in_triangle",
@@ -351,3 +327,4 @@ __all__ = [
     "triangulate_polygon_with_holes",
     "visibility_polygon",
 ]
+

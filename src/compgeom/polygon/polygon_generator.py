@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import math
 import random
-from typing import List, Tuple, TypeVar
+from typing import List, Tuple, TypeVar, Union
 
-from ..kernel import Point2D
+from ..kernel import Point2D, Point3D
 from .convex_hull import MonotoneChain
 from .polygon import Polygon
 
@@ -233,8 +233,40 @@ def generate_simple_polygon(
     return simple_polygon(n_points, x_range, y_range).as_list()
 
 
+def generate_points_in_triangle(
+    a: Union[Point2D, Point3D],
+    b: Union[Point2D, Point3D],
+    c: Union[Point2D, Point3D],
+    n_points: int = 100,
+) -> list[Union[Point2D, Point3D]]:
+    """Sample points uniformly from the interior of a triangle (2D or 3D)."""
+    is_3d = isinstance(a, Point3D) or isinstance(b, Point3D) or isinstance(c, Point3D)
+
+    samples: list[Union[Point2D, Point3D]] = []
+    for _ in range(n_points):
+        r1 = random.random()
+        r2 = random.random()
+        if r1 + r2 > 1:
+            r1, r2 = 1 - r1, 1 - r2
+
+        px = a.x + r1 * (b.x - a.x) + r2 * (c.x - a.x)
+        py = a.y + r1 * (b.y - a.y) + r2 * (c.y - a.y)
+
+        if is_3d:
+            az = getattr(a, "z", 0.0)
+            bz = getattr(b, "z", 0.0)
+            cz = getattr(c, "z", 0.0)
+            pz = az + r1 * (bz - az) + r2 * (cz - az)
+            samples.append(Point3D(px, py, pz))
+        else:
+            samples.append(Point2D(px, py))
+
+    return samples
+
+
 __all__ = [
     "PolygonGenerator",
+    "generate_points_in_triangle",
     "generate_random_convex_polygon",
     "generate_simple_polygon",
     "random_convex_polygon",
