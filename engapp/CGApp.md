@@ -159,6 +159,18 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Line-of-Sight (LoS) Sampling**: We use **Ray Casting** to count the number of triangles in the building mesh (`TriangleMesh`) that intersect the path between the router and a target point.
 *   **Coverage Optimization**: By sampling a grid of candidate locations and calculating the average signal strength (dBm) across all rooms, we identify the mathematically optimal router position to eliminate "dead zones."
 
+### 25. Precision Viticulture (`precision_viticulture.py`)
+**The Problem**: Drones are used to monitor vine health in large vineyards. To get high-resolution multi-spectral data, the drone must maintain a perfectly constant altitude above the ground, even on steep hillsides.
+*   **Geometric Principle (Barycentric Interpolation)**: We find the triangle in the terrain mesh (`TriangleMesh`) directly below the drone's 2D position. We then use **Barycentric Coordinates** to interpolate the exact ground elevation ($Z$) at that point.
+*   **Terrain-Following**: By adding the desired survey altitude to the interpolated ground height, we generate a 3D flight path that follows the contours of the land.
+*   **FOV Projection**: We calculate the ground "footprint" of the drone's camera based on its 3D altitude and Field of View (FOV) angle, ensuring total coverage of the crop.
+
+### 26. Smart City Visibility (`smart_city_visibility.py`)
+**The Problem**: City planners need to place streetlights or security cameras to maximize coverage while minimizing "blind spots" caused by buildings and urban structures.
+*   **Geometric Principle (Line-of-Sight)**: We treat the light source as an observer point and the city as a 3D mesh.
+*   **Implementation**: Using **Ray Casting** (Moller-Trumbore), we test the visibility from the light to a grid of sample points on the ground. If a ray intersects any building triangle before reaching the ground, that point is in "Shadow."
+*   **Illumination Score**: By sampling hundreds of points, we calculate a coverage percentage for different placement candidates, allowing for mathematically optimal streetlight positioning.
+
 ### 22. Vascular Stenting (`vascular_stenting.py`)
 **The Problem**: A stent is a tiny wire mesh tube used to open up clogged arteries. Engineers must ensure the stent expands correctly to the vessel wall and covers enough surface area to keep the artery open without causing excessive irritation.
 *   **Geometric Principle (Radial Scaling)**: We simulate the deployment by **Radial Scaling** the stent's vertices in the XY plane while preserving its longitudinal length.
