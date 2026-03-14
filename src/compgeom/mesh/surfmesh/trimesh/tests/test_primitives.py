@@ -14,6 +14,18 @@ class TestPrimitives(unittest.TestCase):
         self.assertTrue(len(mesh.vertices) > 0)
         self.assertTrue(len(mesh.faces) > 0)
 
+    def test_oblate_spheroid(self):
+        mesh = Primitives.oblate_spheroid(equatorial_radius=1.0, polar_radius=0.5, subdivisions=1)
+        self.assertTrue(len(mesh.vertices) > 0)
+        with self.assertRaises(ValueError):
+            Primitives.oblate_spheroid(equatorial_radius=0.5, polar_radius=1.0)
+
+    def test_prolate_spheroid(self):
+        mesh = Primitives.prolate_spheroid(equatorial_radius=0.5, polar_radius=1.0, subdivisions=1)
+        self.assertTrue(len(mesh.vertices) > 0)
+        with self.assertRaises(ValueError):
+            Primitives.prolate_spheroid(equatorial_radius=1.0, polar_radius=0.5)
+
     def test_torus(self):
         mesh = Primitives.torus(major_radius=1.0, minor_radius=0.3, major_segments=10, minor_segments=10)
         self.assertTrue(len(mesh.vertices) > 0)
@@ -28,6 +40,17 @@ class TestPrimitives(unittest.TestCase):
         mesh = Primitives.cuboid(length=1.0, width=2.0, height=3.0)
         self.assertEqual(len(mesh.vertices), 8)
         self.assertEqual(len(mesh.faces), 12)
+
+    def test_quad(self):
+        mesh = Primitives.quad(width=1.0, height=2.0)
+        self.assertEqual(len(mesh.vertices), 4)
+        self.assertEqual(len(mesh.faces), 2)
+
+    def test_polygon(self):
+        segments = 16
+        mesh = Primitives.polygon(radius=1.0, segments=segments)
+        self.assertEqual(len(mesh.vertices), segments + 1)
+        self.assertEqual(len(mesh.faces), segments)
 
     def test_cylinder(self):
         segments = 16

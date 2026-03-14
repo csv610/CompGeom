@@ -52,6 +52,20 @@ class Primitives:
         return Primitives._create_mesh(new_vertices, mesh.faces)
 
     @staticmethod
+    def oblate_spheroid(equatorial_radius: float = 1.0, polar_radius: float = 0.8, subdivisions: int = 3) -> TriangleMesh:
+        """Generates an oblate spheroid mesh (flattened sphere)."""
+        if polar_radius > equatorial_radius:
+            raise ValueError("For an oblate spheroid, equatorial_radius must be greater than polar_radius.")
+        return Primitives.ellipsoid(rx=equatorial_radius, ry=equatorial_radius, rz=polar_radius, subdivisions=subdivisions)
+
+    @staticmethod
+    def prolate_spheroid(equatorial_radius: float = 0.8, polar_radius: float = 1.0, subdivisions: int = 3) -> TriangleMesh:
+        """Generates a prolate spheroid mesh (stretched sphere)."""
+        if polar_radius < equatorial_radius:
+            raise ValueError("For a prolate spheroid, polar_radius must be greater than equatorial_radius.")
+        return Primitives.ellipsoid(rx=equatorial_radius, ry=equatorial_radius, rz=polar_radius, subdivisions=subdivisions)
+
+    @staticmethod
     def torus(major_radius: float = 1.0, minor_radius: float = 0.3, major_segments: int = 32, minor_segments: int = 16) -> TriangleMesh:
         """Generates a torus mesh."""
         vertices = []
@@ -99,6 +113,36 @@ class Primitives:
             (0, 4, 7), (0, 7, 3), (1, 2, 6), (1, 6, 5)
         ]
         return Primitives._create_mesh(v, f)
+
+    @staticmethod
+    def quad(width: float = 1.0, height: float = 1.0) -> TriangleMesh:
+        """Generates a planar quad (rectangle) mesh in the XY plane."""
+        w2 = width / 2.0
+        h2 = height / 2.0
+        vertices = [
+            Point3D(-w2, -h2, 0.0, id=0),
+            Point3D(w2, -h2, 0.0, id=1),
+            Point3D(w2, h2, 0.0, id=2),
+            Point3D(-w2, h2, 0.0, id=3)
+        ]
+        faces = [(0, 1, 2), (0, 2, 3)]
+        return Primitives._create_mesh(vertices, faces)
+
+    @staticmethod
+    def polygon(radius: float = 1.0, segments: int = 32) -> TriangleMesh:
+        """Generates a planar regular n-gon mesh in the XY plane."""
+        vertices = [Point3D(0.0, 0.0, 0.0, id=0)]
+        for i in range(segments):
+            angle = 2.0 * math.pi * i / segments
+            vertices.append(Point3D(radius * math.cos(angle), radius * math.sin(angle), 0.0, id=i+1))
+
+        faces = []
+        for i in range(segments):
+            v1 = 1 + i
+            v2 = 1 + (i + 1) % segments
+            faces.append((0, v1, v2))
+
+        return Primitives._create_mesh(vertices, faces)
 
     @staticmethod
     def cylinder(radius: float = 1.0, height: float = 1.0, segments: int = 32, height_segments: int = 1) -> TriangleMesh:
