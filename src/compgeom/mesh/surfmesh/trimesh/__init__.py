@@ -15,7 +15,9 @@ from .delaunay_topology import (
     get_nondelaunay_triangles,
 )
 from .platonic_solids import PlatonicSolid
+from .primitives import Primitives
 from .domain_mesher import DomainMesher
+from .node_move_constraints import VertexConstraint
 
 __all__ = [
     "DelaunayMesher",
@@ -30,5 +32,7 @@ __all__ = [
     "is_delaunay",
     "get_nondelaunay_triangles",
     "PlatonicSolid",
+    "Primitives",
     "DomainMesher",
+    "VertexConstraint",
 ]

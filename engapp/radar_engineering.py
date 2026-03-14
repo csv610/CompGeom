@@ -20,6 +20,22 @@ class RadarEngineering:
     """Provides algorithms for Radar Cross Section (RCS) and Line-of-Sight (LoS) analysis."""
 
     @staticmethod
+    def _compute_normals_fallback(mesh: TriangleMesh) -> List[Tuple[float, float, float]]:
+        """Fallback for face normals computation."""
+        normals = []
+        for face in mesh.faces:
+            v0, v1, v2 = [mesh.vertices[i] for i in face]
+            ux, uy, uz = v1.x - v0.x, v1.y - v0.y, getattr(v1, 'z', 0.0) - getattr(v0, 'z', 0.0)
+            vx, vy, vz = v2.x - v0.x, v2.y - v0.y, getattr(v2, 'z', 0.0) - getattr(v0, 'z', 0.0)
+            nx, ny, nz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx
+            mag = math.sqrt(nx**2 + ny**2 + nz**2)
+            if mag > 1e-12:
+                normals.append((nx / mag, ny / mag, nz / mag))
+            else:
+                normals.append((0.0, 0.0, 1.0))
+        return normals
+
+    @staticmethod
     def compute_los_visibility(mesh: TriangleMesh, source_pos: Tuple[float, float, float]) -> List[bool]:
         """
         Determines which faces are visible from a radar/signal source.
@@ -28,14 +44,12 @@ class RadarEngineering:
         try:
             from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
             from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+            face_normals = MeshAnalysis.compute_face_normals(mesh)
+            ray_intersect = MeshQueries.ray_intersect
         except ImportError:
-            from unittest.mock import MagicMock
-            MeshQueries = MagicMock()
-            MeshQueries.ray_intersect.return_value = []
-            MeshAnalysis = MagicMock()
-            MeshAnalysis.compute_face_normals.return_value = [(0,0,1)] * len(mesh.faces)
+            face_normals = RadarEngineering._compute_normals_fallback(mesh)
+            ray_intersect = lambda m, s, d: []
         
-        face_normals = MeshAnalysis.compute_face_normals(mesh)
         visibility = [False] * len(mesh.faces)
         
         for i, face in enumerate(mesh.faces):
@@ -51,7 +65,7 @@ class RadarEngineering:
                 ray_start = (v0.x + face_normals[i][0]*eps, v0.y + face_normals[i][1]*eps, getattr(v0, 'z', 0.0) + face_normals[i][2]*eps)
                 
                 # Check if anything is between source and this face
-                intersections = MeshQueries.ray_intersect(mesh, ray_start, to_source)
+                intersections = ray_intersect(mesh, ray_start, to_source)
                 
                 # Filter intersections that are closer than the source
                 dist_to_source = math.sqrt(sum(x**2 for x in to_source))
@@ -70,15 +84,14 @@ class RadarEngineering:
         """
         try:
             from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+            face_normals = MeshAnalysis.compute_face_normals(mesh)
         except ImportError:
-            from unittest.mock import MagicMock
-            MeshAnalysis = MagicMock()
-            MeshAnalysis.compute_face_normals.return_value = [(0,0,1)] * len(mesh.faces)
+            face_normals = RadarEngineering._compute_normals_fallback(mesh)
 
-        face_normals = MeshAnalysis.compute_face_normals(mesh)
-        
         # Normalize incident direction
         mag = math.sqrt(sum(x**2 for x in incident_dir))
+        if mag < 1e-12:
+            return 0.0
         d = (incident_dir[0]/mag, incident_dir[1]/mag, incident_dir[2]/mag)
         
         total_projected_area = 0.0

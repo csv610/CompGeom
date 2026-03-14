@@ -1,5 +1,6 @@
 """Additive Manufacturing (3D Printing) geometry algorithms."""
 import math
+import argparse
 from typing import List, Tuple
 
 try:
@@ -25,6 +26,8 @@ class AdditiveMfg:
         
         # Normalize gravity
         g_mag = math.sqrt(sum(x**2 for x in gravity_dir))
+        if g_mag == 0:
+            raise ValueError("Gravity direction cannot be a zero vector.")
         g = (gravity_dir[0]/g_mag, gravity_dir[1]/g_mag, gravity_dir[2]/g_mag)
         
         # Overhang if angle between normal and gravity is small (normal points down)
@@ -56,64 +59,37 @@ class AdditiveMfg:
 
 def main():
     """Demonstrates the Additive Manufacturing algorithms."""
-    # Mock TriangleMesh and Point3D for standalone execution
-    class MockPoint3D:
-        def __init__(self, x, y, z):
-            self.x, self.y, self.z = x, y, z
-            
-    class MockMesh:
-        def __init__(self):
-            self.vertices = [MockPoint3D(0,0,0), MockPoint3D(1,0,0), MockPoint3D(0,1,0), MockPoint3D(0,0,1)]
-            self.faces = [[0, 1, 2], [0, 2, 3], [0, 3, 1], [1, 3, 2]]
-        
-        def bounding_box(self):
-            return ((0,0,0), (1,1,1))
-
-    # Mock MeshAnalysis
-    class MockMeshAnalysis:
-        @staticmethod
-        def compute_face_normals(mesh):
-            return [(0,0,-1), (0,-1,0), (-1,0,0), (0.57, 0.57, 0.57)]
-        @staticmethod
-        def total_area(mesh):
-            return 2.0
-
-    # Inject mock into the module's scope for the demo
-    import sys
-    from unittest.mock import MagicMock
+    parser = argparse.ArgumentParser(description="Additive Manufacturing Algorithm Demo")
+    parser.add_argument("mesh_file", help="Path to the mesh file (e.g., model.stl)")
+    parser.add_argument("--threshold", type=float, default=45.0, help="Threshold angle for overhang detection in degrees (default: 45.0)")
+    parser.add_argument("--gravity", type=float, nargs=3, default=[0.0, 0.0, -1.0], metavar=('X', 'Y', 'Z'), help="Gravity direction vector (default: 0 0 -1)")
+    parser.add_argument("--layer-height", type=float, default=0.2, help="Layer height for print time estimation (default: 0.2)")
+    parser.add_argument("--speed", type=float, default=50.0, help="Print speed for time estimation (default: 50.0)")
     
-    # We need to bypass the relative imports if running as a script
-    if __name__ == "__main__" and "__package__" not in globals() or not __package__:
-        # Create a dummy mesh_analysis module
-        m = MagicMock()
-        m.MeshAnalysis = MockMeshAnalysis
-        sys.modules[".mesh_analysis"] = m
-        sys.modules["..mesh"] = MagicMock()
-        sys.modules["...kernel"] = MagicMock()
+    args = parser.parse_args()
+    
+    print(f"Opening mesh file: {args.mesh_file}")
 
-    print("--- Additive Manufacturing Algorithm Demo ---")
-    mesh = MockMesh()
-    
-    # We'll use a local version of AdditiveMfg to avoid import issues in the demo
-    am = AdditiveMfg()
-    
-    # Overhang detection (using a manual call to bypass the broken imports in the demo)
-    # Normally we would just call am.detect_overhangs(mesh)
-    print("Detecting overhangs for a simple tetrahedron...")
-    # Mocking the call since we can't easily fix the relative import in a one-liner demo
-    overhangs = [0] # Face 0 points down
-    print(f"Indices of faces requiring support: {overhangs}")
+    try:
+        # Load the actual mesh from the file
+        mesh = TriangleMesh.from_file(args.mesh_file)
+    except Exception as e:
+        print(f"Error loading mesh: {e}")
+        return
+
+    # Overhang detection
+    print(f"Detecting overhangs for mesh: {args.mesh_file} (threshold: {args.threshold} deg, gravity: {args.gravity})...")
+    overhangs = AdditiveMfg.detect_overhangs(mesh, threshold_angle_deg=args.threshold, gravity_dir=tuple(args.gravity))
+    print(f"Number of faces requiring support: {len(overhangs)}")
+    if len(overhangs) > 0:
+        # Display a sample of overhang faces
+        print(f"Indices of first 10 faces requiring support: {overhangs[:10]}")
     
     # Print time estimation
-    # Mocking total_area and bounding_box logic
-    area = 2.0
-    height = 1.0
-    layer_height = 0.2
-    speed = 50.0
-    num_layers = height / layer_height
-    est_time = (area * num_layers) / (speed * 100.0)
+    print(f"Estimating print time (layer height: {args.layer_height}, speed: {args.speed})...")
+    est_time = AdditiveMfg.estimate_print_time(mesh, args.layer_height, args.speed)
     
-    print(f"Estimated 3D printing time: {est_time:.4f} hours")
+    print(f"Estimated 3D printing time for {args.mesh_file}: {est_time:.4f} hours")
     print("Demo completed successfully.")
 
 if __name__ == "__main__":

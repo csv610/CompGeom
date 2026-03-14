@@ -4,6 +4,8 @@ import math
 
 from compgeom.mesh import TriangleMesh
 from compgeom.kernel import Point3D
+from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
 
 class TopoAnalysis:
     """Provides algorithms for terrain modeling and contour extraction."""
@@ -15,7 +17,6 @@ class TopoAnalysis:
         Returns a list of polylines (contours) at the specified height.
         """
         # This is a specialized slice_mesh for horizontal planes
-        from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
         segments = MeshQueries.slice_mesh(mesh, (0, 0, elevation), (0, 0, 1))
         
         # Connect segments into polylines
@@ -62,7 +63,6 @@ class TopoAnalysis:
         Calculates the volume of soil/material between two surfaces.
         Essential for civil engineering construction sites.
         """
-        from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
         vol_base = MeshAnalysis.total_volume(mesh_base) # Assumes closed to Z=0
         vol_top = MeshAnalysis.total_volume(mesh_top)
         return vol_top - vol_base

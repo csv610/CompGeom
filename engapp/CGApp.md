@@ -34,7 +34,7 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Geometric Principle (Ellipsoid Projection)**: The Earth isn't a sphere; it's an **Oblate Spheroid**. We use the WGS84 model which involves semi-major and semi-minor axes.
 *   **Rotational Stability**: We calculate the **Inertia Tensor** (a 3x3 matrix representing mass distribution). By finding the **Eigenvalues** of this matrix, we determine the principal axes of rotation. A spacecraft is only stable rotating around its "Major" (maximum inertia) or "Minor" (minimum) axes—the "Intermediate" axis is unstable!
 
-### 5. Computational Fluid Dynamics (`fluid_dynamics.py`)
+### 5. Computational Fluid Dynamics (`cfd_analysis.py`)
 **The Problem**: Aerodynamic drag depends on the "shadow" an object casts against the wind.
 *   **Geometric Principle (Projected Area)**: We project all triangles onto a plane perpendicular to the flow direction. This is essentially a 2D **Polygon Union** problem. The sum of these non-overlapping areas gives the "Frontal Area" used in the drag equation: $F_d = \frac{1}{2} \rho v^2 C_d A$.
 
@@ -42,25 +42,36 @@ Welcome, students! This guide explores how abstract geometric principles are app
 **The Problem**: How "visible" is a stealth aircraft to radar?
 *   **Geometric Principle (Visibility & Backscattering)**: Radar waves travel in straight lines. We use **Ray Casting** from the radar source. If a ray hits a face, we check the angle. If the face normal points directly back at the source, the "Radar Cross Section" (RCS) is high. We ignore "Back Faces" ($\vec{n} \cdot \vec{ray} > 0$) because they are occluded.
 
+### 7. Solar & Urban Analysis (`solar_analysis.py`)
+**The Problem**: How do we design energy-efficient cities that maximize solar gain while minimizing heat islands?
+*   **Geometric Principle (Sun Position & Vector Analysis)**: The sun's position changes every minute. We calculate the **Solar Elevation** ($\alpha$) and **Azimuth** ($\psi$) based on the Earth's **Declination** (tilt) for any day of the year. This gives us a time-varying **Sun Vector** $(\vec{s})$.
+*   **Sky View Factor (SVF)**: This measures how much "open sky" a point can see. We use **Fibonacci Sphere Sampling** to cast hundreds of rays in a hemisphere around a point. If 80% of rays escape into space without hitting a building, the SVF is 0.8. Low SVF leads to "Urban Heat Islands" because heat gets trapped.
+*   **Cumulative Radiation**: By integrating the **Dot Product** ($\vec{n} \cdot \vec{s}$) over every hour of the year and accounting for **Shadowing** (occlusion), we calculate the total energy (Wh/m²) a roof or facade can collect for solar panels.
+
 ---
 
 ## Part 3: Specialized Sciences
 
-### 7. Medical Device Design (`medical_device.py`)
+### 8. Medical Device Design (`medical_device.py`)
 **The Problem**: Designing stents that must expand inside a cylindrical artery.
 *   **Geometric Principle (Cylindrical Mapping)**: We define a pattern in 2D ($u, v$) and wrap it around a cylinder using: $x = r \cos(u)$, $y = r \sin(u)$, $z = v$.
 *   **Porosity**: Calculated by comparing the volume of the 3D-printed lattice structure to the total volume of the bounding cylinder. This ensures the device allows enough blood flow.
 
-### 8. Molecular Geometry (`molecular_geometry.py`)
+### 9. Molecular Geometry (`molecular_geometry.py`)
 **The Problem**: How do drugs "dock" into a protein?
 *   **Geometric Principle (SAS & Pockets)**: We treat every atom as a sphere. The **Solvent Accessible Surface** (SAS) is the boundary traced by a "probe" sphere (representing water) rolling over the atoms.
 *   **Pocket Detection**: We use **Skeletonization**. By "eroding" the volume of the protein, the last points to disappear represent the "centers" or "medial axis" of the protein's shape. Deep cavities (pockets) are where drug molecules can bind.
+
+### 10. Robotics & Path Planning (`robotics_geometry.py`)
+**The Problem**: A robot needs to find the shortest path from A to B while avoiding obstacles.
+*   **Geometric Principle (Configuration Space)**: We "inflate" obstacles by the robot's radius to treat the robot as a single point.
+*   **Visibility Graphs**: We connect the start, the end, and all visible vertices of the obstacles. Finding the shortest path in this graph using **Dijkstra's Algorithm** gives the optimal collision-free path.
 
 ---
 
 ## Part 4: Core Data Structures (The "Engine")
 
-### 14. Spatial Acceleration (`spatial_acceleration.py`)
+### 11. Spatial Acceleration (`spatial_acceleration.py`)
 **The Problem**: If a mesh has 1 million triangles, checking if a ray hits it would take 1 million calculations. This is too slow for real-time apps.
 *   **The Solution (AABB Tree)**: We organize the triangles into a hierarchy of **Axis-Aligned Bounding Boxes**.
     *   **Divide and Conquer**: We wrap the whole mesh in one big box. Then we split it into two boxes, each containing half the triangles, and so on.

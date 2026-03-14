@@ -3,19 +3,8 @@ import random
 import math
 from typing import List, Tuple, Optional
 
-try:
     from compgeom.mesh import TriangleMesh
     from compgeom.kernel import Point3D
-except ImportError:
-    class TriangleMesh:
-        def __init__(self, vertices=None, faces=None):
-            self.vertices = vertices or []
-            self.faces = faces or []
-    class Point3D:
-        def __init__(self, x=0.0, y=0.0, z=0.0):
-            self.x = x
-            self.y = y
-            self.z = z
 
 class MetrologyTools:
     """Provides algorithms for industrial inspection and primitive fitting."""
