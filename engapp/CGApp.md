@@ -115,3 +115,9 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Geometric Principle (Poisson Surface Reconstruction)**: Converting a sparse point cloud into a smooth, continuous surface.
 *   **Implementation**: Use the **Point3D** pings to create a **Signed Distance Function (SDF)**. Then, use the **Marching Cubes** algorithm to extract the 0-level isosurface as a new `TriangleMesh`.
 *   **Metric**: Calculate the **Estimated Displaced Volume** of the wreck to guess the original weight/size of the vessel.
+
+### 17. Surgical Planning & Robotics (`surgical_planning.py`)
+**The Problem**: In robotic surgery, a drill or needle must reach a target without hitting critical "No-Go" zones like nerves or major blood vessels.
+*   **Geometric Principle (Segment-to-Mesh Distance)**: We treat the surgical instrument as a **Line Segment** and the critical anatomy as a **TriangleMesh**. 
+*   **Implementation**: For every vertex in the critical mesh, we calculate the shortest distance to the line segment. If the distance falls below a **Safety Margin** (e.g., 2mm), the path is flagged as dangerous.
+*   **Surface Mapping**: For robotic navigation, we project the instrument's tip position onto the bone surface to find the **Closest Normal**, allowing the robot to remain perfectly perpendicular to the surface during drilling.
