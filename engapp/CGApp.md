@@ -153,6 +153,12 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Via Optimization**: Changing layers (using a "Via") is electrically expensive. Our algorithm adds a **Via Cost** to the pathfinding logic to minimize vertical transitions between metal layers.
 *   **Congestion Analysis**: By tracking wire density across the grid, we identify "Hot Spots" where the chip is too crowded, helping engineers redesign the component placement.
 
+### 24. Indoor WiFi Placement (`wifi_placement_optimizer.py`)
+**The Problem**: WiFi signals are weakened by distance and blocked by physical obstacles like walls. To ensure whole-home coverage, a router must be placed where it has the best "geometric reach" to all rooms.
+*   **Geometric Principle (Signal Attenuation)**: We model signal strength using the **Inverse Square Law** for distance and a constant **Attenuation Factor** for every wall the signal passes through.
+*   **Line-of-Sight (LoS) Sampling**: We use **Ray Casting** to count the number of triangles in the building mesh (`TriangleMesh`) that intersect the path between the router and a target point.
+*   **Coverage Optimization**: By sampling a grid of candidate locations and calculating the average signal strength (dBm) across all rooms, we identify the mathematically optimal router position to eliminate "dead zones."
+
 ### 22. Vascular Stenting (`vascular_stenting.py`)
 **The Problem**: A stent is a tiny wire mesh tube used to open up clogged arteries. Engineers must ensure the stent expands correctly to the vessel wall and covers enough surface area to keep the artery open without causing excessive irritation.
 *   **Geometric Principle (Radial Scaling)**: We simulate the deployment by **Radial Scaling** the stent's vertices in the XY plane while preserving its longitudinal length.
