@@ -121,3 +121,9 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Geometric Principle (Segment-to-Mesh Distance)**: We treat the surgical instrument as a **Line Segment** and the critical anatomy as a **TriangleMesh**. 
 *   **Implementation**: For every vertex in the critical mesh, we calculate the shortest distance to the line segment. If the distance falls below a **Safety Margin** (e.g., 2mm), the path is flagged as dangerous.
 *   **Surface Mapping**: For robotic navigation, we project the instrument's tip position onto the bone surface to find the **Closest Normal**, allowing the robot to remain perfectly perpendicular to the surface during drilling.
+
+### 18. Orthopedic Knee Alignment (`knee_surgery_alignment.py`)
+**The Problem**: In Total Knee Arthroplasty (TKA), the long-term success of the implant depends on achieving a perfect "Mechanical Axis."
+*   **Geometric Principle (Vector Alignment)**: We define the **Mechanical Axis** as the 3D line connecting the center of the hip (femoral head) and the center of the knee. 
+*   **Resection Planes**: Using the mechanical axis, we define a **Resection Plane** (ax + by + cz + d = 0) where the bone will be cut. This plane is typically adjusted by a **Valgus Angle** (e.g., 6°) to account for the patient's specific anatomy.
+*   **Gap Analysis**: By calculating the distance from the furthest points on the bone mesh to the planned resection plane, we can estimate exactly how many millimeters of bone will be removed, ensuring the implant fits perfectly.
