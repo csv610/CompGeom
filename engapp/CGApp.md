@@ -87,3 +87,31 @@ Welcome, students! This guide explores how abstract geometric principles are app
     *   **Divide and Conquer**: We wrap the whole mesh in one big box. Then we split it into two boxes, each containing half the triangles, and so on.
     *   **Early Exit**: When casting a ray, if the ray misses the "Parent" box, we know it misses all 1 million triangles inside. We only "traverse" into the boxes the ray actually touches, reducing the search from $O(N)$ to $O(\log N)$.
     *   **SAH (Surface Area Heuristic)**: We split the boxes in a way that minimizes the surface area of the children, making it mathematically more likely for rays to miss them, further speeding up the system.
+
+---
+
+## Part 5: Expanding Domains
+
+### 13. 5G Network Planning (`telecom_propagation.py`)
+**The Problem**: 5G signals are high-frequency and easily blocked by buildings. Engineers need to find the best placement for small-cell towers to maximize coverage.
+*   **Geometric Principle (Fresnel Zone Analysis)**: Treat the signal as an ellipsoid between the tower and the user. 
+*   **Implementation**: Use **Ray Casting** to check if any triangles in the city mesh (`TriangleMesh`) intersect the "Fresnel Zone" ellipsoid.
+*   **Metric**: Calculate the **Signal-to-Interference-plus-Noise Ratio (SINR)** by analyzing the "Line-of-Sight" (LoS) percentage across a grid of points.
+
+### 14. Wildfire Spread Simulation (`wildfire_modeling.py`)
+**The Problem**: Predicting how a fire will climb a mountain is critical for evacuation. Fire moves faster uphill due to pre-heating.
+*   **Geometric Principle (Slope and Aspect Analysis)**: For every face in a terrain mesh, calculate its **Steepest Descent Vector**.
+*   **Implementation**: Use the **Face Normal** $(\vec{n})$ to find the slope angle. A fire's "Rate of Spread" (ROS) is then adjusted using a vector dot product between the wind vector $(\vec{w})$ and the face's uphill vector.
+*   **Metric**: Generate a **Heatmap** on the `TriangleMesh` where color represents the time it takes for the fire front to reach that specific triangle.
+
+### 15. Acoustic Room Treatment (`acoustic_raytracing.py`)
+**The Problem**: Architects need to place sound-absorbing panels to prevent "echo chambers" in large halls or recording studios.
+*   **Geometric Principle (Specular Reflection)**: When a sound ray hits a wall, it reflects at the same angle: $\vec{r} = \vec{d} - 2(\vec{d} \cdot \vec{n})\vec{n}$.
+*   **Implementation**: Use recursive **Ray Tracing**. For a sound source point, cast rays in all directions. Track each ray as it bounces off the `TriangleMesh` faces. 
+*   **Metric**: Calculate **Reverberation Time (RT60)** by measuring how long it takes for the ray energy to decay. Identify "Hot Spots" where many reflected rays converge.
+
+### 16. Marine Archaeology & Shipwreck Mapping (`bathymetric_reconstruction.py`)
+**The Problem**: Sonar data from shipwrecks is often "holey" and noisy. We need to reconstruct a watertight 3D model from sonar pings.
+*   **Geometric Principle (Poisson Surface Reconstruction)**: Converting a sparse point cloud into a smooth, continuous surface.
+*   **Implementation**: Use the **Point3D** pings to create a **Signed Distance Function (SDF)**. Then, use the **Marching Cubes** algorithm to extract the 0-level isosurface as a new `TriangleMesh`.
+*   **Metric**: Calculate the **Estimated Displaced Volume** of the wreck to guess the original weight/size of the vessel.
