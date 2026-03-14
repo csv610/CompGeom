@@ -127,3 +127,9 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Geometric Principle (Vector Alignment)**: We define the **Mechanical Axis** as the 3D line connecting the center of the hip (femoral head) and the center of the knee. 
 *   **Resection Planes**: Using the mechanical axis, we define a **Resection Plane** (ax + by + cz + d = 0) where the bone will be cut. This plane is typically adjusted by a **Valgus Angle** (e.g., 6°) to account for the patient's specific anatomy.
 *   **Gap Analysis**: By calculating the distance from the furthest points on the bone mesh to the planned resection plane, we can estimate exactly how many millimeters of bone will be removed, ensuring the implant fits perfectly.
+
+### 19. Neurosurgery Burr Hole Planning (`neurosurgery_burr_hole.py`)
+**The Problem**: A burr hole is a precise opening drilled in the skull. If the drill is not perfectly perpendicular to the curved skull surface, the drill bit can "skate" or slip, causing trauma.
+*   **Geometric Principle (Surface Normals)**: We calculate the **Vertex Normal** at the intended entry point by averaging the normals of all surrounding triangles. This defines the ideal drilling trajectory.
+*   **Angle Validation**: Using the **Dot Product**, we ensure the planned drill vector $(\vec{d})$ is within a strict tolerance (e.g., < 15°) of the surface normal $(\vec{n})$.
+*   **Volumetric Modeling**: By treating the burr as a **Cylinder**, we estimate the volume of bone removed based on the radius and local skull thickness, aiding in post-operative healing analysis.
