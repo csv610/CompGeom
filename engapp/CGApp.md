@@ -133,3 +133,9 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Geometric Principle (Surface Normals)**: We calculate the **Vertex Normal** at the intended entry point by averaging the normals of all surrounding triangles. This defines the ideal drilling trajectory.
 *   **Angle Validation**: Using the **Dot Product**, we ensure the planned drill vector $(\vec{d})$ is within a strict tolerance (e.g., < 15°) of the surface normal $(\vec{n})$.
 *   **Volumetric Modeling**: By treating the burr as a **Cylinder**, we estimate the volume of bone removed based on the radius and local skull thickness, aiding in post-operative healing analysis.
+
+### 20. Robotic Extraction & C-Space (`robotics_extraction.py`)
+**The Problem**: A robot needs to extract an object from a tight, cluttered environment (like a narrow gap) without colliding with any obstacles.
+*   **Geometric Principle (Configuration Space)**: We simplify the object into a single **Reference Point** and expand all obstacles by the object's geometry (radius). This transformed space is the **C-Space**.
+*   **Passability Analysis**: By analyzing the narrowest gap in the mesh, we calculate the **C-Space Clearance** ($Width - 2 \times Radius$). If the clearance is negative, the object is physically "trapped."
+*   **Path Validation**: We sample points along an extraction trajectory and ensure that every point maintains a minimum distance (the object's radius) from all obstacle vertices, ensuring a collision-free extraction.
