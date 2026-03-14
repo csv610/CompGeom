@@ -145,3 +145,9 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Geometric Principle (Origami Kinematics)**: Using patterns like the **Miura-ori** fold, a flat surface is tessellated into identical parallelograms. This rigid origami pattern allows the entire structure to expand or contract simultaneously using only one degree of freedom (the fold angle $\theta$).
 *   **Implementation**: By solving the spherical trigonometry equations for a degree-4 vertex, we calculate the exact 3D coordinates $(X, Y, Z)$ of every fold node as a function of $\theta$.
 *   **Metric**: We calculate the **Packing Ratio**, which is the total deployed surface area divided by the 2D projected footprint of the packed structure. A higher ratio means a larger panel can fit inside the same rocket.
+
+### 22. Vascular Stenting (`vascular_stenting.py`)
+**The Problem**: A stent is a tiny wire mesh tube used to open up clogged arteries. Engineers must ensure the stent expands correctly to the vessel wall and covers enough surface area to keep the artery open without causing excessive irritation.
+*   **Geometric Principle (Radial Scaling)**: We simulate the deployment by **Radial Scaling** the stent's vertices in the XY plane while preserving its longitudinal length.
+*   **Metal-to-Artery Ratio (MAR)**: This is a critical clinical metric. We calculate the total surface area of the stent mesh $(\sum \text{Triangle Areas})$ and divide it by the internal surface area of the cylindrical vessel $(2\pi rh)$.
+*   **Centerline Adaptation**: Real arteries are rarely straight. We use **Coordinate Transformations** to deform the cylindrical stent mesh so it follows a 3D spline representing the vessel's centerline.
