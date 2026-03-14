@@ -139,3 +139,9 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Geometric Principle (Configuration Space)**: We simplify the object into a single **Reference Point** and expand all obstacles by the object's geometry (radius). This transformed space is the **C-Space**.
 *   **Passability Analysis**: By analyzing the narrowest gap in the mesh, we calculate the **C-Space Clearance** ($Width - 2 \times Radius$). If the clearance is negative, the object is physically "trapped."
 *   **Path Validation**: We sample points along an extraction trajectory and ensure that every point maintains a minimum distance (the object's radius) from all obstacle vertices, ensuring a collision-free extraction.
+
+### 21. Deployable Space Structures (`deployable_structures.py`)
+**The Problem**: Spacecraft like the James Webb Space Telescope need massive solar panels or mirrors, but rockets have very tight cargo fairings. Large structures must be folded for launch and autonomously deployed in space.
+*   **Geometric Principle (Origami Kinematics)**: Using patterns like the **Miura-ori** fold, a flat surface is tessellated into identical parallelograms. This rigid origami pattern allows the entire structure to expand or contract simultaneously using only one degree of freedom (the fold angle $\theta$).
+*   **Implementation**: By solving the spherical trigonometry equations for a degree-4 vertex, we calculate the exact 3D coordinates $(X, Y, Z)$ of every fold node as a function of $\theta$.
+*   **Metric**: We calculate the **Packing Ratio**, which is the total deployed surface area divided by the 2D projected footprint of the packed structure. A higher ratio means a larger panel can fit inside the same rocket.
