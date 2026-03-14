@@ -67,11 +67,19 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Geometric Principle (Configuration Space)**: We "inflate" obstacles by the robot's radius to treat the robot as a single point.
 *   **Visibility Graphs**: We connect the start, the end, and all visible vertices of the obstacles. Finding the shortest path in this graph using **Dijkstra's Algorithm** gives the optimal collision-free path.
 
+### 11. Swarovski Crystal Generation (`swarovski_crystals.py`)
+**The Problem**: Converting a 'raw' (noisy/organic) gemstone mesh into a precision-cut crystal.
+*   **Geometric Principle (Convex Hull & Facetting)**: A perfect crystal is a convex polyhedron with large, planar facets.
+    1.  **Symmetry**: We mirror the raw points across principal planes (e.g., $XY, YZ$) to ensure a balanced cut.
+    2.  **Convexity**: We compute the **Convex Hull** of these symmetric points to get the base gemstone shape.
+    3.  **Facetting (Decimation)**: By simplifying the hull to a target number of faces, we create the signature "faceted" look of a crystal.
+    4.  **Corner Rounding**: Using **Taubin Smoothing**, we round off sharp vertices and edges to make the crystal safer to handle and more aesthetically pleasing while maintaining the overall faceted structure.
+
 ---
 
 ## Part 4: Core Data Structures (The "Engine")
 
-### 11. Spatial Acceleration (`spatial_acceleration.py`)
+### 12. Spatial Acceleration (`spatial_acceleration.py`)
 **The Problem**: If a mesh has 1 million triangles, checking if a ray hits it would take 1 million calculations. This is too slow for real-time apps.
 *   **The Solution (AABB Tree)**: We organize the triangles into a hierarchy of **Axis-Aligned Bounding Boxes**.
     *   **Divide and Conquer**: We wrap the whole mesh in one big box. Then we split it into two boxes, each containing half the triangles, and so on.
