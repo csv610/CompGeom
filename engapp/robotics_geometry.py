@@ -1,7 +1,7 @@
 """Robotics and Path-Planning geometry algorithms."""
+
 import argparse
 from typing import List, Tuple
-import math
 
 try:
     from compgeom.mesh import TriangleMesh
@@ -11,6 +11,7 @@ except ImportError:
     TriangleMesh = object
     Point3D = object
     MeshProcessing = object
+
 
 class RoboticsGeometry:
     """Provides algorithms for robot interaction and environment topology."""
@@ -30,7 +31,9 @@ class RoboticsGeometry:
         return []
 
     @staticmethod
-    def configuration_space_obstacle(mesh: TriangleMesh, robot_radius: float) -> TriangleMesh:
+    def configuration_space_obstacle(
+        mesh: TriangleMesh, robot_radius: float
+    ) -> TriangleMesh:
         """
         Calculates the C-Space obstacle by offsetting the environment mesh
         by the robot's collision radius.
@@ -39,16 +42,25 @@ class RoboticsGeometry:
             return mesh
         return MeshProcessing.mesh_offset(mesh, robot_radius)
 
+
 def main():
     """Demonstrates the Robotics and Path-Planning geometry algorithms."""
     parser = argparse.ArgumentParser(description="Robotics Geometry Algorithm Demo")
-    parser.add_argument("--mesh", help="Path to the mesh file (e.g., environment.stl). If not provided, a demo mesh will be used.")
-    parser.add_argument("--radius", type=float, default=0.5, help="Robot collision radius for C-Space obstacle calculation (default: 0.5)")
-    
+    parser.add_argument(
+        "--mesh",
+        help="Path to the mesh file (e.g., environment.stl). If not provided, a demo mesh will be used.",
+    )
+    parser.add_argument(
+        "--radius",
+        type=float,
+        default=0.5,
+        help="Robot collision radius for C-Space obstacle calculation (default: 0.5)",
+    )
+
     args = parser.parse_args()
 
     print("--- robotics_geometry.py Demo ---")
-    
+
     # Check if we can actually run the demo
     if TriangleMesh is object or Point3D is object:
         print("Error: compgeom dependencies not found. Cannot run demo.")
@@ -66,25 +78,26 @@ def main():
     else:
         print("Using demo triangle mesh.")
         mesh = TriangleMesh(
-            vertices=[Point3D(0,0,0), Point3D(1,0,0), Point3D(0,1,0)],
-            faces=[(0,1,2)]
+            vertices=[Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
+            faces=[(0, 1, 2)],
         )
 
     tools = RoboticsGeometry()
-    
+
     print(f"Extracting skeleton for the mesh...")
     skeleton = tools.skeletonize(mesh)
     print(f"Skeleton extracted: {skeleton}")
-    
+
     print(f"Generating C-Space obstacle with robot radius: {args.radius}...")
     cspace = tools.configuration_space_obstacle(mesh, args.radius)
-    
-    if hasattr(cspace, 'vertices'):
+
+    if hasattr(cspace, "vertices"):
         print(f"C-Space obstacle generated with {len(cspace.vertices)} vertices.")
     else:
         print("C-Space obstacle generation skipped (missing dependencies).")
-    
+
     print("Demo completed successfully.")
+
 
 if __name__ == "__main__":
     main()

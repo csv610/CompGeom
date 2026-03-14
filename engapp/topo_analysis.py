@@ -1,11 +1,19 @@
 """Topographical analysis for Civil Engineering (TIN and Contouring)."""
-from typing import List, Tuple
+
+from typing import List
 import math
 
-from compgeom.mesh import TriangleMesh
-from compgeom.kernel import Point3D
-from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
-from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
+try:
+    from compgeom.mesh import TriangleMesh
+    from compgeom.kernel import Point3D
+    from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+    from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
+except ImportError:
+    TriangleMesh = object
+    Point3D = object
+    MeshAnalysis = object
+    MeshQueries = object
+
 
 class TopoAnalysis:
     """Provides algorithms for terrain modeling and contour extraction."""
@@ -18,31 +26,37 @@ class TopoAnalysis:
         """
         # This is a specialized slice_mesh for horizontal planes
         segments = MeshQueries.slice_mesh(mesh, (0, 0, elevation), (0, 0, 1))
-        
+
         # Connect segments into polylines
-        if not segments: return []
-        
+        if not segments:
+            return []
+
         polylines = []
         visited = [False] * len(segments)
-        
+
         for i in range(len(segments)):
-            if visited[i]: continue
-            
+            if visited[i]:
+                continue
+
             current_poly = [segments[i][0], segments[i][1]]
             visited[i] = True
-            
+
             # Greedy search for next segment
             found = True
             while found:
                 found = False
                 for j in range(len(segments)):
-                    if visited[j]: continue
-                    
+                    if visited[j]:
+                        continue
+
                     p1, p2 = segments[j]
                     tail = current_poly[-1]
-                    
-                    def dist(a, b): return math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
-                    
+
+                    def dist(a, b):
+                        return math.sqrt(
+                            (a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2
+                        )
+
                     if dist(tail, p1) < 1e-8:
                         current_poly.append(p2)
                         visited[j] = True
@@ -54,7 +68,7 @@ class TopoAnalysis:
                         found = True
                         break
             polylines.append(current_poly)
-            
+
         return polylines
 
     @staticmethod
@@ -63,6 +77,6 @@ class TopoAnalysis:
         Calculates the volume of soil/material between two surfaces.
         Essential for civil engineering construction sites.
         """
-        vol_base = MeshAnalysis.total_volume(mesh_base) # Assumes closed to Z=0
+        vol_base = MeshAnalysis.total_volume(mesh_base)  # Assumes closed to Z=0
         vol_top = MeshAnalysis.total_volume(mesh_top)
         return vol_top - vol_base

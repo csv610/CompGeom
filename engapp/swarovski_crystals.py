@@ -1,14 +1,23 @@
 """Swarovski Crystal generation from raw diamond meshes."""
+
 import argparse
 import sys
 import random
-from typing import List, Tuple
+from typing import List
 
-from compgeom.mesh import TriangleMesh
-from compgeom.kernel import Point3D
-from compgeom.mesh.surfmesh.convex_hull import ConvexHull3D
-from compgeom.mesh.surfmesh.mesh_decimation import MeshDecimator
-from compgeom.mesh.surfmesh.mesh_processing import MeshProcessing
+try:
+    from compgeom.mesh import TriangleMesh
+    from compgeom.kernel import Point3D
+    from compgeom.mesh.surfmesh.convex_hull import ConvexHull3D
+    from compgeom.mesh.surfmesh.mesh_decimation import MeshDecimator
+    from compgeom.mesh.surfmesh.mesh_processing import MeshProcessing
+except ImportError:
+    TriangleMesh = object
+    Point3D = object
+    ConvexHull3D = object
+    MeshDecimator = object
+    MeshProcessing = object
+
 
 class SwarovskiCrystals:
     """Provides algorithms for converting raw gemstone meshes into precision-cut crystals."""
@@ -35,13 +44,13 @@ class SwarovskiCrystals:
         sym_points = SwarovskiCrystals.center_points(sym_points)
 
         for char in planes.lower():
-            if char == 'x':
+            if char == "x":
                 sym_points += [Point3D(-p.x, p.y, p.z) for p in sym_points]
-            elif char == 'y':
+            elif char == "y":
                 sym_points += [Point3D(p.x, -p.y, p.z) for p in sym_points]
-            elif char == 'z':
+            elif char == "z":
                 sym_points += [Point3D(p.x, p.y, -p.z) for p in sym_points]
-        
+
         # Simple quantization for deduplication
         unique_pts = []
         seen = set()
@@ -54,10 +63,10 @@ class SwarovskiCrystals:
 
     @staticmethod
     def convert_raw_diamond_to_crystal(
-        mesh: TriangleMesh, 
-        target_faces: int = 48, 
+        mesh: TriangleMesh,
+        target_faces: int = 48,
         smoothing_iterations: int = 10,
-        symmetry_planes: str = "xy"
+        symmetry_planes: str = "xy",
     ) -> TriangleMesh:
         """
         Processes a 'raw' diamond mesh into a Swarovski crystal.
@@ -70,10 +79,12 @@ class SwarovskiCrystals:
         """
         # Step 1: Enforce Symmetry (Objective 5)
         # Mirroring the point cloud ensures the resulting Hull is perfectly symmetric.
-        sym_vertices = SwarovskiCrystals.symmetrize_points(mesh.vertices, symmetry_planes)
+        sym_vertices = SwarovskiCrystals.symmetrize_points(
+            mesh.vertices, symmetry_planes
+        )
 
         # Step 2: Convexity & Planarity (Objectives 1 & 4)
-        # The Convex Hull is the fundamental 'diamond' shape. 
+        # The Convex Hull is the fundamental 'diamond' shape.
         # All triangles on a large facet will be coplanar.
         hull = ConvexHull3D.compute(sym_vertices)
 
@@ -85,20 +96,37 @@ class SwarovskiCrystals:
             crystal = hull
 
         # Step 4: No Sharp Corners (Objective 2)
-        # Taubin smoothing is a feature-preserving smoothing that avoids the 'blob' 
+        # Taubin smoothing is a feature-preserving smoothing that avoids the 'blob'
         # effect of Laplacian smoothing while still rounding off sharp corners.
         if smoothing_iterations > 0:
-            crystal = MeshProcessing.taubin_smoothing(crystal, iterations=smoothing_iterations)
+            crystal = MeshProcessing.taubin_smoothing(
+                crystal, iterations=smoothing_iterations
+            )
 
         return crystal
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Convert raw diamond meshes into Swarovski Crystals.")
+    parser = argparse.ArgumentParser(
+        description="Convert raw diamond meshes into Swarovski Crystals."
+    )
     parser.add_argument("--input", help="Path to raw diamond mesh (.stl, .obj)")
-    parser.add_argument("--faces", type=int, default=32, help="Target number of facets (default: 32)")
-    parser.add_argument("--smooth", type=int, default=10, help="Smoothing iterations for corners (default: 10)")
-    parser.add_argument("--symmetry", type=str, default="xy", help="Symmetry planes (combinations of x,y,z e.g., 'xy')")
-    
+    parser.add_argument(
+        "--faces", type=int, default=32, help="Target number of facets (default: 32)"
+    )
+    parser.add_argument(
+        "--smooth",
+        type=int,
+        default=10,
+        help="Smoothing iterations for corners (default: 10)",
+    )
+    parser.add_argument(
+        "--symmetry",
+        type=str,
+        default="xy",
+        help="Symmetry planes (combinations of x,y,z e.g., 'xy')",
+    )
+
     args = parser.parse_args()
 
     print("--- Swarovski Crystal Generator ---")
@@ -107,30 +135,40 @@ def main():
         if args.input:
             print(f"Loading raw diamond mesh from: {args.input}")
             from compgeom.mesh.meshio import from_file
+
             verts, faces = from_file(args.input)
             raw_mesh = TriangleMesh(verts, faces)
         else:
             print("No input provided. Generating a raw diamond placeholder...")
             # Create a noisy octahedron-like point cloud
             pts = [
-                Point3D(1.0, 0, 0), Point3D(-1.0, 0, 0),
-                Point3D(0, 1.0, 0), Point3D(0, -1.0, 0),
-                Point3D(0, 0, 1.5), Point3D(0, 0, -1.0)
+                Point3D(1.0, 0, 0),
+                Point3D(-1.0, 0, 0),
+                Point3D(0, 1.0, 0),
+                Point3D(0, -1.0, 0),
+                Point3D(0, 0, 1.5),
+                Point3D(0, 0, -1.0),
             ]
             # Add noise for 'raw' look
             for _ in range(50):
-                pts.append(Point3D(random.uniform(-0.8, 0.8), random.uniform(-0.8, 0.8), random.uniform(-1.2, 1.2)))
-            
+                pts.append(
+                    Point3D(
+                        random.uniform(-0.8, 0.8),
+                        random.uniform(-0.8, 0.8),
+                        random.uniform(-1.2, 1.2),
+                    )
+                )
+
             # Use hull to create the raw mesh
             raw_mesh = ConvexHull3D.compute(pts)
             print(f"Generated raw mesh with {len(raw_mesh.vertices)} vertices.")
 
         tools = SwarovskiCrystals()
         crystal = tools.convert_raw_diamond_to_crystal(
-            raw_mesh, 
-            target_faces=args.faces, 
+            raw_mesh,
+            target_faces=args.faces,
             smoothing_iterations=args.smooth,
-            symmetry_planes=args.symmetry
+            symmetry_planes=args.symmetry,
         )
 
         print(f"Conversion complete!")
@@ -143,6 +181,7 @@ def main():
     except Exception as e:
         print(f"Error during processing: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
