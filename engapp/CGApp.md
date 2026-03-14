@@ -171,6 +171,18 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Implementation**: Using **Ray Casting** (Moller-Trumbore), we test the visibility from the light to a grid of sample points on the ground. If a ray intersects any building triangle before reaching the ground, that point is in "Shadow."
 *   **Illumination Score**: By sampling hundreds of points, we calculate a coverage percentage for different placement candidates, allowing for mathematically optimal streetlight positioning.
 
+### 27. Radiation Oncology (`radiation_oncology.py`)
+**The Problem**: In cancer treatment, radiation beams must be aimed at a tumor while avoiding vital organs. Because radiation is absorbed as it travels, doctors must calculate the exact "Tissue Depth" the beam penetrates.
+*   **Geometric Principle (Ray-Mesh Intersection)**: We treat the radiation beam as a **Ray** and the patient's anatomy as multiple **TriangleMeshes**.
+*   **Dose Calculation**: By intersecting the ray with the "Body Skin" mesh, we calculate the distance from the skin to the tumor center.
+*   **Safety Interlock**: We perform an intersection test with "Organs-at-Risk" (OAR) meshes. If the ray hits an OAR mesh before or after the tumor, the treatment angle is flagged as "Dangerous" and must be adjusted.
+
+### 28. Flood Hazard Analysis (`flood_risk_analysis.py`)
+**The Problem**: Climate change requires precise models to predict flood damage. Urban planners need to know which areas will be submerged and the total volume of water a basin will hold.
+*   **Geometric Principle (Z-Thresholding)**: Using a terrain mesh, we compare every vertex's $Z$-coordinate against a predicted **Water Level**.
+*   **Submergence Mapping**: Triangles with vertices below the threshold are identified as high-risk flood zones.
+*   **Volumetric Capacity**: We calculate the **Flood Volume** by integrating the height difference ($WaterLevel - MeshHeight$) over the 2D projected area of every submerged triangle. This allows for the design of effective drainage and levee systems.
+
 ### 22. Vascular Stenting (`vascular_stenting.py`)
 **The Problem**: A stent is a tiny wire mesh tube used to open up clogged arteries. Engineers must ensure the stent expands correctly to the vessel wall and covers enough surface area to keep the artery open without causing excessive irritation.
 *   **Geometric Principle (Radial Scaling)**: We simulate the deployment by **Radial Scaling** the stent's vertices in the XY plane while preserving its longitudinal length.
