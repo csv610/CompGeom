@@ -1,9 +1,10 @@
 from __future__ import annotations
 import math
-from typing import Optional, TYPE_CHECKING, Tuple
+from dataclasses import dataclass
+from typing import Optional, TYPE_CHECKING, Tuple, Generic, TypeVar
 
 if TYPE_CHECKING:
-    from .point import Point2D
+    from .point import Point2D, Point3D
 
 from .math_utils import (
     EPSILON, 
@@ -14,6 +15,43 @@ from .math_utils import (
     length_sq,
     dot_product
 )
+
+PointType = TypeVar('PointType', 'Point2D', 'Point3D')
+
+@dataclass(frozen=True, slots=True)
+class LineSegment(Generic[PointType]):
+    """A line segment defined by start and end points.
+    Can be embedded in 2D or 3D space depending on the PointType.
+    """
+    start: PointType
+    end: PointType
+
+    def length(self) -> float:
+        return self.start.distance_to(self.end)
+
+    def midpoint(self) -> PointType:
+        return (self.start + self.end) * 0.5
+
+    def direction(self) -> PointType:
+        v = self.end - self.start
+        d_len = v.length()
+        if d_len < EPSILON:
+            raise ValueError("Segment length is zero, direction undefined.")
+        return v / d_len
+
+    def distance_to_point(self, point: PointType) -> float:
+        v = self.end - self.start
+        w = point - self.start
+        l2 = v.length_sq()
+        if l2 < EPSILON:
+            return self.start.distance_to(point)
+        t = max(0.0, min(1.0, w.dot(v) / l2))
+        projection = self.start + v * t
+        return point.distance_to(projection)
+
+    def __repr__(self) -> str:
+        return f"LineSegment({self.start} -> {self.end})"
+
 
 def intersect_lines(p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) -> Optional[Point2D]:
     """Return the line-line intersection, or ``None`` for parallel lines."""
@@ -114,6 +152,7 @@ def angle(p1: Point2D, p2: Point2D) -> float:
 
 
 __all__ = [
+    "LineSegment",
     "intersect_lines",
     "distance_to_point",
     "contains_point",

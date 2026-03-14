@@ -1,10 +1,11 @@
 from __future__ import annotations
 import math
+from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING, Tuple, List, Any
 from decimal import Decimal
 
 if TYPE_CHECKING:
-    from .point import Point2D
+    from .point import Point2D, Point3D
 
 from .math_utils import (
     EPSILON, 
@@ -12,10 +13,69 @@ from .math_utils import (
     distance,
 )
 
+@dataclass(frozen=True, slots=True)
+class Triangle2D:
+    v1: Point2D
+    v2: Point2D
+    v3: Point2D
+
+    @property
+    def vertices(self) -> Tuple[Point2D, Point2D, Point2D]:
+        return (self.v1, self.v2, self.v3)
+
+    def area(self) -> float:
+        return area(self.v1, self.v2, self.v3)
+
+    def orientation(self) -> float:
+        return orientation(self.v1, self.v2, self.v3)
+
+    def orientation_sign(self) -> int:
+        return orientation_sign(self.v1, self.v2, self.v3)
+
+    def circumcenter(self) -> Optional[Point2D]:
+        return circumcenter(self.v1, self.v2, self.v3)
+
+    def incenter(self) -> Point2D:
+        return incenter(self.v1, self.v2, self.v3)
+
+    def inradius(self) -> float:
+        return inradius(self.v1, self.v2, self.v3)
+
+    def contains_point(self, p: Point2D) -> bool:
+        return contains_point(self.v1, self.v2, self.v3, p)
+
+    def __repr__(self) -> str:
+        return f"Triangle2D({self.v1}, {self.v2}, {self.v3})"
+
+@dataclass(frozen=True, slots=True)
+class Triangle3D:
+    v1: Point3D
+    v2: Point3D
+    v3: Point3D
+
+    @property
+    def vertices(self) -> Tuple[Point3D, Point3D, Point3D]:
+        return (self.v1, self.v2, self.v3)
+
+    def normal(self) -> Point3D:
+        edge1 = self.v2 - self.v1
+        edge2 = self.v3 - self.v1
+        n = edge1.cross(edge2)
+        return n / n.length()
+
+    def area(self) -> float:
+        edge1 = self.v2 - self.v1
+        edge2 = self.v3 - self.v1
+        return 0.5 * edge1.cross(edge2).length()
+
+    def __repr__(self) -> str:
+        return f"Triangle3D({self.v1}, {self.v2}, {self.v3})"
+
+
 def _decimal_orientation(a: Point2D, b: Point2D, c: Point2D) -> Decimal:
-    ax, ay = Decimal(a.x), Decimal(a.y)
-    bx, by = Decimal(b.x), Decimal(b.y)
-    cx, cy = Decimal(c.x), Decimal(c.y)
+    ax, ay = Decimal(str(a.x)), Decimal(str(a.y))
+    bx, by = Decimal(str(b.x)), Decimal(str(b.y))
+    cx, cy = Decimal(str(c.x)), Decimal(str(c.y))
     return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
 
 
@@ -119,6 +179,8 @@ def contains_point(a: Any, b: Any = None, c: Point2D | None = None, d: Point2D |
 
 
 __all__ = [
+    "Triangle2D",
+    "Triangle3D",
     "area",
     "circumcenter",
     "incenter",

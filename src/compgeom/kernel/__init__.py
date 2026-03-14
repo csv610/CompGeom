@@ -51,3 +51,11 @@ from .sphere import (
     insphere_sign,
     in_sphere
 )
+
+from .plane import (
+    Plane
+)
+
+from .ray import (
+    Ray
+)

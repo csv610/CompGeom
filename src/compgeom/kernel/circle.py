@@ -1,5 +1,6 @@
 from __future__ import annotations
 import math
+from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING, Tuple, List
 from decimal import Decimal
 
@@ -11,14 +12,32 @@ from .math_utils import (
     distance,
 )
 
+@dataclass(frozen=True, slots=True)
+class Circle2D:
+    center: Point2D
+    radius: float
+
+    def area(self) -> float:
+        return area(self.radius)
+
+    def perimeter(self) -> float:
+        return perimeter(self.radius)
+
+    def contains_point(self, point: Point2D) -> bool:
+        return distance(self.center, point) <= self.radius + EPSILON
+
+    def __repr__(self) -> str:
+        return f"Circle2D(c={self.center}, r={self.radius})"
+
+
 # Robust decimal incircle predicate helper
 def _decimal_incircle(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> Decimal:
-    adx_d = Decimal(a.x) - Decimal(d.x)
-    ady_d = Decimal(a.y) - Decimal(d.y)
-    bdx_d = Decimal(b.x) - Decimal(d.x)
-    bdy_d = Decimal(b.y) - Decimal(d.y)
-    cdx_d = Decimal(c.x) - Decimal(d.x)
-    cdy_d = Decimal(c.y) - Decimal(d.y)
+    adx_d = Decimal(str(a.x)) - Decimal(str(d.x))
+    ady_d = Decimal(str(a.y)) - Decimal(str(d.y))
+    bdx_d = Decimal(str(b.x)) - Decimal(str(d.x))
+    bdy_d = Decimal(str(b.y)) - Decimal(str(d.y))
+    cdx_d = Decimal(str(c.x)) - Decimal(str(d.x))
+    cdy_d = Decimal(str(c.y)) - Decimal(str(d.y))
     return (
         (adx_d * adx_d + ady_d * ady_d) * (bdx_d * cdy_d - cdx_d * bdy_d)
         - (bdx_d * bdx_d + bdy_d * bdy_d) * (adx_d * cdy_d - cdx_d * ady_d)
@@ -81,8 +100,8 @@ def robust_in_circle(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
         r2 = (x1 - ox)**2 + (y1 - oy)**2
         r = math.sqrt(r2)
         
-        if d.x < ox - r - 1e-9 or d.x > ox + r + 1e-9 or \
-           d.y < oy - r - 1e-9 or d.y > oy + r + 1e-9:
+        if d.x < ox - r - 1e-9 or d.x > ox + r - 1e-9 or \
+           d.y < oy - r - 1e-9 or d.y > oy + r - 1e-9:
             return False
 
     # 2. Adaptive In-Circle Test (Shewchuk style error bound)
@@ -179,6 +198,7 @@ def perimeter(radius: float) -> float:
 
 
 __all__ = [
+    "Circle2D",
     "robust_in_circle",
     "incircle_det",
     "incircle_sign",
