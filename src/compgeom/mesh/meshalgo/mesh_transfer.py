@@ -5,9 +5,9 @@ from __future__ import annotations
 import math
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ..kernel import Point2D, Point3D
-from ..kernel import distance
-from .mesh import TriangleMesh
+from compgeom.kernel import Point2D, Point3D
+from compgeom.kernel import distance
+from compgeom.mesh.mesh import TriangleMesh
 
 
 class MeshTransfer:

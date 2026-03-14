@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Set, Tuple
 
-from .mesh import Mesh
+from ..mesh import Mesh
 
 
 class MeshColoring:

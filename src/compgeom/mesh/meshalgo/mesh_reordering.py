@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import deque
 from typing import Dict, List, Set, Tuple
 
-from .mesh import Mesh
+from compgeom.mesh.mesh import Mesh
 
 
 class CuthillMcKee:

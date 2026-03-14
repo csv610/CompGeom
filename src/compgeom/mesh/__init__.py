@@ -27,11 +27,11 @@ from .mesh import (
     triangle_neighbors,
     vertex_neighbors,
 )
-from .mesh_coloring import MeshColoring
+from .meshalgo.mesh_coloring import MeshColoring
 from .meshio import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler, from_file
 from .surfmesh.trimesh.mesh_refinement import TriMeshRefiner
-from .mesh_reordering import CuthillMcKee
-from .mesh_transfer import MeshTransfer
+from .meshalgo.mesh_reordering import CuthillMcKee
+from .meshalgo.mesh_transfer import MeshTransfer
 from .surfmesh.quadmesh.simple_tri2quads import TriangleToQuadConverter
 from .polymesh.voronoi_diagram import VoronoiDiagram
 from .volmesh.voxelmesh.voxelization import MeshVoxelizer

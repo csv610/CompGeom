@@ -17,7 +17,7 @@ from .delaunay_topology import (
 from .platonic_solids import PlatonicSolid
 from .primitives import Primitives
 from .domain_mesher import DomainMesher
-from .node_move_constraints import VertexConstraint
+from compgeom.mesh.surfmesh.node_move_constraints import VertexConstraint
 
 __all__ = [
     "DelaunayMesher",

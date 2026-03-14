@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Tuple
 
-from ....kernel import Point3D
+from compgeom.kernel import Point3D
 
 if TYPE_CHECKING:
     from ...mesh import TriangleMesh
