@@ -146,6 +146,13 @@ Welcome, students! This guide explores how abstract geometric principles are app
 *   **Implementation**: By solving the spherical trigonometry equations for a degree-4 vertex, we calculate the exact 3D coordinates $(X, Y, Z)$ of every fold node as a function of $\theta$.
 *   **Metric**: We calculate the **Packing Ratio**, which is the total deployed surface area divided by the 2D projected footprint of the packed structure. A higher ratio means a larger panel can fit inside the same rocket.
 
+### 23. VLSI Chip Wire Routing (`chip_wire_routing.py`)
+**The Problem**: In microchip design, millions of transistors must be connected by wires. These wires cannot overlap on the same layer and should be as short as possible to reduce signal delay and power consumption.
+*   **Geometric Principle (Manhattan Geometry)**: Wires are constrained to a **Rectilinear Grid** (horizontal and vertical movements only). 
+*   **A* Pathfinding**: We use the **A* Search Algorithm** with a **Manhattan Distance** ($|x_1 - x_2| + |y_1 - y_2|$) heuristic to find the shortest collision-free path between two pins.
+*   **Via Optimization**: Changing layers (using a "Via") is electrically expensive. Our algorithm adds a **Via Cost** to the pathfinding logic to minimize vertical transitions between metal layers.
+*   **Congestion Analysis**: By tracking wire density across the grid, we identify "Hot Spots" where the chip is too crowded, helping engineers redesign the component placement.
+
 ### 22. Vascular Stenting (`vascular_stenting.py`)
 **The Problem**: A stent is a tiny wire mesh tube used to open up clogged arteries. Engineers must ensure the stent expands correctly to the vessel wall and covers enough surface area to keep the artery open without causing excessive irritation.
 *   **Geometric Principle (Radial Scaling)**: We simulate the deployment by **Radial Scaling** the stent's vertices in the XY plane while preserving its longitudinal length.
