@@ -6,95 +6,150 @@ from .convex_hull import ConvexHull
 from .polygon import (
     Polygon,
     PolygonProperties,
-    get_convex_diameter,
-    get_polygon_properties,
-    get_reflex_vertices,
-    get_triangulation_with_diagonals,
-    hertel_mehlhorn,
-    is_convex,
-    is_ear,
-    is_point_in_polygon,
-    shortest_path_in_polygon,
-    triangulate_polygon,
-    triangulate_polygon_with_holes,
+    Triangle,
 )
 from .polygon_decomposer import (
-    ConvexDecomposition,
-    EarDecomposition,
-    HoleDecomposition,
-    MonotoneDecomposition,
-    TrapezoidalDecomposition,
-    VisibilityDecomposition,
-    PolygonDecomposer,
+    triangulate_polygon,
+    convex_decompose_polygon,
+    monotone_decompose_polygon,
+    visibility_decompose_polygon,
+    trapezoidal_decompose_polygon,
+    triangulate_polygon_with_holes,
+    decompose_polygon,
+    verify_polygon_decomposition,
 )
-from .polygon_similarity import are_similar
+from .polygon_similarity import get_polygon_signature, polygons_are_similar
 from .polygon_matching import reorder_to_match
-from .polygon_simplification import resolve_self_intersections as make_simple
-from .polygon_polynomial import approximate_polynomials
-from .polygon_generator import (
-    PolygonGenerator,
-    generate_points_in_triangle,
-    generate_random_convex_polygon,
-    generate_simple_polygon,
+from .polygon_simplification import resolve_self_intersections
+from .polygon_polynomial import (
+    approximate_polygon_polynomial,
+    evaluate_polynomial,
+    solve_linear_system,
 )
-from .polygon_visibility import polygon_kernel, visibility_polygon
-from .polygon_guards import PolygonGuards, guard_polygon, solve_art_gallery
-from .circle_packing import CirclePacker
-from .polygon_smoothing import PolygonalMeanCurvatureFlow, fourier_smooth
-from .distance_map import DistanceMapSolver
-from .medial_axis import approximate_medial_axis
+from .polygon_generator import (
+    generate_convex_polygon,
+    generate_concave_polygon,
+    generate_star_shaped_polygon,
+    generate_sierpinski_triangle,
+    generate_koch_snowflake,
+    generate_dragon_curve,
+    generate_de_rham_curve,
+)
+from .polygon_visibility import compute_visibility_polygon
+from .polygon_guards import art_gallery_guards, guard_polygon
+from .circle_packing import (
+    pack_circles,
+    optimal_radius,
+    calculate_circle_packing_efficiency,
+    visualize_circle_packing,
+)
+from .polygon_boolean import (
+    polygon_union,
+    polygon_intersection,
+    polygon_difference,
+    polygon_xor,
+)
+from .polygon_smoothing import (
+    resample_polygon,
+    fourier_smooth_polygon,
+    mean_curvature_flow_polygon,
+)
+from .distance_map import solve_distance_map, visualize_distance_map_svg
+from .medial_axis import sample_boundary_for_medial_axis, approximate_medial_axis
 from .planar import (
     DCEL,
     DCELFace,
     DCELHalfEdge,
     DCELVertex,
-    build_polygon_dcel,
-    locate_face,
 )
+from .polygon_utils import (
+    ensure_ccw,
+    ensure_cw,
+    rotate_polygon,
+    same_point,
+    point_on_boundary,
+    cleanup_polygon,
+    segment_inside_boundaries,
+)
+from .polygon_metrics import (
+    get_polygon_properties,
+    is_polygon_convex,
+    get_reflex_vertices,
+    get_convex_diameter,
+)
+from .polygon_path import segment_inside_polygon, shortest_path_in_polygon
+from .polygon_sampling import (
+    get_perimeter_distances,
+    sample_polygon_boundary,
+    get_parametric_coordinate,
+)
+from .poly_square import poly_square
+from .polygon_symmetry import get_polygon_moments, orient_polygon_for_symmetry
 
 __all__ = [
+    "approximate_medial_axis",
+    "approximate_polygon_polynomial",
+    "art_gallery_guards",
+    "calculate_circle_packing_efficiency",
+    "cleanup_polygon",
+    "compute_visibility_polygon",
+    "convex_decompose_polygon",
     "ConvexHull",
     "DCEL",
     "DCELFace",
     "DCELHalfEdge",
     "DCELVertex",
-    "CirclePacker",
-    "ConvexDecomposition",
-    "DistanceMapSolver",
-    "EarDecomposition",
-    "HoleDecomposition",
-    "MonotoneDecomposition",
-    "PolygonDecomposer",
-    "PolygonGenerator",
-    "PolygonGuards",
-    "Polygon",
-    "PolygonProperties",
-    "PolygonalMeanCurvatureFlow",
-    "TrapezoidalDecomposition",
-    "VisibilityDecomposition",
-    "approximate_medial_axis",
-    "approximate_polynomials",
-    "are_similar",
-    "reorder_to_match",
-    "make_simple",
-    "build_polygon_dcel",
-    "generate_points_in_triangle",
-    "generate_random_convex_polygon",
-    "generate_simple_polygon",
+    "decompose_polygon",
+    "ensure_ccw",
+    "ensure_cw",
+    "evaluate_polynomial",
+    "fourier_smooth_polygon",
+    "generate_concave_polygon",
+    "generate_convex_polygon",
+    "generate_de_rham_curve",
+    "generate_dragon_curve",
+    "generate_koch_snowflake",
+    "generate_sierpinski_triangle",
+    "generate_star_shaped_polygon",
     "get_convex_diameter",
+    "get_parametric_coordinate",
+    "get_perimeter_distances",
+    "get_polygon_moments",
     "get_polygon_properties",
+    "get_polygon_signature",
     "get_reflex_vertices",
-    "get_triangulation_with_diagonals",
     "guard_polygon",
-    "hertel_mehlhorn",
-    "is_convex",
-    "is_ear",
-    "is_point_in_polygon",
-    "locate_face",
-    "polygon_kernel",
+    "is_polygon_convex",
+    "mean_curvature_flow_polygon",
+    "monotone_decompose_polygon",
+    "optimal_radius",
+    "pack_circles",
+    "Polygon",
+    "polygon_difference",
+    "polygon_intersection",
+    "PolygonProperties",
+    "polygons_are_similar",
+    "polygon_union",
+    "polygon_xor",
+    "poly_square",
+    "reorder_to_match",
+    "resolve_self_intersections",
+    "resample_polygon",
+    "rotate_polygon",
+    "same_point",
+    "sample_boundary_for_medial_axis",
+    "sample_polygon_boundary",
+    "segment_inside_boundaries",
+    "segment_inside_polygon",
     "shortest_path_in_polygon",
-    "solve_art_gallery",
+    "solve_distance_map",
+    "solve_linear_system",
+    "trapezoidal_decompose_polygon",
     "triangulate_polygon",
     "triangulate_polygon_with_holes",
-    "visibility_polygon",
+    "Triangle",
+    "verify_polygon_decomposition",
+    "visibility_decompose_polygon",
+    "visualize_circle_packing",
+    "visualize_distance_map_svg",
 ]

@@ -3,37 +3,42 @@
 from __future__ import annotations
 
 import heapq
+from typing import Sequence
 
-from ..kernel import EPSILON, Point2D
-from ..kernel import distance
+from .exceptions import PointOutsidePolygonError, PolygonPathNotFoundError
+from .tolerance import EPSILON
+from ..kernel import Point2D, distance
 from .polygon import Polygon
-from .polygon_utils import point_on_boundary, segment_inside_boundaries
+from .polygon_utils import segment_inside_boundaries
 
 
-def segment_inside_polygon(polygon: list[Point2D], start: Point2D, end: Point2D) -> bool:
-    polygon_shape = Polygon(polygon)
+def segment_inside_polygon(polygon: Polygon | Sequence[Point2D], start: Point2D, end: Point2D) -> bool:
+    """Checks if a segment is entirely inside a polygon."""
+    poly_obj = polygon if isinstance(polygon, Polygon) else Polygon(polygon)
     return segment_inside_boundaries(
         start,
         end,
-        [polygon],
-        lambda midpoint: polygon_shape.contains_point(midpoint) or point_on_boundary(midpoint, polygon),
+        [poly_obj],
+        lambda midpoint: poly_obj.contains_point(midpoint) or poly_obj.point_on_boundary(midpoint),
     )
 
 
 def shortest_path_in_polygon(
-    polygon: list[Point2D], source: Point2D, target: Point2D
+    polygon: Polygon | Sequence[Point2D], source: Point2D, target: Point2D
 ) -> tuple[list[Point2D], float]:
-    polygon_shape = Polygon(polygon)
-    if not polygon_shape.contains_point(source):
-        raise ValueError("Source point must lie inside or on the boundary of the polygon.")
-    if not polygon_shape.contains_point(target):
-        raise ValueError("Target point must lie inside or on the boundary of the polygon.")
+    """Finds the shortest path between two points inside a polygon."""
+    poly_obj = polygon if isinstance(polygon, Polygon) else Polygon(polygon)
+    if not poly_obj.contains_point(source):
+        raise PointOutsidePolygonError("Source point must lie inside or on the boundary of the polygon.")
+    if not poly_obj.contains_point(target):
+        raise PointOutsidePolygonError("Target point must lie inside or on the boundary of the polygon.")
 
-    nodes = [source, target, *polygon]
+
+    nodes = [source, target, *poly_obj.vertices]
     graph: dict[int, list[tuple[int, float]]] = {index: [] for index in range(len(nodes))}
     for left in range(len(nodes)):
         for right in range(left + 1, len(nodes)):
-            if not segment_inside_polygon(polygon, nodes[left], nodes[right]):
+            if not segment_inside_polygon(poly_obj, nodes[left], nodes[right]):
                 continue
             weight = distance(nodes[left], nodes[right])
             graph[left].append((right, weight))
@@ -56,12 +61,13 @@ def shortest_path_in_polygon(
                 heapq.heappush(queue, (candidate, neighbor))
 
     if 1 not in distances:
-        raise ValueError("No path found inside the polygon.")
+        raise PolygonPathNotFoundError("No path found inside the polygon.")
 
     path_indices = [1]
     while path_indices[-1] != 0:
         path_indices.append(previous[path_indices[-1]])
     path_indices.reverse()
     return [nodes[index] for index in path_indices], distances[1]
+
 
 __all__ = ["segment_inside_polygon", "shortest_path_in_polygon"]

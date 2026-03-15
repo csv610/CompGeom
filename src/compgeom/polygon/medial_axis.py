@@ -3,41 +3,28 @@
 from __future__ import annotations
 
 import math
-from typing import List, Set, Tuple
+from typing import List, Set, Tuple, Sequence, Dict
 
-from ..kernel import EPSILON, Point2D, triangle_circumcenter, length, sub
-from .polygon import is_point_in_polygon
+from ..kernel import Point2D, triangle_circumcenter, length, sub
+from .polygon import Polygon
 from ..mesh.surfmesh.trimesh.delaunay_triangulation import build_topology, triangulate
+from .tolerance import EPSILON
 
 
-def polygon_area(polygon):
-    return 0.5 * sum(
-        polygon[i].x * polygon[(i + 1) % len(polygon)].y
-        - polygon[(i + 1) % len(polygon)].x * polygon[i].y
-        for i in range(len(polygon))
-    )
-
-
-def ensure_ccw(polygon):
-    return polygon if polygon_area(polygon) >= 0 else list(reversed(polygon))
-
-
-def edge_length(a, b):
-    return length(sub(a, b))
-
-
-def sample_polygon_boundary(polygon, max_segment_length=0.25):
-    polygon = ensure_ccw(list(polygon))
-    perimeter_scale = max(max_segment_length, 1e-6)
+def sample_boundary_for_medial_axis(polygon: Polygon | Sequence[Point2D], max_segment_length: float = 0.25) -> list[Point2D]:
+    """Samples the boundary of a polygon for medial axis approximation."""
+    poly_obj = polygon if isinstance(polygon, Polygon) else Polygon(polygon)
+    ordered = poly_obj.ensure_ccw().as_list()
+    perimeter_scale = max(max_segment_length, EPSILON)
     samples = []
     next_id = 0
 
-    for index, start in enumerate(polygon):
-        end = polygon[(index + 1) % len(polygon)]
+    for index, start in enumerate(ordered):
+        end = ordered[(index + 1) % len(ordered)]
         samples.append(Point2D(start.x, start.y, next_id))
         next_id += 1
 
-        segment_len = edge_length(start, end)
+        segment_len = length(sub(start, end))
         subdivisions = max(1, int(segment_len / perimeter_scale))
         for step in range(1, subdivisions):
             t = step / subdivisions
@@ -52,27 +39,13 @@ def sample_polygon_boundary(polygon, max_segment_length=0.25):
     return samples
 
 
-def triangle_centroid(triangle):
-    a, b, c = triangle
-    return Point2D((a.x + b.x + c.x) / 3.0, (a.y + b.y + c.y) / 3.0)
-
-
-def point_key(point):
-    return (round(point.x / EPSILON), round(point.y / EPSILON))
-
-
-def segment_key(a, b):
-    ka = point_key(a)
-    kb = point_key(b)
-    return (ka, kb) if ka <= kb else (kb, ka)
-
-
-def approximate_medial_axis(polygon, resolution=0.25):
+def approximate_medial_axis(polygon: Polygon | Sequence[Point2D], resolution: float = 0.25) -> dict:
     """Approximate the medial axis of a polygon using Delaunay triangulation."""
-    if len(polygon) < 3:
+    poly_obj = polygon if isinstance(polygon, Polygon) else Polygon(polygon)
+    if len(poly_obj) < 3:
         return {"samples": [], "centers": [], "segments": []}
 
-    boundary_samples = sample_polygon_boundary(polygon, max_segment_length=resolution)
+    boundary_samples = sample_boundary_for_medial_axis(poly_obj, max_segment_length=resolution)
     mesh_obj = triangulate(boundary_samples)
     sampled_triangles = [(mesh_obj.vertices[f[0]], mesh_obj.vertices[f[1]], mesh_obj.vertices[f[2]]) for f in mesh_obj.faces]
     if not sampled_triangles:
@@ -83,14 +56,18 @@ def approximate_medial_axis(polygon, resolution=0.25):
     centers = []
     next_center_id = 0
 
+    def triangle_centroid(triangle):
+        a, b, c = triangle
+        return Point2D((a.x + b.x + c.x) / 3.0, (a.y + b.y + c.y) / 3.0)
+
     for triangle_index, mesh_triangle in enumerate(mesh):
         triangle = tuple(mesh_triangle.vertices)
         centroid = triangle_centroid(triangle)
-        if not is_point_in_polygon(centroid, polygon):
+        if not poly_obj.contains_point(centroid):
             continue
 
         center = triangle_circumcenter(*triangle)
-        if center is None or not is_point_in_polygon(center, polygon):
+        if center is None or not poly_obj.contains_point(Point2D(center.x, center.y)):
             continue
 
         interior_centers[triangle_index] = Point2D(center.x, center.y, next_center_id)
@@ -109,9 +86,14 @@ def approximate_medial_axis(polygon, resolution=0.25):
                 continue
             start = interior_centers[triangle_index]
             end = interior_centers[neighbor_index]
-            if edge_length(start, end) <= EPSILON:
+            if length(sub(start, end)) <= EPSILON:
                 continue
-            segments[segment_key(start, end)] = (start, end)
+            
+            # Segment key
+            ka = (round(start.x / EPSILON), round(start.y / EPSILON))
+            kb = (round(end.x / EPSILON), round(end.y / EPSILON))
+            key = (ka, kb) if ka <= kb else (kb, ka)
+            segments[key] = (start, end)
 
     return {
         "samples": boundary_samples,
@@ -120,4 +102,4 @@ def approximate_medial_axis(polygon, resolution=0.25):
     }
 
 
-__all__ = ["approximate_medial_axis", "sample_polygon_boundary"]
+__all__ = ["sample_boundary_for_medial_axis", "approximate_medial_axis"]

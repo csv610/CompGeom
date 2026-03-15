@@ -3,8 +3,7 @@ import math
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING, Tuple, Generic, TypeVar
 
-if TYPE_CHECKING:
-    from .point import Point2D, Point3D
+from .point import Point2D, Point3D
 
 from .math_utils import (
     EPSILON, 
@@ -55,7 +54,6 @@ class LineSegment(Generic[PointType]):
 
 def intersect_lines(p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) -> Optional[Point2D]:
     """Return the line-line intersection, or ``None`` for parallel lines."""
-    from .point import Point2D
     denominator = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x)
     if abs(denominator) < 1e-12:
         return None
@@ -119,7 +117,6 @@ def intersect_ray(
     origin: Point2D, angle: float, start: Point2D, end: Point2D
 ) -> tuple[float, Point2D] | None:
     """Return the intersection distance and point between a ray and a segment."""
-    from .point import Point2D
     direction = Point2D(math.cos(angle), math.sin(angle))
     edge = sub(end, start)
     delta = sub(start, origin)
@@ -142,7 +139,6 @@ def intersect_ray(
 
 def midpoint(p1: Point2D, p2: Point2D) -> Point2D:
     """Return the midpoint of a line segment."""
-    from .point import Point2D
     return Point2D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
 
 

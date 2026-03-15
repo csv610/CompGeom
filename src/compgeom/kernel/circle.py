@@ -1,16 +1,16 @@
 from __future__ import annotations
 import math
+import fractions
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING, Tuple, List
 from decimal import Decimal
 
-if TYPE_CHECKING:
-    from .point import Point2D
-
+from .point import Point2D
 from .math_utils import (
     EPSILON, 
     distance,
 )
+from .triangle import orientation_sign, circumcenter
 
 @dataclass(frozen=True, slots=True)
 class Circle2D:
@@ -62,7 +62,6 @@ def incircle_det(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> float:
 
 def incircle_sign(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> int:
     """Return the sign of the incircle test (1: inside, -1: outside, 0: on)."""
-    from .triangle import orientation_sign
     determinant = incircle_det(a, b, c, d)
     orient = orientation_sign(a, b, c)
     adjusted = determinant * orient
@@ -136,7 +135,6 @@ def robust_in_circle(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
         sign = 1 if det > 0 else -1
     else:
         # 3. Exact Arithmetic Fallback using Fractions
-        import fractions
         adx_f = fractions.Fraction(a.x) - fractions.Fraction(d.x)
         ady_f = fractions.Fraction(a.y) - fractions.Fraction(d.y)
         bdx_f = fractions.Fraction(b.x) - fractions.Fraction(d.x)
@@ -165,14 +163,12 @@ def robust_in_circle(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
 
 def from_two_points(p1: Point2D, p2: Point2D) -> tuple[Point2D, float]:
     """Return the smallest enclosing circle defined by two points."""
-    from .point import Point2D
     center = Point2D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
     return center, distance(p1, p2) / 2.0
 
 
 def from_three_points(p1: Point2D, p2: Point2D, p3: Point2D) -> tuple[Point2D, float]:
     """Return the circumcircle defined by three points."""
-    from .triangle import circumcenter
     center = circumcenter(p1, p2, p3)
     if center is None:
         # Collinear fallback: smallest circle of two furthest points

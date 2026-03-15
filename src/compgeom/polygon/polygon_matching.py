@@ -5,12 +5,13 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Sequence
 
+from .exceptions import PolygonError
+
 if TYPE_CHECKING:
     from .polygon import Polygon
 
 from ..kernel import Point2D
-from .polygon_utils import cleanup_polygon
-from .polygon_similarity import get_similarity_signature
+from .polygon_similarity import get_polygon_signature
 
 
 def reorder_to_match(
@@ -22,16 +23,6 @@ def reorder_to_match(
     """
     Reorders (cyclically shifts and potentially reverses) the vertices of poly2 
     to maximally match poly1 based on their geometric shape (similarity signature).
-    
-    Args:
-        poly1: The reference polygon.
-        poly2: The polygon whose vertices should be reordered.
-        allow_reflection: If True, considers reversed vertex orders if they match better.
-        auto_clean: If True, cleans both polygons (removes redundant points) 
-                    before matching.
-                    
-    Returns:
-        A list of vertices for poly2 in the optimal order.
     """
     # Importing Polygon here to avoid circular dependency
     from .polygon import Polygon
@@ -40,11 +31,11 @@ def reorder_to_match(
     p2 = poly2
     
     if auto_clean:
-        p1 = Polygon(cleanup_polygon(list(p1.vertices)))
-        p2 = Polygon(cleanup_polygon(list(p2.vertices)))
+        p1 = p1.cleanup()
+        p2 = p2.cleanup()
         
     if len(p1) != len(p2):
-        raise ValueError(
+        raise PolygonError(
             f"Polygons must have the same number of vertices (after cleaning). "
             f"p1: {len(p1)}, p2: {len(p2)}"
         )
@@ -53,17 +44,15 @@ def reorder_to_match(
     if n < 3:
         return list(poly2.vertices)
         
-    sig1 = get_similarity_signature(p1)
-    sig2 = get_similarity_signature(p2)
+    sig1 = get_polygon_signature(p1)
+    sig2 = get_polygon_signature(p2)
     
     if sig1 is None or sig2 is None:
         return list(poly2.vertices)
         
     def score_match(s1: list[tuple[float, float]], s2: list[tuple[float, float]]) -> float:
-        # Lower score is better (Mean Squared Error)
         error = 0.0
         for (side1, angle1), (side2, angle2) in zip(s1, s2):
-            # Normalize angle difference to [-pi, pi]
             da = angle1 - angle2
             while da > math.pi: da -= 2 * math.pi
             while da < -math.pi: da += 2 * math.pi
@@ -75,12 +64,7 @@ def reorder_to_match(
     best_shift = 0
     best_is_reflected = False
 
-    # Signature-based matching is invariant to translation, rotation, scale.
-    # We find the shift i such that p2_reordered[j] corresponds to p1[j]
-    
-    # Check all cyclic shifts of p2's signature
     for i in range(n):
-        # Mapping: p1[j] corresponds to p2[(j+i)%n]
         shifted_sig2 = sig2[i:] + sig2[:i]
         score = score_match(sig1, shifted_sig2)
         if score < best_score:
@@ -88,11 +72,9 @@ def reorder_to_match(
             best_shift = i
             best_is_reflected = False
             
-    # Check reflection
     if allow_reflection:
-        rev_v2 = list(reversed(p2.vertices))
-        rev_p2 = Polygon(rev_v2)
-        sig2_rev = get_similarity_signature(rev_p2)
+        rev_p2 = Polygon(list(reversed(p2.vertices)))
+        sig2_rev = get_polygon_signature(rev_p2)
         
         if sig2_rev is not None:
             for i in range(n):
@@ -103,13 +85,12 @@ def reorder_to_match(
                     best_shift = i
                     best_is_reflected = True
                     
-    # Construct the reordered vertex list
     source_vertices = list(p2.vertices)
     if best_is_reflected:
         source_vertices = list(reversed(source_vertices))
         
-    # Apply the best cyclic shift
-    # If best_shift = k, then p1[0] matched sig2[k]
-    # sig2[k] is the signature at vertex k.
     reordered = source_vertices[best_shift:] + source_vertices[:best_shift]
     return reordered
+
+
+__all__ = ["reorder_to_match"]

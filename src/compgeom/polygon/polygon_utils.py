@@ -2,92 +2,52 @@
 
 from __future__ import annotations
 
-import math
-from typing import Callable
+from typing import Callable, Sequence
 
-from ..kernel import Point2D, cross_product, is_on_segment
-from ..kernel import signed_area_twice
+from ..kernel import Point2D, is_on_segment
 from .line_segment import proper_segment_intersection
+from .polygon import Polygon
+from .tolerance import are_close, EPSILON
 
 
-def ensure_ccw(polygon: list[Point2D]) -> list[Point2D]:
-    return polygon if signed_area_twice(polygon) >= 0 else list(reversed(polygon))
+def ensure_ccw(polygon: Polygon | Sequence[Point2D]) -> Polygon:
+    if isinstance(polygon, Polygon):
+        return polygon.ensure_ccw()
+    return Polygon(polygon).ensure_ccw()
 
 
-def ensure_cw(polygon: list[Point2D]) -> list[Point2D]:
-    return polygon if signed_area_twice(polygon) <= 0 else list(reversed(polygon))
+def ensure_cw(polygon: Polygon | Sequence[Point2D]) -> Polygon:
+    if isinstance(polygon, Polygon):
+        return polygon.ensure_cw()
+    return Polygon(polygon).ensure_cw()
 
 
-def rotate_polygon(polygon: list[Point2D], angle: float, center: Point2D | None = None) -> list[Point2D]:
-    """Rotate a polygon by a given angle (in radians) around a center point."""
-    if not polygon:
-        return []
-    if center is None:
-        # Import here to avoid circular dependency
-        from .polygon_metrics import get_polygon_properties
-
-        _, center, _ = get_polygon_properties(polygon)
-
-    cos_a = math.cos(angle)
-    sin_a = math.sin(angle)
-    return [
-        Point2D(
-            (p.x - center.x) * cos_a - (p.y - center.y) * sin_a + center.x,
-            (p.x - center.x) * sin_a + (p.y - center.y) * cos_a + center.y,
-        )
-        for p in polygon
-    ]
+def rotate_polygon(polygon: Polygon | Sequence[Point2D], angle: float, center: Point2D | None = None) -> Polygon:
+    if isinstance(polygon, Polygon):
+        return polygon.rotate(angle, center)
+    return Polygon(polygon).rotate(angle, center)
 
 
-def same_point(a: Point2D, b: Point2D, tolerance: float = 1e-7) -> bool:
-    return abs(a.x - b.x) <= tolerance and abs(a.y - b.y) <= tolerance
+def same_point(a: Point2D, b: Point2D, tolerance: float = EPSILON) -> bool:
+    return are_close(a, b, tolerance)
 
 
-def point_on_boundary(point: Point2D, polygon: list[Point2D]) -> bool:
-    n = len(polygon)
-    if n == 0:
-        return False
-    for i in range(n):
-        if is_on_segment(point, polygon[i], polygon[(i + 1) % n]):
-            return True
-    return False
+def point_on_boundary(point: Point2D, polygon: Polygon | Sequence[Point2D]) -> bool:
+    if isinstance(polygon, Polygon):
+        return polygon.point_on_boundary(point)
+    return Polygon(polygon).point_on_boundary(point)
 
 
-def cleanup_polygon(points: list[Point2D]) -> list[Point2D]:
-    if not points:
-        return []
-
-    cleaned: list[Point2D] = []
-    for point in points:
-        if cleaned and same_point(point, cleaned[-1]):
-            continue
-        cleaned.append(point)
-
-    if len(cleaned) > 1 and same_point(cleaned[0], cleaned[-1]):
-        cleaned.pop()
-
-    simplified: list[Point2D] = []
-    for point in cleaned:
-        if len(simplified) < 2:
-            simplified.append(point)
-            continue
-        if abs(cross_product(simplified[-2], simplified[-1], point)) <= 1e-7 and is_on_segment(
-            simplified[-1], simplified[-2], point
-        ):
-            simplified[-1] = point
-            continue
-        simplified.append(point)
-
-    if len(simplified) >= 3 and abs(cross_product(simplified[-2], simplified[-1], simplified[0])) <= 1e-7:
-        if is_on_segment(simplified[-1], simplified[-2], simplified[0]):
-            simplified.pop()
-    return simplified
+def cleanup_polygon(polygon: Polygon | Sequence[Point2D]) -> Polygon:
+    if isinstance(polygon, Polygon):
+        return polygon.cleanup()
+    return Polygon(polygon).cleanup()
 
 
 def segment_inside_boundaries(
     start: Point2D,
     end: Point2D,
-    boundaries: list[list[Point2D]],
+    boundaries: list[Polygon | list[Point2D]],
     midpoint_inside: Callable[[Point2D], bool],
     allow_boundary_endpoint: Point2D | None = None,
 ) -> bool:
@@ -96,26 +56,32 @@ def segment_inside_boundaries(
         return False
 
     for boundary in boundaries:
-        for index, edge_start in enumerate(boundary):
-            edge_end = boundary[(index + 1) % len(boundary)]
-            shared_endpoint = start == edge_start or start == edge_end or end == edge_start or end == edge_end
+        pts = boundary.vertices if isinstance(boundary, Polygon) else boundary
+        for index, edge_start in enumerate(pts):
+            edge_end = pts[(index + 1) % len(pts)]
+            shared_endpoint = (
+                are_close(start, edge_start) or
+                are_close(start, edge_end) or
+                are_close(end, edge_start) or
+                are_close(end, edge_end)
+            )
             if shared_endpoint:
                 continue
             if allow_boundary_endpoint is not None and (
-                edge_start == allow_boundary_endpoint or edge_end == allow_boundary_endpoint
+                are_close(edge_start, allow_boundary_endpoint) or
+                are_close(edge_end, allow_boundary_endpoint)
             ):
                 continue
             if proper_segment_intersection(start, end, edge_start, edge_end):
                 return False
-    return True
-
+            return True
 
 __all__ = [
-    "cleanup_polygon",
     "ensure_ccw",
     "ensure_cw",
-    "point_on_boundary",
     "rotate_polygon",
     "same_point",
+    "point_on_boundary",
+    "cleanup_polygon",
     "segment_inside_boundaries",
 ]

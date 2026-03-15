@@ -14,7 +14,6 @@ from ..kernel import Point2D
 def solve_linear_system(matrix: List[List[float]], b: List[float]) -> List[float]:
     """Solve Ax = b using Gaussian elimination."""
     n = len(b)
-    # Forward elimination
     for i in range(n):
         pivot = matrix[i][i]
         for j in range(i + 1, n):
@@ -23,7 +22,6 @@ def solve_linear_system(matrix: List[List[float]], b: List[float]) -> List[float
                 matrix[j][k] -= factor * matrix[i][k]
             b[j] -= factor * b[i]
 
-    # Back substitution
     x = [0.0] * n
     for i in range(n - 1, -1, -1):
         x[i] = b[i]
@@ -33,21 +31,15 @@ def solve_linear_system(matrix: List[List[float]], b: List[float]) -> List[float
     return x
 
 
-def approximate_polynomials(polygon: Polygon, order: int) -> Tuple[List[float], List[float]]:
+def approximate_polygon_polynomial(polygon: Polygon, order: int) -> Tuple[List[float], List[float]]:
     """
     Fits parametric polynomials x(t) and y(t) of a given order to the polygon vertices.
-    t is normalized arc length [0, 1].
-    
-    Returns:
-        A tuple (x_coeffs, y_coeffs) where coeffs are [a0, a1, ..., an] 
-        for sum(ai * t^i).
     """
     vertices = polygon.vertices
     if not vertices:
         return [], []
     
     n = len(vertices)
-    # Calculate cumulative distance (arc length)
     distances = [0.0]
     total_dist = 0.0
     for i in range(n):
@@ -57,18 +49,11 @@ def approximate_polynomials(polygon: Polygon, order: int) -> Tuple[List[float], 
         total_dist += dist
         distances.append(total_dist)
     
-    # Parametrize t in [0, 1]
-    # We include the last vertex (closing the loop) to ensure periodicity
-    # So we have n+1 data points
     t_values = [d / total_dist for d in distances]
     x_values = [p.x for p in vertices] + [vertices[0].x]
     y_values = [p.y for p in vertices] + [vertices[0].y]
     
     m = order + 1
-    # Build normal equations: (T^T * T) * c = T^T * y
-    # matrix[i][j] = sum(t_k^(i+j))
-    # rhs_x[i] = sum(x_k * t_k^i)
-    
     matrix = [[0.0] * m for _ in range(m)]
     rhs_x = [0.0] * m
     rhs_y = [0.0] * m
@@ -81,7 +66,6 @@ def approximate_polynomials(polygon: Polygon, order: int) -> Tuple[List[float], 
             for j in range(m):
                 matrix[i][j] += powers[i + j]
                 
-    # Solve for coefficients
     x_coeffs = solve_linear_system([row[:] for row in matrix], rhs_x)
     y_coeffs = solve_linear_system([row[:] for row in matrix], rhs_y)
     
@@ -94,3 +78,6 @@ def evaluate_polynomial(coeffs: List[float], t: float) -> float:
     for c in reversed(coeffs):
         res = res * t + c
     return res
+
+
+__all__ = ["approximate_polygon_polynomial", "evaluate_polynomial", "solve_linear_system"]

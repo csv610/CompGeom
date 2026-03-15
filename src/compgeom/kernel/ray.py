@@ -3,9 +3,7 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar, Optional
 
-if TYPE_CHECKING:
-    from .point import Point2D, Point3D
-
+from .point import Point2D, Point3D
 from .math_utils import EPSILON
 
 PointType = TypeVar('PointType', 'Point2D', 'Point3D')

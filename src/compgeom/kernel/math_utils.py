@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import math
+import fractions
 from decimal import getcontext
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
-from .point import EPSILON
-
-if TYPE_CHECKING:
-    from .point import Point2D, Point3D
+from .point import EPSILON, Point2D, Point3D
 
 # Set precision once for the module
 getcontext().prec = 50
@@ -25,8 +23,6 @@ def dot_product(a: Point2D, b: Point2D) -> float:
 
 
 def sub(a: Point2D, b: Point2D) -> Point2D:
-    from .point import Point2D
-
     return Point2D(a.x - b.x, a.y - b.y)
 
 
@@ -65,8 +61,6 @@ def signed_area_twice(polygon: List[Point2D]) -> float:
 
 def rotate_2d(point: Point2D, cos_theta: float, sin_theta: float) -> Point2D:
     """Rotate a point by an angle given by its cosine and sine."""
-    from .point import Point2D
-
     return Point2D(
         point.x * cos_theta + point.y * sin_theta,
         -point.x * sin_theta + point.y * cos_theta,
@@ -76,8 +70,6 @@ def rotate_2d(point: Point2D, cos_theta: float, sin_theta: float) -> Point2D:
 
 def unrotate_2d(point: Point2D, cos_theta: float, sin_theta: float) -> Point2D:
     """Unrotate a point by an angle given by its cosine and sine."""
-    from .point import Point2D
-
     return Point2D(
         point.x * cos_theta - point.y * sin_theta,
         point.x * sin_theta + point.y * cos_theta,
@@ -117,7 +109,6 @@ def robust_orientation(a: Point2D, b: Point2D, p: Point2D) -> float:
         return det
         
     # Exact arithmetic fallback using standard library fractions
-    import fractions
     exact_det = (fractions.Fraction(b.x) - fractions.Fraction(a.x)) * (fractions.Fraction(p.y) - fractions.Fraction(a.y)) - \
                 (fractions.Fraction(b.y) - fractions.Fraction(a.y)) * (fractions.Fraction(p.x) - fractions.Fraction(a.x))
     

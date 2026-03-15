@@ -2,16 +2,17 @@ import time
 import random
 import sys
 import os
+import numpy as np
+from scipy.spatial import ConvexHull as ScipyConvexHull
 
 # Ensure the library is in the python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from compgeom.kernel import Point2D
-from compgeom.kernel import Point2D, cross_product
-from compgeom.polygon.convex_hull import ConvexHullGenerator, GrahamScan, MonotoneChain, QuickHull, Chan
+from compgeom.kernel import Point2D, Point3D, cross_product
+from compgeom.polygon.convex_hull import ConvexHull
 from compgeom.polygon.polygon import Polygon
 
-def verify_convex_hull(points: list[Point2D], hull: list[Point2D]) -> bool:
+def verify_convex_hull_2d(points: list[Point2D], hull: list[Point2D]) -> bool:
     if not hull:
         return len(points) == 0
     
@@ -32,24 +33,38 @@ def verify_convex_hull(points: list[Point2D], hull: list[Point2D]) -> bool:
     hull_poly = Polygon(hull)
     for p in points:
         if not hull_poly.contains_point(p):
-            # Precision issues can happen, but for random points in large range it's usually fine
             return False
             
     return True
 
+def verify_convex_hull_3d(points: list[Point3D], mesh) -> bool:
+    if not mesh:
+        return len(points) < 4
+    return len(mesh.vertices) > 0 and len(mesh.faces) > 0
+
 def run_benchmarks():
-    # Chan's algorithm with large N and many hull points can be slow if t gets large.
-    # Quickhull is also sensitive to point distribution.
-    sizes = [10**2, 10**3, 10**4, 10**5] # Reduced size for verification overhead
+    sizes = [10**2, 10**3, 10**4, 10**5]
     
-    print("Convex Hull Algorithms Scalability and Correctness Analysis")
-    print("=" * 125)
-    print(f"{'N Points':<12} | {'Graham Scan':<18} | {'Monotone Chain':<18} | {'Quick Hull':<18} | {'Chan (s)':<18} | {'Correct?'}")
-    print("-" * 125)
+    # Warm-up to handle lazy imports
+    warmup_2d = [Point2D(random.random(), random.random()) for _ in range(10)]
+    warmup_3d = [Point3D(random.random(), random.random(), random.random()) for _ in range(10)]
+    ConvexHull.generate(warmup_2d, algorithm="scipy")
+    ConvexHull.generate(warmup_2d, algorithm="graham_scan")
+    ConvexHull.generate(warmup_2d, algorithm="monotone_chain")
+    ConvexHull.generate(warmup_2d, algorithm="quickhull")
+    ConvexHull.generate(warmup_2d, algorithm="chan")
+    try:
+        ConvexHull.generate(warmup_3d)
+    except Exception:
+        pass
+
+    print("2D Convex Hull Algorithms Scalability and Correctness Analysis")
+    print("=" * 160)
+    print(f"{'N Points':<12} | {'Default (SciPy)':<18} | {'Graham Scan':<18} | {'Monotone Chain':<18} | {'Quick Hull':<18} | {'Chan (s)':<18} | {'Correct?'}")
+    print("-" * 160)
     
     for n in sizes:
-        # Generate random 2D points in [0, 1000]
-        points = [
+        points_2d = [
             Point2D(random.uniform(0, 1000), random.uniform(0, 1000), id=i) 
             for i in range(n)
         ]
@@ -57,12 +72,22 @@ def run_benchmarks():
         results = {}
         correct = True
         
+        # Benchmark Default (SciPy)
+        start = time.perf_counter()
+        try:
+            h = ConvexHull.generate(points_2d) # Uses default "scipy"
+            results['default'] = f"{time.perf_counter() - start:.4f}"
+            if not verify_convex_hull_2d(points_2d, h): correct = False
+        except Exception:
+            results['default'] = "Error"
+            correct = False
+
         # Benchmark Graham Scan
         start = time.perf_counter()
         try:
-            h = GrahamScan().generate(points)
+            h = ConvexHull.generate(points_2d, algorithm="graham_scan")
             results['graham'] = f"{time.perf_counter() - start:.4f}"
-            if not verify_convex_hull(points, h): correct = False
+            if not verify_convex_hull_2d(points_2d, h): correct = False
         except Exception:
             results['graham'] = "Error"
             correct = False
@@ -70,9 +95,9 @@ def run_benchmarks():
         # Benchmark Monotone Chain
         start = time.perf_counter()
         try:
-            h = MonotoneChain().generate(points)
+            h = ConvexHull.generate(points_2d, algorithm="monotone_chain")
             results['monotone'] = f"{time.perf_counter() - start:.4f}"
-            if not verify_convex_hull(points, h): correct = False
+            if not verify_convex_hull_2d(points_2d, h): correct = False
         except Exception:
             results['monotone'] = "Error"
             correct = False
@@ -80,9 +105,9 @@ def run_benchmarks():
         # Benchmark Quick Hull
         start = time.perf_counter()
         try:
-            h = QuickHull().generate(points)
+            h = ConvexHull.generate(points_2d, algorithm="quickhull")
             results['quick'] = f"{time.perf_counter() - start:.4f}"
-            if not verify_convex_hull(points, h): correct = False
+            if not verify_convex_hull_2d(points_2d, h): correct = False
         except Exception:
             results['quick'] = "Error"
             correct = False
@@ -90,14 +115,36 @@ def run_benchmarks():
         # Benchmark Chan
         start = time.perf_counter()
         try:
-            h = Chan().generate(points)
+            h = ConvexHull.generate(points_2d, algorithm="chan")
             results['chan'] = f"{time.perf_counter() - start:.4f}"
-            if not verify_convex_hull(points, h): correct = False
+            if not verify_convex_hull_2d(points_2d, h): correct = False
         except Exception:
             results['chan'] = "Error"
             correct = False
 
-        print(f"{n:<12} | {results['graham']:<18} | {results['monotone']:<18} | {results['quick']:<18} | {results['chan']:<18} | {str(correct)}")
+        print(f"{n:<12} | {results['default']:<18} | {results['graham']:<18} | {results['monotone']:<18} | {results['quick']:<18} | {results['chan']:<18} | {str(correct)}")
+
+    print("\n\n3D Convex Hull Scalability Analysis")
+    print("=" * 60)
+    print(f"{'N Points':<12} | {'3D Convex Hull (s)':<25} | {'Correct?'}")
+    print("-" * 60)
+
+    for n in sizes:
+        points_3d = [
+            Point3D(random.uniform(0, 1000), random.uniform(0, 1000), random.uniform(0, 1000), id=i) 
+            for i in range(n)
+        ]
+        
+        start = time.perf_counter()
+        try:
+            mesh = ConvexHull.generate(points_3d)
+            duration = f"{time.perf_counter() - start:.4f}"
+            correct = verify_convex_hull_3d(points_3d, mesh)
+        except Exception as e:
+            duration = "Error"
+            correct = False
+
+        print(f"{n:<12} | {duration:<25} | {str(correct)}")
 
 if __name__ == "__main__":
     run_benchmarks()

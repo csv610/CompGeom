@@ -3,9 +3,7 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
-if TYPE_CHECKING:
-    from .point import Point3D
-
+from .point import Point3D
 from .math_utils import EPSILON
 
 @dataclass(frozen=True, slots=True)

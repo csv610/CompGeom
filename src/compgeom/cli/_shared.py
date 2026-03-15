@@ -95,3 +95,40 @@ def demo_mesh_lines() -> list[str]:
         "0 1 2\n",
         "1 3 2\n",
     ]
+
+
+def visualize_with_pyvista(
+    points: list[Point2D] | None = None,
+    faces: list[list[int]] | None = None,
+    polygons: list[list[Point2D]] | None = None,
+) -> None:
+    """Visualize points, meshes, and polygons using pyvista."""
+    import numpy as np
+    import pyvista as pv
+
+    plotter = pv.Plotter()
+
+    if points:
+        coords = np.array([[p.x, p.y, getattr(p, "z", 0.0)] for p in points])
+        plotter.add_points(coords, color="red", point_size=10.0, render_points_as_spheres=True)
+
+    if faces and points:
+        coords = np.array([[p.x, p.y, getattr(p, "z", 0.0)] for p in points])
+        # PyVista expects faces in a specific format: [n_points, i1, i2, ..., in, ...]
+        pv_faces = []
+        for face in faces:
+            pv_faces.append(len(face))
+            pv_faces.extend(face)
+        
+        mesh = pv.PolyData(coords, pv_faces)
+        plotter.add_mesh(mesh, show_edges=True, color="lightblue", opacity=0.7)
+
+    if polygons:
+        for i, poly in enumerate(polygons):
+            poly_coords = np.array([[p.x, p.y, getattr(p, "z", 0.0)] for p in poly])
+            # Create a closed loop for the polygon edges
+            loop = np.vstack([poly_coords, poly_coords[0]])
+            plotter.add_lines(loop, color="blue", width=2)
+            # Optionally add a label or different color for each polygon
+            
+    plotter.show()

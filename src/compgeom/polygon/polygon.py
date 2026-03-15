@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from typing import List, Sequence
+from typing import List, Sequence, TypeVar, Tuple, Union
 
 from ..kernel import (
     Point2D,
     Point3D,
     is_on_segment,
+    cross_product,
+    signed_area_twice,
+    distance,
 )
-from .poly_square import poly_square as _poly_square
-from .polygon_utils import (
-    ensure_ccw,
-    ensure_cw,
-    rotate_polygon as _rotate_polygon,
-)
+from .tolerance import EPSILON, is_zero, are_close, is_negative
 
+PolygonT = TypeVar("PolygonT", bound="Polygon")
 
 @dataclass(frozen=True, slots=True)
 class PolygonProperties:
@@ -40,30 +40,73 @@ class Polygon:
     def __getitem__(self, index: int) -> Point2D:
         return self.vertices[index]
 
+    @property
+    def area(self) -> float:
+        """Calculate polygon area using the shoelace formula."""
+        area = 0.0
+        n = len(self.vertices)
+        for i in range(n):
+            p1 = self.vertices[i]
+            p2 = self.vertices[(i + 1) % n]
+            area += (p1.x * p2.y) - (p2.x * p1.y)
+        return abs(area) / 2.0
+
     def as_list(self) -> list[Point2D]:
         return list(self.vertices)
 
     def ensure_ccw(self) -> Polygon:
-        return Polygon(ensure_ccw(self.as_list()))
+        if signed_area_twice(self.as_list()) >= 0:
+            return self
+        return Polygon(list(reversed(self.vertices)))
 
     def ensure_cw(self) -> Polygon:
-        return Polygon(ensure_cw(self.as_list()))
+        if signed_area_twice(self.as_list()) <= 0:
+            return self
+        return Polygon(list(reversed(self.vertices)))
 
     def properties(self) -> PolygonProperties:
-        from .polygon_metrics import get_polygon_properties
+        n = len(self.vertices)
+        if n < 3:
+            return PolygonProperties(0.0, Point2D(0, 0), "Degenerate")
 
-        area, centroid, orientation = get_polygon_properties(self.as_list())
-        return PolygonProperties(area, centroid, orientation)
+        area_twice = 0.0
+        centroid_x = 0.0
+        centroid_y = 0.0
+        for i in range(n):
+            p1 = self.vertices[i]
+            p2 = self.vertices[(i + 1) % n]
+            cross = (p1.x * p2.y) - (p2.x * p1.y)
+            area_twice += cross
+            centroid_x += (p1.x + p2.x) * cross
+            centroid_y += (p1.y + p2.y) * cross
+
+        area = area_twice / 2.0
+        if is_zero(area, tol=1e-12):
+            return PolygonProperties(0.0, Point2D(0, 0), "Degenerate")
+
+        centroid_x /= 6.0 * area
+        centroid_y /= 6.0 * area
+        orientation = "CCW" if area > 0 else "CW"
+        return PolygonProperties(abs(area), Point2D(centroid_x, centroid_y), orientation)
 
     def rotate(self, angle: float, center: Point2D | None = None) -> Polygon:
-        return Polygon(_rotate_polygon(self.as_list(), angle, center))
+        """Rotate a polygon by a given angle (in radians) around a center point."""
+        if not self.vertices:
+            return self
+        
+        if center is None:
+            center = self.properties().centroid
 
-    def poly_square(self, segment_index: int = 0) -> Polygon:
-        return Polygon(_poly_square(self.as_list(), segment_index))
-
-    def orient_to_cardinal(self, segment_index: int = 0) -> Polygon:
-        """Alias for poly_square."""
-        return self.poly_square(segment_index)
+        cos_a = math.cos(angle)
+        sin_a = math.sin(angle)
+        new_vertices = [
+            Point2D(
+                (p.x - center.x) * cos_a - (p.y - center.y) * sin_a + center.x,
+                (p.x - center.x) * sin_a + (p.y - center.y) * cos_a + center.y,
+            )
+            for p in self.vertices
+        ]
+        return Polygon(new_vertices)
 
     def contains_point(self, point: Point2D) -> bool:
         polygon = self.vertices
@@ -86,247 +129,129 @@ class Polygon:
 
         return inside
 
-    def _segment_inside(self, start: Point2D, end: Point2D) -> bool:
-        from .polygon_path import segment_inside_polygon
+    def point_on_boundary(self, point: Point2D) -> bool:
+        n = len(self.vertices)
+        if n == 0:
+            return False
+        for i in range(n):
+            if is_on_segment(point, self.vertices[i], self.vertices[(i + 1) % n]):
+                return True
+        return False
 
-        return segment_inside_polygon(self.as_list(), start, end)
+    def cleanup(self) -> Polygon:
+        if not self.vertices:
+            return self
 
-    def visibility_polygon(self, viewpoint: Point2D) -> list[Point2D]:
-        from .polygon_visibility import visibility_polygon
+        cleaned: list[Point2D] = []
+        for point in self.vertices:
+            if cleaned and are_close(point, cleaned[-1], tol=1e-7):
+                continue
+            cleaned.append(point)
 
-        return visibility_polygon(viewpoint, self.as_list())
+        if len(cleaned) > 1 and are_close(cleaned[0], cleaned[-1], tol=1e-7):
+            cleaned.pop()
 
-    def kernel(self) -> list[Point2D]:
-        from .polygon_visibility import polygon_kernel
+        simplified: list[Point2D] = []
+        for point in cleaned:
+            if len(simplified) < 2:
+                simplified.append(point)
+                continue
+            if is_zero(cross_product(simplified[-2], simplified[-1], point), tol=1e-7) and is_on_segment(
+                simplified[-1], simplified[-2], point
+            ):
+                simplified[-1] = point
+                continue
+            simplified.append(point)
 
-        return polygon_kernel(self.as_list())
-
-    def shortest_path(self, source: Point2D, target: Point2D) -> tuple[list[Point2D], float]:
-        from .polygon_path import shortest_path_in_polygon
-
-        return shortest_path_in_polygon(self.as_list(), source, target)
-
-    def hertel_mehlhorn(self) -> tuple[list[list[int]], list[Point2D]]:
-        from .polygon_decomposer import _hertel_mehlhorn
-
-        return _hertel_mehlhorn(self.as_list())
+        if len(simplified) >= 3 and is_zero(cross_product(simplified[-2], simplified[-1], simplified[0]), tol=1e-7):
+            if is_on_segment(simplified[-1], simplified[-2], simplified[0]):
+                simplified.pop()
+        return Polygon(simplified)
 
     def is_convex(self) -> bool:
-        from .polygon_metrics import is_convex
+        if len(self.vertices) < 3:
+            return True
 
-        return is_convex(self.as_list())
-
-    def is_similar(self, other: Polygon, tolerance: float = 1e-7, auto_clean: bool = True) -> bool:
-        from .polygon_similarity import are_similar
-
-        return are_similar(self, other, tolerance, auto_clean)
-
-    def reorder_to_match(
-        self, other: Polygon, allow_reflection: bool = True, auto_clean: bool = True
-    ) -> list[Point2D]:
-        from .polygon_matching import reorder_to_match
-
-        return reorder_to_match(self, other, allow_reflection, auto_clean)
-
-    def make_simple(self) -> Polygon:
-        from .polygon_simplification import resolve_self_intersections
-
-        return Polygon(resolve_self_intersections(self))
-
-    def approximate_polynomials(self, order: int) -> tuple[list[float], list[float]]:
-        from .polygon_polynomial import approximate_polynomials
-
-        return approximate_polynomials(self, order)
-
-    def fourier_smooth(self, n_harmonics: int = 10, resample_points: int = 128) -> Polygon:
-        from .polygon_smoothing import fourier_smooth
-
-        return Polygon(fourier_smooth(self.as_list(), n_harmonics, resample_points))
+        turn_directions = [
+            cross_product(self.vertices[i], self.vertices[(i + 1) % len(self.vertices)], self.vertices[(i + 2) % len(self.vertices)])
+            for i in range(len(self.vertices))
+        ]
+        non_zero_turns = [turn > 0 for turn in turn_directions if not is_zero(turn, tol=EPSILON)]
+        return all(non_zero_turns) or not any(non_zero_turns)
 
     def reflex_vertices(self) -> list[Point2D]:
-        from .polygon_metrics import get_reflex_vertices
+        if len(self.vertices) < 3:
+            return []
 
-        return get_reflex_vertices(self.as_list())
+        poly = self.ensure_ccw().as_list()
+        reflex = []
+        for i in range(len(poly)):
+            p_prev = poly[i - 1]
+            p_curr = poly[i]
+            p_next = poly[(i + 1) % len(poly)]
+            if is_negative(cross_product(p_prev, p_curr, p_next), tol=EPSILON):
+                reflex.append(p_curr)
+        return reflex
 
     def convex_diameter(self) -> float:
-        from .polygon_metrics import get_convex_diameter
+        if len(self.vertices) < 2:
+            return 0.0
+        if len(self.vertices) == 2:
+            return distance(self.vertices[0], self.vertices[1])
 
-        return get_convex_diameter(self.as_list())
+        n = len(self.vertices)
+        max_d_sq = 0.0
+        k = 1
 
-    @classmethod
-    def from_random_convex(
-        cls,
-        num_points: int = 10,
-        x_range: tuple[float, float] = (0, 100),
-        y_range: tuple[float, float] = (0, 100),
-    ) -> Polygon:
-        from .polygon_generator import random_convex_polygon
+        for i in range(n):
+            while True:
+                area = abs(cross_product(self.vertices[i], self.vertices[(i + 1) % n], self.vertices[k]))
+                next_area = abs(cross_product(self.vertices[i], self.vertices[(i + 1) % n], self.vertices[(k + 1) % n]))
+                if next_area > area:
+                    k = (k + 1) % n
+                else:
+                    break
 
-        return random_convex_polygon(num_points, x_range, y_range, polygon_cls=cls)
+            d1 = (self.vertices[i].x - self.vertices[k].x) ** 2 + (self.vertices[i].y - self.vertices[k].y) ** 2
+            d2 = (self.vertices[(i + 1) % n].x - self.vertices[k].x) ** 2 + (self.vertices[(i + 1) % n].y - self.vertices[k].y) ** 2
+            max_d_sq = max(max_d_sq, d1, d2)
 
-    @classmethod
-    def from_simple_random(
-        cls,
-        n_points: int = 20,
-        x_range: tuple[float, float] = (0, 100),
-        y_range: tuple[float, float] = (0, 100),
-    ) -> Polygon:
-        from .polygon_generator import simple_polygon
+        return math.sqrt(max_d_sq)
 
-        return simple_polygon(n_points, x_range, y_range, polygon_cls=cls)
+@dataclass(frozen=True, slots=True)
+class Triangle:
+    a: Union[Point2D, Point3D]
+    b: Union[Point2D, Point3D]
+    c: Union[Point2D, Point3D]
 
+    def sample_points(self, n_points: int = 100) -> list[Union[Point2D, Point3D]]:
+        import random
+        is_3d = isinstance(self.a, Point3D) or isinstance(self.b, Point3D) or isinstance(self.c, Point3D)
 
-def get_polygon_properties(polygon: list[Point2D]) -> tuple[float, Point2D, str]:
-    from .polygon_metrics import get_polygon_properties as _get_polygon_properties
+        samples: list[Union[Point2D, Point3D]] = []
+        for _ in range(n_points):
+            r1 = random.random()
+            r2 = random.random()
+            if r1 + r2 > 1:
+                r1, r2 = 1 - r1, 1 - r2
 
-    return _get_polygon_properties(polygon)
+            px = self.a.x + r1 * (self.b.x - self.a.x) + r2 * (self.c.x - self.a.x)
+            py = self.a.y + r1 * (self.b.y - self.a.y) + r2 * (self.c.y - self.a.y)
 
+            if is_3d:
+                az = getattr(self.a, "z", 0.0)
+                bz = getattr(self.b, "z", 0.0)
+                cz = getattr(self.c, "z", 0.0)
+                pz = az + r1 * (bz - az) + r2 * (cz - az)
+                samples.append(Point3D(px, py, pz))
+            else:
+                samples.append(Point2D(px, py))
 
-def is_point_in_polygon(point: Point2D, polygon: list[Point2D]) -> bool:
-    return Polygon(polygon).contains_point(point)
-
-
-def is_ear(a: Point2D, b: Point2D, c: Point2D, polygon: list[Point2D]) -> bool:
-    from .polygon_decomposer import _is_ear
-
-    return _is_ear(a, b, c, polygon)
-
-
-def visibility_polygon(viewpoint: Point2D, polygon: list[Point2D]) -> list[Point2D]:
-    from .polygon_visibility import visibility_polygon as _visibility_polygon
-
-    return _visibility_polygon(viewpoint, polygon)
-
-
-def polygon_kernel(polygon: list[Point2D]) -> list[Point2D]:
-    from .polygon_visibility import polygon_kernel as _polygon_kernel
-
-    return _polygon_kernel(polygon)
-
-
-def shortest_path_in_polygon(
-    polygon: list[Point2D], source: Point2D, target: Point2D
-) -> tuple[list[Point2D], float]:
-    from .polygon_path import shortest_path_in_polygon as _shortest_path_in_polygon
-
-    return _shortest_path_in_polygon(polygon, source, target)
-
-
-def generate_random_convex_polygon(
-    num_points: int = 10,
-    x_range: tuple[float, float] = (0, 100),
-    y_range: tuple[float, float] = (0, 100),
-) -> list[Point2D]:
-    from .polygon_generator import generate_random_convex_polygon as _generate_random_convex_polygon
-
-    return _generate_random_convex_polygon(num_points, x_range, y_range)
-
-
-def generate_simple_polygon(
-    n_points: int = 20,
-    x_range: tuple[float, float] = (0, 100),
-    y_range: tuple[float, float] = (0, 100),
-) -> list[Point2D]:
-    from .polygon_generator import generate_simple_polygon as _generate_simple_polygon
-
-    return _generate_simple_polygon(n_points, x_range, y_range)
-
-
-def generate_points_in_triangle(
-    a: Point2D | Point3D,
-    b: Point2D | Point3D,
-    c: Point2D | Point3D,
-    n_points: int = 100,
-) -> list[Point2D | Point3D]:
-    from .polygon_generator import generate_points_in_triangle as _generate_points_in_triangle
-
-    return _generate_points_in_triangle(a, b, c, n_points)
-
-
-def is_convex(polygon: list[Point2D]) -> bool:
-    from .polygon_metrics import is_convex as _is_convex
-
-    return _is_convex(polygon)
-
-
-def get_reflex_vertices(polygon: list[Point2D]) -> list[Point2D]:
-    from .polygon_metrics import get_reflex_vertices as _get_reflex_vertices
-
-    return _get_reflex_vertices(polygon)
-
-
-def rotate_polygon(polygon: list[Point2D], angle: float, center: Point2D | None = None) -> list[Point2D]:
-    return _rotate_polygon(polygon, angle, center)
-
-
-def poly_square(polygon: list[Point2D], segment_index: int = 0) -> list[Point2D]:
-    return _poly_square(polygon, segment_index)
-
-
-def orient_to_cardinal(polygon: list[Point2D], segment_index: int = 0) -> list[Point2D]:
-    """Alias for poly_square."""
-    return poly_square(polygon, segment_index)
-
-
-def get_convex_diameter(polygon: List[Point2D]) -> float:
-    from .polygon_metrics import get_convex_diameter as _get_convex_diameter
-
-    return _get_convex_diameter(polygon)
-
-def triangulate_polygon_with_holes(
-    outer_boundary: List[Point2D],
-    holes: List[List[Point2D]] | None = None,
-) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[Point2D]]:
-    from .polygon_decomposer import HoleDecomposition
-
-    return HoleDecomposition.decompose(outer_boundary, holes)
-
-
-def get_triangulation_with_diagonals(
-    polygon: List[Point2D],
-) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point2D]]:
-    from .polygon_decomposer import EarDecomposition
-
-    return EarDecomposition.decompose(polygon, collect_diagonals=True)
-
-
-def hertel_mehlhorn(polygon: List[Point2D]) -> tuple[list[list[int]], list[Point2D]]:
-    from .polygon_decomposer import ConvexDecomposition
-
-    return ConvexDecomposition.decompose(polygon)
-
-
-def triangulate_polygon(
-    polygon: List[Point2D],
-) -> tuple[list[tuple[int, int, int]], list[Point2D]]:
-    from .polygon_decomposer import EarDecomposition
-
-    triangle_indices, _, vertices = EarDecomposition.decompose(polygon)
-    return triangle_indices, vertices
-
+        return samples
 
 
 __all__ = [
     "Polygon",
     "PolygonProperties",
-    "generate_points_in_triangle",
-    "generate_random_convex_polygon",
-    "generate_simple_polygon",
-    "get_convex_diameter",
-    "get_polygon_properties",
-    "get_reflex_vertices",
-    "get_triangulation_with_diagonals",
-    "hertel_mehlhorn",
-    "is_convex",
-    "is_ear",
-    "is_point_in_polygon",
-    "orient_to_cardinal",
-    "poly_square",
-    "polygon_kernel",
-    "rotate_polygon",
-    "shortest_path_in_polygon",
-    "triangulate_polygon",
-    "triangulate_polygon_with_holes",
-    "visibility_polygon",
+    "Triangle",
 ]
-

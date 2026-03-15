@@ -14,13 +14,13 @@ from .math_utils import (
     length_sq,
     sub,
 )
+from .line_segment import intersect_lines
 
 
 import math
 
 def clip_polygon(polygon: list[Point2D], line_start: Point2D, line_end: Point2D) -> list[Point2D]:
     """Clip a polygon against the left half-plane of the directed line."""
-    from .line_segment import intersect_lines
 
     def is_inside(point: Point2D) -> bool:
         return cross_product(line_start, line_end, point) >= -1e-12

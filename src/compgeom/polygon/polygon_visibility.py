@@ -1,56 +1,54 @@
-"""Visibility and kernel algorithms for polygons."""
+"""Visibility algorithms for polygons."""
 
 from __future__ import annotations
 
-import math
+from typing import TYPE_CHECKING
 
-from ..kernel import EPSILON, Point2D, clip_polygon
-from .line_segment import ray_segment_intersection
-from .polygon import Polygon
-from .polygon_utils import cleanup_polygon
+if TYPE_CHECKING:
+    from .polygon import Polygon
 
-
-def visibility_polygon(viewpoint: Point2D, polygon: list[Point2D]) -> list[Point2D]:
-    polygon_shape = Polygon(polygon)
-    if not polygon_shape.contains_point(viewpoint):
-        raise ValueError("Viewpoint must lie inside or on the boundary of the polygon.")
-
-    intersections: list[tuple[float, float, Point2D]] = []
-    perturbation = 1e-7
-    for vertex in polygon:
-        base_angle = math.atan2(vertex.y - viewpoint.y, vertex.x - viewpoint.x)
-        for angle in (base_angle - perturbation, base_angle, base_angle + perturbation):
-            best: tuple[float, Point2D] | None = None
-            for index, start in enumerate(polygon):
-                end = polygon[(index + 1) % len(polygon)]
-                hit = ray_segment_intersection(viewpoint, angle, start, end)
-                if hit is None:
-                    continue
-                hit_distance, point = hit
-                if hit_distance < -EPSILON:
-                    continue
-                if best is None or hit_distance < best[0]:
-                    best = (hit_distance, point)
-            if best is not None:
-                intersections.append((angle, best[0], best[1]))
-
-    intersections.sort(key=lambda item: (item[0], item[1]))
-    return cleanup_polygon([point for _, _, point in intersections])
+from ..kernel import Point2D, is_on_segment
+from .line_segment import proper_segment_intersection, ray_segment_intersection
+from .tolerance import are_close
 
 
-def polygon_kernel(polygon: list[Point2D]) -> list[Point2D]:
-    polygon_shape = Polygon(polygon).ensure_ccw()
-    ordered = polygon_shape.as_list()
-    if len(ordered) < 3:
-        return []
+def compute_visibility_polygon(polygon: Polygon, viewpoint: Point2D) -> Polygon:
+    """
+    Computes the visibility polygon from a given viewpoint within or on the boundary of a polygon.
+    Uses a simple ray-casting approach (for demonstration, not optimal).
+    """
+    from .polygon import Polygon
+    
+    if not polygon.contains_point(viewpoint) and not polygon.point_on_boundary(viewpoint):
+        return Polygon([])
 
-    kernel = list(ordered)
-    for index, start in enumerate(ordered):
-        end = ordered[(index + 1) % len(ordered)]
-        kernel = clip_polygon(kernel, start, end)
-        if not kernel:
-            return []
-    return cleanup_polygon(kernel)
+    vertices = polygon.vertices
+    rays: list[float] = []
+    import math
+    
+    for v in vertices:
+        angle = math.atan2(v.y - viewpoint.y, v.x - viewpoint.x)
+        rays.extend([angle - 1e-9, angle, angle + 1e-9])
+
+    visibility_vertices = []
+    for angle in sorted(rays):
+        closest_dist = float('inf')
+        closest_point = None
+        
+        for i in range(len(vertices)):
+            p1, p2 = vertices[i], vertices[(i + 1) % len(vertices)]
+            hit = ray_segment_intersection(viewpoint, angle, p1, p2)
+            if hit:
+                d = (hit.x - viewpoint.x)**2 + (hit.y - viewpoint.y)**2
+                if d < closest_dist:
+                    closest_dist = d
+                    closest_point = hit
+        
+        if closest_point:
+            if not visibility_vertices or not are_close(visibility_vertices[-1], closest_point):
+                visibility_vertices.append(closest_point)
+
+    return Polygon(visibility_vertices).cleanup()
 
 
-__all__ = ["polygon_kernel", "visibility_polygon"]
+__all__ = ["compute_visibility_polygon"]

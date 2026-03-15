@@ -3,8 +3,7 @@ import math
 from typing import Optional, TYPE_CHECKING, Tuple, List, Any
 from decimal import Decimal
 
-if TYPE_CHECKING:
-    from .point import Point3D
+from .point import Point3D
 
 from .math_utils import (
     EPSILON,
@@ -64,4 +63,32 @@ def contains_point(a, b=None, c=None, d=None, p=None) -> bool:
     if ref_sign == 0: return False
     return (s0*ref_sign >= -EPSILON and s1*ref_sign >= -EPSILON and s2*ref_sign >= -EPSILON and s3*ref_sign >= -EPSILON)
 
-__all__ = ["orientation", "orientation_sign", "volume", "contains_point"]
+def barycentric_coords(p: Point3D, a: Point3D, b: Point3D, c: Point3D, d: Point3D) -> Tuple[float, float, float]:
+    """
+    Return the barycentric coordinates (u, v, w) of point p with respect to tetrahedron (a, b, c, d).
+    P = a + u(b-a) + v(c-a) + w(d-a)
+    The 4th coordinate is 1 - u - v - w.
+    """
+    v0 = b - a
+    v1 = c - a
+    v2 = d - a
+    vp = p - a
+    
+    # Solve system of 3 linear equations (3D vectors)
+    # Using Cramer's rule on the 3x3 determinant
+    def det3(c1, c2, c3):
+        return (c1.x * (c2.y * c3.z - c2.z * c3.y) -
+                c1.y * (c2.x * c3.z - c2.z * c3.x) +
+                c1.z * (c2.x * c3.y - c2.y * c3.x))
+    
+    det_main = det3(v0, v1, v2)
+    if abs(det_main) < 1e-12:
+        return (0.0, 0.0, 0.0) # Degenerate tetrahedron
+        
+    u = det3(vp, v1, v2) / det_main
+    v = det3(v0, vp, v2) / det_main
+    w = det3(v0, v1, vp) / det_main
+    
+    return u, v, w
+
+__all__ = ["orientation", "orientation_sign", "volume", "contains_point", "barycentric_coords"]

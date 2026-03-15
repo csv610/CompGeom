@@ -4,14 +4,13 @@ from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING, Tuple, List, Any
 from decimal import Decimal
 
-if TYPE_CHECKING:
-    from .point import Point2D, Point3D
-
+from .point import Point2D, Point3D
 from .math_utils import (
     EPSILON, 
     cross_product, 
     distance,
 )
+from .ray import Ray
 
 @dataclass(frozen=True, slots=True)
 class Triangle2D:
@@ -44,6 +43,19 @@ class Triangle2D:
     def contains_point(self, p: Point2D) -> bool:
         return contains_point(self.v1, self.v2, self.v3, p)
 
+    def barycentric_coords(self, p: Point2D) -> Tuple[float, float]:
+        """Return the (u, v) barycentric coordinates of point p."""
+        return barycentric_coords(p, self.v1, self.v2, self.v3)
+
+    def get_edge_lengths(self) -> Tuple[float, float, float]:
+        return get_edge_lengths(self.v1, self.v2, self.v3)
+
+    def get_angles(self) -> Tuple[float, float, float]:
+        return get_angles(self.v1, self.v2, self.v3)
+
+    def is_acute(self) -> bool:
+        return is_acute(self.v1, self.v2, self.v3)
+
     def __repr__(self) -> str:
         return f"Triangle2D({self.v1}, {self.v2}, {self.v3})"
 
@@ -67,6 +79,23 @@ class Triangle3D:
         edge1 = self.v2 - self.v1
         edge2 = self.v3 - self.v1
         return 0.5 * edge1.cross(edge2).length()
+
+    def get_edge_lengths(self) -> Tuple[float, float, float]:
+        return get_edge_lengths(self.v1, self.v2, self.v3)
+
+    def get_angles(self) -> Tuple[float, float, float]:
+        return get_angles(self.v1, self.v2, self.v3)
+
+    def is_acute(self) -> bool:
+        return is_acute(self.v1, self.v2, self.v3)
+
+    def barycentric_coords(self, p: Point3D) -> Tuple[float, float]:
+        """Return the (u, v) barycentric coordinates of point p."""
+        return barycentric_coords(p, self.v1, self.v2, self.v3)
+
+    def intersect_ray(self, ray: Ray[Point3D]) -> Optional[float]:
+        """Return the intersection parameter t of a ray with this triangle."""
+        return intersect_ray(self.v1, self.v2, self.v3, ray)
 
     def __repr__(self) -> str:
         return f"Triangle3D({self.v1}, {self.v2}, {self.v3})"
@@ -108,7 +137,6 @@ def area(a: Point2D, b: Point2D, c: Point2D) -> float:
 
 def circumcenter(a: Point2D, b: Point2D, c: Point2D) -> Optional[Point2D]:
     """Return the circumcenter of triangle ABC, or None if collinear."""
-    from .point import Point2D
     denominator = 2 * (
         a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)
     )
@@ -130,7 +158,6 @@ def circumcenter(a: Point2D, b: Point2D, c: Point2D) -> Optional[Point2D]:
 
 def incenter(a: Point2D, b: Point2D, c: Point2D) -> Point2D:
     """Return the incenter of triangle ABC."""
-    from .point import Point2D
     la = distance(b, c)
     lb = distance(a, c)
     lc = distance(a, b)
@@ -178,6 +205,89 @@ def contains_point(a: Any, b: Any = None, c: Point2D | None = None, d: Point2D |
     )
 
 
+def get_edge_lengths(v1: Any, v2: Any, v3: Any) -> Tuple[float, float, float]:
+    """Return the lengths of the three edges of the triangle."""
+    return (v1.distance_to(v2), v2.distance_to(v3), v3.distance_to(v1))
+
+
+def get_angles(v1: Any, v2: Any, v3: Any) -> Tuple[float, float, float]:
+    """Return the three internal angles of the triangle in radians."""
+    a, b, c = get_edge_lengths(v1, v2, v3)
+
+    def _angle(s1: float, s2: float, opposite: float) -> float:
+        if s1 < EPSILON or s2 < EPSILON:
+            return 0.0
+        val = (s1**2 + s2**2 - opposite**2) / (2 * s1 * s2)
+        return math.acos(max(-1.0, min(1.0, val)))
+
+    return (_angle(a, c, b), _angle(a, b, c), _angle(b, c, a))
+
+
+def is_acute(v1: Any, v2: Any, v3: Any) -> bool:
+    """Return True if the triangle is acute."""
+    a, b, c = get_edge_lengths(v1, v2, v3)
+    a2, b2, c2 = a * a, b * b, c * c
+    return (
+        (a2 + b2 > c2 + EPSILON)
+        and (b2 + c2 > a2 + EPSILON)
+        and (c2 + a2 > b2 + EPSILON)
+    )
+
+
+def barycentric_coords(p: Any, a: Any, b: Any, c: Any) -> Tuple[float, float]:
+    """
+    Return the (u, v) barycentric coordinates of point p with respect to triangle (a, b, c).
+    P = a + u * (b - a) + v * (c - a)
+    """
+    v0 = b - a
+    v1 = c - a
+    v2 = p - a
+    
+    d00 = v0.dot(v0)
+    d01 = v0.dot(v1)
+    d11 = v1.dot(v1)
+    d20 = v2.dot(v0)
+    d21 = v2.dot(v1)
+    
+    denom = d00 * d11 - d01 * d01
+    if abs(denom) < EPSILON:
+        return (0.0, 0.0) # Degenerate triangle
+        
+    u = (d11 * d20 - d01 * d21) / denom
+    v = (d00 * d21 - d01 * d20) / denom
+    return (u, v)
+
+
+def intersect_ray(v1: Point3D, v2: Point3D, v3: Point3D, ray: Ray[Point3D]) -> Optional[float]:
+    """Return the intersection parameter t of a ray with a triangle (Möller–Trumbore algorithm)."""
+    edge1 = v2 - v1
+    edge2 = v3 - v1
+    h = ray.direction.cross(edge2)
+    a = edge1.dot(h)
+
+    if -EPSILON < a < EPSILON:
+        return None  # Ray is parallel to the triangle
+
+    f = 1.0 / a
+    s = ray.origin - v1
+    u = f * s.dot(h)
+
+    if u < 0.0 or u > 1.0:
+        return None
+
+    q = s.cross(edge1)
+    v = f * ray.direction.dot(q)
+
+    if v < 0.0 or u + v > 1.0:
+        return None
+
+    t = f * edge2.dot(q)
+
+    if t > EPSILON:
+        return t
+    return None
+
+
 __all__ = [
     "Triangle2D",
     "Triangle3D",
@@ -186,6 +296,11 @@ __all__ = [
     "incenter",
     "inradius",
     "contains_point",
+    "get_edge_lengths",
+    "get_angles",
+    "is_acute",
+    "barycentric_coords",
     "orientation",
     "orientation_sign",
+    "intersect_ray",
 ]
