@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import List
+from typing import List, Tuple
 from .polygon import Polygon
 
 from ..kernel import EPSILON, Point2D, contains_point, cross_product, is_on_segment
@@ -13,105 +13,137 @@ from .line_segment import proper_segment_intersection
 from .polygon_utils import ensure_ccw, ensure_cw, point_on_boundary, segment_inside_boundaries
 
 
-class PolygonDecomposer:
-    """Provides polygon decomposition helpers over the core ``Polygon`` API."""
+class EarDecomposition:
+    """Implements the Ear Clipping algorithm for polygon triangulation."""
 
     @staticmethod
-    def supported_decompositions() -> list[str]:
-        """Returns the public decomposition algorithms supported by this class."""
-        return [
-            "triangulate",
-            "triangulate_with_holes",
-            "convex_decomposition",
-            "monotone_decomposition",
-            "trapezoidal_decomposition",
-            "visibility_decomposition",
-        ]
+    def decompose(polygon: list[Point2D], collect_diagonals: bool = False) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point2D]]:
+        """Triangulates a simple polygon using ear clipping."""
+        ordered = ensure_ccw(list(polygon))
+        polygon_size = len(ordered)
+        working_polygon = list(ordered)
+        working_indices = list(range(polygon_size))
+        triangles: list[tuple[int, int, int]] = []
+        diagonals: list[tuple[int, int]] = []
+
+        while len(working_indices) > 3:
+            for offset, current in enumerate(working_indices):
+                prev_index = working_indices[offset - 1]
+                next_index = working_indices[(offset + 1) % len(working_indices)]
+                if not _is_ear(ordered[prev_index], ordered[current], ordered[next_index], working_polygon):
+                    continue
+
+                triangles.append((prev_index, current, next_index))
+                if collect_diagonals and abs(next_index - prev_index) != 1 and {prev_index, next_index} != {
+                    0,
+                    polygon_size - 1,
+                }:
+                    diagonals.append(tuple(sorted((prev_index, next_index))))
+                working_indices.pop(offset)
+                working_polygon.pop(offset)
+                break
+            else:
+                break
+
+        if len(working_indices) == 3:
+            triangles.append(tuple(working_indices))
+
+        return triangles, diagonals, ordered
+
+
+class ConvexDecomposition:
+    """Decomposes a simple polygon into convex parts using the Hertel-Mehlhorn algorithm."""
 
     @staticmethod
-    def triangulate(polygon: List[Point2D]) -> PolygonMesh:
-        """Triangulates a simple polygon and returns the result as a polygon mesh."""
-        triangle_indices, _, vertices = _ear_clip(polygon)
-        return PolygonMesh(vertices, triangle_indices)
+    def decompose(polygon_input: list[Point2D]) -> tuple[list[list[int]], list[Point2D]]:
+        """Decomposes a simple polygon into convex parts."""
+        triangles, diagonals, polygon = EarDecomposition.decompose(polygon_input, collect_diagonals=True)
+        partitions = [list(triangle) for triangle in triangles]
+
+        def is_convex(face_indices, vertex_index):
+            n = len(face_indices)
+            try:
+                idx = face_indices.index(vertex_index)
+            except ValueError:
+                return True
+            
+            prev_idx = face_indices[(idx - 1) % n]
+            next_idx = face_indices[(idx + 1) % n]
+            return cross_product(polygon[prev_idx], polygon[vertex_index], polygon[next_idx]) >= -EPSILON
+
+        for diagonal in diagonals:
+            u, v = diagonal
+            shared_partitions = [
+                partition_index
+                for partition_index, partition in enumerate(partitions)
+                if u in partition and v in partition
+            ]
+            if len(shared_partitions) != 2:
+                continue
+
+            first, second = shared_partitions
+            merged_indices = sorted(list(set(partitions[first]) | set(partitions[second])))
+            
+            if is_convex(merged_indices, u) and is_convex(merged_indices, v):
+                partitions.pop(max(first, second))
+                partitions.pop(min(first, second))
+                partitions.append(merged_indices)
+
+        return partitions, polygon
+
+
+class MonotoneDecomposition:
+    """Decomposes a simple polygon into y-monotone parts."""
 
     @staticmethod
-    def ear_clip_triangulation(polygon: List[Point2D]) -> PolygonMesh:
-        """Alias for triangulate."""
-        return PolygonDecomposer.triangulate(polygon)
+    def decompose(polygon: list[Point2D]) -> tuple[list[tuple[int, ...]], list[Point2D]]:
+        """Decomposes a simple polygon into y-monotone parts."""
+        triangles, _, vertices = EarDecomposition.decompose(polygon)
+        return _monotone_partitions(triangles, vertices), vertices
+
+
+class VisibilityDecomposition:
+    """Decomposes a simple polygon using reflex-visibility diagonals."""
 
     @staticmethod
-    def triangulate_indices(
-        polygon: List[Point2D],
-    ) -> tuple[list[tuple[int, int, int]], list[Point2D]]:
-        """Triangulates a polygon and returns indices and vertices separately."""
-        triangle_indices, _, vertices = _ear_clip(polygon)
-        return triangle_indices, vertices
+    def decompose(polygon: list[Point2D]) -> tuple[list[tuple[int, ...]], list[Point2D]]:
+        """Decomposes a simple polygon into visibility-based parts."""
+        ordered = ensure_ccw(list(polygon))
+        return _visibility_faces(ordered), ordered
+
+
+class TrapezoidalDecomposition:
+    """Decomposes a simple polygon into vertical trapezoidal cells."""
 
     @staticmethod
-    def triangulation_with_diagonals(polygon: List[Point2D]) -> tuple[PolygonMesh, list[tuple[int, int]]]:
-        """Triangulates a polygon and returns the result as a polygon mesh and a list of diagonals."""
-        triangle_indices, diagonals, vertices = _triangulation_with_diagonals(polygon)
-        return PolygonMesh(vertices, triangle_indices), diagonals
-
-    @staticmethod
-    def triangulation_with_diagonals_indices(
-        polygon: List[Point2D],
-    ) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point2D]]:
-        """Triangulates a polygon and returns triangles, diagonals, and vertices indices."""
-        return _triangulation_with_diagonals(polygon)
-
-    @staticmethod
-    def triangulate_with_holes(
-        outer_boundary: List[Point2D],
-        holes: List[List[Point2D]] | None = None,
-    ) -> PolygonMesh:
-        """Triangulates a polygonal domain with holes and returns a polygon mesh."""
-        triangles, _ = _triangulate_with_holes(outer_boundary, holes)
-        return _mesh_from_point_faces(list(triangles))
-
-    @staticmethod
-    def convex_decomposition(polygon: List[Point2D]) -> PolygonMesh:
-        """Decomposes a simple polygon into convex parts and returns a polygon mesh."""
+    def decompose(polygon: list[Point2D]) -> list[list[Point2D]]:
+        """Decomposes a simple polygon into trapezoids."""
         if len(polygon) < 3:
-            return PolygonMesh(list(polygon), [])
+            return [list(polygon)]
+        from .polygon import Polygon
+        ordered = Polygon(polygon).ensure_ccw().as_list()
+        return _trapezoidal_faces(ordered)
 
-        partitions, vertices = _hertel_mehlhorn(polygon)
-        faces = [tuple(sorted(partition)) for partition in partitions]
-        return PolygonMesh(vertices, faces)
 
-    @staticmethod
-    def convex_decomposition_indices(
-        polygon: List[Point2D],
-    ) -> tuple[list[list[int]], list[Point2D]]:
-        """Decomposes a simple polygon into convex parts and returns indices and vertices separately."""
-        return _hertel_mehlhorn(polygon)
+class HoleDecomposition:
+    """Triangulates a polygon with holes."""
 
     @staticmethod
-    def monotone_decomposition(polygon: List[Point2D]) -> PolygonMesh:
-        """Decomposes a simple polygon into y-monotone parts and returns a polygon mesh."""
-        if len(polygon) < 3:
-            return PolygonMesh(list(polygon), [])
-
-        triangles, _, vertices = _ear_clip(polygon)
-        return PolygonMesh(vertices, _monotone_partitions(triangles, vertices))
-
-    @staticmethod
-    def trapezoidal_decomposition(polygon: List[Point2D]) -> PolygonMesh:
-        """Decomposes a simple polygon into vertical trapezoidal cells and returns a polygon mesh."""
-        if len(polygon) < 3:
-            return PolygonMesh(list(polygon), [])
+    def decompose(
+        outer_boundary: list[Point2D],
+        holes: list[list[Point2D]] | None = None,
+    ) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[Point2D]]:
+        """Triangulates a polygonal domain with holes."""
+        holes = holes or []
         from .polygon import Polygon
 
-        return _mesh_from_point_faces(_trapezoidal_faces(Polygon(polygon).ensure_ccw().as_list()))
+        merged_polygon = Polygon(outer_boundary).ensure_ccw()
+        for hole in holes:
+            merged_polygon = Polygon(_splice_hole(merged_polygon.as_list(), ensure_cw(list(hole))))
 
-    @staticmethod
-    def visibility_decomposition(polygon: List[Point2D]) -> PolygonMesh:
-        """Decomposes a simple polygon using non-crossing reflex-visibility diagonals and returns a mesh."""
-        if len(polygon) < 3:
-            return PolygonMesh(list(polygon), [])
-
-        ordered = Polygon(polygon).ensure_ccw().as_list()
-        return PolygonMesh(ordered, _visibility_faces(ordered))
+        triangle_indices, _, merged_vertices = EarDecomposition.decompose(merged_polygon.as_list())
+        triangles = [tuple(merged_vertices[index] for index in triangle) for triangle in triangle_indices]
+        return triangles, merged_vertices
 
 
 class _TriangleView:
@@ -129,105 +161,6 @@ def _is_ear(a: Point2D, b: Point2D, c: Point2D, polygon: list[Point2D]) -> bool:
             if contains_point(triangle, point):
                 return False
     return True
-
-
-def _ear_clip(
-    polygon: list[Point2D],
-    *,
-    collect_diagonals: bool = False,
-) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point2D]]:
-    ordered = ensure_ccw(list(polygon))
-    polygon_size = len(ordered)
-    working_polygon = list(ordered)
-    working_indices = list(range(polygon_size))
-    triangles: list[tuple[int, int, int]] = []
-    diagonals: list[tuple[int, int]] = []
-
-    while len(working_indices) > 3:
-        for offset, current in enumerate(working_indices):
-            prev_index = working_indices[offset - 1]
-            next_index = working_indices[(offset + 1) % len(working_indices)]
-            if not _is_ear(ordered[prev_index], ordered[current], ordered[next_index], working_polygon):
-                continue
-
-            triangles.append((prev_index, current, next_index))
-            if collect_diagonals and abs(next_index - prev_index) != 1 and {prev_index, next_index} != {
-                0,
-                polygon_size - 1,
-            }:
-                diagonals.append(tuple(sorted((prev_index, next_index))))
-            working_indices.pop(offset)
-            working_polygon.pop(offset)
-            break
-        else:
-            break
-
-    if len(working_indices) == 3:
-        triangles.append(tuple(working_indices))
-
-    return triangles, diagonals, ordered
-
-
-def _triangulate_with_holes(
-    outer_boundary: list[Point2D],
-    holes: list[list[Point2D]] | None = None,
-) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[Point2D]]:
-    holes = holes or []
-    from .polygon import Polygon
-
-    merged_polygon = Polygon(outer_boundary).ensure_ccw()
-    for hole in holes:
-        merged_polygon = Polygon(_splice_hole(merged_polygon.as_list(), ensure_cw(list(hole))))
-
-    triangle_indices, _, merged_vertices = _ear_clip(merged_polygon.as_list())
-    triangles = [tuple(merged_vertices[index] for index in triangle) for triangle in triangle_indices]
-    return triangles, merged_vertices
-
-
-def _triangulation_with_diagonals(
-    polygon: list[Point2D],
-) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point2D]]:
-    return _ear_clip(polygon, collect_diagonals=True)
-
-
-def _hertel_mehlhorn(polygon_input: list[Point2D]) -> tuple[list[list[int]], list[Point2D]]:
-    triangles, diagonals, polygon = _triangulation_with_diagonals(polygon_input)
-    partitions = [list(triangle) for triangle in triangles]
-
-    def is_convex(face_indices, vertex_index):
-        # face_indices are sorted, so they are in CCW order
-        n = len(face_indices)
-        try:
-            idx = face_indices.index(vertex_index)
-        except ValueError:
-            return True
-        
-        prev_idx = face_indices[(idx - 1) % n]
-        next_idx = face_indices[(idx + 1) % n]
-        
-        # In a CCW polygon, a left turn (cross_product > 0) is convex.
-        # We also allow 180 degrees (cross_product == 0).
-        return cross_product(polygon[prev_idx], polygon[vertex_index], polygon[next_idx]) >= -EPSILON
-
-    for diagonal in diagonals:
-        u, v = diagonal
-        shared_partitions = [
-            partition_index
-            for partition_index, partition in enumerate(partitions)
-            if u in partition and v in partition
-        ]
-        if len(shared_partitions) != 2:
-            continue
-
-        first, second = shared_partitions
-        merged_indices = sorted(list(set(partitions[first]) | set(partitions[second])))
-        
-        if is_convex(merged_indices, u) and is_convex(merged_indices, v):
-            partitions.pop(max(first, second))
-            partitions.pop(min(first, second))
-            partitions.append(merged_indices)
-
-    return partitions, polygon
 
 
 def _domain_contains_point(outer: list[Point2D], holes: list[list[Point2D]], point: Point2D) -> bool:
@@ -559,4 +492,125 @@ def _visibility_faces(polygon: list[Point2D]) -> list[tuple[int, ...]]:
     return faces
 
 
-__all__ = ["PolygonDecomposer"]
+class PolygonDecomposer:
+    """Provides tools to decompose and verify polygon partitions."""
+
+    @staticmethod
+    def verify(polygon: list[Point2D], mesh: PolygonMesh) -> bool:
+        """
+        Verifies if a PolygonMesh is a valid decomposition of the given polygon.
+        
+        A decomposition is valid if:
+        1. Every face is a valid simple polygon with non-zero area.
+        2. All faces are oriented consistently with the original polygon.
+        3. The faces form a partition: their union is the original polygon and their interiors are disjoint.
+        4. All mesh vertices are contained within the original polygon's closure.
+        """
+        from .polygon_metrics import get_polygon_properties
+        from .polygon import Polygon
+
+        # 0. Basic Integrity
+        if not mesh.faces:
+            return len(polygon) < 3
+        
+        if any(max(face) >= len(mesh.vertices) or min(face) < 0 for face in mesh.faces):
+            return False
+
+        try:
+            original_area, _, original_orientation = get_polygon_properties(polygon)
+        except Exception:
+            return False
+
+        if original_area < EPSILON:
+            return not mesh.faces
+
+        original_poly = Polygon(polygon)
+        total_mesh_area = 0.0
+        face_data = []
+
+        # 1. Individual Face Validation
+        for face_indices in mesh.faces:
+            if len(face_indices) < 3:
+                return False
+            
+            face_verts = [mesh.vertices[i] for i in face_indices]
+            face_area, face_centroid, face_orientation = get_polygon_properties(face_verts)
+            
+            # Reject degenerate or zero-area faces
+            if face_area < EPSILON:
+                return False
+                
+            # Orientation must match original (prevents "inverted" faces covering the same area)
+            if face_orientation != original_orientation:
+                return False
+
+            # Face Simplicity: Check for self-intersections
+            n = len(face_verts)
+            for i in range(n):
+                p1, p2 = face_verts[i], face_verts[(i + 1) % n]
+                for j in range(i + 2, n):
+                    if i == 0 and j == n - 1:
+                        continue
+                    p3, p4 = face_verts[j], face_verts[(j + 1) % n]
+                    if proper_segment_intersection(p1, p2, p3, p4):
+                        return False
+
+            # Containment: Vertices and interior must be within the original polygon
+            for v in face_verts:
+                if not original_poly.contains_point(v) and not point_on_boundary(v, polygon):
+                    return False
+            
+            if not original_poly.contains_point(face_centroid):
+                return False
+
+            total_mesh_area += face_area
+            face_data.append((Polygon(face_verts), face_verts))
+
+        # 2. Area Completeness Check
+        # Sum of parts must equal the whole. This implicitly catches gaps or missing pieces.
+        if abs(original_area - total_mesh_area) > EPSILON * max(1.0, original_area):
+            return False
+
+        # 3. Disjoint Interiors Check (Non-overlapping)
+        # For every pair of faces, verify they do not overlap.
+        for i in range(len(face_data)):
+            poly_i, verts_i = face_data[i]
+            for j in range(i + 1, len(face_data)):
+                poly_j, verts_j = face_data[j]
+                
+                # A. Edge Crossing Check: Edges from different faces must not cross.
+                for k in range(len(verts_i)):
+                    ei1, ei2 = verts_i[k], verts_i[(k + 1) % len(verts_i)]
+                    for l in range(len(verts_j)):
+                        ej1, ej2 = verts_j[l], verts_j[(l + 1) % len(verts_j)]
+                        if proper_segment_intersection(ei1, ei2, ej1, ej2):
+                            return False
+                
+                # B. Interior Containment Check: No vertex of face I should be strictly inside face J.
+                for v in verts_i:
+                    if poly_j.contains_point(v) and not point_on_boundary(v, verts_j):
+                        return False
+                
+                # C. Reverse Interior Containment Check
+                for v in verts_j:
+                    if poly_i.contains_point(v) and not point_on_boundary(v, verts_i):
+                        return False
+                
+                # D. Centroid Check: Final catch for identical faces or "nesting" cases 
+                # where no vertices are strictly inside (handled by area check, but added for robustness).
+                _, centroid_i, _ = get_polygon_properties(verts_i)
+                if poly_j.contains_point(centroid_i) and not point_on_boundary(centroid_i, verts_j):
+                    return False
+
+        return True
+
+
+__all__ = [
+    "EarDecomposition",
+    "ConvexDecomposition",
+    "MonotoneDecomposition",
+    "VisibilityDecomposition",
+    "TrapezoidalDecomposition",
+    "HoleDecomposition",
+    "PolygonDecomposer",
+]

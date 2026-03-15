@@ -5,8 +5,50 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 
-from ..kernel import EPSILON, Point2D, cross_product
+from ..kernel import EPSILON, Point2D, Point3D, cross_product
 from ..kernel import distance
+
+
+class ConvexHull:
+    """Unified interface for generating convex hulls in 2D and 3D."""
+
+    @staticmethod
+    def generate(points: list[Point2D] | list[Point3D], algorithm: str = "scipy"):
+        """
+        Generate the convex hull for a set of points.
+
+        Args:
+            points: A list of Point2D or Point3D objects.
+            algorithm: The algorithm to use for 2D points ("scipy", "graham_scan", "monotone_chain", "quickhull", "chan").
+                       Defaults to "scipy".
+                       For 3D points, a TriangleMesh is returned using SciPy's Qhull.
+
+        Returns:
+            A list of Point2D representing the hull boundary for 2D points,
+            or a TriangleMesh for 3D points.
+        """
+        if not points:
+            return []
+
+        p0 = points[0]
+        if isinstance(p0, Point2D):
+            alg_map = {
+                "scipy": ScipyConvexHull2D,
+                "graham_scan": GrahamScan,
+                "monotone_chain": MonotoneChain,
+                "quickhull": QuickHull,
+                "chan": Chan,
+            }
+            # Fallback to ScipyConvexHull2D (which itself falls back to MonotoneChain if scipy is missing)
+            # if algorithm name is invalid.
+            generator_cls = alg_map.get(algorithm.lower().replace(" ", "_"), ScipyConvexHull2D)
+            return generator_cls().generate(points)
+
+        if isinstance(p0, Point3D):
+            from ..mesh.surfmesh.convex_hull import ConvexHull3D
+            return ConvexHull3D.compute(points)
+
+        raise TypeError("Points must be a list of Point2D or Point3D objects.")
 
 
 class ConvexHullGenerator(ABC):
@@ -44,6 +86,24 @@ class ConvexHullGenerator(ABC):
             if not hull_polygon.contains_point(point):
                 return False
         return True
+
+
+class ScipyConvexHull2D(ConvexHullGenerator):
+    """2D Convex Hull using SciPy's Qhull implementation."""
+    def generate(self, points: list[Point2D]) -> list[Point2D]:
+        if len(points) <= 2:
+            return points
+
+        try:
+            import numpy as np
+            from scipy.spatial import ConvexHull as ScipyHull
+            
+            pts_array = np.array([[p.x, p.y] for p in points])
+            hull = ScipyHull(pts_array)
+            return [points[idx] for idx in hull.vertices]
+        except ImportError:
+            # Fallback to MonotoneChain if scipy/numpy is not available
+            return MonotoneChain().generate(points)
 
 
 class GrahamScan(ConvexHullGenerator):
@@ -170,6 +230,7 @@ class Chan(ConvexHullGenerator):
 
 
 __all__ = [
+    "ConvexHull",
     "ConvexHullGenerator",
     "GrahamScan",
     "MonotoneChain",

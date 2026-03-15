@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .convex_hull import ConvexHullGenerator, GrahamScan, MonotoneChain, QuickHull, Chan
+from .convex_hull import ConvexHull
 from .polygon import (
     Polygon,
     PolygonProperties,
@@ -18,7 +18,15 @@ from .polygon import (
     triangulate_polygon,
     triangulate_polygon_with_holes,
 )
-from .polygon_decomposer import PolygonDecomposer
+from .polygon_decomposer import (
+    ConvexDecomposition,
+    EarDecomposition,
+    HoleDecomposition,
+    MonotoneDecomposition,
+    TrapezoidalDecomposition,
+    VisibilityDecomposition,
+    PolygonDecomposer,
+)
 from .polygon_similarity import are_similar
 from .polygon_matching import reorder_to_match
 from .polygon_simplification import resolve_self_intersections as make_simple
@@ -45,24 +53,25 @@ from .planar import (
 )
 
 __all__ = [
+    "ConvexHull",
     "DCEL",
     "DCELFace",
     "DCELHalfEdge",
     "DCELVertex",
     "CirclePacker",
-    "ConvexHullGenerator",
-    "GrahamScan",
-    "MonotoneChain",
-    "QuickHull",
-    "Chan",
+    "ConvexDecomposition",
     "DistanceMapSolver",
+    "EarDecomposition",
+    "HoleDecomposition",
+    "MonotoneDecomposition",
     "PolygonDecomposer",
-    "PolygonalMeanCurvatureFlow",
-    "fourier_smooth",
     "PolygonGenerator",
     "PolygonGuards",
     "Polygon",
     "PolygonProperties",
+    "PolygonalMeanCurvatureFlow",
+    "TrapezoidalDecomposition",
+    "VisibilityDecomposition",
     "approximate_medial_axis",
     "approximate_polynomials",
     "are_similar",

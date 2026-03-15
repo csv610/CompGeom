@@ -273,35 +273,37 @@ def get_convex_diameter(polygon: List[Point2D]) -> float:
 
     return _get_convex_diameter(polygon)
 
-
 def triangulate_polygon_with_holes(
-    outer_boundary: List[Point2D], holes: List[List[Point2D]] | None = None
+    outer_boundary: List[Point2D],
+    holes: List[List[Point2D]] | None = None,
 ) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[Point2D]]:
-    from .polygon_decomposer import _triangulate_with_holes as _triangulate
+    from .polygon_decomposer import HoleDecomposition
 
-    return _triangulate(outer_boundary, holes)
+    return HoleDecomposition.decompose(outer_boundary, holes)
 
 
 def get_triangulation_with_diagonals(
     polygon: List[Point2D],
 ) -> tuple[list[tuple[int, int, int]], list[tuple[int, int]], list[Point2D]]:
-    from .polygon_decomposer import PolygonDecomposer
+    from .polygon_decomposer import EarDecomposition
 
-    return PolygonDecomposer.triangulation_with_diagonals_indices(polygon)
+    return EarDecomposition.decompose(polygon, collect_diagonals=True)
 
 
 def hertel_mehlhorn(polygon: List[Point2D]) -> tuple[list[list[int]], list[Point2D]]:
-    from .polygon_decomposer import _hertel_mehlhorn
+    from .polygon_decomposer import ConvexDecomposition
 
-    return _hertel_mehlhorn(polygon)
+    return ConvexDecomposition.decompose(polygon)
 
 
 def triangulate_polygon(
     polygon: List[Point2D],
 ) -> tuple[list[tuple[int, int, int]], list[Point2D]]:
-    from .polygon_decomposer import PolygonDecomposer
+    from .polygon_decomposer import EarDecomposition
 
-    return PolygonDecomposer.triangulate_indices(polygon)
+    triangle_indices, _, vertices = EarDecomposition.decompose(polygon)
+    return triangle_indices, vertices
+
 
 
 __all__ = [
