@@ -1,5 +1,6 @@
 """Wildfire Spread Simulation based on terrain geometry."""
 
+import argparse
 import math
 from typing import Tuple
 
@@ -106,19 +107,38 @@ class WildfireModeling:
 
 
 def main():
-    print("--- wildfire_modeling.py Demo ---")
-    normal = (0.0, -0.5, 0.866)  # Slanted facing South (uphill is North)
-    slope, aspect = WildfireModeling.calculate_slope_and_aspect(normal)
-    print(f"Face Slope: {math.degrees(slope):.1f} degrees")
-    print(f"Face Aspect: {math.degrees(aspect):.1f} degrees (0=N, 90=E)")
+    parser = argparse.ArgumentParser(
+        description="Wildfire Spread Simulation based on terrain geometry."
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
 
-    wind = (0, 10, 0)  # 10 m/s wind blowing North
-    base_ros = 1.0  # 1 meter per minute
-    ros = WildfireModeling.rate_of_spread(base_ros, wind, normal)
-    print(f"Wind Vector: {wind}")
-    print(f"Base ROS: {base_ros} m/min")
-    print(f"Effective ROS (with wind & slope): {ros:.2f} m/min")
-    print("Demo completed successfully.")
+    # Slope/Aspect Tool
+    topo_parser = subparsers.add_parser("topo", help="Calculate slope and aspect from normal")
+    topo_parser.add_argument("--normal", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Face normal vector")
+
+    # ROS Tool
+    ros_parser = subparsers.add_parser("ros", help="Calculate Rate of Spread (ROS)")
+    ros_parser.add_argument("--base", type=float, default=1.0, help="Base rate of spread (m/min)")
+    ros_parser.add_argument("--wind", type=float, nargs=3, default=[0, 10, 0], metavar=("X", "Y", "Z"), help="Wind vector")
+    ros_parser.add_argument("--normal", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Face normal vector")
+
+    args = parser.parse_args()
+
+    if args.command == "topo":
+        slope, aspect = WildfireModeling.calculate_slope_and_aspect(tuple(args.normal))
+        print(f"Face Slope: {math.degrees(slope):.1f} degrees")
+        print(f"Face Aspect: {math.degrees(aspect):.1f} degrees (0=N, 90=E)")
+    elif args.command == "ros":
+        ros = WildfireModeling.rate_of_spread(args.base, tuple(args.wind), tuple(args.normal))
+        print(f"Effective ROS: {ros:.2f} m/min")
+    else:
+        # Default demo behavior
+        print("--- wildfire_modeling.py Demo ---")
+        normal = (0.0, -0.5, 0.866)
+        slope, aspect = WildfireModeling.calculate_slope_and_aspect(normal)
+        print(f"Face Slope: {math.degrees(slope):.1f} degrees")
+        print(f"Face Aspect: {math.degrees(aspect):.1f} degrees (0=N, 90=E)")
+        print("Demo completed successfully. Use -h for CLI options.")
 
 
 if __name__ == "__main__":

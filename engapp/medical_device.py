@@ -1,6 +1,7 @@
 """Biomedical and Medical Device geometry algorithms."""
 
 import math
+import argparse
 
 try:
     from compgeom.mesh import TriangleMesh
@@ -137,28 +138,66 @@ class MedicalDeviceGeometry:
 
 
 def main():
-    print("--- medical_device.py Demo ---")
+    parser = argparse.ArgumentParser(description="Biomedical and Medical Device geometry algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # surface_roughness
+    roughness_parser = subparsers.add_parser(
+        "surface_roughness",
+        help="Calculates the Ra (Average Roughness) of the surface.",
+    )
+
+    # stent_lattice_generator
+    stent_parser = subparsers.add_parser(
+        "stent_lattice_generator",
+        help="Generates a 3D cylindrical lattice mesh representing a medical stent.",
+    )
+    stent_parser.add_argument("--radius", type=float, default=5.0, help="Radius of the stent (default: 5.0)")
+    stent_parser.add_argument("--length", type=float, default=20.0, help="Length of the stent (default: 20.0)")
+    stent_parser.add_argument("--wire_thickness", type=float, default=0.5, help="Thickness of the wire (default: 0.5)")
+    stent_parser.add_argument("--cell_count_circular", type=int, default=8, help="Number of cells around the circumference (default: 8)")
+    stent_parser.add_argument("--cell_count_longitudinal", type=int, default=10, help="Number of cells along the length (default: 10)")
+
+    # porosity_analysis
+    porosity_parser = subparsers.add_parser(
+        "porosity_analysis",
+        help="Calculates the porosity percentage of a 3D printed lattice/bone scaffold.",
+    )
+    porosity_parser.add_argument("--volume_bbox", type=float, default=100.0, help="Total volume of the bounding box (default: 100.0)")
+
+    args = parser.parse_args()
+
+    # Mock setup
     mesh = TriangleMesh(
         vertices=[Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         faces=[(0, 1, 2)],
     )
     # Mock vertex neighbors for surface_roughness
     mesh.topology.vertex_neighbors.return_value = [1, 2]
-
     tools = MedicalDeviceGeometry()
 
-    roughness = tools.surface_roughness(mesh)
-    print(f"Surface roughness: {roughness}")
-
-    stent = tools.stent_lattice_generator(5, 20, 0.5, 8, 10)
-    print(
-        f"Generated stent mesh with {len(stent.vertices)} vertices and {len(stent.faces)} faces."
-    )
-
-    porosity = tools.porosity_analysis(mesh, 100.0)
-    print(f"Porosity analysis: {porosity}%")
-
-    print("Demo completed successfully.")
+    if args.command == "surface_roughness":
+        roughness = tools.surface_roughness(mesh)
+        print(f"Surface roughness (Ra): {roughness}")
+    elif args.command == "stent_lattice_generator":
+        stent = tools.stent_lattice_generator(
+            args.radius, args.length, args.wire_thickness,
+            args.cell_count_circular, args.cell_count_longitudinal
+        )
+        print(f"Generated stent mesh with {len(stent.vertices)} vertices and {len(stent.faces)} faces.")
+    elif args.command == "porosity_analysis":
+        porosity = tools.porosity_analysis(mesh, args.volume_bbox)
+        print(f"Porosity analysis: {porosity}%")
+    else:
+        # Default behavior: run demo
+        print("--- medical_device.py Demo ---")
+        roughness = tools.surface_roughness(mesh)
+        print(f"Surface roughness: {roughness}")
+        stent = tools.stent_lattice_generator(5, 20, 0.5, 8, 10)
+        print(f"Generated stent mesh with {len(stent.vertices)} vertices and {len(stent.faces)} faces.")
+        porosity = tools.porosity_analysis(mesh, 100.0)
+        print(f"Porosity analysis: {porosity}%")
+        print("\nUse --help to see CLI options.")
 
 
 if __name__ == "__main__":

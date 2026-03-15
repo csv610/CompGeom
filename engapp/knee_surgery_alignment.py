@@ -1,14 +1,22 @@
 """Total Knee Arthroplasty (TKA) alignment and surgical planning algorithms."""
 
 import math
+import argparse
 from typing import List, Tuple
 
 try:
     from compgeom.mesh import TriangleMesh
     from compgeom.kernel import Point3D
 except ImportError:
-    TriangleMesh = object
-    Point3D = object
+
+    class TriangleMesh:
+        def __init__(self, vertices=None, faces=None):
+            self.vertices = vertices or []
+            self.faces = faces or []
+
+    class Point3D:
+        def __init__(self, x=0.0, y=0.0, z=0.0):
+            self.x, self.y, self.z = x, y, z
 
 
 class KneeSurgeryAlignment:
@@ -73,11 +81,13 @@ class KneeSurgeryAlignment:
         nx, ny, nz, d = resection_plane
         max_dist = -float("inf")
 
-        verts = (
-            distal_femur.vertices()
-            if hasattr(distal_femur, "vertices")
-            else getattr(distal_femur, "_vertices", [])
-        )
+        if hasattr(distal_femur, "vertices") and callable(distal_femur.vertices):
+            verts = distal_femur.vertices()
+        elif hasattr(distal_femur, "vertices"):
+            verts = distal_femur.vertices
+        else:
+            verts = getattr(distal_femur, "_vertices", [])
+
         for v in verts:
             # Signed distance to plane: (ax + by + cz + d) / sqrt(a^2 + b^2 + c^2)
             # Normal is already unit length
@@ -89,38 +99,92 @@ class KneeSurgeryAlignment:
 
 
 def main():
-    print("--- knee_surgery_alignment.py Demo ---")
+    parser = argparse.ArgumentParser(description="Total Knee Arthroplasty (TKA) alignment and surgical planning algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # 1. Coordinate Setup (in mm)
-    hip = Point3D(0, 0, 450)  # Femoral head center
-    knee = Point3D(0, 0, 0)  # Knee center (origin)
-
-    # 2. Axis Calculation
-    fma = KneeSurgeryAlignment.calculate_mechanical_axis(hip, knee)
-    print(f"Mechanical Axis Vector: ({fma[0]:.3f}, {fma[1]:.3f}, {fma[2]:.3f})")
-
-    # 3. Resection Planning
-    # Standard distal cut is ~5-7 degrees valgus
-    plane = KneeSurgeryAlignment.define_resection_plane(knee, fma, valgus_angle_deg=6.0)
-    print(
-        f"Planned Resection Plane: {plane[0]:.3f}x + {plane[1]:.3f}y + {plane[2]:.3f}z + {plane[3]:.1f} = 0"
+    # calculate_mechanical_axis
+    axis_parser = subparsers.add_parser(
+        "calculate_mechanical_axis",
+        help="Calculates the Femoral Mechanical Axis (FMA).",
+    )
+    axis_parser.add_argument(
+        "--hip",
+        type=float,
+        nargs=3,
+        default=[0.0, 0.0, 450.0],
+        help="Hip center coordinates (default: 0 0 450)",
+    )
+    axis_parser.add_argument(
+        "--knee",
+        type=float,
+        nargs=3,
+        default=[0.0, 0.0, 0.0],
+        help="Knee center coordinates (default: 0 0 0)",
     )
 
-    # 4. Bone Removal Estimate
-    class MockPoint:
-        def __init__(self, x, y, z):
-            self.x, self.y, self.z = x, y, z
+    # define_resection_plane
+    plane_parser = subparsers.add_parser(
+        "define_resection_plane",
+        help="Defines the Distal Femoral Resection Plane.",
+    )
+    plane_parser.add_argument(
+        "--knee",
+        type=float,
+        nargs=3,
+        default=[0.0, 0.0, 0.0],
+        help="Knee center coordinates (default: 0 0 0)",
+    )
+    plane_parser.add_argument(
+        "--valgus_angle",
+        type=float,
+        default=5.0,
+        help="Valgus angle in degrees (default: 5.0)",
+    )
 
+    # gap_analysis
+    gap_parser = subparsers.add_parser(
+        "gap_analysis",
+        help="Estimates the 'Gap' or thickness of bone to be removed.",
+    )
+
+    args = parser.parse_args()
+
+    # Shared setup
+    hip_pt = Point3D(0, 0, 450)
+    knee_pt = Point3D(0, 0, 0)
+    tools = KneeSurgeryAlignment()
+
+    # Mock Mesh for gap analysis
     class MockMesh:
         def vertices(self):
-            # Points on the distal condyles (lowest part of femur)
-            return [MockPoint(20, 0, -5), MockPoint(-20, 0, -5)]
-
+            return [Point3D(20, 0, -5), Point3D(-20, 0, -5)]
     femur = MockMesh()
-    gap = KneeSurgeryAlignment.gap_analysis(femur, plane)
-    print(f"Estimated Bone Resection Thickness: {abs(gap):.2f} mm")
 
-    print("Demo completed successfully.")
+    if args.command == "calculate_mechanical_axis":
+        h = Point3D(*args.hip)
+        k = Point3D(*args.knee)
+        fma = tools.calculate_mechanical_axis(h, k)
+        print(f"Mechanical Axis Vector: ({fma[0]:.3f}, {fma[1]:.3f}, {fma[2]:.3f})")
+    elif args.command == "define_resection_plane":
+        k = Point3D(*args.knee)
+        fma = (0, 0, 1) # dummy axis for independent call
+        plane = tools.define_resection_plane(k, fma, args.valgus_angle)
+        print(f"Planned Resection Plane: {plane[0]:.3f}x + {plane[1]:.3f}y + {plane[2]:.3f}z + {plane[3]:.1f} = 0")
+    elif args.command == "gap_analysis":
+        # Needs a plane
+        plane = (0.087, 0.0, 0.996, 0.0) # approx 5 deg valgus at origin
+        gap = tools.gap_analysis(femur, plane)
+        print(f"Estimated Bone Resection Thickness: {abs(gap):.2f} mm")
+    else:
+        # Default behavior: run demo
+        print("--- knee_surgery_alignment.py Demo ---")
+        fma = tools.calculate_mechanical_axis(hip_pt, knee_pt)
+        print(f"Mechanical Axis Vector: ({fma[0]:.3f}, {fma[1]:.3f}, {fma[2]:.3f})")
+        plane = tools.define_resection_plane(knee_pt, fma, valgus_angle_deg=6.0)
+        print(f"Planned Resection Plane: {plane[0]:.3f}x + {plane[1]:.3f}y + {plane[2]:.3f}z + {plane[3]:.1f} = 0")
+        gap = tools.gap_analysis(femur, plane)
+        print(f"Estimated Bone Resection Thickness: {abs(gap):.2f} mm")
+        print("\nUse --help to see CLI options.")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 """Mechanical Drafting and Tooling algorithms."""
 
 import math
+import argparse
 from typing import List, Tuple
 from collections import defaultdict
 
@@ -121,20 +122,66 @@ class DraftingTools:
 
 
 def main():
-    print("--- drafting_tools.py Demo ---")
+    parser = argparse.ArgumentParser(description="Mechanical Drafting and Tooling algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # draft_analysis
+    draft_parser = subparsers.add_parser(
+        "draft_analysis", help="Identifies faces that violate the minimum draft angle."
+    )
+    draft_parser.add_argument(
+        "--pull_direction",
+        type=float,
+        nargs=3,
+        default=[0.0, 0.0, 1.0],
+        help="Pull direction for draft analysis (default: 0.0 0.0 1.0)",
+    )
+    draft_parser.add_argument(
+        "--min_angle",
+        type=float,
+        default=3.0,
+        help="Minimum draft angle in degrees (default: 3.0)",
+    )
+
+    # extract_silhouette
+    silhouette_parser = subparsers.add_parser(
+        "extract_silhouette",
+        help="Extracts the silhouette edges of the mesh from a given view direction.",
+    )
+    silhouette_parser.add_argument(
+        "--view_direction",
+        type=float,
+        nargs=3,
+        default=[0.0, 0.0, 1.0],
+        help="View direction for silhouette extraction (default: 0.0 0.0 1.0)",
+    )
+
+    args = parser.parse_args()
+
+    # Shared demo mesh
     mesh = TriangleMesh(
         vertices=[Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         faces=[(0, 1, 2)],
     )
     tools = DraftingTools()
 
-    violating = tools.draft_analysis(mesh, (0, 0, 1), 3.0)
-    print(f"Violating faces (draft analysis): {violating}")
+    if args.command == "draft_analysis":
+        violating = tools.draft_analysis(
+            mesh, tuple(args.pull_direction), args.min_angle
+        )
+        print(f"Violating faces (draft analysis): {violating}")
+    elif args.command == "extract_silhouette":
+        silhouette = tools.extract_silhouette(mesh, tuple(args.view_direction))
+        print(f"Silhouette edges: {silhouette}")
+    else:
+        # Default behavior: run demo
+        print("--- drafting_tools.py Demo ---")
+        violating = tools.draft_analysis(mesh, (0, 0, 1), 3.0)
+        print(f"Violating faces (draft analysis): {violating}")
 
-    silhouette = tools.extract_silhouette(mesh, (0, 0, 1))
-    print(f"Silhouette edges: {silhouette}")
-
-    print("Demo completed successfully.")
+        silhouette = tools.extract_silhouette(mesh, (0, 0, 1))
+        print(f"Silhouette edges: {silhouette}")
+        print("\nUse --help to see CLI options.")
 
 
 if __name__ == "__main__":

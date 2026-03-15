@@ -1,5 +1,6 @@
 """Radiation Therapy Planning and Oncology geometry algorithms."""
 
+import argparse
 import math
 from typing import List, Tuple
 
@@ -130,13 +131,25 @@ class RadiationOncology:
 
 
 def main():
-    print("--- radiation_oncology.py Demo ---")
+    parser = argparse.ArgumentParser(description="Radiation Therapy Planning and Oncology geometry algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # 1. Mock Anatomy
-    # Tumor is at the center
-    tumor = Point3D(0, 0, 0)
+    # Common arguments for beam analysis
+    def add_beam_args(subparser):
+        subparser.add_argument("--source", type=float, nargs=3, required=True, help="Beam source position (x y z)")
+        subparser.add_argument("--tumor", type=float, nargs=3, default=[0, 0, 0], help="Tumor center position (default: 0 0 0)")
 
-    # Mock Body Skin (a large triangle in front of tumor)
+    # Tissue Depth
+    depth_parser = subparsers.add_parser("tissue-depth", help="Calculate tissue depth to tumor")
+    add_beam_args(depth_parser)
+
+    # Organ Collision
+    collision_parser = subparsers.add_parser("check-collision", help="Check if beam hits Organ-at-Risk")
+    add_beam_args(collision_parser)
+
+    args = parser.parse_args()
+
+    # Mock Anatomy
     class MockPoint:
         def __init__(self, x, y, z):
             self.x, self.y, self.z = x, y, z
@@ -158,23 +171,19 @@ def main():
         [(0, 1, 2)],
     )
 
-    # 2. Test Beam Angles
-    # Beam A: Frontal (Safe)
-    source_a = Point3D(-100, 0, 0)
-    # Beam B: Oblique (Hits Spine)
-    source_b = Point3D(100, 0, 0)
+    tools = RadiationOncology()
+    tumor = Point3D(args.tumor[0], args.tumor[1], args.tumor[2])
+    source = Point3D(args.source[0], args.source[1], args.source[2])
 
-    for i, source in enumerate([source_a, source_b]):
-        name = "A (Frontal)" if i == 0 else "B (Back/Oblique)"
-        print(f"\nAnalyzing Beam {name}:")
+    if args.command == "tissue-depth":
+        depth = tools.calculate_tissue_depth(skin_mesh, source, tumor)
+        print(f"Tissue Depth to Tumor: {depth:.1f} mm")
 
-        depth = RadiationOncology.calculate_tissue_depth(skin_mesh, source, tumor)
-        hit_oar = RadiationOncology.check_organ_collision(spine_mesh, source, tumor)
-
-        print(f" - Tissue Depth to Tumor: {depth:.1f} mm")
-        print(f" - Hits Spinal Cord: {'YES (DANGEROUS)' if hit_oar else 'NO (SAFE)'}")
-
-    print("\nDemo completed successfully.")
+    elif args.command == "check-collision":
+        hit_oar = tools.check_organ_collision(spine_mesh, source, tumor)
+        print(f"Hits Spinal Cord (Organ-at-Risk): {'YES (DANGEROUS)' if hit_oar else 'NO (SAFE)'}")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

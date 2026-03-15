@@ -1,5 +1,6 @@
 """Surgical Planning and Computer-Assisted Surgery (CAS) algorithms."""
 
+import argparse
 import math
 from typing import List, Tuple
 
@@ -118,9 +119,21 @@ class SurgicalPlanning:
 
 
 def main():
-    print("--- surgical_planning.py Demo ---")
+    parser = argparse.ArgumentParser(description="Surgical Planning and Computer-Assisted Surgery (CAS) algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
 
-    # Mock a "Nerve" mesh (a simple line of triangles)
+    # safety_margin_analysis subparser
+    safety_parser = subparsers.add_parser("safety-margin", help="Calculates safety margin from a drill path to a critical structure")
+    safety_parser.add_argument("--start", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Drill path start")
+    safety_parser.add_argument("--end", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Drill path end")
+
+    # project_onto_bone subparser
+    project_parser = subparsers.add_parser("project", help="Projects a point onto the bone surface")
+    project_parser.add_argument("--point", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Point to project")
+
+    args = parser.parse_args()
+
+    # Mock a "Nerve" mesh (a simple line of triangles) for demo/default
     class MockPoint:
         def __init__(self, x, y, z):
             self.x, self.y, self.z = x, y, z
@@ -133,28 +146,24 @@ def main():
             return [(0, 1, 2), (1, 2, 3)]
 
     nerve = MockMesh()
+    tools = SurgicalPlanning()
 
-    # Drill path: safe (far from nerve)
-    start = Point3D(0, 0, 0)
-    end = Point3D(0, 0, 10)
-
-    margin = SurgicalPlanning.safety_margin_analysis(nerve, start, end)
-    print(f"Drill Path Safety Margin: {margin:.2f} mm")
-    if margin < 2.0:
-        print("WARNING: Path too close to critical structure!")
+    if args.command == "safety-margin":
+        start = Point3D(args.start[0], args.start[1], args.start[2])
+        end = Point3D(args.end[0], args.end[1], args.end[2])
+        margin = tools.safety_margin_analysis(nerve, start, end)
+        print(f"Drill Path Safety Margin: {margin:.2f} mm")
+        if margin < 2.0:
+            print("WARNING: Path too close to critical structure!")
+        else:
+            print("Path is SAFE.")
+    elif args.command == "project":
+        point = Point3D(args.point[0], args.point[1], args.point[2])
+        closest, dist = tools.project_onto_bone(point, nerve)
+        print(f"Closest Surface Point: ({closest.x}, {closest.y}, {getattr(closest, 'z', 0.0)})")
+        print(f"Distance to Surface: {dist:.2f} mm")
     else:
-        print("Path is SAFE.")
-
-    # Navigation projection
-    probe = Point3D(8, 8, 2)
-    closest, dist = SurgicalPlanning.project_onto_bone(probe, nerve)
-    print(f"\nProbe Position: ({probe.x}, {probe.y}, {getattr(probe, 'z', 0.0)})")
-    print(
-        f"Closest Surface Point: ({closest.x}, {closest.y}, {getattr(closest, 'z', 0.0)})"
-    )
-    print(f"Distance to Surface: {dist:.2f} mm")
-
-    print("Demo completed successfully.")
+        parser.print_help()
 
 
 if __name__ == "__main__":

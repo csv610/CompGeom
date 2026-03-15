@@ -1,5 +1,6 @@
 """Computational Fluid Dynamics (CFD) geometry preparation tools."""
 
+import argparse
 from typing import Tuple
 
 try:
@@ -57,19 +58,68 @@ class FluidDynamics:
 
 
 def main():
-    print("--- fluid_dynamics.py Demo ---")
-    cfd = FluidDynamics()
+    parser = argparse.ArgumentParser(description="Computational Fluid Dynamics (CFD) geometry preparation tools.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # calculate_frontal_area
+    area_parser = subparsers.add_parser(
+        "calculate_frontal_area",
+        help="Calculates the projected frontal area of an object facing the flow direction.",
+    )
+    area_parser.add_argument(
+        "--flow_direction",
+        type=float,
+        nargs=3,
+        default=[1.0, 0.0, 0.0],
+        help="Flow direction vector (default: 1.0 0.0 0.0)",
+    )
+
+    # generate_wind_tunnel_domain
+    domain_parser = subparsers.add_parser(
+        "generate_wind_tunnel_domain",
+        help="Generates a bounding box representing the fluid domain (wind tunnel) around an object.",
+    )
+    domain_parser.add_argument(
+        "--padding_front",
+        type=float,
+        default=2.0,
+        help="Padding at the front of the domain (default: 2.0)",
+    )
+    domain_parser.add_argument(
+        "--padding_back",
+        type=float,
+        default=5.0,
+        help="Padding at the back of the domain (default: 5.0)",
+    )
+    domain_parser.add_argument(
+        "--padding_sides",
+        type=float,
+        default=2.0,
+        help="Padding at the sides of the domain (default: 2.0)",
+    )
+
+    args = parser.parse_args()
 
     # Create a mock mesh
     mock_mesh = TriangleMesh([Point3D(0, 0, 0)], [[0, 0, 0]])
+    cfd = FluidDynamics()
 
-    domain = cfd.generate_wind_tunnel_domain(mock_mesh)
-    print(f"Generated wind tunnel domain with {len(domain.vertices)} vertices.")
-
-    area = cfd.calculate_frontal_area(mock_mesh, (1, 0, 0))
-    print(f"Calculated frontal area (flow along X): {area} sq meters.")
-
-    print("Demo completed successfully.")
+    if args.command == "calculate_frontal_area":
+        area = cfd.calculate_frontal_area(mock_mesh, tuple(args.flow_direction))
+        print(f"Calculated frontal area (flow along {args.flow_direction}): {area} sq meters.")
+    elif args.command == "generate_wind_tunnel_domain":
+        domain = cfd.generate_wind_tunnel_domain(
+            mock_mesh, args.padding_front, args.padding_back, args.padding_sides
+        )
+        print(f"Generated wind tunnel domain with {len(domain.vertices)} vertices.")
+    else:
+        # Default behavior: run demo
+        print("--- fluid_dynamics.py Demo ---")
+        domain = cfd.generate_wind_tunnel_domain(mock_mesh)
+        print(f"Generated wind tunnel domain with {len(domain.vertices)} vertices.")
+        area = cfd.calculate_frontal_area(mock_mesh, (1, 0, 0))
+        print(f"Calculated frontal area (flow along X): {area} sq meters.")
+        print("\nUse --help to see CLI options.")
 
 
 if __name__ == "__main__":

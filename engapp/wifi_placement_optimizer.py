@@ -1,5 +1,6 @@
 """Indoor WiFi Router Placement and Signal Coverage Optimization."""
 
+import argparse
 import math
 from typing import List, Tuple, Optional
 
@@ -140,52 +141,52 @@ class WifiOptimizer:
 
 
 def main():
-    print("--- wifi_placement_optimizer.py Demo ---")
+    parser = argparse.ArgumentParser(
+        description="Indoor WiFi Router Placement and Signal Coverage Optimization."
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
 
-    # 1. Mock a simple indoor environment (a 10x10 floor and a central wall)
+    # Signal Strength Tool
+    strength_parser = subparsers.add_parser("signal", help="Calculate signal strength at a point")
+    strength_parser.add_argument("--router", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Router position")
+    strength_parser.add_argument("--target", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Target position")
+    strength_parser.add_argument("--loss", type=float, default=3.0, help="Wall loss in dB")
+
+    # Optimization Tool
+    opt_parser = subparsers.add_parser("optimize", help="Find optimal router placement")
+    opt_parser.add_argument("--loss", type=float, default=3.0, help="Wall loss in dB")
+
+    args = parser.parse_args()
+
+    # Mock a simple indoor environment (a 10x10 floor and a central wall)
     class MockPoint:
         def __init__(self, x, y, z):
             self.x, self.y, self.z = x, y, z
-
     class MockMesh:
         def __init__(self):
             # Wall at x=5, from y=0 to y=10
-            self.vertices = [
-                MockPoint(5, 0, 0),
-                MockPoint(5, 10, 0),
-                MockPoint(5, 5, 3),
-            ]
+            self.vertices = [MockPoint(5, 0, 0), MockPoint(5, 10, 0), MockPoint(5, 5, 3)]
             self.faces = [(0, 1, 2)]
-
     house_mesh = MockMesh()
 
-    # 2. Define target test points (where we want good signal)
-    # Sampling across the floor
-    targets = []
-    for x in [2, 8]:
-        for y in [2, 8]:
-            targets.append((x, y, 1.0))
-
-    # 3. Define candidate router locations (corners and center)
-    candidates = [(0, 0, 2), (5, 5, 2), (9, 9, 2)]
-
-    print(f"Testing {len(candidates)} router locations across {len(targets)} rooms...")
-
-    best_p, best_s = WifiOptimizer.find_optimal_placement(
-        house_mesh, targets, candidates
-    )
-
-    print(f"\nOptimal Router Location: {best_p}")
-    print(f"Average Signal Strength: {best_s:.2f} dBm")
-
-    # Show dead zones
-    print("\nIndividual coverage report for best location:")
-    for t in targets:
-        s = WifiOptimizer.calculate_signal_strength(best_p, t, house_mesh)
-        status = "EXCELLENT" if s > -50 else "GOOD" if s > -70 else "POOR"
-        print(f" - Point {t}: {s:.1f} dBm ({status})")
-
-    print("\nDemo completed successfully.")
+    if args.command == "signal":
+        s = WifiOptimizer.calculate_signal_strength(tuple(args.router), tuple(args.target), house_mesh, args.loss)
+        print(f"Signal Strength at {args.target}: {s:.2f} dBm")
+    elif args.command == "optimize":
+        targets = [(x, y, 1.0) for x in [2, 8] for y in [2, 8]]
+        candidates = [(0, 0, 2), (5, 5, 2), (9, 9, 2)]
+        best_p, best_s = WifiOptimizer.find_optimal_placement(house_mesh, targets, candidates)
+        print(f"Optimal Router Location: {best_p}")
+        print(f"Average Signal Strength: {best_s:.2f} dBm")
+    else:
+        # Default demo behavior
+        print("--- wifi_placement_optimizer.py Demo ---")
+        targets = [(x, y, 1.0) for x in [2, 8] for y in [2, 8]]
+        candidates = [(0, 0, 2), (5, 5, 2), (9, 9, 2)]
+        best_p, best_s = WifiOptimizer.find_optimal_placement(house_mesh, targets, candidates)
+        print(f"Optimal Router Location: {best_p}")
+        print(f"Average Signal Strength: {best_s:.2f} dBm")
+        print("Demo completed successfully. Use -h for CLI options.")
 
 
 if __name__ == "__main__":

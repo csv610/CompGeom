@@ -1,5 +1,7 @@
 """CFD and FEA mesh generation utilities."""
 
+import argparse
+
 try:
     from compgeom.mesh import TriangleMesh
     from compgeom.kernel import Point3D
@@ -44,3 +46,37 @@ class CFDAnalysis:
             current_thickness *= growth_factor
 
         return TriangleMesh(all_vertices, all_faces)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="CFD and FEA mesh generation utilities.")
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
+
+    # Generate Boundary Layers
+    bl_parser = subparsers.add_parser(
+        "boundary-layers", help="Generates layered volumetric elements"
+    )
+    bl_parser.add_argument("mesh_file", help="Path to the mesh file")
+    bl_parser.add_argument("--thickness", type=float, required=True)
+    bl_parser.add_argument("--layers", type=int, default=3)
+    bl_parser.add_argument("--growth-factor", type=float, default=1.2)
+
+    args = parser.parse_args()
+
+    if args.command == "boundary-layers":
+        try:
+            mesh = TriangleMesh.from_file(args.mesh_file)
+            new_mesh = CFDAnalysis.generate_boundary_layers(
+                mesh, args.thickness, args.layers, args.growth_factor
+            )
+            print(
+                f"Generated mesh with {len(new_mesh.vertices)} vertices and {len(new_mesh.faces)} faces."
+            )
+        except Exception as e:
+            print(f"Error: {e}")
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

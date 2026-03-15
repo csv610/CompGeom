@@ -1,5 +1,6 @@
 """Radar and Electromagnetic geometry algorithms."""
 
+import argparse
 import math
 from typing import List, Tuple
 
@@ -161,20 +162,35 @@ class RadarEngineering:
 
 
 def main():
-    print("--- radar_engineering.py Demo ---")
+    parser = argparse.ArgumentParser(description="Radar and Electromagnetic geometry algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Visibility
+    visibility_parser = subparsers.add_parser("visibility", help="Determine face visibility from source")
+    visibility_parser.add_argument("--source", type=float, nargs=3, required=True, help="Radar source position (x y z)")
+
+    # RCS
+    rcs_parser = subparsers.add_parser("rcs", help="Estimate Radar Cross Section")
+    rcs_parser.add_argument("--direction", type=float, nargs=3, required=True, help="Incident ray direction (x y z)")
+
+    args = parser.parse_args()
+
+    # Simple Mesh for Demo
     mesh = TriangleMesh(
         vertices=[Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         faces=[(0, 1, 2)],
     )
     tools = RadarEngineering()
 
-    visibility = tools.compute_los_visibility(mesh, (0, 0, 10))
-    print(f"Face visibility: {visibility}")
+    if args.command == "visibility":
+        visibility = tools.compute_los_visibility(mesh, tuple(args.source))
+        print(f"Face visibility from {args.source}: {visibility}")
 
-    rcs = tools.estimated_rcs(mesh, (0, 0, -1))
-    print(f"Estimated RCS: {rcs}")
-
-    print("Demo completed successfully.")
+    elif args.command == "rcs":
+        rcs = tools.estimated_rcs(mesh, tuple(args.direction))
+        print(f"Estimated RCS for direction {args.direction}: {rcs:.4f}")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

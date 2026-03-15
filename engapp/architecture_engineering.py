@@ -216,60 +216,67 @@ class ArchitectureEngineering:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Architecture and Civil Engineering geometry analysis"
+        description="Architecture and Civil Engineering geometry algorithms."
     )
-    parser.add_argument(
-        "--mesh_file", type=str, help="Path to input mesh file (e.g., .stl, .obj)"
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
+
+    # Panelize Surface
+    panel_parser = subparsers.add_parser(
+        "panelize", help="Optimizes the placement of fixed-size quadrilateral panels"
     )
-    parser.add_argument(
-        "--panel_width",
-        type=float,
-        default=1.2,
-        help="Width of the quadrilateral panels",
+    panel_parser.add_argument("mesh_file", help="Path to the mesh file")
+    panel_parser.add_argument("--width", type=float, required=True, help="Panel width")
+    panel_parser.add_argument("--height", type=float, required=True, help="Panel height")
+
+    # Calculate Roof Area
+    roof_parser = subparsers.add_parser(
+        "roof-area", help="Estimates the roof area of a building mesh"
     )
-    parser.add_argument(
-        "--panel_height",
-        type=float,
-        default=2.4,
-        help="Height of the quadrilateral panels",
+    roof_parser.add_argument("mesh_file", help="Path to the mesh file")
+    roof_parser.add_argument(
+        "--up", type=float, nargs=3, default=[0.0, 0.0, 1.0], help="Up vector"
     )
+    roof_parser.add_argument(
+        "--tolerance", type=float, default=10.0, help="Tolerance in degrees"
+    )
+
+    # Generate Parametric House
+    house_parser = subparsers.add_parser(
+        "generate-house", help="Generates a simple 3D mesh of a house"
+    )
+    house_parser.add_argument("--width", type=float, required=True)
+    house_parser.add_argument("--length", type=float, required=True)
+    house_parser.add_argument("--wall-height", type=float, required=True)
+    house_parser.add_argument("--roof-height", type=float, required=True)
+
     args = parser.parse_args()
 
-    print("--- architecture_engineering.py Demo ---")
-    arch = ArchitectureEngineering()
-
-    if args.mesh_file:
-        print(f"Loading user mesh: {args.mesh_file}")
+    if args.command in ["panelize", "roof-area"]:
         try:
             mesh = TriangleMesh.from_file(args.mesh_file)
         except Exception as e:
             print(f"Error loading mesh: {e}")
             return
+
+    if args.command == "panelize":
+        count, params = ArchitectureEngineering.panelize_surface(
+            mesh, args.width, args.height
+        )
+        print(f"Min panels: {count}, Best params (theta, dx, dy): {params}")
+    elif args.command == "roof-area":
+        area = ArchitectureEngineering.calculate_roof_area(
+            mesh, tuple(args.up), args.tolerance
+        )
+        print(f"Estimated roof area: {area}")
+    elif args.command == "generate-house":
+        mesh = ArchitectureEngineering.generate_parametric_house(
+            args.width, args.length, args.wall_height, args.roof_height
+        )
+        print(
+            f"Generated house mesh with {len(mesh.vertices)} vertices and {len(mesh.faces)} faces."
+        )
     else:
-        print("No mesh file provided. Generating parametric house...")
-        mesh = arch.generate_parametric_house(10.0, 20.0, 5.0, 3.0)
-
-    print(f"Mesh loaded: {len(mesh.vertices)} vertices and {len(mesh.faces)} faces.")
-
-    roof_area = arch.calculate_roof_area(mesh)
-    print(f"Estimated roof area: {roof_area} sq meters.")
-
-    # Panelization Demo
-    # The algorithm optimizes for minimum number of panels by rotating and shifting the grid.
-    print(
-        f"Optimizing panelization for {args.panel_width}m x {args.panel_height}m panels..."
-    )
-    min_panels, (deg, ox, oy) = arch.panelize_surface(
-        mesh, args.panel_width, args.panel_height
-    )
-
-    print(f"Optimal panelization: {min_panels} panels needed.")
-    print(f"  - Grid Rotation: {deg} degrees")
-    print(f"  - Grid Offset: ({ox:.2f}, {oy:.2f})")
-    print(f"  - Surface Planarization: Applied (Slight modification requirement)")
-    print(f"  - Continuity: Gap-free tiling achieved (Requirement (2))")
-
-    print("Demo completed successfully.")
+        parser.print_help()
 
 
 if __name__ == "__main__":

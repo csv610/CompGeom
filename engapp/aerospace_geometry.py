@@ -1,6 +1,7 @@
 """Aerospace and Planetary geometry algorithms."""
 
 import math
+import argparse
 from typing import Tuple
 
 try:
@@ -93,24 +94,65 @@ class AerospaceGeometry:
 
 
 def main():
-    print("--- aerospace_geometry.py Demo ---")
-    geo = AerospaceGeometry()
+    parser = argparse.ArgumentParser(
+        description="Aerospace and Planetary geometry algorithms."
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
 
-    # Test wgs84_to_ecef
-    p = geo.wgs84_to_ecef(0, 0, 0)
-    print(f"WGS84(0,0,0) to ECEF: ({p.x}, {p.y}, {p.z})")
+    # WGS84 to ECEF
+    wgs_parser = subparsers.add_parser(
+        "wgs84-to-ecef", help="Converts Geodetic coordinates to ECEF"
+    )
+    wgs_parser.add_argument("--lat", type=float, required=True, help="Latitude in degrees")
+    wgs_parser.add_argument("--lon", type=float, required=True, help="Longitude in degrees")
+    wgs_parser.add_argument("--alt", type=float, default=0.0, help="Altitude in meters")
 
-    # Test generate_ellipsoid_mesh
-    mesh = geo.generate_ellipsoid_mesh(10, 10, 10, resolution=5)
-    print(
-        f"Generated ellipsoid mesh with {len(mesh.vertices)} vertices and {len(mesh.faces)} faces."
+    # Generate Ellipsoid Mesh
+    ellipsoid_parser = subparsers.add_parser(
+        "generate-ellipsoid", help="Generates a 3D mesh of an ellipsoid"
+    )
+    ellipsoid_parser.add_argument("-a", type=float, required=True, help="Semi-axis a")
+    ellipsoid_parser.add_argument("-b", type=float, required=True, help="Semi-axis b")
+    ellipsoid_parser.add_argument("-c", type=float, required=True, help="Semi-axis c")
+    ellipsoid_parser.add_argument(
+        "--resolution", type=int, default=30, help="Mesh resolution"
     )
 
-    # Test rotation_stability
-    stability = geo.rotation_stability(((1, 0, 0), (0, 2, 0), (0, 0, 3)))
-    print(f"Rotation stability: {stability}")
+    # Rotation Stability
+    stability_parser = subparsers.add_parser(
+        "rotation-stability", help="Analyzes the rotational stability"
+    )
+    stability_parser.add_argument(
+        "--inertia",
+        type=float,
+        nargs=9,
+        required=True,
+        metavar=("IXX", "IXY", "IXZ", "IYX", "IYY", "IYZ", "IZX", "IZY", "IZZ"),
+        help="Inertia tensor components (9 values)",
+    )
 
-    print("Demo completed successfully.")
+    args = parser.parse_args()
+
+    if args.command == "wgs84-to-ecef":
+        p = AerospaceGeometry.wgs84_to_ecef(args.lat, args.lon, args.alt)
+        print(f"ECEF Point: ({p.x}, {p.y}, {p.z})")
+    elif args.command == "generate-ellipsoid":
+        mesh = AerospaceGeometry.generate_ellipsoid_mesh(
+            args.a, args.b, args.c, args.resolution
+        )
+        print(
+            f"Generated ellipsoid mesh with {len(mesh.vertices)} vertices and {len(mesh.faces)} faces."
+        )
+    elif args.command == "rotation-stability":
+        tensor = (
+            tuple(args.inertia[0:3]),
+            tuple(args.inertia[3:6]),
+            tuple(args.inertia[6:9]),
+        )
+        stability = AerospaceGeometry.rotation_stability(tensor)
+        print(stability)
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

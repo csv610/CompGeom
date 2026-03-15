@@ -1,5 +1,6 @@
 """Robotic Object Extraction from narrow gaps using Configuration Space (C-Space)."""
 
+import argparse
 import math
 from typing import List, Tuple
 
@@ -82,9 +83,22 @@ class CSpaceExtraction:
 
 
 def main():
-    print("--- robotics_extraction.py Demo ---")
+    parser = argparse.ArgumentParser(description="Robotic Object Extraction from narrow gaps using Configuration Space (C-Space).")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # 1. Mock a "Thin Gap" (two parallel walls)
+    # Path Clear
+    path_parser = subparsers.add_parser("path-clear", help="Check if a path is clear in C-Space")
+    path_parser.add_argument("--start", type=float, nargs=3, default=[0, 0, 0], help="Start position (x y z)")
+    path_parser.add_argument("--end", type=float, nargs=3, default=[10, 0, 0], help="End position (x y z)")
+    path_parser.add_argument("--radius", type=float, required=True, help="Object radius")
+
+    # Passability
+    passability_parser = subparsers.add_parser("passability", help="Estimate clearance for an object in a gap")
+    passability_parser.add_argument("--radius", type=float, required=True, help="Object radius")
+
+    args = parser.parse_args()
+
+    # Mock Gap Mesh
     class MockPoint:
         def __init__(self, x, y, z):
             self.x, self.y, self.z = x, y, z
@@ -92,39 +106,24 @@ def main():
     class MockMesh:
         def vertices(self):
             return [
-                MockPoint(0, -2, 0),
-                MockPoint(10, -2, 0),  # Wall 1
-                MockPoint(0, 2, 0),
-                MockPoint(10, 2, 0),  # Wall 2
+                MockPoint(0, -2, 0), MockPoint(10, -2, 0),  # Wall 1
+                MockPoint(0, 2, 0), MockPoint(10, 2, 0),    # Wall 2
             ]
 
     gap_mesh = MockMesh()
+    tools = CSpaceExtraction()
 
-    # 2. Extraction Analysis
-    # Gap width is 4 units (-2 to 2).
-    radius_small = 1.0  # Width 2.0 -> should pass
-    radius_large = 2.5  # Width 5.0 -> should be trapped
+    if args.command == "path-clear":
+        start = Point3D(args.start[0], args.start[1], args.start[2])
+        end = Point3D(args.end[0], args.end[1], args.end[2])
+        is_clear = tools.is_path_clear(start, end, gap_mesh, args.radius)
+        print(f"Path Clear (Radius {args.radius}): {'YES' if is_clear else 'NO (COLLISION)'}")
 
-    print(f"Gap Physical Width: 4.0 units")
-
-    clearance_s = CSpaceExtraction.calculate_passability(gap_mesh, radius_small)
-    print(f"Object Radius {radius_small}: C-Space Clearance = {clearance_s:.1f} (PASS)")
-
-    clearance_l = CSpaceExtraction.calculate_passability(gap_mesh, radius_large)
-    print(
-        f"Object Radius {radius_large}: C-Space Clearance = {clearance_l:.1f} (TRAPPED)"
-    )
-
-    # 3. Path Validation
-    start = Point3D(0, 0, 0)
-    end = Point3D(10, 0, 0)
-    can_extract = CSpaceExtraction.is_path_clear(start, end, gap_mesh, radius_small)
-    print(
-        f"\nPath from {start.x},{start.y} to {end.x},{end.y} for Radius {radius_small}:"
-    )
-    print(f"Extraction Possible: {can_extract}")
-
-    print("Demo completed successfully.")
+    elif args.command == "passability":
+        clearance = tools.calculate_passability(gap_mesh, args.radius)
+        print(f"C-Space Clearance (Radius {args.radius}): {clearance:.1f} ({'PASS' if clearance >= 0 else 'TRAPPED'})")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

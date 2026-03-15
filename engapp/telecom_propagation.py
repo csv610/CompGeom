@@ -1,5 +1,6 @@
 """5G Network Planning and Telecommunications Propagation algorithms."""
 
+import argparse
 import math
 from typing import Tuple
 
@@ -110,33 +111,46 @@ class TelecomPropagation:
 
 
 def main():
-    print("--- telecom_propagation.py Demo ---")
-    tx = Point3D(0, 0, 10)
-    rx = Point3D(100, 0, 10)
+    parser = argparse.ArgumentParser(description="5G Network Planning and Telecommunications Propagation algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
 
-    # Mock a wall between them
-    class MockPoint:
-        def __init__(self, x, y, z):
-            self.x, self.y, self.z = x, y, z
+    # check_line_of_sight subparser
+    los_parser = subparsers.add_parser("los", help="Checks clear Line-of-Sight between transmitter and receiver")
+    los_parser.add_argument("--tx", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Transmitter position")
+    los_parser.add_argument("--rx", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Receiver position")
 
-    class MockMesh:
-        def vertices(self):
-            return [MockPoint(50, -10, 0), MockPoint(50, 10, 0), MockPoint(50, 0, 20)]
+    # fresnel_zone_radius subparser
+    fresnel_parser = subparsers.add_parser("fresnel", help="Calculates 1st Fresnel zone radius")
+    fresnel_parser.add_argument("--d1", type=float, required=True, help="Distance from transmitter to point")
+    fresnel_parser.add_argument("--d2", type=float, required=True, help="Distance from point to receiver")
+    fresnel_parser.add_argument("--frequency", type=float, required=True, help="Signal frequency in Hertz")
 
-        def faces(self):
-            return [(0, 1, 2)]
+    args = parser.parse_args()
+    tools = TelecomPropagation()
 
-    mesh = MockMesh()
+    if args.command == "los":
+        # Mock a wall for the demo/default
+        class MockPoint:
+            def __init__(self, x, y, z):
+                self.x, self.y, self.z = x, y, z
 
-    los = TelecomPropagation.check_line_of_sight(mesh, tx, rx)
-    print(f"Transmitter at {tx.x}, {tx.y}, getattr(tx, 'z', 0.0)")
-    print(f"Receiver at {rx.x}, {rx.y}, getattr(rx, 'z', 0.0)")
-    print(f"Line of Sight Clear: {los}")
+        class MockMesh:
+            def vertices(self):
+                return [MockPoint(50, -10, 0), MockPoint(50, 10, 0), MockPoint(50, 0, 20)]
 
-    freq = 5e9  # 5 GHz (5G band)
-    r = TelecomPropagation.fresnel_zone_radius(50, 50, freq)
-    print(f"1st Fresnel Zone Radius at midpoint (50m): {r:.2f} meters")
-    print("Demo completed successfully.")
+            def faces(self):
+                return [(0, 1, 2)]
+
+        mesh = MockMesh()
+        tx = Point3D(args.tx[0], args.tx[1], args.tx[2])
+        rx = Point3D(args.rx[0], args.rx[1], args.rx[2])
+        los = tools.check_line_of_sight(mesh, tx, rx)
+        print(f"Line of Sight Clear: {los}")
+    elif args.command == "fresnel":
+        r = tools.fresnel_zone_radius(args.d1, args.d2, args.frequency)
+        print(f"1st Fresnel Zone Radius: {r:.2f} meters")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

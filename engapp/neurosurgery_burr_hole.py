@@ -1,5 +1,6 @@
 """Neurosurgery Burr Hole planning and trajectory analysis."""
 
+import argparse
 import math
 from typing import List, Tuple
 
@@ -42,12 +43,12 @@ class BurrHolePlanning:
             ax, ay, az = (
                 v1.x - v0.x,
                 v1.y - v0.y,
-                getattr(v1, "z", 0.0) - getattr(v0, "z", 0.0),
+                getattr(v1, "z", 0.0) - getattr(v1, "z", 0.0),
             )
             bx, by, bz = (
                 v2.x - v0.x,
                 v2.y - v0.y,
-                getattr(v2, "z", 0.0) - getattr(v0, "z", 0.0),
+                getattr(v2, "z", 0.0) - getattr(v2, "z", 0.0),
             )
 
             fnx = ay * bz - az * by
@@ -98,39 +99,52 @@ class BurrHolePlanning:
 
 
 def main():
-    print("--- neurosurgery_burr_hole.py Demo ---")
+    parser = argparse.ArgumentParser(description="Neurosurgery Burr Hole planning and trajectory analysis.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # 1. Mock Skull Mesh entry point
-    class MockPoint:
-        def __init__(self, x, y, z):
-            self.x, self.y, self.z = x, y, z
+    # Entry Point Normal
+    entry_parser = subparsers.add_parser("entry-point", help="Calculate surface normal at entry point")
+    entry_parser.add_argument("--index", type=int, default=0, help="Vertex index (default: 0)")
 
-    class MockMesh:
-        def vertices(self):
-            return [MockPoint(0, 0, 0), MockPoint(1, 0, 0.1), MockPoint(0, 1, 0.1)]
+    # Validate Drill Angle
+    validate_parser = subparsers.add_parser("validate-angle", help="Validate drill trajectory angle")
+    validate_parser.add_argument("--normal", type=float, nargs=3, required=True, help="Surface normal (x y z)")
+    validate_parser.add_argument("--direction", type=float, nargs=3, required=True, help="Drill direction (x y z)")
+    validate_parser.add_argument("--max-angle", type=float, default=15.0, help="Max allowed angle in degrees")
 
-        def faces(self):
-            return [(0, 1, 2)]
+    # Estimate Bone Volume
+    volume_parser = subparsers.add_parser("bone-volume", help="Estimate volume of bone removed")
+    volume_parser.add_argument("--radius", type=float, required=True, help="Burr hole radius")
+    volume_parser.add_argument("--thickness", type=float, required=True, help="Skull thickness")
 
-    skull = MockMesh()
+    args = parser.parse_args()
 
-    # 2. Surface Analysis
-    normal = BurrHolePlanning.entry_point_normal(skull, 0)
-    print(
-        f"Calculated Surface Normal at entry: ({normal[0]:.3f}, {normal[1]:.3f}, {normal[2]:.3f})"
-    )
+    if args.command == "entry-point":
+        # Mock Skull Mesh
+        class MockPoint:
+            def __init__(self, x, y, z):
+                self.x, self.y, self.z = x, y, z
 
-    # 3. Drill Path Validation
-    planned_dir = (0, 0, -1)  # Drilling straight down
-    is_valid = BurrHolePlanning.validate_drill_angle(normal, planned_dir)
-    print(f"Planned Drill Direction: {planned_dir}")
-    print(f"Angle Validation (Max 15 deg): {'PASS' if is_valid else 'FAIL'}")
+        class MockMesh:
+            def vertices(self):
+                return [MockPoint(0, 0, 0), MockPoint(1, 0, 0.1), MockPoint(0, 1, 0.1)]
 
-    # 4. Metric Estimation
-    vol = BurrHolePlanning.estimate_bone_volume(radius=7.0, skull_thickness=6.5)
-    print(f"Estimated Bone Removal Volume (14mm burr): {vol:.1f} mm^3")
+            def faces(self):
+                return [(0, 1, 2)]
 
-    print("Demo completed successfully.")
+        skull = MockMesh()
+        normal = BurrHolePlanning.entry_point_normal(skull, args.index)
+        print(f"Surface Normal at vertex {args.index}: ({normal[0]:.3f}, {normal[1]:.3f}, {normal[2]:.3f})")
+
+    elif args.command == "validate-angle":
+        is_valid = BurrHolePlanning.validate_drill_angle(tuple(args.normal), tuple(args.direction), args.max_angle)
+        print(f"Angle Validation: {'PASS' if is_valid else 'FAIL'}")
+
+    elif args.command == "bone-volume":
+        vol = BurrHolePlanning.estimate_bone_volume(args.radius, args.thickness)
+        print(f"Estimated Bone Removal Volume: {vol:.2f} mm^3")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

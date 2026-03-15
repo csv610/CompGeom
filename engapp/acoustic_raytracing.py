@@ -1,5 +1,6 @@
 """Acoustic Room Treatment and Ray Tracing algorithms."""
 
+import argparse
 import math
 from typing import List, Tuple
 
@@ -69,28 +70,62 @@ class AcousticRaytracing:
 
 
 def main():
-    print("--- acoustic_raytracing.py Demo ---")
-
-    # RT60 Estimation
-    room_vol = 200.0  # m^3
-    room_area = 210.0  # m^2
-    absorption = 0.15  # typical for concrete/drywall
-
-    rt60 = AcousticRaytracing.estimate_rt60(room_vol, room_area, absorption)
-    print(f"Room Volume: {room_vol} m^3, Surface Area: {room_area} m^2")
-    print(f"Average Absorption: {absorption}")
-    print(f"Estimated RT60 (Reverberation Time): {rt60:.2f} seconds")
-
-    # Ray reflection
-    incident = (0.707, -0.707, 0.0)  # coming in at 45 degrees
-    normal = (0.0, 1.0, 0.0)  # wall facing +Y
-    reflected = AcousticRaytracing.reflect_ray(incident, normal)
-    print(f"\nIncident Ray: {incident}")
-    print(f"Wall Normal: {normal}")
-    print(
-        f"Reflected Ray: ({reflected[0]:.3f}, {reflected[1]:.3f}, {reflected[2]:.3f})"
+    parser = argparse.ArgumentParser(
+        description="Acoustic Raytracing and Room Analysis Utilities"
     )
-    print("Demo completed successfully.")
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
+
+    # RT60 Tool
+    rt60_parser = subparsers.add_parser("rt60", help="Estimate Reverberation Time (RT60)")
+    rt60_parser.add_argument("--volume", type=float, required=True, help="Room volume in m^3")
+    rt60_parser.add_argument("--area", type=float, required=True, help="Total surface area in m^2")
+    rt60_parser.add_argument(
+        "--absorption",
+        type=float,
+        required=True,
+        help="Average absorption coefficient (0.0 to 1.0)",
+    )
+
+    # Reflect Tool
+    reflect_parser = subparsers.add_parser("reflect", help="Calculate specular reflection")
+    reflect_parser.add_argument(
+        "--incident",
+        type=float,
+        nargs=3,
+        required=True,
+        metavar=("X", "Y", "Z"),
+        help="Incident ray direction",
+    )
+    reflect_parser.add_argument(
+        "--normal",
+        type=float,
+        nargs=3,
+        required=True,
+        metavar=("X", "Y", "Z"),
+        help="Surface normal",
+    )
+
+    # Fibonacci Tool
+    fib_parser = subparsers.add_parser("samples", help="Generate Fibonacci sphere samples")
+    fib_parser.add_argument(
+        "--count", type=int, default=100, help="Number of samples (default: 100)"
+    )
+
+    args = parser.parse_args()
+
+    if args.command == "rt60":
+        rt60 = AcousticRaytracing.estimate_rt60(args.volume, args.area, args.absorption)
+        print(f"Estimated RT60: {rt60:.3f} seconds")
+    elif args.command == "reflect":
+        reflected = AcousticRaytracing.reflect_ray(tuple(args.incident), tuple(args.normal))
+        print(f"Reflected Ray: ({reflected[0]:.4f}, {reflected[1]:.4f}, {reflected[2]:.4f})")
+    elif args.command == "samples":
+        points = AcousticRaytracing.fibonacci_sphere(args.count)
+        print(f"Generated {len(points)} points on a unit sphere:")
+        for p in points:
+            print(f"{p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

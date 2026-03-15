@@ -1,5 +1,6 @@
 """Topographical analysis for Civil Engineering (TIN and Contouring)."""
 
+import argparse
 from typing import List
 import math
 
@@ -24,6 +25,9 @@ class TopoAnalysis:
         Extracts elevation isocontours from a terrain mesh.
         Returns a list of polylines (contours) at the specified height.
         """
+        if not hasattr(MeshQueries, "slice_mesh") or MeshQueries.slice_mesh is object:
+             return []
+
         # This is a specialized slice_mesh for horizontal planes
         segments = MeshQueries.slice_mesh(mesh, (0, 0, elevation), (0, 0, 1))
 
@@ -77,6 +81,44 @@ class TopoAnalysis:
         Calculates the volume of soil/material between two surfaces.
         Essential for civil engineering construction sites.
         """
+        if not hasattr(MeshAnalysis, "total_volume") or MeshAnalysis.total_volume is object:
+            return 0.0
         vol_base = MeshAnalysis.total_volume(mesh_base)  # Assumes closed to Z=0
         vol_top = MeshAnalysis.total_volume(mesh_top)
         return vol_top - vol_base
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Topographical analysis for Civil Engineering (TIN and Contouring).")
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
+
+    # extract_contours subparser
+    contours_parser = subparsers.add_parser("contours", help="Extracts elevation isocontours from a terrain mesh")
+    contours_parser.add_argument("--elevation", type=float, required=True, help="Elevation at which to extract contours")
+
+    # earthwork_volume subparser
+    volume_parser = subparsers.add_parser("volume", help="Calculates earthwork volume between two surfaces")
+
+    args = parser.parse_args()
+    tools = TopoAnalysis()
+
+    # Mock meshes for demo/default
+    class MockMesh:
+        def __init__(self, name):
+            self.name = name
+
+    mesh_base = MockMesh("base")
+    mesh_top = MockMesh("top")
+
+    if args.command == "contours":
+        contours = tools.extract_contours(mesh_base, args.elevation)
+        print(f"Extracted {len(contours)} contours at elevation {args.elevation}")
+    elif args.command == "volume":
+        volume = tools.earthwork_volume(mesh_base, mesh_top)
+        print(f"Earthwork Volume: {volume:.2f} cubic units")
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

@@ -372,148 +372,104 @@ class AdditiveMfg:
 
 
 def main():
-    """Demonstrates the Additive Manufacturing algorithms."""
     parser = argparse.ArgumentParser(
-        description="Additive Manufacturing Algorithm Demo"
+        description="Additive Manufacturing (3D Printing) geometry algorithms."
     )
-    parser.add_argument("mesh_file", help="Path to the mesh file (e.g., model.stl)")
-    parser.add_argument(
-        "--threshold",
-        type=float,
-        default=45.0,
-        help="Threshold angle for overhang detection in degrees (default: 45.0)",
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
+
+    # Detect Overhangs
+    overhang_parser = subparsers.add_parser(
+        "detect-overhangs", help="Identifies faces that require support structures"
     )
-    parser.add_argument(
+    overhang_parser.add_argument("mesh_file", help="Path to the mesh file")
+    overhang_parser.add_argument(
+        "--threshold", type=float, default=45.0, help="Threshold angle in degrees"
+    )
+    overhang_parser.add_argument(
         "--gravity",
         type=float,
         nargs=3,
         default=[0.0, 0.0, -1.0],
-        metavar=("X", "Y", "Z"),
-        help="Gravity direction vector (default: 0 0 -1)",
+        help="Gravity direction vector",
     )
-    parser.add_argument(
-        "--layer-height",
-        type=float,
-        default=0.2,
-        help="Layer height for print time estimation (default: 0.2)",
+
+    # Estimate Print Time
+    time_parser = subparsers.add_parser(
+        "estimate-time", help="Rough estimate of 3D printing time"
     )
-    parser.add_argument(
-        "--speed",
-        type=float,
-        default=50.0,
-        help="Print speed for time estimation (default: 50.0)",
+    time_parser.add_argument("mesh_file", help="Path to the mesh file")
+    time_parser.add_argument("--layer-height", type=float, required=True)
+    time_parser.add_argument("--speed", type=float, required=True)
+
+    # Sample Quaternions
+    sample_parser = subparsers.add_parser(
+        "sample-quaternions", help="Samples unit quaternions uniformly"
     )
-    parser.add_argument(
-        "--optimize", action="store_true", help="Find the optimal rotation of the mesh."
+    sample_parser.add_argument("--num-samples", type=int, default=100)
+    sample_parser.add_argument("--seed", type=int, default=42)
+
+    # Find Optimal Rotation
+    opt_parser = subparsers.add_parser(
+        "optimal-rotation", help="Finds the optimal rotation of the mesh"
     )
-    parser.add_argument(
-        "--samples",
-        type=int,
-        default=100,
-        help="Number of quaternion samples for optimization (default: 100)",
+    opt_parser.add_argument("mesh_file", help="Path to the mesh file")
+    opt_parser.add_argument("--num-samples", type=int, default=100)
+    opt_parser.add_argument("--threshold", type=float, default=45.0)
+    opt_parser.add_argument(
+        "--gravity", type=float, nargs=3, default=[0.0, 0.0, -1.0]
     )
-    parser.add_argument(
-        "--min-thickness",
-        type=float,
-        help="Minimum wall thickness. If set, will identify and filter thin structures.",
+    opt_parser.add_argument("--alpha", type=float, default=0.0)
+
+    # Identify Thin Structures
+    thin_parser = subparsers.add_parser(
+        "thin-structures", help="Identifies faces that belong to thin walls"
     )
-    parser.add_argument(
-        "--out-mesh", type=str, help="Path to save the filtered printable mesh."
+    thin_parser.add_argument("mesh_file", help="Path to the mesh file")
+    thin_parser.add_argument("--min-thickness", type=float, required=True)
+
+    # Filter Printable Mesh
+    filter_parser = subparsers.add_parser(
+        "filter-mesh", help="Returns a new mesh with thin structures removed"
     )
-    parser.add_argument(
-        "--stable",
-        action="store_true",
-        help="Optimize for stability (bottom-heavy) instead of just support count.",
-    )
-    parser.add_argument(
-        "--alpha",
-        type=float,
-        default=0.0,
-        help="Weight for stability optimization (0.0 to 1.0). Default 0.0 (supports only).",
-    )
+    filter_parser.add_argument("mesh_file", help="Path to the mesh file")
+    filter_parser.add_argument("--min-thickness", type=float, required=True)
 
     args = parser.parse_args()
 
-    alpha = args.alpha
-    if args.stable and alpha == 0.0:
-        alpha = 1.0
+    if args.command in ["detect-overhangs", "estimate-time", "optimal-rotation", "thin-structures", "filter-mesh"]:
+        try:
+            mesh = TriangleMesh.from_file(args.mesh_file)
+        except Exception as e:
+            print(f"Error loading mesh: {e}")
+            return
 
-    print(f"Opening mesh file: {args.mesh_file}")
-
-    try:
-        # Load the actual mesh from the file
-        mesh = TriangleMesh.from_file(args.mesh_file)
-    except Exception as e:
-        print(f"Error loading mesh: {e}")
-        return
-
-    # Thin structure analysis
-    if args.min_thickness:
-        print(f"Analyzing wall thickness (min: {args.min_thickness})...")
-        thin_faces = AdditiveMfg.identify_thin_structures(mesh, args.min_thickness)
-        print(f"Number of thin faces identified: {len(thin_faces)}")
-
-        if args.out_mesh:
-            print(f"Filtering mesh and saving to {args.out_mesh}...")
-            AdditiveMfg.filter_printable_mesh(mesh, args.min_thickness)
-            print("Filtered mesh generated.")
-
-    if args.optimize:
-        print(f"Detecting initial overhangs for mesh: {args.mesh_file}...")
-        initial_overhangs, initial_area = AdditiveMfg.detect_overhangs(
-            mesh, threshold_angle_deg=args.threshold, gravity_dir=tuple(args.gravity)
+    if args.command == "detect-overhangs":
+        faces, area = AdditiveMfg.detect_overhangs(
+            mesh, args.threshold, tuple(args.gravity)
         )
-        print(f"Initial number of faces requiring support: {len(initial_overhangs)}")
-        print(f"Initial overhang area: {initial_area:.4f}")
-
-        print(
-            f"Finding optimal rotation using {args.samples} quaternion samples (alpha={alpha})..."
+        print(f"Overhang faces: {len(faces)}, Total area: {area:.4f}")
+    elif args.command == "estimate-time":
+        time = AdditiveMfg.estimate_print_time(mesh, args.layer_height, args.speed)
+        print(f"Estimated print time: {time:.4f} hours")
+    elif args.command == "sample-quaternions":
+        qs = AdditiveMfg.sample_quaternions(args.num_samples, args.seed)
+        for q in qs:
+            print(q)
+    elif args.command == "optimal-rotation":
+        q, area, stability = AdditiveMfg.find_optimal_rotation(
+            mesh, args.num_samples, args.threshold, tuple(args.gravity), args.alpha
         )
-        best_q, min_area, stability_ratio = AdditiveMfg.find_optimal_rotation(
-            mesh,
-            num_samples=args.samples,
-            threshold_angle_deg=args.threshold,
-            gravity_dir=tuple(args.gravity),
-            alpha=alpha,
-        )
-        print(f"Optimal rotation found (quaternion [w, x, y, z]): {best_q}")
-        print(f"Overhang area in this orientation: {min_area:.4f}")
-        print(f"Normalized stability score (0=bottom, 1=top): {stability_ratio:.4f}")
-
-        if alpha == 0:
-            reduction = initial_area - min_area
-            if reduction > 0:
-                print(
-                    f"Optimization reduced support area by {reduction:.4f} ({reduction/initial_area*100:.1f}%)"
-                )
-            else:
-                print(
-                    "Initial orientation is already optimal for supports among samples."
-                )
-        else:
-            print("Optimization completed for stability/combined objective.")
+        print(f"Best Quaternion: {q}")
+        print(f"Min Overhang Area: {area:.4f}")
+        print(f"Stability Score: {stability:.4f}")
+    elif args.command == "thin-structures":
+        faces = AdditiveMfg.identify_thin_structures(mesh, args.min_thickness)
+        print(f"Thin face indices: {faces}")
+    elif args.command == "filter-mesh":
+        new_mesh = AdditiveMfg.filter_printable_mesh(mesh, args.min_thickness)
+        print(f"Filtered mesh has {len(new_mesh.faces())} faces.")
     else:
-        # Overhang detection
-        print(
-            f"Detecting overhangs for mesh: {args.mesh_file} (threshold: {args.threshold} deg, gravity: {args.gravity})..."
-        )
-        overhangs, area = AdditiveMfg.detect_overhangs(
-            mesh, threshold_angle_deg=args.threshold, gravity_dir=tuple(args.gravity)
-        )
-        print(f"Number of faces requiring support: {len(overhangs)}")
-        print(f"Total overhang area: {area:.4f}")
-        if len(overhangs) > 0:
-            # Display a sample of overhang faces
-            print(f"Indices of first 10 faces requiring support: {overhangs[:10]}")
-
-    # Print time estimation
-    print(
-        f"Estimating print time (layer height: {args.layer_height}, speed: {args.speed})..."
-    )
-    est_time = AdditiveMfg.estimate_print_time(mesh, args.layer_height, args.speed)
-
-    print(f"Estimated 3D printing time for {args.mesh_file}: {est_time:.4f} hours")
-    print("Demo completed successfully.")
+        parser.print_help()
 
 
 if __name__ == "__main__":

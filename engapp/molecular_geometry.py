@@ -127,41 +127,50 @@ class MolecularGeometry:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="""Molecular geometry analysis tool.
-    
-Requirements from the user:
-1. Atomic Coordinates: Provide a list of x,y,z coordinates for each atom (e.g., --atoms "0,0,0 2,0,0").
-2. Atomic Radii: Provide a corresponding list of radii for each atom (e.g., --radii "1.0 1.0").
-3. (Optional) Probe Radius: The radius of the solvent probe (default: 1.4).
-4. (Optional) Min Pocket Depth: Threshold for pocket detection (default: 0.5).
-""",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+    parser = argparse.ArgumentParser(description="Molecular geometry algorithms for drug design.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    parser.add_argument(
-        "--atoms",
-        type=str,
-        required=True,
-        help="Space-separated x,y,z coordinates (e.g. '0,0,0 1,1,1')",
-    )
-    parser.add_argument(
-        "--radii",
-        type=str,
-        required=True,
-        help="Space-separated radii values (e.g. '1.5 1.5')",
-    )
-    parser.add_argument(
-        "--probe", type=float, default=1.4, help="Probe radius (default 1.4)"
-    )
-    parser.add_argument(
+    # Common arguments
+    def add_common_args(subparser):
+        subparser.add_argument(
+            "--atoms",
+            type=str,
+            required=True,
+            help="Space-separated x,y,z coordinates (e.g. '0,0,0 2,0,0')",
+        )
+        subparser.add_argument(
+            "--radii",
+            type=str,
+            required=True,
+            help="Space-separated radii values (e.g. '1.5 1.5')",
+        )
+        subparser.add_argument(
+            "--probe", type=float, default=1.4, help="Probe radius (default: 1.4)"
+        )
+
+    # Compute SAS
+    sas_parser = subparsers.add_parser("compute-sas", help="Compute Solvent Accessible Surface")
+    add_common_args(sas_parser)
+
+    # Molecular Volume
+    vol_parser = subparsers.add_parser("molecular-volume", help="Calculate molecular volume")
+    add_common_args(vol_parser)
+
+    # Detect Pockets
+    pocket_parser = subparsers.add_parser("detect-pockets", help="Identify binding pockets")
+    add_common_args(pocket_parser)
+    pocket_parser.add_argument(
         "--min-depth",
         type=float,
         default=0.5,
-        help="Minimum depth for pocket detection",
+        help="Minimum depth for pocket detection (default: 0.5)",
     )
 
     args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return
 
     # Process atoms
     try:
@@ -184,18 +193,21 @@ Requirements from the user:
         print(f"Mismatch: {len(atom_coords)} atoms but {len(radii)} radii provided.")
         sys.exit(1)
 
-    print(f"Analyzing molecule with {len(atom_coords)} atoms...")
-
     tools = MolecularGeometry()
     try:
-        sas_mesh = tools.compute_sas(atom_coords, radii, args.probe)
-        print(f"Computed SAS mesh with {len(sas_mesh.vertices)} vertices.")
+        if args.command == "compute-sas":
+            sas_mesh = tools.compute_sas(atom_coords, radii, args.probe)
+            print(f"Computed SAS mesh with {len(sas_mesh.vertices)} vertices.")
 
-        vol = tools.molecular_volume(sas_mesh)
-        print(f"Molecular volume: {vol}")
+        elif args.command == "molecular-volume":
+            sas_mesh = tools.compute_sas(atom_coords, radii, args.probe)
+            vol = tools.molecular_volume(sas_mesh)
+            print(f"Molecular volume: {vol:.4f}")
 
-        pockets = tools.detect_pockets(sas_mesh, args.min_depth)
-        print(f"Detected {len(pockets)} pockets.")
+        elif args.command == "detect-pockets":
+            sas_mesh = tools.compute_sas(atom_coords, radii, args.probe)
+            pockets = tools.detect_pockets(sas_mesh, args.min_depth)
+            print(f"Detected {len(pockets)} pockets.")
     except Exception as e:
         print(f"Analysis failed: {e}")
         sys.exit(1)

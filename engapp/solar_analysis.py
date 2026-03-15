@@ -1,5 +1,6 @@
 """Green Architecture and GIS geometry analysis."""
 
+import argparse
 from typing import List, Tuple, Optional
 import math
 
@@ -249,30 +250,62 @@ class SolarAnalysis:
 
 
 def main():
-    print("--- solar_analysis.py Demo ---")
+    parser = argparse.ArgumentParser(description="Green Architecture and GIS geometry analysis.")
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
+
+    # sun_position subparser
+    sun_parser = subparsers.add_parser("sun-position", help="Calculates the sun direction vector")
+    sun_parser.add_argument("--latitude", type=float, required=True)
+    sun_parser.add_argument("--day-of-year", type=int, required=True)
+    sun_parser.add_argument("--hour", type=float, required=True)
+
+    # sky_view_factor subparser
+    svf_parser = subparsers.add_parser("svf", help="Calculates Sky View Factor (SVF) at a specific point")
+    svf_parser.add_argument("--point", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"))
+    svf_parser.add_argument("--samples", type=int, default=100)
+    svf_parser.add_argument("--normal", type=float, nargs=3, default=[0.0, 0.0, 1.0], metavar=("X", "Y", "Z"))
+
+    # mesh_sky_view_factor subparser
+    mesh_svf_parser = subparsers.add_parser("mesh-svf", help="Calculates SVF for every face center of the mesh")
+    mesh_svf_parser.add_argument("--samples", type=int, default=64)
+
+    # incident_solar_radiation subparser
+    rad_parser = subparsers.add_parser("radiation", help="Calculates solar radiation for each face")
+    rad_parser.add_argument("--sun-dir", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"))
+    rad_parser.add_argument("--intensity-direct", type=float, default=1000.0)
+
+    # daily_cumulative_radiation subparser
+    daily_parser = subparsers.add_parser("daily-radiation", help="Simulates radiation over a whole day")
+    daily_parser.add_argument("--latitude", type=float, required=True)
+    daily_parser.add_argument("--day-of-year", type=int, required=True)
+    daily_parser.add_argument("--step-hours", type=float, default=1.0)
+
+    args = parser.parse_args()
+
+    # Default mesh for CLI tools
     mesh = TriangleMesh(
         vertices=[Point3D(0, 0, 0), Point3D(10, 0, 0), Point3D(0, 10, 0)],
         faces=[(0, 1, 2)],
     )
     tools = SolarAnalysis()
 
-    # 1. Sun position
-    sun_dir = tools.sun_position(latitude=45.0, day_of_year=172, hour=12.0)
-    print(f"Sun position at noon (Summer Solstice, 45N): {sun_dir}")
-
-    # 2. SVF
-    svf = tools.sky_view_factor(mesh, (3.33, 3.33, 0.01), samples=100)
-    print(f"Sky View Factor (Flat surface): {svf:.3f}")
-
-    # 3. Incident Radiation
-    radiation = tools.incident_solar_radiation(mesh, sun_dir)
-    print(f"Incident radiation (Direct+Diffuse): {radiation[0]:.2f} W/m^2")
-
-    # 4. Daily Cumulative
-    cumulative = tools.daily_cumulative_radiation(mesh, latitude=45.0, day_of_year=172)
-    print(f"Daily cumulative radiation: {cumulative[0]:.2f} Wh/m^2")
-
-    print("Demo completed successfully.")
+    if args.command == "sun-position":
+        sun_dir = tools.sun_position(args.latitude, args.day_of_year, args.hour)
+        print(f"Sun position: {sun_dir}")
+    elif args.command == "svf":
+        svf = tools.sky_view_factor(mesh, tuple(args.point), args.samples, tuple(args.normal))
+        print(f"Sky View Factor: {svf:.3f}")
+    elif args.command == "mesh-svf":
+        svf_values = tools.mesh_sky_view_factor(mesh, args.samples)
+        print(f"Mesh SVF values: {svf_values}")
+    elif args.command == "radiation":
+        radiation = tools.incident_solar_radiation(mesh, tuple(args.sun_dir), args.intensity_direct)
+        print(f"Incident radiation: {radiation} W/m^2")
+    elif args.command == "daily-radiation":
+        cumulative = tools.daily_cumulative_radiation(mesh, args.latitude, args.day_of_year, args.step_hours)
+        print(f"Daily cumulative radiation: {cumulative} Wh/m^2")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

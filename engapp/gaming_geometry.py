@@ -1,5 +1,6 @@
 """Video Game and Real-Time Graphics geometry algorithms."""
 
+import argparse
 from typing import Tuple
 
 try:
@@ -43,20 +44,52 @@ class GamingGeometry:
 
 
 def main():
-    print("--- gaming_geometry.py Demo ---")
-    game_geom = GamingGeometry()
+    parser = argparse.ArgumentParser(description="Video Game and Real-Time Graphics geometry algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    mock_mesh = TriangleMesh([Point3D(0, 0, 0)], [[0, 0, 0]])
-
-    navmesh = game_geom.generate_navmesh(mock_mesh)
-    print(f"Generated Navigation Mesh with {len(navmesh.faces)} walkable polygons.")
-
-    center, radius = game_geom.compute_bounding_sphere(mock_mesh)
-    print(
-        f"Bounding Sphere: Center({center.x}, {center.y}, {center.z}), Radius: {radius}"
+    # generate_navmesh
+    nav_parser = subparsers.add_parser(
+        "generate_navmesh",
+        help="Extracts walkable surfaces to generate a Navigation Mesh (NavMesh) for AI pathfinding.",
+    )
+    nav_parser.add_argument(
+        "--max_slope",
+        type=float,
+        default=45.0,
+        help="Maximum walkable slope in degrees (default: 45.0)",
+    )
+    nav_parser.add_argument(
+        "--agent_radius",
+        type=float,
+        default=0.5,
+        help="Radius of the agent (default: 0.5)",
     )
 
-    print("Demo completed successfully.")
+    # compute_bounding_sphere
+    sphere_parser = subparsers.add_parser(
+        "compute_bounding_sphere",
+        help="Computes a fast bounding sphere for frustum culling.",
+    )
+
+    args = parser.parse_args()
+
+    mock_mesh = TriangleMesh([Point3D(0, 0, 0)], [[0, 0, 0]])
+    game_geom = GamingGeometry()
+
+    if args.command == "generate_navmesh":
+        navmesh = game_geom.generate_navmesh(mock_mesh, args.max_slope, args.agent_radius)
+        print(f"Generated Navigation Mesh with {len(navmesh.faces)} walkable polygons.")
+    elif args.command == "compute_bounding_sphere":
+        center, radius = game_geom.compute_bounding_sphere(mock_mesh)
+        print(f"Bounding Sphere: Center({center.x}, {center.y}, {center.z}), Radius: {radius}")
+    else:
+        # Default behavior: run demo
+        print("--- gaming_geometry.py Demo ---")
+        navmesh = game_geom.generate_navmesh(mock_mesh)
+        print(f"Generated Navigation Mesh with {len(navmesh.faces)} walkable polygons.")
+        center, radius = game_geom.compute_bounding_sphere(mock_mesh)
+        print(f"Bounding Sphere: Center({center.x}, {center.y}, {center.z}), Radius: {radius}")
+        print("\nUse --help to see CLI options.")
 
 
 if __name__ == "__main__":

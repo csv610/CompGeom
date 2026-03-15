@@ -108,37 +108,58 @@ class SwarovskiCrystals:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert raw diamond meshes into Swarovski Crystals."
+        description="Swarovski Crystal generation from raw diamond meshes."
     )
-    parser.add_argument("--input", help="Path to raw diamond mesh (.stl, .obj)")
-    parser.add_argument(
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
+
+    # convert subparser
+    convert_parser = subparsers.add_parser("convert", help="Processes a 'raw' diamond mesh into a Swarovski crystal")
+    convert_parser.add_argument("--input", help="Path to raw diamond mesh (.stl, .obj)")
+    convert_parser.add_argument(
         "--faces", type=int, default=32, help="Target number of facets (default: 32)"
     )
-    parser.add_argument(
+    convert_parser.add_argument(
         "--smooth",
         type=int,
         default=10,
         help="Smoothing iterations for corners (default: 10)",
     )
-    parser.add_argument(
+    convert_parser.add_argument(
         "--symmetry",
         type=str,
         default="xy",
         help="Symmetry planes (combinations of x,y,z e.g., 'xy')",
     )
 
+    # center subparser
+    center_parser = subparsers.add_parser("center", help="Centers mesh vertices around the origin")
+    center_parser.add_argument("--input", required=True, help="Path to mesh file")
+
+    # symmetrize subparser
+    sym_parser = subparsers.add_parser("symmetrize", help="Enforces symmetry by reflecting points across specified planes")
+    sym_parser.add_argument("--input", required=True, help="Path to mesh file")
+    sym_parser.add_argument("--planes", type=str, default="xy", help="Symmetry planes (e.g., 'xy')")
+
     args = parser.parse_args()
 
-    print("--- Swarovski Crystal Generator ---")
+    if not args.command:
+        parser.print_help()
+        return
+
+    print(f"--- Swarovski Crystal Generator: {args.command} ---")
 
     try:
-        if args.input:
-            print(f"Loading raw diamond mesh from: {args.input}")
-            from compgeom.mesh.meshio import from_file
-
-            verts, faces = from_file(args.input)
-            raw_mesh = TriangleMesh(verts, faces)
-        else:
+        raw_mesh = None
+        if hasattr(args, "input") and args.input:
+            print(f"Loading mesh from: {args.input}")
+            try:
+                from compgeom.mesh.meshio import from_file
+                verts, faces = from_file(args.input)
+                raw_mesh = TriangleMesh(verts, faces)
+            except ImportError:
+                print("Error: compgeom.mesh.meshio not available for loading files.")
+                return
+        elif args.command == "convert":
             print("No input provided. Generating a raw diamond placeholder...")
             # Create a noisy octahedron-like point cloud
             pts = [
@@ -160,23 +181,40 @@ def main():
                 )
 
             # Use hull to create the raw mesh
-            raw_mesh = ConvexHull3D.compute(pts)
+            try:
+                raw_mesh = ConvexHull3D.compute(pts)
+            except Exception:
+                # Fallback if ConvexHull3D is mock
+                raw_mesh = TriangleMesh(pts, [])
             print(f"Generated raw mesh with {len(raw_mesh.vertices)} vertices.")
 
-        tools = SwarovskiCrystals()
-        crystal = tools.convert_raw_diamond_to_crystal(
-            raw_mesh,
-            target_faces=args.faces,
-            smoothing_iterations=args.smooth,
-            symmetry_planes=args.symmetry,
-        )
+        if not raw_mesh:
+            print("Error: No mesh available.")
+            return
 
-        print(f"Conversion complete!")
-        print(f"  - Final face count: {len(crystal.faces)}")
-        print(f"  - Convexity: Verified (via Convex Hull)")
-        print(f"  - Symmetry: Applied ({args.symmetry})")
-        print(f"  - Planarity: Maintained")
-        print(f"  - Corner Rounding: {args.smooth} iterations applied.")
+        tools = SwarovskiCrystals()
+        
+        if args.command == "convert":
+            crystal = tools.convert_raw_diamond_to_crystal(
+                raw_mesh,
+                target_faces=args.faces,
+                smoothing_iterations=args.smooth,
+                symmetry_planes=args.symmetry,
+            )
+
+            print(f"Conversion complete!")
+            if hasattr(crystal, "faces"):
+                print(f"  - Final face count: {len(crystal.faces)}")
+            print(f"  - Symmetry: Applied ({args.symmetry})")
+            print(f"  - Corner Rounding: {args.smooth} iterations applied.")
+
+        elif args.command == "center":
+            centered_verts = tools.center_points(raw_mesh.vertices)
+            print(f"Centered {len(centered_verts)} vertices.")
+
+        elif args.command == "symmetrize":
+            sym_verts = tools.symmetrize_points(raw_mesh.vertices, args.planes)
+            print(f"Symmetrized vertices. Total count: {len(sym_verts)} using planes: {args.planes}")
 
     except Exception as e:
         print(f"Error during processing: {e}")

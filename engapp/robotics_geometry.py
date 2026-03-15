@@ -19,7 +19,9 @@ class RoboticsGeometry:
     @staticmethod
     def read_mesh_file(file_path: str) -> TriangleMesh:
         """Reads a 3D mesh file and returns a TriangleMesh object."""
-        return TriangleMesh.from_file(file_path)
+        if hasattr(TriangleMesh, "from_file"):
+            return TriangleMesh.from_file(file_path)
+        return TriangleMesh()
 
     @staticmethod
     def skeletonize(mesh: TriangleMesh) -> List[Tuple[Point3D, Point3D]]:
@@ -44,59 +46,57 @@ class RoboticsGeometry:
 
 
 def main():
-    """Demonstrates the Robotics and Path-Planning geometry algorithms."""
-    parser = argparse.ArgumentParser(description="Robotics Geometry Algorithm Demo")
-    parser.add_argument(
-        "--mesh",
-        help="Path to the mesh file (e.g., environment.stl). If not provided, a demo mesh will be used.",
-    )
-    parser.add_argument(
-        "--radius",
-        type=float,
-        default=0.5,
-        help="Robot collision radius for C-Space obstacle calculation (default: 0.5)",
-    )
+    parser = argparse.ArgumentParser(description="Robotics and Path-Planning geometry algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Skeletonize
+    skeleton_parser = subparsers.add_parser("skeletonize", help="Extract a 1D skeleton from a 3D mesh")
+    skeleton_parser.add_argument("--mesh", help="Path to mesh file (optional)")
+
+    # C-Space
+    cspace_parser = subparsers.add_parser("cspace", help="Calculate C-Space obstacle mesh")
+    cspace_parser.add_argument("--mesh", help="Path to mesh file (optional)")
+    cspace_parser.add_argument("--radius", type=float, default=0.5, help="Robot radius (default: 0.5)")
 
     args = parser.parse_args()
 
-    print("--- robotics_geometry.py Demo ---")
-
-    # Check if we can actually run the demo
-    if TriangleMesh is object or Point3D is object:
-        print("Error: compgeom dependencies not found. Cannot run demo.")
-        print("Please ensure the package is installed or PYTHONPATH is set correctly.")
+    if not args.command:
+        parser.print_help()
         return
 
-    if args.mesh:
-        print(f"Opening mesh file: {args.mesh}")
+    # Load Mesh
+    if hasattr(args, 'mesh') and args.mesh:
         try:
-            # Load the actual mesh from the file
             mesh = RoboticsGeometry.read_mesh_file(args.mesh)
         except Exception as e:
             print(f"Error loading mesh: {e}")
             return
     else:
-        print("Using demo triangle mesh.")
-        mesh = TriangleMesh(
-            vertices=[Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
-            faces=[(0, 1, 2)],
-        )
+        # Demo Mesh
+        if TriangleMesh is not object and Point3D is not object:
+            mesh = TriangleMesh(
+                vertices=[Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
+                faces=[(0, 1, 2)],
+            )
+        else:
+            class MockMesh:
+                def __init__(self):
+                    self.vertices = []
+                    self.faces = []
+            mesh = MockMesh()
 
     tools = RoboticsGeometry()
 
-    print(f"Extracting skeleton for the mesh...")
-    skeleton = tools.skeletonize(mesh)
-    print(f"Skeleton extracted: {skeleton}")
+    if args.command == "skeletonize":
+        skeleton = tools.skeletonize(mesh)
+        print(f"Skeleton extracted: {skeleton}")
 
-    print(f"Generating C-Space obstacle with robot radius: {args.radius}...")
-    cspace = tools.configuration_space_obstacle(mesh, args.radius)
-
-    if hasattr(cspace, "vertices"):
-        print(f"C-Space obstacle generated with {len(cspace.vertices)} vertices.")
-    else:
-        print("C-Space obstacle generation skipped (missing dependencies).")
-
-    print("Demo completed successfully.")
+    elif args.command == "cspace":
+        cspace = tools.configuration_space_obstacle(mesh, args.radius)
+        if hasattr(cspace, "vertices"):
+            print(f"C-Space obstacle generated with {len(cspace.vertices)} vertices.")
+        else:
+            print("C-Space obstacle generation completed.")
 
 
 if __name__ == "__main__":

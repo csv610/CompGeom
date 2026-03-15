@@ -2,6 +2,7 @@
 
 import math
 import heapq
+import argparse
 from typing import List, Tuple, Set, Dict, Optional
 
 try:
@@ -114,45 +115,55 @@ class ChipWireRouter:
 
 
 def main():
-    print("--- chip_wire_routing.py Demo ---")
+    parser = argparse.ArgumentParser(
+        description="VLSI Chip Wire Routing and Rectilinear Pathfinding algorithms."
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
 
-    # 1. Setup Chip Grid (10x10 units, 3 Layers)
-    size = (10, 10, 3)
+    # Manhattan Distance
+    dist_parser = subparsers.add_parser("distance", help="Calculates Manhattan distance")
+    dist_parser.add_argument("--p1", type=int, nargs=3, required=True)
+    dist_parser.add_argument("--p2", type=int, nargs=3, required=True)
 
-    # 2. Add obstacles (e.g., pre-placed logic blocks)
-    # Block a rectangle in the middle of Layer 0
-    obs = set()
-    for x in range(3, 7):
-        for y in range(3, 7):
-            obs.add((x, y, 0))
+    # Find Rectilinear Path
+    path_parser = subparsers.add_parser("find-path", help="Finds the shortest rectilinear path")
+    path_parser.add_argument("--start", type=int, nargs=3, required=True)
+    path_parser.add_argument("--end", type=int, nargs=3, required=True)
+    path_parser.add_argument("--grid", type=int, nargs=3, required=True, help="Grid size X Y Z")
+    path_parser.add_argument("--obstacles", type=int, nargs="+", help="Obstacles as x1 y1 z1 x2 y2 z2...")
+    path_parser.add_argument("--via-cost", type=int, default=5)
 
-    print(f"Chip Grid: {size[0]}x{size[1]} with {size[2]} layers.")
-    print(f"Obstacle block placed at center of Layer 0.")
+    # Calculate Congestion
+    cong_parser = subparsers.add_parser("congestion", help="Analyzes the routing density")
+    cong_parser.add_argument("--grid", type=int, nargs=3, required=True)
+    cong_parser.add_argument("--nets", type=int, nargs="+", help="Nets as net1_x1 net1_y1 net1_z1 net1_x2... ; separator needed?")
+    # Simple net input for CLI: x1 y1 z1 x2 y2 z2 | x3 y3 z3 x4 y4 z4 ...
+    # But argparse doesn't handle nested lists easily. Let's simplify: one net at a time or multiple points for one net.
+    cong_parser.add_argument("--net", type=int, nargs="+", help="Points for one net: x1 y1 z1 x2 y2 z2...")
 
-    # 3. Route a wire from (0,0,0) to (9,9,0)
-    source = (0, 0, 0)
-    sink = (9, 9, 0)
+    args = parser.parse_args()
 
-    print(f"\nRouting net from {source} to {sink}...")
-    path = ChipWireRouter.find_rectilinear_path(source, sink, size, obs)
-
-    if path:
-        print(f"Path found! Length: {len(path)} segments.")
-        # Check if it used Vias (Layer changes)
-        layers_used = set(p[2] for p in path)
-        print(f"Layers utilized: {list(layers_used)}")
-        if len(layers_used) > 1:
-            print("Router successfully used Vias to bypass obstacles.")
+    if args.command == "distance":
+        d = ChipWireRouter.manhattan_distance(tuple(args.p1), tuple(args.p2))
+        print(f"Manhattan distance: {d}")
+    elif args.command == "find-path":
+        obs = set()
+        if args.obstacles:
+            for i in range(0, len(args.obstacles), 3):
+                obs.add((args.obstacles[i], args.obstacles[i+1], args.obstacles[i+2]))
+        path = ChipWireRouter.find_rectilinear_path(
+            tuple(args.start), tuple(args.end), tuple(args.grid), obs, args.via_cost
+        )
+        print(f"Path: {path}")
+    elif args.command == "congestion":
+        net = []
+        if args.net:
+            for i in range(0, len(args.net), 3):
+                net.append((args.net[i], args.net[i+1], args.net[i+2]))
+        cong = ChipWireRouter.calculate_wire_congestion([net], tuple(args.grid))
+        print(f"Congestion map: {cong}")
     else:
-        print("No valid path found.")
-
-    # 4. Congestion Analysis
-    if path:
-        cong = ChipWireRouter.calculate_wire_congestion([path], size)
-        max_c = max(cong.values())
-        print(f"\nPeak Routing Congestion: {max_c:.1f}%")
-
-    print("\nDemo completed successfully.")
+        parser.print_help()
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 """Smart City Visibility and Urban Illumination algorithms."""
 
+import argparse
 import math
 from typing import List, Tuple
 
@@ -121,7 +122,19 @@ class SmartCityVisibility:
 
 
 def main():
-    print("--- smart_city_visibility.py Demo ---")
+    parser = argparse.ArgumentParser(description="Smart City Visibility and Urban Illumination algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
+
+    # is_visible subparser
+    visible_parser = subparsers.add_parser("is-visible", help="Checks if a target point is visible from an observer position")
+    visible_parser.add_argument("--observer", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Observer position")
+    visible_parser.add_argument("--target", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Target position")
+
+    # illumination subparser
+    illum_parser = subparsers.add_parser("illumination", help="Calculates illumination score from a light source")
+    illum_parser.add_argument("--light-pos", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"), help="Light source position")
+
+    args = parser.parse_args()
 
     # 1. Mock a simple city block (a "building" box)
     class MockPoint:
@@ -152,37 +165,25 @@ def main():
 
     city_mesh = MockMesh()
 
-    # 2. Define Streetlight candidates
-    light_a = (0, 5, 4)  # West of building
-    light_b = (5, 5, 10)  # Directly above building
-
-    # 3. Define target sample points on the ground
-    ground_points = []
-    for x in range(0, 11, 2):
-        for y in range(0, 11, 2):
-            ground_points.append((x, y, 0.0))
-
-    print(f"Analyzing illumination from {len(ground_points)} ground points...")
-
-    score_a = SmartCityVisibility.calculate_illumination_score(
-        city_mesh, light_a, ground_points
-    )
-    score_b = SmartCityVisibility.calculate_illumination_score(
-        city_mesh, light_b, ground_points
-    )
-
-    print(f"\nStreetlight A (Side): {score_a:.1f}% coverage")
-    print(f"Streetlight B (High Center): {score_b:.1f}% coverage")
-
-    # Check LoS
-    p_behind_building = (10, 5, 0)
-    visible = SmartCityVisibility.is_visible(city_mesh, light_a, p_behind_building)
-    print(
-        f"\nPoint {p_behind_building} visible from Light A: {visible} (Shadow expected)"
-    )
-
-    print("\nDemo completed successfully.")
+    if args.command == "is-visible":
+        visible = SmartCityVisibility.is_visible(city_mesh, tuple(args.observer), tuple(args.target))
+        print(f"Target {args.target} is visible from {args.observer}: {visible}")
+    elif args.command == "illumination":
+        # Define target sample points on the ground for the demo
+        ground_points = []
+        for x in range(0, 11, 2):
+            for y in range(0, 11, 2):
+                ground_points.append((x, y, 0.0))
+        
+        score = SmartCityVisibility.calculate_illumination_score(city_mesh, tuple(args.light_pos), ground_points)
+        print(f"Illumination score for light at {args.light_pos}: {score:.1f}% coverage")
+    else:
+        # Default demo if no command provided (though subparsers usually require one if configured that way)
+        # However, argparse doesn't require a subparser by default unless you set required=True (Python 3.7+)
+        # We can just print help.
+        parser.print_help()
 
 
 if __name__ == "__main__":
     main()
+

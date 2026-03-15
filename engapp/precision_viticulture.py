@@ -1,5 +1,6 @@
 """Precision Viticulture and Drone Flight Planning algorithms."""
 
+import argparse
 import math
 from typing import List, Tuple
 
@@ -112,45 +113,64 @@ class PrecisionViticulture:
 
 
 def main():
-    print("--- precision_viticulture.py Demo ---")
+    parser = argparse.ArgumentParser(description="Precision Viticulture and Drone Flight Planning algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # 1. Mock a Sloped Vineyard Terrain
-    class MockPoint:
-        def __init__(self, x, y, z):
-            self.x, self.y, self.z = x, y, z
+    # Path Planning
+    path_parser = subparsers.add_parser("path-planning", help="Calculate terrain-following flight path")
+    path_parser.add_argument("--points", type=str, help="Space-separated x,y coordinates (e.g. '25,25 50,50')")
+    path_parser.add_argument("--altitude", type=float, default=30.0, help="Flight altitude (default: 30.0)")
 
-    class MockMesh:
-        def __init__(self):
-            # A 100x100m plot with a 10m rise in Z
-            self.vertices = [
-                MockPoint(0, 0, 0),
-                MockPoint(100, 0, 0),
-                MockPoint(100, 100, 10),
-                MockPoint(0, 100, 10),
-            ]
-            self.faces = [(0, 1, 2), (0, 2, 3)]
+    # Camera Footprint
+    camera_parser = subparsers.add_parser("camera-footprint", help="Calculate camera visibility area")
+    camera_parser.add_argument("--pos", type=float, nargs=3, required=True, help="Drone position (x y z)")
+    camera_parser.add_argument("--fov", type=float, default=60.0, help="Camera FOV in degrees (default: 60.0)")
 
-    vineyard = MockMesh()
+    # Vine Density
+    density_parser = subparsers.add_parser("vine-density", help="Estimate potential vine density")
+    density_parser.add_argument("--area", type=float, required=True, help="Surface area in m^2")
 
-    # 2. Path Planning (Maintain 30m altitude)
-    points_2d = [(25, 25), (50, 50), (75, 75)]
-    altitude = 30.0
+    args = parser.parse_args()
 
-    print(f"Generating terrain-following flight path at {altitude}m altitude...")
-    path = PrecisionViticulture.calculate_terrain_following_path(
-        vineyard, points_2d, altitude
-    )
+    tools = PrecisionViticulture()
 
-    for i, p in enumerate(path):
-        print(f" - Waypoint {i}: ({p.x}, {p.y}, {p.z:.2f})")
+    if args.command == "path-planning":
+        # Mock Terrain
+        class MockPoint:
+            def __init__(self, x, y, z):
+                self.x, self.y, self.z = x, y, z
 
-    # 3. Camera Analysis
-    fov = 60.0  # Wide angle camera
-    area = PrecisionViticulture.camera_footprint_area(path[1], fov)
-    print(f"\nCamera FOV: {fov} degrees")
-    print(f"Ground Coverage Area at 30m: {area:.2f} m^2")
+        class MockMesh:
+            def __init__(self):
+                self.vertices = [MockPoint(0, 0, 0), MockPoint(100, 0, 0), MockPoint(100, 100, 10), MockPoint(0, 100, 10)]
+                self.faces = [(0, 1, 2), (0, 2, 3)]
 
-    print("\nDemo completed successfully.")
+        vineyard = MockMesh()
+        
+        if args.points:
+            points_2d = [tuple(map(float, p.split(','))) for p in args.points.split()]
+        else:
+            points_2d = [(25, 25), (50, 50), (75, 75)]
+            print("Using default survey points.")
+
+        path = tools.calculate_terrain_following_path(vineyard, points_2d, args.altitude)
+        print(f"Generated flight path at {args.altitude}m altitude:")
+        for i, p in enumerate(path):
+            print(f" - Waypoint {i}: ({p.x}, {p.y}, {p.z:.2f})")
+
+    elif args.command == "camera-footprint":
+        pos = Point3D(args.pos[0], args.pos[1], args.pos[2])
+        area = tools.camera_footprint_area(pos, args.fov)
+        print(f"Camera Visibility Area at altitude {pos.z}m: {area:.2f} m^2")
+
+    elif args.command == "vine-density":
+        # We need a mesh for the density method in the original code, but it only uses mesh_area.
+        # The method signature is estimate_vine_density(ground_mesh, mesh_area)
+        # We'll pass None for ground_mesh as it's not used in the simple implementation.
+        density = tools.estimate_vine_density(None, args.area)
+        print(f"Estimated potential vine count for {args.area} m^2: {int(density)}")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

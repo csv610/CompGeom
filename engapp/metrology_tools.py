@@ -1,5 +1,6 @@
 """Metrology and Quality Control algorithms."""
 
+import argparse
 import random
 import math
 from typing import List, Tuple
@@ -72,20 +73,51 @@ class MetrologyTools:
 
 
 def main():
-    print("--- metrology_tools.py Demo ---")
-    points = [
-        Point3D(0, 0, 0),
-        Point3D(1, 0, 0),
-        Point3D(0, 1, 0),
-        Point3D(0.5, 0.5, 0),
-        Point3D(2, 2, 10),  # Outlier
-    ]
-    tools = MetrologyTools()
-    plane, inliers = tools.fit_plane_ransac(points)
-    print(f"Fitted plane: {plane}")
-    print(f"Number of inliers: {len(inliers)}")
+    parser = argparse.ArgumentParser(description="Metrology and Quality Control algorithms.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    print("Demo completed successfully.")
+    # Fit Plane RANSAC
+    ransac_parser = subparsers.add_parser("fit-plane", help="Fits a plane to a point cloud using RANSAC")
+    ransac_parser.add_argument(
+        "--points",
+        type=str,
+        help="Space-separated x,y,z coordinates (e.g. '0,0,0 1,1,1'). Defaults to demo points.",
+    )
+    ransac_parser.add_argument(
+        "--iterations", type=int, default=100, help="Number of iterations (default: 100)"
+    )
+    ransac_parser.add_argument(
+        "--threshold", type=float, default=0.01, help="Inlier threshold (default: 0.01)"
+    )
+
+    args = parser.parse_args()
+
+    if args.command == "fit-plane":
+        if args.points:
+            try:
+                points = []
+                for p in args.points.split():
+                    x, y, z = map(float, p.split(","))
+                    points.append(Point3D(x, y, z))
+            except Exception:
+                print("Error: Points should be in 'x,y,z x,y,z ...' format.")
+                return
+        else:
+            print("Using default demo points.")
+            points = [
+                Point3D(0, 0, 0),
+                Point3D(1, 0, 0),
+                Point3D(0, 1, 0),
+                Point3D(0.5, 0.5, 0),
+                Point3D(2, 2, 10),
+            ]
+
+        tools = MetrologyTools()
+        plane, inliers = tools.fit_plane_ransac(points, args.iterations, args.threshold)
+        print(f"Fitted plane (ax + by + cz + d = 0): {plane}")
+        print(f"Number of inliers: {len(inliers)}")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

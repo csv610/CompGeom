@@ -1,5 +1,6 @@
 """Vascular Stenting simulation and Metal-to-Artery Ratio (MAR) analysis."""
 
+import argparse
 import math
 from typing import List, Tuple
 
@@ -119,10 +120,24 @@ class VascularStenting:
 
 
 def main():
-    print("--- vascular_stenting.py Demo ---")
+    parser = argparse.ArgumentParser(
+        description="Vascular Stenting simulation and Metal-to-Artery Ratio (MAR) analysis."
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
 
-    # 1. Generate a basic stent (reusing logic from medical_device)
-    # 8 cells around, 10 cells long, radius 2mm, length 20mm
+    # Expansion Tool
+    exp_parser = subparsers.add_parser("expand", help="Simulate radial expansion")
+    exp_parser.add_argument("--initial-radius", type=float, default=2.0, help="Initial radius (mm)")
+    exp_parser.add_argument("--target-radius", type=float, default=3.5, help="Target radius (mm)")
+
+    # MAR Tool
+    mar_parser = subparsers.add_parser("mar", help="Calculate Metal-to-Artery Ratio (MAR)")
+    mar_parser.add_argument("--radius", type=float, default=3.5, help="Vessel radius (mm)")
+    mar_parser.add_argument("--length", type=float, default=20.0, help="Vessel length (mm)")
+
+    args = parser.parse_args()
+
+    # Generate a basic stent for demo/CLI
     radius = 2.0
     length = 20.0
     vertices = []
@@ -132,33 +147,33 @@ def main():
         z = (i / long) * length
         for j in range(circ):
             angle = 2 * math.pi * j / circ
-            vertices.append(
-                Point3D(radius * math.cos(angle), radius * math.sin(angle), z)
-            )
+            vertices.append(Point3D(radius * math.cos(angle), radius * math.sin(angle), z))
     for i in range(long):
         for j in range(circ):
             p1, p2 = i * circ + j, (i + 1) * circ + j
             p3 = (i + 1) * circ + (j + 1) % circ
             faces.append((p1, p2, p3))
-
     stent = TriangleMesh(vertices, faces)
-    print(f"Compressed Stent Radius: {radius} mm")
 
-    # 2. Expansion
-    vessel_radius = 3.5
-    expanded_stent = VascularStenting.radial_expansion(stent, radius, vessel_radius)
-    print(f"Expanded to Vessel Radius: {vessel_radius} mm")
-
-    # 3. MAR Analysis
-    mar = VascularStenting.calculate_mar(expanded_stent, vessel_radius, length)
-    print(f"Metal-to-Artery Ratio (MAR): {mar:.2f}%")
-
-    # 4. Centerline Mapping
-    path = [Point3D(math.sin(z / 5.0) * 5, math.cos(z / 5.0) * 5, z) for z in range(21)]
-    curved_stent = VascularStenting.map_to_centerline(expanded_stent, path)
-    print(f"Mapped stent to curved centerline with {len(path)} waypoints.")
-
-    print("Demo completed successfully.")
+    if args.command == "expand":
+        expanded = VascularStenting.radial_expansion(stent, args.initial_radius, args.target_radius)
+        print(f"Stent expanded from {args.initial_radius}mm to {args.target_radius}mm.")
+        print(f"Resulting mesh has {len(expanded.vertices)} vertices.")
+    elif args.command == "mar":
+        # Assume an expanded stent for MAR calculation
+        expanded = VascularStenting.radial_expansion(stent, radius, args.radius)
+        mar = VascularStenting.calculate_mar(expanded, args.radius, args.length)
+        print(f"Metal-to-Artery Ratio (MAR) for radius {args.radius}mm: {mar:.2f}%")
+    else:
+        # Default demo behavior if no command provided
+        print("--- vascular_stenting.py Demo ---")
+        vessel_radius = 3.5
+        expanded_stent = VascularStenting.radial_expansion(stent, radius, vessel_radius)
+        print(f"Compressed Stent Radius: {radius} mm")
+        print(f"Expanded to Vessel Radius: {vessel_radius} mm")
+        mar = VascularStenting.calculate_mar(expanded_stent, vessel_radius, length)
+        print(f"Metal-to-Artery Ratio (MAR): {mar:.2f}%")
+        print("Demo completed successfully. Use -h for CLI options.")
 
 
 if __name__ == "__main__":

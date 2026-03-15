@@ -1,6 +1,7 @@
 """Deployable Space Structures and Foldable Solar Panels."""
 
 import math
+import argparse
 from typing import List, Tuple
 
 try:

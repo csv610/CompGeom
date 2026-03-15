@@ -1,6 +1,7 @@
 """Marine Archaeology and Bathymetric Reconstruction algorithms."""
 
 import math
+import argparse
 from typing import List, Tuple
 
 try:
@@ -101,33 +102,56 @@ class BathymetricReconstruction:
 
 
 def main():
-    print("--- bathymetric_reconstruction.py Demo ---")
-
-    # Mock some sonar pings along a line
-    class MockPoint:
-        def __init__(self, x, y, z):
-            self.x, self.y, self.z = x, y, z
-
-    sonar_pings = [MockPoint(x, 0, 0) for x in range(5)]
-    print(f"Generated {len(sonar_pings)} sonar ping points.")
-
-    bmin = (-2, -2, -2)
-    bmax = (6, 2, 2)
-    grid_size = 5
-
-    print(
-        f"Computing SDF grid ({grid_size}x{grid_size}x{grid_size}) (Naïve approach)..."
+    parser = argparse.ArgumentParser(
+        description="Marine Archaeology and Bathymetric Reconstruction algorithms."
     )
-    grid = BathymetricReconstruction.generate_sdf_grid(
-        sonar_pings, grid_size, bmin, bmax
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
+
+    # Generate SDF Grid
+    sdf_parser = subparsers.add_parser(
+        "generate-sdf", help="Generates a Signed Distance Function (SDF) grid"
+    )
+    sdf_parser.add_argument(
+        "--points",
+        type=float,
+        nargs="+",
+        required=True,
+        help="Points as x1 y1 z1 x2 y2 z2...",
+    )
+    sdf_parser.add_argument("--grid-size", type=int, default=10)
+    sdf_parser.add_argument(
+        "--bmin", type=float, nargs=3, default=[-1.0, -1.0, -1.0], help="Bounding box min"
+    )
+    sdf_parser.add_argument(
+        "--bmax", type=float, nargs=3, default=[1.0, 1.0, 1.0], help="Bounding box max"
     )
 
-    # Just show a sample from the grid
-    sample_val = grid[2][2][2]
-    print(f"SDF Sample value near origin: {sample_val:.3f}")
+    # Estimate Displaced Volume
+    vol_parser = subparsers.add_parser(
+        "estimate-volume", help="Estimates the volume of the reconstructed mesh"
+    )
+    vol_parser.add_argument("mesh_file", help="Path to the mesh file")
 
-    print("Normally, Marching Cubes would extract a TriangleMesh from this grid.")
-    print("Demo completed successfully.")
+    args = parser.parse_args()
+
+    if args.command == "generate-sdf":
+        pts = []
+        for i in range(0, len(args.points), 3):
+            pts.append(Point3D(args.points[i], args.points[i + 1], args.points[i + 2]))
+        grid = BathymetricReconstruction.generate_sdf_grid(
+            pts, args.grid_size, tuple(args.bmin), tuple(args.bmax)
+        )
+        print(f"Generated {args.grid_size}x{args.grid_size}x{args.grid_size} SDF grid.")
+        print(f"Sample value [0][0][0]: {grid[0][0][0]}")
+    elif args.command == "estimate-volume":
+        try:
+            mesh = TriangleMesh.from_file(args.mesh_file)
+            vol = BathymetricReconstruction.estimate_displaced_volume(mesh)
+            print(f"Estimated volume: {vol}")
+        except Exception as e:
+            print(f"Error: {e}")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

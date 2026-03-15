@@ -1,5 +1,6 @@
 """Lattice and Truss generation for Spacecraft structures."""
 
+import argparse
 from typing import Tuple
 
 try:
@@ -75,16 +76,34 @@ class SpacecraftStructures:
 
 
 def main():
-    print("--- spacecraft_structures.py Demo ---")
+    parser = argparse.ArgumentParser(description="Lattice and Truss generation for Spacecraft structures.")
+    subparsers = parser.add_subparsers(dest="command", help="Available tools")
+
+    # generate_lattice subparser
+    lattice_parser = subparsers.add_parser("lattice", help="Generates a 3D truss/lattice structure")
+    lattice_parser.add_argument("--bmin", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"))
+    lattice_parser.add_argument("--bmax", type=float, nargs=3, required=True, metavar=("X", "Y", "Z"))
+    lattice_parser.add_argument("--cell-size", type=float, required=True)
+    lattice_parser.add_argument("--strut-radius", type=float, required=True)
+
+    # honeycomb_panel subparser
+    honeycomb_parser = subparsers.add_parser("honeycomb", help="Generates a 3D honeycomb sandwich panel")
+    honeycomb_parser.add_argument("--width", type=float, required=True)
+    honeycomb_parser.add_argument("--length", type=float, required=True)
+    honeycomb_parser.add_argument("--height", type=float, required=True)
+    honeycomb_parser.add_argument("--cell-size", type=float, required=True)
+
+    args = parser.parse_args()
     tools = SpacecraftStructures()
 
-    lattice = tools.generate_lattice((0, 0, 0), (10, 10, 10), 2.0, 0.1)
-    print(f"Generated lattice mesh with {len(lattice.vertices)} vertices.")
-
-    honeycomb = tools.honeycomb_panel(100, 100, 5, 10)
-    print(f"Generated honeycomb panel mesh with {len(honeycomb.vertices)} vertices.")
-
-    print("Demo completed successfully.")
+    if args.command == "lattice":
+        mesh = tools.generate_lattice(tuple(args.bmin), tuple(args.bmax), args.cell_size, args.strut_radius)
+        print(f"Generated lattice mesh with {len(mesh.vertices)} vertices.")
+    elif args.command == "honeycomb":
+        mesh = tools.honeycomb_panel(args.width, args.length, args.height, args.cell_size)
+        print(f"Generated honeycomb panel mesh with {len(mesh.vertices)} vertices.")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":
