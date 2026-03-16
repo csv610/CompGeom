@@ -1,7 +1,16 @@
 import pytest
 from compgeom.mesh import PolygonMesh
 from compgeom.kernel import Point2D
-from compgeom.polygon import Polygon, PolygonDecomposer
+from compgeom.polygon import (
+    Polygon, 
+    decompose_polygon, 
+    triangulate_polygon, 
+    triangulate_polygon_with_holes,
+    convex_decompose_polygon,
+    monotone_decompose_polygon,
+    trapezoidal_decompose_polygon,
+    visibility_decompose_polygon
+)
 
 def _is_y_monotone(face, vertices):
     if len(face) <= 3:
@@ -26,7 +35,7 @@ def _is_y_monotone(face, vertices):
 
 def test_ear_clip_triangulation():
     polygon_points = [Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(2, 2), Point2D(0, 4)]
-    mesh = PolygonDecomposer.ear_clip_triangulation(polygon_points)
+    mesh = decompose_polygon(polygon_points, algorithm="triangulate")
     assert isinstance(mesh, PolygonMesh)
     assert len(mesh.faces) == 3 # n-2 for simple polygon
     for face in mesh.faces:
@@ -34,7 +43,8 @@ def test_ear_clip_triangulation():
 
 def test_triangulation_with_diagonals():
     polygon_points = [Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(2, 2), Point2D(0, 4)]
-    mesh, diagonals = PolygonDecomposer.triangulation_with_diagonals(polygon_points)
+    triangles, diagonals, ordered = triangulate_polygon(polygon_points, collect_diagonals=True)
+    mesh = PolygonMesh(ordered, [tuple(f) for f in triangles])
     assert isinstance(mesh, PolygonMesh)
     assert len(diagonals) == 2 # n-3 diagonals
     assert len(mesh.faces) == 3
@@ -42,17 +52,20 @@ def test_triangulation_with_diagonals():
 def test_triangulate_with_holes():
     outer = [Point2D(0, 0), Point2D(10, 0), Point2D(10, 10), Point2D(0, 10)]
     hole = [Point2D(4, 4), Point2D(4, 6), Point2D(6, 6), Point2D(6, 4)]
-    mesh = PolygonDecomposer.triangulate_with_holes(outer, [hole])
+    triangles, merged_vertices = triangulate_polygon_with_holes(outer, [hole])
+    
+    # Create mesh from point triangles
+    vertex_map = {v: i for i, v in enumerate(merged_vertices)}
+    faces = [tuple(vertex_map[v] for v in tri) for tri in triangles]
+    mesh = PolygonMesh(merged_vertices, faces)
+    
     assert isinstance(mesh, PolygonMesh)
-    # n_total = 8. Triangles = (n_outer + n_hole + 2*holes - 2) = 4 + 4 + 2 - 2 = 8? 
-    # Actually with splicing, it becomes one polygon with n_outer + n_hole + 2 vertices.
-    # n = 4 + 4 + 2 = 10. Triangles = 10 - 2 = 8.
     assert len(mesh.faces) == 8
 
 def test_convex_decomposition():
     # L-shape
     polygon_points = [Point2D(0, 0), Point2D(2, 0), Point2D(2, 1), Point2D(1, 1), Point2D(1, 2), Point2D(0, 2)]
-    mesh = PolygonDecomposer.convex_decomposition(polygon_points)
+    mesh = decompose_polygon(polygon_points, algorithm="convex")
     assert isinstance(mesh, PolygonMesh)
     # Should be 2 convex pieces
     assert len(mesh.faces) == 2
@@ -63,13 +76,13 @@ def test_monotone_decomposition():
         Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(3, 4), 
         Point2D(3, 1), Point2D(1, 1), Point2D(1, 4), Point2D(0, 4)
     ]
-    mesh = PolygonDecomposer.monotone_decomposition(polygon_points)
+    mesh = decompose_polygon(polygon_points, algorithm="monotone")
     assert isinstance(mesh, PolygonMesh)
     assert all(_is_y_monotone(face, mesh.vertices) for face in mesh.faces)
 
 def test_trapezoidal_decomposition():
     polygon_points = [Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(2, 2), Point2D(0, 4)]
-    mesh = PolygonDecomposer.trapezoidal_decomposition(polygon_points)
+    mesh = decompose_polygon(polygon_points, algorithm="trapezoidal")
     assert isinstance(mesh, PolygonMesh)
     assert len(mesh.faces) > 0
     for face in mesh.faces:
@@ -77,7 +90,7 @@ def test_trapezoidal_decomposition():
 
 def test_visibility_decomposition():
     polygon_points = [Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(2, 2), Point2D(0, 4)]
-    mesh = PolygonDecomposer.visibility_decomposition(polygon_points)
+    mesh = decompose_polygon(polygon_points, algorithm="visibility")
     assert isinstance(mesh, PolygonMesh)
     assert len(mesh.faces) >= 2
 

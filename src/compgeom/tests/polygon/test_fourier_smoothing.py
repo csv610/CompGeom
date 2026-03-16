@@ -1,36 +1,28 @@
-
+import pytest
+import math
 from compgeom.kernel import Point2D
-from compgeom.polygon import Polygon
+from compgeom.polygon import Polygon, fourier_smooth_polygon
 
 def test_fourier_smoothing():
-    print("--- Running Fourier Smoothing Tests ---")
-    
     # 1. Create a noisy square
-    noisy_square = Polygon([
-        Point2D(0,0), Point2D(5, 0.1), Point2D(10,0), 
-        Point2D(10.1, 5), Point2D(10,10), 
-        Point2D(5, 9.9), Point2D(0,10), 
+    noisy_square = [
+        Point2D(0,0), Point2D(5, 0.1), Point2D(10,0),
+        Point2D(10.1, 5), Point2D(10,10),
+        Point2D(5, 9.9), Point2D(0,10),
         Point2D(-0.1, 5)
-    ])
-    
-    print(f"Original noisy vertices: {len(noisy_square.vertices)}")
-    
+    ]
+
     # Apply Fourier smoothing
     # With very few harmonics, it should look like a circle/ellipse
-    smoothed_3 = noisy_square.fourier_smooth(n_harmonics=2, resample_points=64)
-    print(f"Smoothed (3 harmonics) vertices: {len(smoothed_3.vertices)}")
+    smoothed_3 = fourier_smooth_polygon(noisy_square, n_harmonics=2, resample_points=64)
+    assert len(smoothed_3) == 64
     
-    # With more harmonics, it should follow the square better but be smoother
-    smoothed_10 = noisy_square.fourier_smooth(n_harmonics=10, resample_points=64)
-    print(f"Smoothed (10 harmonics) vertices: {len(smoothed_10.vertices)}")
-
-    # Check that it's still roughly in the same area
-    centroid_orig = noisy_square.properties().centroid
-    centroid_smooth = smoothed_10.properties().centroid
-    print(f"Original centroid: {centroid_orig}")
-    print(f"Smoothed centroid: {centroid_smooth}")
-
-    print("--- Tests Completed ---")
+    # Check if smoothed vertices are Point2D objects
+    assert all(isinstance(v, Point2D) for v in smoothed_3)
+    
+    # 2. More harmonics = better fit
+    smoothed_10 = fourier_smooth_polygon(noisy_square, n_harmonics=10, resample_points=64)
+    assert len(smoothed_10) == 64
 
 if __name__ == "__main__":
     test_fourier_smoothing()

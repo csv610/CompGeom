@@ -1,5 +1,5 @@
 from compgeom.kernel import Point2D
-from compgeom.polygon import is_point_in_polygon
+from compgeom.polygon.polygon_metrics import is_point_in_polygon
 from compgeom.polygon.polygon import Polygon
 
 def test_point_in_polygon_inside():

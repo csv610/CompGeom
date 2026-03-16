@@ -1,8 +1,8 @@
-
 import math
+import pytest
 from compgeom.kernel import Point2D
 from compgeom.polygon.polygon import Polygon
-from compgeom.polygon.polygon_symmetry import orient_polygon_for_symmetry, get_moments
+from compgeom.polygon.polygon_symmetry import orient_polygon_for_symmetry, get_polygon_moments
 
 def validate_symmetry(name, poly):
     print(f"\n--- Testing {name} ---")
@@ -15,12 +15,14 @@ def validate_symmetry(name, poly):
     assert abs(props.centroid.y) < 1e-9
     
     # 2. Check Ixy (should be near 0 for principal axis alignment)
-    _, ix, iy, ixy = get_moments(oriented.as_list())
+    _, ix, iy, ixy = get_polygon_moments(oriented.as_list())
     print(f"Ixy (Product of Inertia): {ixy:.4e}")
     print(f"Ix: {ix:.4e}, Iy: {iy:.4e}")
     
     # Ixy should be significantly smaller than the moments of inertia
     assert abs(ixy) < 1e-9 or abs(ixy) / max(ix, iy) < 1e-7
+
+from compgeom.polygon.polygon_generator import generate_convex_polygon
 
 def test_convex_shapes():
     # Test 1: Rectangle (Already symmetric)
@@ -33,7 +35,7 @@ def test_convex_shapes():
     
     # Test 3: Random Convex Polygon
     # Using the factory method from the codebase
-    random_convex = Polygon.from_random_convex(num_points=12, x_range=(0, 100), y_range=(0, 100))
+    random_convex = generate_convex_polygon(n_points=12, x_range=(0, 100), y_range=(0, 100))
     validate_symmetry("Random Convex", random_convex)
 
 if __name__ == "__main__":
