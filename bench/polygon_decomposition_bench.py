@@ -2,15 +2,6 @@ import time
 import sys
 import os
 
-# Ensure the library is in the python path
-potential_src = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
-if os.path.exists(potential_src):
-    sys.path.append(potential_src)
-else:
-    potential_medkit = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'medkit'))
-    if os.path.exists(potential_medkit):
-        sys.path.append(potential_medkit)
-
 try:
     from compgeom.polygon.polygon import Polygon
     from compgeom.polygon.polygon_decomposer import PolygonDecomposer

@@ -6,7 +6,7 @@ import math
 from typing import List, Tuple, Union
 
 from ..kernel import Point2D, dist_point_to_segment
-from ..polygon.polygon import get_polygon_properties
+from ..polygon.polygon_metrics import get_polygon_properties
 
 
 def solve_distance_map(

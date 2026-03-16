@@ -7,7 +7,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from compgeom.kernel import Point2D
-from compgeom.mesh.delaunay_triangulation import DelaunayMesher
+from compgeom.mesh import DelaunayMesher
 
 def run_benchmarks():
     # 10^7 points usually require significant RAM and time in Python.

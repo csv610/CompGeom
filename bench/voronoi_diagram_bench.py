@@ -4,10 +4,10 @@ import sys
 import os
 
 # Ensure the library is in the python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 from compgeom.kernel import Point2D
-from compgeom.mesh.voronoi_diagram import VoronoiDiagram
+from compgeom.mesh import VoronoiDiagram
 from compgeom.graphics.geo_plot import GeomPlot
 
 def run_benchmarks():

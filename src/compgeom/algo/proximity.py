@@ -24,7 +24,7 @@ from ..kernel import (
     support,
 )
 from ..polygon.convex_hull import GrahamScan
-from ..polygon.polygon import is_point_in_polygon
+from ..polygon.polygon_metrics import is_point_in_polygon
 
 
 class ClosestPair:

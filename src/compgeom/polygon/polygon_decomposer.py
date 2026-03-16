@@ -1,6 +1,8 @@
+from __future__ import annotations
+from .polygon_path import segment_inside_polygon
 """Algorithms for decomposing polygons into simpler pieces."""
 
-from __future__ import annotations
+
 
 import math
 from collections import Counter
@@ -254,7 +256,7 @@ def _visibility_faces(polygon: list[Point2D]) -> list[tuple[int, ...]]:
                 continue
             if target in {(reflex - 1) % n, (reflex + 1) % n}:
                 continue
-            if not poly._segment_inside(polygon[reflex], polygon[target]):
+            if not segment_inside_polygon(poly, polygon[reflex], polygon[target]):
                 continue
             diagonal = tuple(sorted((reflex, target)))
             if diagonal in chosen or _diagonal_crosses(diagonal, chosen, polygon):

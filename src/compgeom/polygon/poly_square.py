@@ -16,6 +16,8 @@ def poly_square(polygon: Polygon | Sequence[Point2D], segment_index: int = 0) ->
     """
     poly_obj = polygon if isinstance(polygon, Polygon) else Polygon(polygon)
     vertices = poly_obj.vertices
+    if segment_index < 0 or segment_index >= len(vertices):
+        raise IndexError("Segment index out of range.")
     n = len(vertices)
     if n < 2:
         return list(vertices)

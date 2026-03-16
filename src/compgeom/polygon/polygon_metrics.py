@@ -37,4 +37,11 @@ def get_convex_diameter(polygon: Polygon | Sequence[Point2D]) -> float:
     return Polygon(polygon).convex_diameter()
 
 
-__all__ = ["get_polygon_properties", "is_polygon_convex", "get_reflex_vertices", "get_convex_diameter"]
+
+def is_point_in_polygon(point: Point2D, polygon: Polygon | Sequence[Point2D]) -> bool:
+    """Checks if a point is inside a polygon."""
+    if isinstance(polygon, Polygon):
+        return polygon.contains_point(point)
+    return Polygon(polygon).contains_point(point)
+
+__all__ = ["get_polygon_properties", "is_point_in_polygon", "is_polygon_convex", "get_reflex_vertices", "get_convex_diameter"]

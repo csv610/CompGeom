@@ -4,7 +4,7 @@ import argparse
 
 from compgeom import Point2D
 from compgeom.cli._shared import demo_polygon, visualize_with_pyvista
-from compgeom.polygon.polygon import is_point_in_polygon
+from compgeom.polygon.polygon_metrics import is_point_in_polygon
 
 
 def main(argv: list[str] | None = None) -> int:

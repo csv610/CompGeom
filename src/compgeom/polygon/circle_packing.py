@@ -6,7 +6,7 @@ import math
 from typing import List, Tuple
 
 from ..kernel import Point2D, dist_point_to_segment
-from .polygon import is_point_in_polygon, get_polygon_properties
+from .polygon_metrics import is_point_in_polygon, get_polygon_properties
 from .tolerance import is_negative, EPSILON
 
 

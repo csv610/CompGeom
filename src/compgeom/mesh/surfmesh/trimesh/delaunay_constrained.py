@@ -69,7 +69,7 @@ def _proper_segment_intersection(a: Point2D, b: Point2D, c: Point2D, d: Point2D)
 
 
 def _point_in_domain(point: Point2D, outer_boundary: list[Point2D], holes: list[list[Point2D]]) -> bool:
-    from ....polygon.polygon import is_point_in_polygon
+    from ....polygon.polygon_metrics import is_point_in_polygon
     if not is_point_in_polygon(point, outer_boundary):
         return False
     for hole in holes:

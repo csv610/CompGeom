@@ -24,6 +24,11 @@ class PolygonProperties:
     centroid: Point2D
     orientation: str
 
+    def __iter__(self):
+        yield self.area
+        yield self.centroid
+        yield self.orientation
+
 @dataclass(frozen=True, slots=True)
 class Polygon:
     vertices: tuple[Point2D, ...]
@@ -254,4 +259,10 @@ __all__ = [
     "Polygon",
     "PolygonProperties",
     "Triangle",
+    "generate_points_in_triangle",
 ]
+
+
+def generate_points_in_triangle(a: Point2D | Point3D, b: Point2D | Point3D, c: Point2D | Point3D, n_points: int = 100) -> list[Point2D | Point3D]:
+    """Generates random points within a triangle."""
+    return Triangle(a, b, c).sample_points(n_points)

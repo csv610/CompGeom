@@ -6,10 +6,10 @@ from .triangle import (
     circumcenter as triangle_circumcenter,
     incenter as triangle_incenter,
     inradius as triangle_inradius,
-    contains_point as triangle_contains_point,
+    contains_point, contains_point as triangle_contains_point,
     barycentric_coords as triangle_barycentric_coords,
-    orientation as triangle_orientation,
-    orientation_sign as triangle_orientation_sign
+    orientation, orientation as triangle_orientation,
+    orientation_sign, orientation_sign as triangle_orientation_sign
 )
 
 from .line_segment import (
@@ -92,3 +92,6 @@ from .aabb import (
 from .transformation import (
     Transformation
 )
+
+get_circle_two_points = circle_from_two_points
+get_circle_three_points = circle_from_three_points

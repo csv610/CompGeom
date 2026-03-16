@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+import math
 
 if TYPE_CHECKING:
     from .polygon import Polygon
 
-from ..kernel import Point2D, is_on_segment
-from .line_segment import proper_segment_intersection, ray_segment_intersection
+from ..kernel import Point2D
+from .line_segment import ray_segment_intersection
 from .tolerance import are_close
 
 
@@ -20,11 +21,10 @@ def compute_visibility_polygon(polygon: Polygon, viewpoint: Point2D) -> Polygon:
     from .polygon import Polygon
     
     if not polygon.contains_point(viewpoint) and not polygon.point_on_boundary(viewpoint):
-        return Polygon([])
+        raise ValueError("Viewpoint must be inside or on the boundary of the polygon.")
 
     vertices = polygon.vertices
     rays: list[float] = []
-    import math
     
     for v in vertices:
         angle = math.atan2(v.y - viewpoint.y, v.x - viewpoint.x)
@@ -37,8 +37,9 @@ def compute_visibility_polygon(polygon: Polygon, viewpoint: Point2D) -> Polygon:
         
         for i in range(len(vertices)):
             p1, p2 = vertices[i], vertices[(i + 1) % len(vertices)]
-            hit = ray_segment_intersection(viewpoint, angle, p1, p2)
-            if hit:
+            res = ray_segment_intersection(viewpoint, angle, p1, p2)
+            if res:
+                ray_t, hit = res
                 d = (hit.x - viewpoint.x)**2 + (hit.y - viewpoint.y)**2
                 if d < closest_dist:
                     closest_dist = d
