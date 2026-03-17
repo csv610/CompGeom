@@ -4,20 +4,18 @@ from __future__ import annotations
 
 import os
 import struct
-from typing import List, Tuple, Union, Optional, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .mesh import Mesh
+from typing import List, Tuple, Union, Optional
 
 from ..kernel import Point2D, Point3D
+from .mesh import Mesh, PolygonMesh, TriangleMesh
 
 
 class OBJFileHandler:
     """Reader and writer for Wavefront OBJ files."""
 
     @staticmethod
-    def read(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
-        """Reads an OBJ file and returns vertices and faces."""
+    def read(filename: str) -> Mesh:
+        """Reads an OBJ file and returns a Mesh object."""
         vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
 
@@ -52,27 +50,19 @@ class OBJFileHandler:
                             face.append(idx - 1)
                     faces.append(face)
 
-        return vertices, faces
+        return PolygonMesh(vertices, [tuple(f) for f in faces])
 
     @staticmethod
-    def triangulate_faces(faces: List[Union[List[int], Tuple[int, ...]]]) -> List[Tuple[int, int, int]]:
-        """Converts arbitrary faces into triangles using fan triangulation."""
-        tri_faces = []
-        for face in faces:
-            if len(face) == 3:
-                tri_faces.append(tuple(face))
-            elif len(face) > 3:
-                for i in range(1, len(face) - 1):
-                    tri_faces.append((face[0], face[i], face[i+1]))
-        return tri_faces
-
-    @staticmethod
-    def write(filename: str, vertices: Union[List[Union[Point2D, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None):
-        """Writes vertices and faces to an OBJ file."""
-        if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
-            mesh = vertices
-            vertices = mesh.vertices
-            faces = mesh.elements
+    def write(filename: str, mesh: Mesh, **kwargs):
+        """Writes a Mesh object to an OBJ file.
+        
+        Args:
+            filename: Path to the OBJ file.
+            mesh: A Mesh object.
+            **kwargs: Unused.
+        """
+        vertices = mesh.vertices
+        faces = [c.v_indices for c in mesh.cells] if mesh.cells else [f.v_indices for f in mesh.faces]
 
         with open(filename, "w") as f:
             f.write("# Exported by CompGeom\n")
@@ -91,8 +81,8 @@ class OFFFileHandler:
     """Reader and writer for Object File Format (OFF)."""
 
     @staticmethod
-    def read(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
-        """Reads an OFF file."""
+    def read(filename: str) -> Mesh:
+        """Reads an OFF file and returns a Mesh object."""
         vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
 
@@ -123,15 +113,19 @@ class OFFFileHandler:
                 parts = list(map(int, lines[start_idx + nv + i].split()))
                 faces.append(parts[1:])
                 
-        return vertices, faces
+        return PolygonMesh(vertices, [tuple(f) for f in faces])
 
     @staticmethod
-    def write(filename: str, vertices: Union[List[Union[Point2D, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None):
-        """Writes vertices and faces to an OFF file."""
-        if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
-            mesh = vertices
-            vertices = mesh.vertices
-            faces = mesh.elements
+    def write(filename: str, mesh: Mesh, **kwargs):
+        """Writes a Mesh object to an OFF file.
+        
+        Args:
+            filename: Path to the OFF file.
+            mesh: A Mesh object.
+            **kwargs: Unused.
+        """
+        vertices = mesh.vertices
+        faces = [c.v_indices for c in mesh.cells] if mesh.cells else [f.v_indices for f in mesh.faces]
 
         with open(filename, "w") as f:
             f.write("OFF\n")
@@ -147,8 +141,8 @@ class STLFileHandler:
     """Reader and writer for STL (Binary and ASCII)."""
 
     @staticmethod
-    def read(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
-        """Reads an STL file (detects binary or ASCII)."""
+    def read(filename: str) -> Mesh:
+        """Reads an STL file (detects binary or ASCII) and returns a Mesh object."""
         with open(filename, "rb") as f:
             header = f.read(80)
             if b"solid" in header[:10] and not STLFileHandler._is_binary(filename):
@@ -166,7 +160,7 @@ class STLFileHandler:
             return file_size == 84 + count * 50
 
     @staticmethod
-    def _read_binary(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
+    def _read_binary(filename: str) -> Mesh:
         vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
         v_map = {}
@@ -187,10 +181,10 @@ class STLFileHandler:
                     face.append(v_map[key])
                 f.read(2) # Skip attribute byte count
                 faces.append(face)
-        return vertices, faces
+        return TriangleMesh(vertices, [tuple(f) for f in faces])
 
     @staticmethod
-    def _read_ascii(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
+    def _read_ascii(filename: str) -> Mesh:
         vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
         v_map = {}
@@ -210,15 +204,20 @@ class STLFileHandler:
                 elif line.startswith("endfacet"):
                     faces.append(face)
                     face = []
-        return vertices, faces
+        return TriangleMesh(vertices, [tuple(f) for f in faces])
 
     @staticmethod
-    def write(filename: str, vertices: Union[List[Union[Point2D, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, binary: bool = True):
-        """Writes a mesh to STL format (binary by default)."""
-        if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
-            mesh = vertices
-            vertices = mesh.vertices
-            faces = mesh.elements
+    def write(filename: str, mesh: Mesh, binary: bool = True, **kwargs):
+        """Writes a Mesh object to STL format (binary by default).
+        
+        Args:
+            filename: Path to the STL file.
+            mesh: A Mesh object.
+            binary: Whether to write binary or ASCII STL.
+            **kwargs: Unused.
+        """
+        vertices = mesh.vertices
+        faces = [c.v_indices for c in mesh.cells] if mesh.cells else [f.v_indices for f in mesh.faces]
 
         # STL only supports triangles
         tri_faces = []
@@ -268,8 +267,8 @@ class PLYFileHandler:
     """Reader and writer for Polygon File Format (PLY)."""
 
     @staticmethod
-    def read(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
-        """Reads a PLY file (ASCII and Binary Little Endian)."""
+    def read(filename: str) -> Mesh:
+        """Reads a PLY file (ASCII and Binary Little Endian) and returns a Mesh object."""
         vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
 
@@ -366,15 +365,20 @@ class PLYFileHandler:
             else:
                 raise ValueError(f"Unsupported PLY format: {header.get('format')}")
 
-        return vertices, faces
+        return PolygonMesh(vertices, [tuple(f) for f in faces])
 
     @staticmethod
-    def write(filename: str, vertices: Union[List[Union[Point2D, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, binary: bool = False):
-        """Writes vertices and faces to a PLY file (ASCII by default)."""
-        if hasattr(vertices, 'vertices') and hasattr(vertices, 'elements'):
-            mesh = vertices
-            vertices = mesh.vertices
-            faces = mesh.elements
+    def write(filename: str, mesh: Mesh, binary: bool = False, **kwargs):
+        """Writes a Mesh object to a PLY file (ASCII by default).
+        
+        Args:
+            filename: Path to the PLY file.
+            mesh: A Mesh object.
+            binary: Whether to write binary or ASCII PLY.
+            **kwargs: Unused.
+        """
+        vertices = mesh.vertices
+        faces = [c.v_indices for c in mesh.cells] if mesh.cells else [f.v_indices for f in mesh.faces]
 
         if binary:
             PLYFileHandler._write_binary(filename, vertices, faces)
@@ -434,7 +438,7 @@ class MeshImporter:
     }
 
     @classmethod
-    def read(cls, filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
+    def read(cls, filename: str) -> Mesh:
         """Detects format from extension and reads the file."""
         ext = os.path.splitext(filename)[1].lower()
         if ext not in cls._handlers:
@@ -452,18 +456,51 @@ class MeshExporter:
         ".ply": PLYFileHandler,
     }
 
+    def __init__(self, mesh: Optional[Mesh] = None):
+        """Initializes the exporter with an optional mesh object."""
+        self._mesh: Optional[Mesh] = None
+        if mesh is not None:
+            self.mesh = mesh
+
+    @property
+    def mesh(self) -> Optional[Mesh]:
+        """Gets the mesh object to be exported."""
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, value: Mesh):
+        """Sets the mesh object to be exported, validating it is a Mesh."""
+        if not isinstance(value, Mesh):
+            raise TypeError(f"Expected Mesh object, got {type(value).__name__}")
+        self._mesh = value
+
+    def export(self, filename: str, **kwargs):
+        """Exports the assigned mesh to a file."""
+        if self._mesh is None:
+            raise ValueError("No mesh assigned to exporter.")
+        self.write(filename, self._mesh, **kwargs)
+
     @classmethod
-    def write(cls, filename: str, vertices: Union[List[Union[Point2D, Point3D]], 'Mesh'], faces: Optional[List[Union[List[int], Tuple[int, ...]]]] = None, **kwargs):
-        """Detects format from extension and writes the file."""
+    def write(cls, filename: str, mesh: Mesh, **kwargs):
+        """Detects format from extension and writes the file.
+        
+        Args:
+            filename: Path to the output file.
+            mesh: A Mesh object.
+            **kwargs: Format-specific options (e.g., binary=True for STL/PLY).
+        """
         ext = os.path.splitext(filename)[1].lower()
         if ext not in cls._handlers:
             raise ValueError(f"Unsupported file format: {ext}")
-        cls._handlers[ext].write(filename, vertices, faces, **kwargs)
+        cls._handlers[ext].write(filename, mesh, **kwargs)
 
 
-__all__ = ["from_file", "MeshImporter", "MeshExporter", "OBJFileHandler", "OFFFileHandler", "STLFileHandler", "PLYFileHandler"]
+__all__ = ["from_file", "to_file", "MeshImporter", "MeshExporter", "OBJFileHandler", "OFFFileHandler", "STLFileHandler", "PLYFileHandler"]
 
-def from_file(filename: str) -> Tuple[List[Union[Point2D, Point3D]], List[List[int]]]:
-    """Reads a mesh from a file using the OFF handler."""
-    return OFFFileHandler.read(filename)
+def from_file(filename: str) -> Mesh:
+    """Reads a mesh from a file using the MeshImporter."""
+    return MeshImporter.read(filename)
 
+def to_file(filename: str, mesh: Mesh, **kwargs) -> None:
+    """Writes a mesh to a file using the MeshExporter."""
+    MeshExporter.write(filename, mesh, **kwargs)

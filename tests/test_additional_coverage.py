@@ -67,7 +67,7 @@ from compgeom.algo.shapes import (
 from compgeom.graphics.geo_plot import GeomPlot
 from compgeom.graphics.visualization import generate_svg_path, save_png, save_svg
 from compgeom.mesh import CuthillMcKee, MeshColoring, MeshTransfer, PolygonMesh, QuadMesh, TriangleMesh, VoronoiDiagram
-from compgeom.mesh.delaunay_triangulation import (
+from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import (
     DTriangle,
     DelaunayMesher,
     DynamicDelaunay,
@@ -77,15 +77,36 @@ from compgeom.mesh.delaunay_triangulation import (
     is_delaunay,
     triangulate,
 )
-from compgeom.mesh.mesh_io import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler
+from compgeom.mesh.meshio import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler
 from compgeom.mesh.surfmesh.trimesh.mesh_refinement import TriMeshRefiner
 from compgeom.mesh.surfmesh.quadmesh.simple_tri2quads import TriangleToQuadConverter
 from compgeom.mesh.volmesh.voxelmesh.voxelization import MeshVoxelizer
-from compgeom.polygon.circle_packing import CirclePacker
-from compgeom.polygon.distance_map import DistanceMapSolver
-from compgeom.polygon.polygon_generator import PolygonGenerator
+from compgeom.polygon.circle_packing import pack_circles, optimal_radius, calculate_circle_packing_efficiency, visualize_circle_packing, _is_circle_inside
+class CirclePacker: 
+    pack = staticmethod(pack_circles) 
+    optimal_radius = staticmethod(optimal_radius) 
+    calculate_efficiency = staticmethod(calculate_circle_packing_efficiency) 
+    visualize = staticmethod(visualize_circle_packing) 
+    _is_circle_inside = staticmethod(_is_circle_inside)
+from compgeom.polygon.distance_map import solve_distance_map, visualize_distance_map_svg
+class DistanceMapSolver: 
+    solve = staticmethod(solve_distance_map) 
+    visualize_svg = staticmethod(visualize_distance_map_svg)
+from compgeom.polygon.polygon_generator import generate_convex_polygon, generate_concave_polygon, generate_star_shaped_polygon, generate_sierpinski_triangle, generate_koch_snowflake, generate_dragon_curve, generate_de_rham_curve
+class PolygonGenerator: 
+    generate_convex = staticmethod(generate_convex_polygon) 
+    generate_concave = staticmethod(generate_concave_polygon) 
+    star_shaped = staticmethod(generate_star_shaped_polygon) 
+    sierpinski = staticmethod(generate_sierpinski_triangle)
+    convex = staticmethod(generate_convex_polygon) 
+    concave = staticmethod(generate_concave_polygon)
+    star_shaped = staticmethod(generate_star_shaped_polygon) 
+    sierpinski = staticmethod(generate_sierpinski_triangle)
 from compgeom.polygon.polygon import Polygon
-from compgeom.polygon.polygon_smoothing import PolygonalMeanCurvatureFlow
+from compgeom.polygon.polygon_smoothing import mean_curvature_flow_polygon, resample_polygon
+class PolygonalMeanCurvatureFlow: 
+    resample_polygon = staticmethod(resample_polygon)
+    smooth = staticmethod(mean_curvature_flow_polygon)
 
 
 def test_minimum_enclosing_shapes_handle_degenerate_inputs():
@@ -758,7 +779,7 @@ def test_cli_shared_helpers_and_polygon_generator(monkeypatch, capsys):
     assert cli_shared.demo_mesh_lines()[-1] == "1 3 2\n"
 
     random.seed(5)
-    convex = PolygonGenerator.convex(8, (0, 10), (0, 10))
+    convex = generate_convex_polygon(8, (0, 10), (0, 10))
     concave = PolygonGenerator.concave(8, (0, 10), (0, 10))
     star = PolygonGenerator.star_shaped(8, center=Point2D(0, 0), max_radius=10)
     assert len(convex) >= 3

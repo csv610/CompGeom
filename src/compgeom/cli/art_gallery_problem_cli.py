@@ -12,8 +12,8 @@ def main() -> int:
 
     if args.input:
         try:
-            vertices, _ = meshio.from_file(args.input)
-            points = [Point2D(v.x, v.y) for v in vertices]
+            mesh = meshio.from_file(args.input)
+            points = [Point2D(v.x, v.y) for v in mesh.vertices]
         except Exception as e:
             print(f"Error reading OFF file: {e}")
             return 1

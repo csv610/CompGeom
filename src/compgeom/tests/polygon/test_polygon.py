@@ -61,7 +61,7 @@ def test_polygon_triangulate():
 def test_visibility_polygon_for_convex_polygon_returns_same_boundary():
     polygon = Polygon([Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(0, 4)])
     viewpoint = Point2D(2, 2)
-    visible = compute_visibility_polygon(polygon, viewpoint)
+    visible = compute_visibility_polygon(viewpoint, polygon)
 
     assert len(visible.vertices) == 4
     assert set(visible.vertices) == set(polygon.vertices)
@@ -153,4 +153,4 @@ def test_convex_hull_algorithms_match():
 def test_visibility_polygon_rejects_outside_viewpoint():
     polygon = Polygon([Point2D(0, 0), Point2D(2, 0), Point2D(2, 2), Point2D(0, 2)])
     with pytest.raises(ValueError):
-        compute_visibility_polygon(polygon, Point2D(5, 5))
+        compute_visibility_polygon(Point2D(5, 5), polygon)

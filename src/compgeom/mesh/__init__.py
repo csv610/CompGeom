@@ -15,20 +15,19 @@ from .surfmesh.trimesh.delaunay_triangulation import (
 from .mesh import (
     HexMesh,
     Mesh,
+    MeshCell,
+    MeshEdge,
+    MeshFace,
+    MeshNode,
     MeshTopology,
     PolygonMesh,
     QuadMesh,
     TetMesh,
     TriangleMesh,
-    euler_characteristic,
-    mesh_edges,
-    mesh_neighbors,
-    mesh_vertices,
-    triangle_neighbors,
-    vertex_neighbors,
 )
+from .edge_mesh import EdgeMesh
 from .meshalgo.mesh_coloring import MeshColoring
-from .meshio import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler, from_file
+from .meshio import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler, from_file, to_file
 from .surfmesh.trimesh.mesh_refinement import TriMeshRefiner
 from .meshalgo.mesh_reordering import CuthillMcKee
 from .meshalgo.mesh_transfer import MeshTransfer
@@ -75,6 +74,7 @@ __all__ = [
     "DelaunayMesher",
     "DelaunayTetMesher",
     "DynamicDelaunay",
+    "EdgeMesh",
     "HalfEdgeMesh",
     "HexMesh",
     "IsotropicRemesher",
@@ -87,6 +87,10 @@ __all__ = [
     "build_topology",
     "constrained_delaunay_triangulation",
     "Mesh",
+    "MeshCell",
+    "MeshEdge",
+    "MeshFace",
+    "MeshNode",
     "MeshAnalysis",
     "MeshBooleans",
     "MeshColoring",
@@ -94,13 +98,13 @@ __all__ = [
     "MeshDecimator",
     "MeshParameterization",
     "MeshRegistration",
-    "MeshValidation", "from_file",
+    "MeshValidation",
+    "from_file",
+    "to_file",
     "MeshImporter",
     "MeshExporter",
     "MeshProcessing",
     "MeshQueries",
-    "MeshRegistration",
-    "MeshValidation", "from_file",
     "MeshTriangle",
     "MeshTopology",
     "MeshTransfer",
@@ -120,12 +124,6 @@ __all__ = [
     "Triangle",
     "VoronoiDiagram",
     "point_winding_number",
-    "euler_characteristic",
-    "mesh_edges",
-    "mesh_neighbors",
-    "mesh_vertices",
-    "triangle_neighbors",
     "triangulate",
     "triangulate_3d",
-    "vertex_neighbors",
 ]

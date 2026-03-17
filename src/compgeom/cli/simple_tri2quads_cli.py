@@ -16,9 +16,10 @@ def main():
     
     print(f"Reading triangle mesh from {args.input}...")
     try:
-        vertices, faces = OBJFileHandler.read(args.input)
+        mesh = OBJFileHandler.read(args.input)
+        vertices = mesh.vertices
         # Ensure input is triangulated
-        tri_faces = OBJFileHandler.triangulate_faces(faces)
+        tri_faces = mesh.elements if len(mesh.elements[0]) == 3 else []
         tri_mesh = TriangleMesh(vertices, tri_faces)
     except Exception as e:
         print(f"Error reading file: {e}")
@@ -31,7 +32,7 @@ def main():
     print(f"Converted: {len(quad_mesh.vertices)} vertices, {len(quad_mesh.faces)} quads.")
     
     print(f"Writing quad mesh to {args.output}...")
-    OBJFileHandler.write(args.output, quad_mesh.vertices, quad_mesh.faces)
+    OBJFileHandler.write(args.output, quad_mesh)
     print("Done.")
 
 

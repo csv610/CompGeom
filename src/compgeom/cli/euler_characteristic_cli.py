@@ -1,53 +1,36 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from compgeom import euler_characteristic
-from compgeom.cli._shared import demo_mesh_lines, parse_point_fields
-
-
-def parse_mesh(lines: list[str]) -> list[tuple[object, object, object]]:
-    points_map = {}
-    triangles = []
-    reading_points = True
-
-    for raw_line in lines:
-        line = raw_line.strip()
-        if not line:
-            continue
-
-        parts = line.split()
-        if parts[0].upper() == "T":
-            reading_points = False
-            continue
-
-        if reading_points:
-            point = parse_point_fields(
-                parts,
-                point_id=len(points_map),
-                with_id=len(parts) >= 3,
-            )
-            if point is None:
-                reading_points = False
-            else:
-                points_map[point.id] = point
-            continue
-
-        try:
-            if len(parts) >= 3:
-                ids = [int(value) for value in parts[:3]]
-                triangles.append(tuple(points_map[point_id] for point_id in ids))
-        except (ValueError, KeyError):
-            continue
-
-    return triangles
+from compgeom.mesh import MeshImporter, OBJFileHandler
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Compute Euler characteristic for a demo mesh.")
-    parser.add_argument("--demo", action="store_true", help="Use the built-in mesh demo.")
+    parser = argparse.ArgumentParser(description="Compute Euler characteristic for a mesh.")
+    parser.add_argument("input_file", help="Input mesh file (OBJ, OFF, STL, PLY).")
     args = parser.parse_args(argv)
-    triangles = parse_mesh(demo_mesh_lines())
+
+    try:
+        mesh = MeshImporter.read(args.input_file)
+        vertices, faces = mesh.vertices, mesh.elements
+    except Exception as e:
+        print(f"Error reading mesh: {e}")
+        return 1
+
+    # Ensure all faces are triangles for euler_characteristic function
+    from compgeom.mesh.mesh import PolygonMesh
+    if isinstance(mesh, PolygonMesh):
+        mesh = mesh.triangulate()
+    vertices, faces = mesh.vertices, mesh.elements
+    tri_indices = faces
+    triangles = [tuple(vertices[i] for i in face) for face in tri_indices]
+
+    if not triangles:
+        print("Error: No triangles found in input mesh.")
+        return 1
+
     result = euler_characteristic(triangles)
     print("Mesh Topology:")
     print(f"  Vertices: {result['vertices']}")

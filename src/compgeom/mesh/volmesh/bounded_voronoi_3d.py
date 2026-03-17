@@ -116,40 +116,50 @@ class BoundedVoronoi3D:
     def compute(self, points: List[Point3D]) -> PolyhedralMesh:
         """
         Computes the clipped Voronoi cells for each point.
-        Uses the iterative clipping approach (standard for bounded Voronoi).
+        Optimized by only clipping with Delaunay neighbors.
         """
-        all_vertices = []
+        if not points:
+            return PolyhedralMesh([], [], seeds=[])
+            
+        # 1. Compute Delaunay to get neighbors
+        from .voronoi_3d import VoronoiDiagram3D
+        from collections import defaultdict
+        
+        # We need the Delaunay triangulation to know which points are neighbors
+        from .tetmesh.delaunay_mesh_incremental import IncrementalDelaunayMesher3D
+        mesher = IncrementalDelaunayMesher3D()
+        mesher.triangulate(points)
+        
+        # Build neighbor map (who shares a tet with whom)
+        neighbors = defaultdict(set)
+        for tet in mesher.active_tets:
+            verts = list(tet.vertices)
+            for i in range(len(verts)):
+                for j in range(i + 1, len(verts)):
+                    v_i, v_j = verts[i], verts[j]
+                    neighbors[v_i].add(v_j)
+                    neighbors[v_j].add(v_i)
+
+        global_vertices = []
         all_cells = []
         
-        # To avoid massive vertex duplication, we could keep a global vertex list.
-        # But for simplicity, each cell will have its own local indices in the final PolyhedralMesh.
-        global_vertices = []
-        
         for i, p_i in enumerate(points):
-            # 1. Start with the boundary polyhedron
+            # Start with the boundary polyhedron
             curr_v = list(self.initial_vertices)
             curr_f = list(self.initial_faces)
             
-            # 2. Clip with perpendicular bisectors of ALL other points
-            # (Note: In practice, we only need to clip with "near" neighbors, 
-            # but O(N^2) clipping is acceptable for small N).
-            for j, p_j in enumerate(points):
-                if i == j:
-                    continue
-                
+            # Clip only with Delaunay neighbors
+            # This makes the complexity O(N * average_neighbors) instead of O(N^2)
+            for p_j in neighbors.get(p_i, []):
                 # Bisector plane between p_i and p_j
-                # Midpoint
                 mid = (p_i + p_j) * 0.5
-                # Normal pointing towards p_i
                 normal = p_i - p_j
-                # Plane: (p - mid).dot(normal) = 0
                 plane = Plane.from_point_and_normal(mid, normal)
                 
                 curr_v, curr_f = clip_polyhedron_by_plane(curr_v, curr_f, plane)
                 if not curr_v:
                     break
             
-            # 3. Add this cell to the mesh
             if curr_v:
                 offset = len(global_vertices)
                 global_vertices.extend(curr_v)

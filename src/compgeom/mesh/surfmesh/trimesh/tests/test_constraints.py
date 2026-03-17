@@ -3,7 +3,7 @@
 import unittest
 import math
 from compgeom.kernel import Point3D
-from compgeom.mesh.surfmesh.trimesh.node_move_constraints import VertexConstraint
+from compgeom.mesh.surfmesh.node_move_constraints import VertexConstraint
 
 class TestVertexConstraint(unittest.TestCase):
     def test_project_to_line(self):

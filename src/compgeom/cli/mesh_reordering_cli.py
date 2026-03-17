@@ -74,7 +74,7 @@ def main():
     print(f"Bandwidth Reduction: {initial_bw - final_bw}")
     
     if args.output:
-        OBJFileHandler.write(args.output, new_mesh.vertices, new_mesh.faces)
+        OBJFileHandler.write(args.output, new_mesh)
         print(f"Saved reordered mesh to {args.output}") 
 
     return 0

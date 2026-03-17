@@ -23,7 +23,8 @@ class AlphaShape:
         # 2. Filter triangles by circumradius
         boundary_edges = set()
         for face in mesh.faces:
-            v0, v1, v2 = [mesh.vertices[i] for i in face]
+            v_indices = face.v_indices
+            v0, v1, v2 = [mesh.vertices[i] for i in v_indices]
             
             # Circumradius R = abc / 4A
             a = math.sqrt((v1.x-v0.x)**2 + (v1.y-v0.y)**2)
@@ -37,7 +38,7 @@ class AlphaShape:
                 if r < alpha:
                     # Add all 3 edges
                     for i in range(3):
-                        edge = tuple(sorted((face[i], face[(i+1)%3])))
+                        edge = tuple(sorted((v_indices[i], v_indices[(i+1)%3])))
                         if edge in boundary_edges:
                             boundary_edges.remove(edge)
                         else:
@@ -58,8 +59,9 @@ class AlphaShape:
         # 2. Filter tetrahedra by circumradius
         boundary_faces = set()
         
-        for tet in tet_mesh.elements:
-            v = [tet_mesh.vertices[i] for i in tet]
+        for tet in tet_mesh.cells:
+            t_v_indices = tet.v_indices
+            v = [tet_mesh.vertices[i] for i in t_v_indices]
             
             # Compute tet circumradius
             # Simplified: check if all face circumradii are < alpha 
@@ -72,10 +74,10 @@ class AlphaShape:
             
             # Extract 4 faces of the tet
             faces = [
-                tuple(sorted((tet[1], tet[2], tet[3]))),
-                tuple(sorted((tet[0], tet[2], tet[3]))),
-                tuple(sorted((tet[0], tet[1], tet[3]))),
-                tuple(sorted((tet[0], tet[1], tet[2])))
+                tuple(sorted((t_v_indices[1], t_v_indices[2], t_v_indices[3]))),
+                tuple(sorted((t_v_indices[0], t_v_indices[2], t_v_indices[3]))),
+                tuple(sorted((t_v_indices[0], t_v_indices[1], t_v_indices[3]))),
+                tuple(sorted((t_v_indices[0], t_v_indices[1], t_v_indices[2])))
             ]
             
             # For 3D Alpha Shape, if tet circumradius < alpha, it's 'in'.

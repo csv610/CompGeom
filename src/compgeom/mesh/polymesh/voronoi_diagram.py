@@ -321,7 +321,7 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"Could not save PNG: {e}")
         elif f".{ext}" in MeshExporter._handlers:
-            MeshExporter.write(out_file, mesh.vertices, mesh.elements)
+            mesh.to_file(out_file)
             print(f"Saved mesh to {out_file}")
         else:
             print(f"Unsupported format: {ext}")

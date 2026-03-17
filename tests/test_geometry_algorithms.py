@@ -18,8 +18,9 @@ from compgeom import incircle_sign, orientation_sign
 from compgeom import approximate_medial_axis
 from compgeom import mesh_neighbors
 from compgeom import shortest_path
-from compgeom import build_polygon_dcel, locate_face
-from compgeom import shortest_path_in_polygon, triangulate_polygon_with_holes, visibility_polygon
+from compgeom import DCEL
+def locate_face(dcel, point): return dcel.locate_face(point)
+from compgeom import shortest_path_in_polygon, triangulate_polygon_with_holes, compute_visibility_polygon
 from compgeom import constrained_delaunay_triangulation, triangulate
 
 
@@ -233,9 +234,9 @@ class PolygonVisibilityTests(unittest.TestCase):
 
 
 class AdvancedPolygonAlgorithmTests(unittest.TestCase):
-    def test_visibility_polygon_matches_convex_square(self):
+    def test_compute_visibility_polygon_matches_convex_square(self):
         polygon = [Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(0, 4)]
-        visible = visibility_polygon(Point2D(2, 2), polygon)
+        visible = compute_visibility_polygon(Point2D(2, 2), polygon)
         self.assertEqual(len(visible), 4)
         expected = [(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0)]
         actual = [(round(point.x, 6), round(point.y, 6)) for point in visible]
@@ -263,19 +264,19 @@ class AdvancedPolygonAlgorithmTests(unittest.TestCase):
 
 class PlanarSubdivisionTests(unittest.TestCase):
     def test_locate_face_for_polygon_with_hole(self):
-        dcel = build_polygon_dcel(
+        dcel = DCEL.from_polygon(
             [Point2D(0, 0), Point2D(6, 0), Point2D(6, 6), Point2D(0, 6)],
             holes=[[Point2D(2, 2), Point2D(4, 2), Point2D(4, 4), Point2D(2, 4)]],
         )
-        interior = locate_face(dcel, Point2D(1, 1))
-        hole_region = locate_face(dcel, Point2D(3, 3))
-        exterior = locate_face(dcel, Point2D(7, 3))
+        interior = dcel.locate_face(Point2D(1, 1))
+        hole_region = dcel.locate_face(Point2D(3, 3))
+        exterior = dcel.locate_face(Point2D(7, 3))
         self.assertFalse(interior.is_exterior)
         self.assertTrue(hole_region.is_exterior)
         self.assertTrue(exterior.is_exterior)
 
     def test_polygon_dcel_has_expected_primitives(self):
-        dcel = build_polygon_dcel([Point2D(0, 0), Point2D(3, 0), Point2D(0, 2)])
+        dcel = DCEL.from_polygon([Point2D(0, 0), Point2D(3, 0), Point2D(0, 2)])
         self.assertEqual(len(dcel.vertices), 3)
         self.assertEqual(len(dcel.half_edges), 6)
         self.assertEqual(len(dcel.faces), 2)

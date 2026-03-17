@@ -13,20 +13,22 @@ from .line_segment import ray_segment_intersection
 from .tolerance import are_close
 
 
-def compute_visibility_polygon(polygon: Polygon, viewpoint: Point2D) -> Polygon:
+def compute_visibility_polygon(viewpoint: Point2D, polygon: Polygon | list[Point2D]) -> Polygon:
     """
     Computes the visibility polygon from a given viewpoint within or on the boundary of a polygon.
     Uses a simple ray-casting approach (for demonstration, not optimal).
     """
     from .polygon import Polygon
     
-    if not polygon.contains_point(viewpoint) and not polygon.point_on_boundary(viewpoint):
+    poly_obj = polygon if isinstance(polygon, Polygon) else Polygon(polygon)
+    if not poly_obj.contains_point(viewpoint) and not poly_obj.point_on_boundary(viewpoint):
         raise ValueError("Viewpoint must be inside or on the boundary of the polygon.")
 
-    vertices = polygon.vertices
+    vertices = list(poly_obj.vertices)
+    
     rays: list[float] = []
     
-    for v in vertices:
+    for v in poly_obj.vertices:
         angle = math.atan2(v.y - viewpoint.y, v.x - viewpoint.x)
         rays.extend([angle - 1e-9, angle, angle + 1e-9])
 

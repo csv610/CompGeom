@@ -19,7 +19,7 @@ class MeshColoring:
         Returns:
             A dictionary mapping element index to a color ID (integer).
         """
-        n_elements = len(mesh.elements)
+        n_elements = len(mesh.cells) if mesh.cells else len(mesh.faces)
         coloring: Dict[int, int] = {}
         
         # Greedy coloring

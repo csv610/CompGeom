@@ -8,7 +8,8 @@ from compgeom import save_png, save_svg
 def read_polygon(args):
     if hasattr(args, 'input') and args.input:
         print(f"Reading polygon from {args.input}...")
-        vertices, _ = OBJFileHandler.read(args.input)
+        mesh = OBJFileHandler.read(args.input)
+        vertices = mesh.vertices
         # Ensure they are 2D points for circle packing
         return [Point2D(v.x, v.y) for v in vertices]
     

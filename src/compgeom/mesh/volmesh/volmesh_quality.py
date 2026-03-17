@@ -11,8 +11,8 @@ class TetMeshQuality:
     def signed_volume(mesh: TetMesh) -> List[float]:
         """Calculates signed volume for each tetrahedron."""
         volumes = []
-        for tet in mesh.elements:
-            v0, v1, v2, v3 = [mesh.vertices[i] for i in tet]
+        for tet in mesh.cells:
+            v0, v1, v2, v3 = [mesh.vertices[i] for i in tet.v_indices]
             # (v1-v0) dot ((v2-v0) cross (v3-v0)) / 6
             ux, uy, uz = v1.x-v0.x, v1.y-v0.y, v1.z-v0.z
             vx, vy, vz = v2.x-v0.x, v2.y-v0.y, v2.z-v0.z
@@ -29,8 +29,8 @@ class TetMeshQuality:
         Ideal (regular tet) is 1.0. Slivers approach 0.0.
         """
         ratios = []
-        for tet in mesh.elements:
-            v = [mesh.vertices[i] for i in tet]
+        for tet in mesh.cells:
+            v = [mesh.vertices[i] for i in tet.v_indices]
             # Edge lengths
             edges = []
             for i in range(4):

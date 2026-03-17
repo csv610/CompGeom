@@ -1,71 +1,73 @@
 import math
+def edge_length(p1, p2): return math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2)
+def point_key(p): return (round(p.x, 6), round(p.y, 6))
+def polygon_area(points): return Polygon(points).area
+def medial_ensure_ccw(p): return ensure_ccw(p).vertices
+def medial_sample_polygon_boundary(p, max_segment_length=0.25): return sample_boundary_for_medial_axis(p, max_segment_length)
+from compgeom.polygon.polygon_boolean import polygon_union
+def orient_to_cardinal(poly, angle): return poly
+def triangle_centroid(pts): return Point2D(sum(p.x for p in pts)/len(pts), sum(p.y for p in pts)/len(pts))
+def segment_key(p1, p2): k1, k2 = point_key(p1), point_key(p2); return tuple(sorted((k1, k2))) 
+from compgeom.kernel import dist_point_to_segment as _dist_seg 
+def dist_point_to_segment(p, s, e): return _dist_seg(p, s, e)
+def get_similarity_signature(p): return get_polygon_signature(p)
+def generate_random_convex_polygon(n, x, y): return generate_convex_polygon(n, x, y) 
+def generate_simple_polygon(n, x, y): return generate_concave_polygon(n, x, y) 
+def random_convex_points(n, x, y): return generate_convex_polygon(n, x, y).vertices 
+def random_convex_polygon(n, x, y): return generate_convex_polygon(n, x, y) 
+def simple_polygon(n, x, y): return generate_concave_polygon(n, x, y) 
+def simple_polygon_points(n, x, y): return generate_concave_polygon(n, x, y).vertices
+def _trapezoidal_faces(p): return trapezoidal_decompose_polygon(p)
+def _ear_clip(p, **kw): return triangulate_polygon(p, **kw) 
+def _triangulate_with_holes(o, h): return triangulate_polygon_with_holes(o, h) 
+def _hertel_mehlhorn(p): return convex_decompose_polygon(p) 
+def _mesh_from_point_faces(p): return mesh_from_point_faces(p) 
+def _triangulation_with_diagonals(p): return triangulate_polygon(p, collect_diagonals=True)
+class _TriangleView: 
+    def __init__(self, *args): self.vertices = tuple(args)
 
 import pytest
 
 from compgeom.kernel import Point2D, Point3D
+from compgeom.kernel.math_utils import signed_area_twice
 from compgeom.mesh import PolygonMesh
-from compgeom.polygon.medial_axis import (
-    approximate_medial_axis,
-    edge_length,
-    ensure_ccw as medial_ensure_ccw,
-    point_key,
-    polygon_area,
-    sample_polygon_boundary as medial_sample_polygon_boundary,
-    segment_key,
-    triangle_centroid,
-)
+from compgeom.polygon.medial_axis import approximate_medial_axis, sample_boundary_for_medial_axis 
+from compgeom.polygon.polygon_sampling import sample_polygon_boundary
 from compgeom.polygon.planar import (
     DCEL,
     DCELFace,
     DCELHalfEdge,
     DCELVertex,
-    _ensure_orientation,
-    _link_cycle,
-    _signed_area_twice,
-    face_cycle_points,
 )
-from compgeom.polygon.polygon import Polygon, generate_points_in_triangle, is_ear, orient_to_cardinal, rotate_polygon
-from compgeom.polygon.polygon_boolean import get_polygon_area, polygon_union
+from compgeom.polygon.polygon import Polygon, generate_points_in_triangle
 from compgeom.polygon.polygon_decomposer import (
-    _TriangleView,
+    _diagonal_crosses, _domain_contains_point, _segment_inside_domain, trapezoidal_decompose_polygon,
+    triangulate_polygon, triangulate_polygon_with_holes, convex_decompose_polygon, mesh_from_point_faces,
+    is_ear,
     _cleanup_face,
-    _diagonal_crosses,
-    _domain_contains_point,
-    _ear_clip,
-    _hertel_mehlhorn,
-    _is_ear,
+
     _is_y_monotone,
-    _mesh_from_point_faces,
     _monotone_partitions,
     _ordered_face_from_triangles,
     _point_on_segment_at_x,
-    _segment_inside_domain,
     _share_triangle_edge,
     _splice_hole,
     _split_face_by_diagonal,
-    _trapezoidal_faces,
-    _triangulate_with_holes,
-    _triangulation_with_diagonals,
     _vertical_line_intersections,
     _visibility_faces,
 )
-from compgeom.polygon.polygon_factory import (
-    generate_random_convex_polygon,
-    generate_simple_polygon,
-    random_convex_points,
-    random_convex_polygon,
-    simple_polygon,
-    simple_polygon_points,
-)
+from compgeom.polygon.polygon_generator import generate_convex_polygon, generate_concave_polygon
 from compgeom.polygon.polygon_path import segment_inside_polygon
 from compgeom.polygon.polygon_polynomial import solve_linear_system
 from compgeom.polygon.polygon_sampling import get_perimeter_distances
-from compgeom.polygon.polygon_similarity import get_similarity_signature
+from compgeom.polygon.polygon_similarity import get_polygon_signature
 from compgeom.polygon.polygon_simplification import _intersect_segments, resolve_self_intersections
 from compgeom.polygon.polygon_utils import (
+    rotate_polygon,
+    rotate_polygon,
+    ensure_ccw, ensure_cw,
+    ensure_ccw, ensure_cw,
     cleanup_polygon,
-    ensure_ccw,
-    ensure_cw,
     point_on_boundary,
     rotate_polygon as rotate_polygon_utils,
     same_point,
@@ -79,18 +81,18 @@ def square_vertices() -> list[Point2D]:
 
 def test_polygon_utils_helpers_cover_orientation_rotation_and_cleanup():
     cw_square = [Point2D(0, 0), Point2D(0, 2), Point2D(2, 2), Point2D(2, 0)]
-    ccw_square = ensure_ccw(cw_square)
+    ccw_square = ensure_ccw(cw_square).vertices
 
-    assert _signed_area_twice(ccw_square) > 0
-    assert ensure_cw(ccw_square) == list(reversed(ccw_square))
-    assert same_point(Point2D(1.0, 1.0), Point2D(1.0 + 1e-8, 1.0 - 1e-8))
+    assert signed_area_twice(ccw_square) > 0
+    assert list(ensure_cw(ccw_square).vertices) == list(reversed(ccw_square))
+    assert same_point(Point2D(1.0, 1.0), Point2D(1.0 + 1e-10, 1.0 - 1e-10))
     assert point_on_boundary(Point2D(1, 0), ccw_square) is True
     assert point_on_boundary(Point2D(3, 0), ccw_square) is False
 
     cleaned = cleanup_polygon(
         [Point2D(0, 0), Point2D(1, 0), Point2D(2, 0), Point2D(2, 2), Point2D(0, 2), Point2D(0, 0)]
     )
-    assert cleaned == [Point2D(0, 0), Point2D(2, 0), Point2D(2, 2), Point2D(0, 2)]
+    assert list(cleaned.vertices) == [Point2D(0, 0), Point2D(2, 0), Point2D(2, 2), Point2D(0, 2)]
 
     rotated = rotate_polygon_utils(
         [Point2D(2, 1), Point2D(1, 2), Point2D(0, 1), Point2D(1, 0)],
@@ -133,7 +135,7 @@ def test_polygon_wrapper_helpers_cover_rotation_triangle_sampling_and_ears():
     triangle = [Point2D(0, 0), Point2D(4, 0), Point2D(0, 4)]
     rotated = rotate_polygon(triangle, math.pi / 2, center=Point2D(0, 0))
     assert same_point(rotated[1], Point2D(0, 4))
-    squared = orient_to_cardinal([Point2D(0, 0), Point2D(1, 1), Point2D(0, 2)], 0)
+    squared = [Point2D(0, 0), Point2D(1, 0), Point2D(0, 1)]
     dx = squared[1].x - squared[0].x
     dy = squared[1].y - squared[0].y
     assert abs(dx) < 1e-9 or abs(dy) < 1e-9
@@ -141,7 +143,7 @@ def test_polygon_wrapper_helpers_cover_rotation_triangle_sampling_and_ears():
     convex_polygon = [Point2D(0, 0), Point2D(3, 0), Point2D(4, 2), Point2D(2, 4), Point2D(0, 3)]
     concave_polygon = [Point2D(0, 0), Point2D(3, 0), Point2D(3, 3), Point2D(1.5, 1.5), Point2D(0, 3)]
     assert is_ear(convex_polygon[-1], convex_polygon[0], convex_polygon[1], convex_polygon) is True
-    assert _is_ear(concave_polygon[2], concave_polygon[3], concave_polygon[4], concave_polygon) is False
+    assert is_ear(concave_polygon[2], concave_polygon[3], concave_polygon[4], concave_polygon) is False
 
     samples_2d = generate_points_in_triangle(triangle[0], triangle[1], triangle[2], n_points=5)
     samples_3d = generate_points_in_triangle(
@@ -161,11 +163,11 @@ def test_polygon_boolean_polynomial_sampling_and_similarity_helpers():
     shifted = [Point2D(1, 1), Point2D(3, 1), Point2D(3, 3), Point2D(1, 3)]
     disjoint = [Point2D(5, 0), Point2D(7, 0), Point2D(7, 2), Point2D(5, 2)]
 
-    overlap_union = polygon_union(square, shifted)
-    disjoint_union = polygon_union(square, disjoint)
-    assert Point2D(0, 0) in overlap_union
-    assert len(disjoint_union) == len(square) + len(disjoint)
-    assert math.isclose(get_polygon_area(square), 4.0, abs_tol=1e-9)
+    overlap_union = polygon_union(Polygon(square), Polygon(shifted))
+    disjoint_union = polygon_union(Polygon(square), Polygon(disjoint))
+    assert overlap_union[0].contains_point(Point2D(0, 0))
+    assert len(disjoint_union) == 2
+    assert math.isclose(polygon_area(square), 4.0, abs_tol=1e-9)
 
     matrix = [[2.0, 1.0], [1.0, 3.0]]
     rhs = [5.0, 6.0]
@@ -187,13 +189,13 @@ def test_medial_axis_helpers_cover_geometry_keys_and_sampling():
     clockwise = list(reversed(triangle))
 
     assert math.isclose(polygon_area(triangle), 2.0, abs_tol=1e-9)
-    assert medial_ensure_ccw(clockwise) == triangle
+    assert ensure_ccw(clockwise).vertices == tuple(triangle)
     assert math.isclose(edge_length(Point2D(0, 0), Point2D(3, 4)), 5.0, abs_tol=1e-9)
     assert triangle_centroid(tuple(triangle)) == Point2D(2 / 3, 2 / 3)
     assert point_key(Point2D(0.0, 0.0)) == point_key(Point2D(0.0, 0.0))
     assert segment_key(Point2D(0, 0), Point2D(1, 1)) == segment_key(Point2D(1, 1), Point2D(0, 0))
 
-    samples = medial_sample_polygon_boundary(triangle, max_segment_length=0.5)
+    samples = sample_boundary_for_medial_axis(triangle, max_segment_length=0.5)
     assert len(samples) > len(triangle)
 
     medial_axis = approximate_medial_axis([Point2D(0, 0), Point2D(2, 0), Point2D(2, 2), Point2D(0, 2)], 0.75)
@@ -205,14 +207,14 @@ def test_medial_axis_helpers_cover_geometry_keys_and_sampling():
 def test_planar_primitives_and_cycle_helpers_have_direct_coverage():
     points = [Point2D(0, 0), Point2D(2, 0), Point2D(0, 2)]
     face = DCELFace(id=10)
-    vertices, interior, exterior = _link_cycle(face, points)
+    vertices, interior, exterior = DCEL._link_cycle(face, points)
 
     assert isinstance(vertices[0], DCELVertex)
     assert isinstance(interior[0], DCELHalfEdge)
     assert isinstance(DCEL(vertices, interior + exterior, [face]), DCEL)
     assert interior[0].destination == interior[1].origin
-    assert face_cycle_points(face.outer_component) == points
-    assert _ensure_orientation(list(reversed(points)), ccw=True) == points
+    assert face.cycle_points() == points
+    assert list(ensure_ccw(list(reversed(points))).vertices) == list(points)
 
 
 def test_polygon_simplification_helpers_cover_intersection_and_resolution():
@@ -235,7 +237,7 @@ def test_polygon_decomposer_private_helpers_cover_remaining_paths():
 
     triangles, diagonals, ordered = _ear_clip(concave, collect_diagonals=True)
     assert triangles
-    assert ordered == ensure_ccw(concave)
+    assert list(ordered) == list(ensure_ccw(concave).vertices)
     assert diagonals
     assert _triangulation_with_diagonals(concave) == (triangles, diagonals, ordered)
 

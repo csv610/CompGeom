@@ -15,6 +15,12 @@ from ..kernel import (
     distance,
 )
 from .tolerance import EPSILON, is_zero, are_close, is_negative
+def triangulate_polygon_with_holes(*args, **kwargs): 
+    from .polygon_decomposer import triangulate_polygon_with_holes as func 
+    return func(*args, **kwargs) 
+def get_convex_diameter(*args, **kwargs): 
+    from .polygon_metrics import get_convex_diameter as func 
+    return func(*args, **kwargs)
 
 PolygonT = TypeVar("PolygonT", bound="Polygon")
 

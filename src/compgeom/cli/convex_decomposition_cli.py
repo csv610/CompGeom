@@ -8,7 +8,7 @@ from compgeom import save_png, save_svg
 def read_polygon(args):
     if args.input:
         print(f"Reading polygon from {args.input}...")
-        vertices, _ = OBJFileHandler.read(args.input)
+        mesh = OBJFileHandler.read(args.input)
         return [Point2D(v.x, v.y) for v in vertices]
     
     if args.poly:

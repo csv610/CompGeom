@@ -45,7 +45,7 @@ def main():
         
     # 4. Save result
     print(f"Writing result to {args.output}...")
-    OBJFileHandler.write(args.output, new_mesh.vertices, new_mesh.faces)
+    OBJFileHandler.write(args.output, new_mesh)
     print("Done.")
 
 if __name__ == "__main__":

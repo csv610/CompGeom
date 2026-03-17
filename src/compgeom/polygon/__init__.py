@@ -10,11 +10,11 @@ from .polygon import (
 )
 from .polygon_decomposer import (
     triangulate_polygon,
+    triangulate_polygon_with_holes,
     convex_decompose_polygon,
     monotone_decompose_polygon,
     visibility_decompose_polygon,
     trapezoidal_decompose_polygon,
-    triangulate_polygon_with_holes,
     decompose_polygon,
     verify_polygon_decomposition,
 )
@@ -76,6 +76,7 @@ from .polygon_metrics import (
     is_polygon_convex,
     get_reflex_vertices,
     get_convex_diameter,
+    is_point_in_polygon,
 )
 from .polygon_path import segment_inside_polygon, shortest_path_in_polygon
 from .polygon_sampling import (
@@ -119,6 +120,7 @@ __all__ = [
     "get_polygon_signature",
     "get_reflex_vertices",
     "guard_polygon",
+    "is_point_in_polygon",
     "is_polygon_convex",
     "mean_curvature_flow_polygon",
     "monotone_decompose_polygon",

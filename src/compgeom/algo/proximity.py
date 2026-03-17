@@ -174,11 +174,22 @@ class LargestEmptyCircle:
             if center is None:
                 continue
                 
-            if is_point_in_polygon(center, hull):
-                r = distance(center, a)
-                if r > max_radius:
-                    max_radius = r
-                    best_center = center
+            if is_point_in_polygon(center, hull): 
+                r = distance(center, a) 
+                if r > max_radius: 
+                    max_radius = r 
+                    best_center = center 
+            else: 
+                for i in range(len(hull)): 
+                    p1, p2 = hull[i], hull[(i + 1) % len(hull)] 
+                    from ..kernel import ray_segment_intersection_2d 
+                    res = ray_segment_intersection_2d(a, math.atan2(center.y - a.y, center.x - a.x), p1, p2) 
+                    if res: 
+                        _, hit = res 
+                        r = distance(hit, a) 
+                        if r > max_radius: 
+                            max_radius = r 
+                            best_center = hit
         
         for i in range(len(hull)):
             p1 = hull[i]

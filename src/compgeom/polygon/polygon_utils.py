@@ -72,9 +72,9 @@ def segment_inside_boundaries(
                 are_close(edge_end, allow_boundary_endpoint)
             ):
                 continue
-            if proper_segment_intersection(start, end, edge_start, edge_end):
-                return False
-            return True
+            if proper_segment_intersection(start, end, edge_start, edge_end): 
+                return False 
+    return True
 
 __all__ = [
     "ensure_ccw",

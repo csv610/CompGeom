@@ -30,7 +30,7 @@ def benchmark_voronoi_3d(n_points_list):
         unbounded_time = time.perf_counter() - start
         
         # Benchmark Bounded (Box)
-        # Bounded is O(N^2) due to iterative clipping
+        # Bounded is O(N) with Delaunay neighbors, but clipping many small polygons is still slower than pure Delaunay.
         start = time.perf_counter()
         bv = BoundedVoronoi3D.from_box(Point3D(0, 0, 0), Point3D(100, 100, 100))
         bv.compute(points)
@@ -38,9 +38,10 @@ def benchmark_voronoi_3d(n_points_list):
         
         print(f"{n:<10} | {unbounded_time:<15.4f} | {bounded_time:<15.4f}")
 
+
 if __name__ == "__main__":
     random.seed(42)
-    # 500 points might be slow for O(N^2) bounded, let's start with smaller counts
-    n_list = [10, 50, 100, 200]
+    # 10, 10^2, 10^3, 10^4, 10^5
+    n_list = [10, 100, 1000, 10000, 100000]
     print("Benchmarking 3D Voronoi Implementation...")
     benchmark_voronoi_3d(n_list)

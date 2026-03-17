@@ -37,7 +37,7 @@ def main():
     print(f"\nFinal Mesh: {len(refined_mesh.vertices)} vertices, {len(refined_mesh.faces)} triangles.")
     
     if args.output:
-        OBJFileHandler.write(args.output, refined_mesh.vertices, refined_mesh.faces)
+        OBJFileHandler.write(args.output, refined_mesh)
         print(f"Saved refined mesh to {args.output}")
 
     return 0
