@@ -68,7 +68,6 @@ class EdgeFlipDelaunayMesher:
         self.vertex_to_triangles: dict[Point2D, set[EdgeFlipTriangle]] = {}
         self.grid = PointGrid(points_for_grid) if points_for_grid else None
         self.super_vertices: set[Point2D] = set()
-        self.skipped: list[tuple[Point2D, str]] = []
         self.root: EdgeFlipTriangle | None = None
         self.last_tri: EdgeFlipTriangle | None = None
 
@@ -227,7 +226,6 @@ class EdgeFlipDelaunayMesher:
                         break
 
         if not target:
-            self.skipped.append((p, "Point outside super-triangle"))
             return
         
         t0, t1, t2 = self._split_triangle(p, target)
@@ -280,12 +278,11 @@ class EdgeFlipDelaunayMesher:
         # Note: This mesh doesn't have a super-triangle. 
         self.root = tri_list[0] if tri_list else None
 
-    def triangulate(self, points: list[Point2D], existing_mesh: TriangleMesh | None = None, spatial_sort: bool = True) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[tuple[Point2D, str]]]:
-        if not points and not existing_mesh: return [], []
+    def triangulate(self, points: list[Point2D], existing_mesh: TriangleMesh | None = None, spatial_sort: bool = True) -> list[tuple[Point2D, Point2D, Point2D]]:
+        if not points and not existing_mesh: return []
         
         unique_points = []
         seen = set()
-        skipped_initial = []
         
         if existing_mesh:
             for v in existing_mesh.vertices:
@@ -294,13 +291,12 @@ class EdgeFlipDelaunayMesher:
         for p in points:
             key = (p.x, p.y)
             if key in seen:
-                skipped_initial.append((p, "Duplicate Point"))
                 continue
             seen.add(key)
             unique_points.append(p)
 
         if not unique_points and not existing_mesh:
-            return [], skipped_initial
+            return []
 
         # HEURISTIC: Spatial Sorting (Hilbert Curve)
         if spatial_sort and unique_points:
@@ -329,10 +325,10 @@ class EdgeFlipDelaunayMesher:
         for p in unique_points:
             self.add_point(p)
 
-        return self.get_triangles(), skipped_initial + self.skipped
+        return self.get_triangles()
 
 
-def triangulate_edgeflip(points: list[Point2D], spatial_sort: bool = True) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[tuple[Point2D, str]]]:
+def triangulate_edgeflip(points: list[Point2D], spatial_sort: bool = True) -> list[tuple[Point2D, Point2D, Point2D]]:
     """Convenience wrapper for EdgeFlipDelaunayMesher."""
     mesher = EdgeFlipDelaunayMesher()
     return mesher.triangulate(points, spatial_sort=spatial_sort)

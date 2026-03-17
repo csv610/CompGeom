@@ -24,10 +24,8 @@ class DelaunayTetMesher:
             from ...mesh import TetMesh
             return TetMesh([], [])
 
-        skipped = []
-
         if algorithm == "incremental":
-            tets, skipped = triangulate_incremental_3d(points)
+            tets = triangulate_incremental_3d(points)
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
             
@@ -46,7 +44,7 @@ class DelaunayTetMesher:
         for tet in tets:
             tet_indices.append((point_to_idx[tet[0]], point_to_idx[tet[1]], point_to_idx[tet[2]], point_to_idx[tet[3]]))
             
-        return TetMesh(unique_points, tet_indices, skipped_points=skipped)
+        return TetMesh(unique_points, tet_indices)
 
 def tetmesher(points: list[Point3D], algorithm: str = "incremental") -> TetMesh:
     """Performs Delaunay tetrahedralization and returns a TetMesh object."""

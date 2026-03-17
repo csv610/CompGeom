@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Iterable, List, Tuple
 
 from ....kernel import (
     EPSILON,
@@ -50,7 +50,6 @@ class IncrementalDelaunayMesher:
         self.vertex_to_triangles: dict[Point2D, set[IncrementalTriangle]] = {}
         self.grid = PointGrid(points_for_grid) if points_for_grid else None
         self.super_vertices: set[Point2D] = set()
-        self.skipped: list[tuple[Point2D, str]] = []
         self.root: IncrementalTriangle | None = None
 
     def _add_triangle_to_vertex_map(self, tri: IncrementalTriangle):
@@ -167,7 +166,6 @@ class IncrementalDelaunayMesher:
         
         target = self._visibility_walk(p, start_tri)
         if not target:
-            self.skipped.append((p, "Point outside super-triangle or numerical error"))
             return
         
         v0, v1, v2 = target.vertices
@@ -211,24 +209,22 @@ class IncrementalDelaunayMesher:
                 final.append(tuple(t.vertices))
         return final
 
-    def triangulate(self, points: list[Point2D], spatial_sort: bool = True) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[tuple[Point2D, str]]]:
+    def triangulate(self, points: list[Point2D], spatial_sort: bool = True) -> list[tuple[Point2D, Point2D, Point2D]]:
         """Performs batch triangulation of all given points."""
         if not points:
-            return [], []
+            return []
 
         unique_points = []
         seen = set()
-        skipped_initial = []
         for p in points:
             key = (p.x, p.y)
             if key in seen:
-                skipped_initial.append((p, "Duplicate Point"))
                 continue
             seen.add(key)
             unique_points.append(p)
 
         if not unique_points:
-            return [], skipped_initial
+            return []
 
         # HEURISTIC: Spatial Sorting (Hilbert Curve)
         if spatial_sort and len(unique_points) > 2:
@@ -251,10 +247,10 @@ class IncrementalDelaunayMesher:
         for p in unique_points:
             self.add_point(p)
 
-        return self.get_triangles(), skipped_initial + self.skipped
+        return self.get_triangles()
 
 
-def triangulate_incremental_fast(points: list[Point2D], spatial_sort: bool = True) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[tuple[Point2D, str]]]:
+def triangulate_incremental_fast(points: list[Point2D], spatial_sort: bool = True) -> list[tuple[Point2D, Point2D, Point2D]]:
     """Convenience wrapper for IncrementalDelaunayMesher."""
     mesher = IncrementalDelaunayMesher()
     return mesher.triangulate(points, spatial_sort=spatial_sort)

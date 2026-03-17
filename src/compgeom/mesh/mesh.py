@@ -5,9 +5,50 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 from ..kernel import Point2D, Point3D
+
+
+@dataclass(frozen=True)
+class MeshNode:
+    """A node in the mesh, representing a single point in space."""
+    id: int
+    point: Union[Point2D, Point3D]
+    attributes: Dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class MeshEdge:
+    """An edge in the mesh, connecting two nodes."""
+    id: int
+    v_indices: Tuple[int, int]
+    attributes: Dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        # Ensure v_indices is a sorted tuple for undirected consistency
+        if self.v_indices[0] > self.v_indices[1]:
+            object.__setattr__(self, 'v_indices', (self.v_indices[1], self.v_indices[0]))
+
+
+mesh_edges = MeshEdge
+
+
+@dataclass(frozen=True)
+class MeshFace:
+    """A face in the mesh, defined by a sequence of vertex indices."""
+    id: int
+    v_indices: Tuple[int, ...]
+    attributes: Dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class MeshCell:
+    """A volumetric cell in the mesh (e.g., tetrahedron, hexahedron)."""
+    id: int
+    v_indices: Tuple[int, ...]
+    attributes: Dict = field(default_factory=dict)
 
 
 class MeshTopology:
@@ -48,7 +89,8 @@ class MeshTopology:
         """Returns a list of edges (as vertex index pairs) that belong to only one element."""
         edge_count = defaultdict(int)
         
-        for element in self._mesh.elements:
+        elements = [c.v_indices for c in self._mesh.cells] if self._mesh.cells else [f.v_indices for f in self._mesh.faces]
+        for element in elements:
             n = len(element)
             for i in range(n):
                 u, v = element[i], element[(i + 1) % n]
@@ -59,7 +101,8 @@ class MeshTopology:
 
     def _build_v2v(self):
         self._v2v = defaultdict(set)
-        for element in self._mesh.elements:
+        elements = [c.v_indices for c in self._mesh.cells] if self._mesh.cells else [f.v_indices for f in self._mesh.faces]
+        for element in elements:
             n = len(element)
             for i in range(n):
                 u = element[i]
@@ -69,7 +112,8 @@ class MeshTopology:
 
     def _build_v2e(self):
         self._v2e = defaultdict(set)
-        for i, element in enumerate(self._mesh.elements):
+        elements = [c.v_indices for c in self._mesh.cells] if self._mesh.cells else [f.v_indices for f in self._mesh.faces]
+        for i, element in enumerate(elements):
             for v_idx in element:
                 self._v2e[v_idx].add(i)
 
@@ -79,7 +123,8 @@ class MeshTopology:
             self._build_v2e()
         
         self._e2e = defaultdict(set)
-        for i, element in enumerate(self._mesh.elements):
+        elements = [c.v_indices for c in self._mesh.cells] if self._mesh.cells else [f.v_indices for f in self._mesh.faces]
+        for i, element in enumerate(elements):
             for v_idx in element:
                 for neighbor_idx in self._v2e[v_idx]:
                     if neighbor_idx != i:
@@ -90,7 +135,8 @@ class MeshTopology:
         self._e2e_edge = defaultdict(set)
         
         edge_map = defaultdict(list)
-        for i, element in enumerate(self._mesh.elements):
+        elements = [c.v_indices for c in self._mesh.cells] if self._mesh.cells else [f.v_indices for f in self._mesh.faces]
+        for i, element in enumerate(elements):
             n = len(element)
             for j in range(n):
                 u, v = element[j], element[(j + 1) % n]
@@ -109,26 +155,41 @@ class MeshTopology:
 class Mesh(ABC):
     """Abstract base class for all mesh types."""
 
-    def __init__(self, vertices: List[Union[Point2D, Point3D]], elements: List[Tuple[int, ...]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None):
-        self._vertices = vertices
-        self._elements = elements
-        self._skipped_points = skipped_points or []
+    def __init__(self, 
+                 nodes: List[MeshNode], 
+                 edges: Optional[List[MeshEdge]] = None, 
+                 faces: Optional[List[MeshFace]] = None, 
+                 cells: Optional[List[MeshCell]] = None):
+        self._nodes = nodes
+        self._edges = edges or []
+        self._faces = faces or []
+        self._cells = cells or []
         self._topology = MeshTopology(self)
 
     @property
+    def nodes(self) -> List[MeshNode]:
+        """Returns the list of nodes in the mesh."""
+        return self._nodes
+
+    @property
+    def edges(self) -> List[MeshEdge]:
+        """Returns the list of edges in the mesh."""
+        return self._edges
+
+    @property
+    def faces(self) -> List[MeshFace]:
+        """Returns the list of faces in the mesh."""
+        return self._faces
+
+    @property
+    def cells(self) -> List[MeshCell]:
+        """Returns the list of cells in the mesh."""
+        return self._cells
+
+    @property
     def vertices(self) -> List[Union[Point2D, Point3D]]:
-        """Returns the list of vertices in the mesh."""
-        return self._vertices
-
-    @property
-    def elements(self) -> List[Tuple[int, ...]]:
-        """Returns the list of element indices (faces or cells)."""
-        return self._elements
-
-    @property
-    def skipped_points(self) -> List[Tuple[Point2D, str]]:
-        """Returns points that were skipped during mesh generation (e.g., duplicates)."""
-        return self._skipped_points
+        """Returns the list of points of the nodes."""
+        return [node.point for node in self._nodes]
 
     @property
     def topology(self) -> MeshTopology:
@@ -141,19 +202,21 @@ class Mesh(ABC):
 
     @property
     def centroid(self) -> Union[Point2D, Point3D]:
-        """Returns the geometric center of all vertices."""
-        n = len(self._vertices)
+        """Returns the geometric center of all nodes."""
+        n = len(self._nodes)
         if n == 0:
             return Point2D(0, 0)
         
         sum_x = sum_y = sum_z = 0.0
-        is_3d = isinstance(self._vertices[0], Point3D)
+        first_p = self._nodes[0].point
+        is_3d = isinstance(first_p, Point3D)
         
-        for v in self._vertices:
-            sum_x += v.x
-            sum_y += v.y
+        for node in self._nodes:
+            p = node.point
+            sum_x += p.x
+            sum_y += p.y
             if is_3d:
-                sum_z += v.z
+                sum_z += getattr(p, 'z', 0.0)
         
         if is_3d:
             return Point3D(sum_x / n, sum_y / n, sum_z / n)
@@ -161,22 +224,23 @@ class Mesh(ABC):
 
     def bounding_box(self) -> Tuple:
         """Returns the axis-aligned bounding box (min_coords, max_coords)."""
-        if not self._vertices:
+        if not self._nodes:
             return ()
 
-        is_3d = isinstance(self._vertices[0], Point3D)
-        first = self._vertices[0]
-        min_x = max_x = first.x
-        min_y = max_y = first.y
-        min_z = max_z = getattr(first, 'z', 0.0) if is_3d else 0.0
+        first_p = self._nodes[0].point
+        is_3d = isinstance(first_p, Point3D)
+        min_x = max_x = first_p.x
+        min_y = max_y = first_p.y
+        min_z = max_z = getattr(first_p, 'z', 0.0) if is_3d else 0.0
 
-        for v in self._vertices[1:]:
-            if v.x < min_x: min_x = v.x
-            elif v.x > max_x: max_x = v.x
-            if v.y < min_y: min_y = v.y
-            elif v.y > max_y: max_y = v.y
+        for node in self._nodes[1:]:
+            p = node.point
+            if p.x < min_x: min_x = p.x
+            elif p.x > max_x: max_x = p.x
+            if p.y < min_y: min_y = p.y
+            elif p.y > max_y: max_y = p.y
             if is_3d:
-                vz = v.z
+                vz = getattr(p, 'z', 0.0)
                 if vz < min_z: min_z = vz
                 elif vz > max_z: max_z = vz
 
@@ -186,23 +250,29 @@ class Mesh(ABC):
         return (min_x, min_y), (max_x, max_y)
 
     def translate(self, dx: float, dy: float, dz: float = 0.0):
-        """Translates all vertices by (dx, dy, dz)."""
-        is_3d = isinstance(self._vertices[0], Point3D)
-        for i, v in enumerate(self._vertices):
-            if is_3d:
-                self._vertices[i] = Point3D(v.x + dx, v.y + dy, v.z + dz, getattr(v, 'id', -1))
+        """Translates all nodes by (dx, dy, dz)."""
+        new_nodes = []
+        for node in self._nodes:
+            p = node.point
+            if isinstance(p, Point3D):
+                new_p = Point3D(p.x + dx, p.y + dy, p.z + dz, getattr(p, 'id', -1))
             else:
-                self._vertices[i] = Point2D(v.x + dx, v.y + dy, getattr(v, 'id', -1))
+                new_p = Point2D(p.x + dx, p.y + dy, getattr(p, 'id', -1))
+            new_nodes.append(replace(node, point=new_p))
+        self._nodes = new_nodes
         self._topology = MeshTopology(self)
 
     def scale(self, sx: float, sy: float, sz: float = 1.0):
-        """Scales all vertices by (sx, sy, sz)."""
-        is_3d = isinstance(self._vertices[0], Point3D)
-        for i, v in enumerate(self._vertices):
-            if is_3d:
-                self._vertices[i] = Point3D(v.x * sx, v.y * sy, v.z * sz, getattr(v, 'id', -1))
+        """Scales all nodes by (sx, sy, sz)."""
+        new_nodes = []
+        for node in self._nodes:
+            p = node.point
+            if isinstance(p, Point3D):
+                new_p = Point3D(p.x * sx, p.y * sy, p.z * sz, getattr(p, 'id', -1))
             else:
-                self._vertices[i] = Point2D(v.x * sx, v.y * sy, getattr(v, 'id', -1))
+                new_p = Point2D(p.x * sx, p.y * sy, getattr(p, 'id', -1))
+            new_nodes.append(replace(node, point=new_p))
+        self._nodes = new_nodes
         self._topology = MeshTopology(self)
 
     def rotate(self, angle_deg: float, axis: str = 'z'):
@@ -211,27 +281,31 @@ class Mesh(ABC):
         rad = math.radians(angle_deg)
         cos_a = math.cos(rad)
         sin_a = math.sin(rad)
-        is_3d = isinstance(self._vertices[0], Point3D)
         
-        for i, v in enumerate(self._vertices):
-            x, y = v.x, v.y
-            z = getattr(v, 'z', 0.0)
+        new_nodes = []
+        for node in self._nodes:
+            p = node.point
+            x, y = p.x, p.y
+            z = getattr(p, 'z', 0.0)
+            is_3d = isinstance(p, Point3D)
             
             if axis.lower() == 'x' and is_3d:
                 ny = y * cos_a - z * sin_a
                 nz = y * sin_a + z * cos_a
-                self._vertices[i] = Point3D(x, ny, nz, getattr(v, 'id', -1))
+                new_p = Point3D(x, ny, nz, getattr(p, 'id', -1))
             elif axis.lower() == 'y' and is_3d:
                 nx = x * cos_a + z * sin_a
                 nz = -x * sin_a + z * cos_a
-                self._vertices[i] = Point3D(nx, y, nz, getattr(v, 'id', -1))
+                new_p = Point3D(nx, y, nz, getattr(p, 'id', -1))
             else: # Default Z axis
                 nx = x * cos_a - y * sin_a
                 ny = x * sin_a + y * cos_a
                 if is_3d:
-                    self._vertices[i] = Point3D(nx, ny, z, getattr(v, 'id', -1))
+                    new_p = Point3D(nx, ny, z, getattr(p, 'id', -1))
                 else:
-                    self._vertices[i] = Point2D(nx, ny, getattr(v, 'id', -1))
+                    new_p = Point2D(nx, ny, getattr(p, 'id', -1))
+            new_nodes.append(replace(node, point=new_p))
+        self._nodes = new_nodes
         self._topology = MeshTopology(self)
 
     def normalize(self):
@@ -255,33 +329,69 @@ class Mesh(ABC):
 
     def reorder_nodes(self, new_node_indices: List[int]):
         """
-        Renumbers the vertices and updates element connectivity.
-        
-        Args:
-            new_node_indices: A list where the value at index i is the old vertex index
-                             that should now be at position i.
+        Renumbers the nodes and updates element connectivity.
         """
-        if len(new_node_indices) != len(self._vertices):
-            raise ValueError("new_node_indices must have the same length as vertices.")
+        if len(new_node_indices) != len(self._nodes):
+            raise ValueError("new_node_indices must have the same length as nodes.")
 
         old_to_new = {old_idx: new_idx for new_idx, old_idx in enumerate(new_node_indices)}
-        self._vertices = [self._vertices[i] for i in new_node_indices]
-        new_elements = []
-        for element in self._elements:
-            new_elements.append(tuple(old_to_new[v_idx] for v_idx in element))
-        self._elements = new_elements
+        
+        # New nodes with updated IDs
+        new_nodes = []
+        for new_idx, old_idx in enumerate(new_node_indices):
+            node = self._nodes[old_idx]
+            new_nodes.append(replace(node, id=new_idx))
+        self._nodes = new_nodes
+
+        # Update edges
+        new_edges = []
+        for edge in self._edges:
+            new_v = tuple(old_to_new[v_idx] for v_idx in edge.v_indices)
+            new_edges.append(replace(edge, v_indices=new_v))
+        self._edges = new_edges
+
+        # Update faces
+        new_faces = []
+        for face in self._faces:
+            new_v = tuple(old_to_new[v_idx] for v_idx in face.v_indices)
+            new_faces.append(replace(face, v_indices=new_v))
+        self._faces = new_faces
+
+        # Update cells
+        new_cells = []
+        for cell in self._cells:
+            new_v = tuple(old_to_new[v_idx] for v_idx in cell.v_indices)
+            new_cells.append(replace(cell, v_indices=new_v))
+        self._cells = new_cells
+
         self._topology = MeshTopology(self)
+
+    def to_file(self, filename: str, **kwargs):
+        """Exports the mesh to a file.
+        
+        Args:
+            filename: Path to the output file (detects format from extension).
+            **kwargs: Format-specific options (e.g., binary=True).
+        """
+        from .meshio import MeshExporter
+        MeshExporter.write(filename, self, **kwargs)
 
 
 class TriangleMesh(Mesh):
     """A 2D or 3D mesh composed of triangular faces."""
 
-    @property
-    def faces(self) -> List[Tuple[int, int, int]]:
-        return self._elements
+    def __init__(self, 
+                 nodes: List[Union[MeshNode, Point2D, Point3D]], 
+                 faces: List[Union[MeshFace, Tuple[int, ...]]], 
+                 edges: Optional[List[MeshEdge]] = None):
+        if nodes and not isinstance(nodes[0], MeshNode):
+            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
+        if faces and not isinstance(faces[0], MeshFace):
+            faces = [MeshFace(i, f) for i, f in enumerate(faces)]
+        super().__init__(nodes=nodes, faces=faces, edges=edges)
 
     @classmethod
-    def from_triangles(cls, triangles: List[Tuple[Point2D, Point2D, Point2D]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None) -> TriangleMesh:
+    def from_triangles(cls, triangles: List[Tuple[Point2D, Point2D, Point2D]]) -> TriangleMesh:
         """Converts a list of Point triangles to a TriangleMesh object."""
         unique_points = []
         point_to_idx = {}
@@ -292,29 +402,44 @@ class TriangleMesh(Mesh):
                     point_to_idx[p] = len(unique_points)
                     unique_points.append(p)
         
+        nodes = [MeshNode(i, p) for i, p in enumerate(unique_points)]
+        
         faces = []
-        for tri in triangles:
-            faces.append((point_to_idx[tri[0]], point_to_idx[tri[1]], point_to_idx[tri[2]]))
+        for i, tri in enumerate(triangles):
+            v_indices = (point_to_idx[tri[0]], point_to_idx[tri[1]], point_to_idx[tri[2]])
+            faces.append(MeshFace(i, v_indices))
             
-        return cls(unique_points, faces, skipped_points=skipped_points)
+        return cls(nodes, faces)
 
     @classmethod
     def from_file(cls, filename: str) -> TriangleMesh:
         """Creates a TriangleMesh from a file (OBJ, OFF, STL)."""
-        from .meshio import MeshImporter, OBJFileHandler
-        vertices, faces = MeshImporter.read(filename)
-        # Ensure triangles
-        tri_faces = OBJFileHandler.triangulate_faces(faces)
-        return cls(vertices, tri_faces)
+        from .meshio import MeshImporter
+        mesh = MeshImporter.read(filename)
+        
+        nodes = mesh.nodes
+        tri_faces = []
+        face_id = 0
+        for face in mesh.faces:
+            v = face.v_indices
+            if len(v) == 3:
+                tri_faces.append(MeshFace(face_id, v))
+                face_id += 1
+            elif len(v) > 3:
+                for i in range(1, len(v) - 1):
+                    tri_faces.append(MeshFace(face_id, (v[0], v[i], v[i+1])))
+                    face_id += 1
+        return cls(nodes, tri_faces)
 
     def euler_characteristic(self) -> int:
-        v = len(self._vertices)
-        f = len(self._elements)
+        v = len(self.nodes)
+        f = len(self.faces)
         edges = set()
-        for face in self._elements:
-            edges.add(tuple(sorted((face[0], face[1]))))
-            edges.add(tuple(sorted((face[1], face[2]))))
-            edges.add(tuple(sorted((face[2], face[0]))))
+        for face in self.faces:
+            v_indices = face.v_indices
+            edges.add(tuple(sorted((v_indices[0], v_indices[1]))))
+            edges.add(tuple(sorted((v_indices[1], v_indices[2]))))
+            edges.add(tuple(sorted((v_indices[2], v_indices[0]))))
         e = len(edges)
         return v - e + f
 
@@ -336,7 +461,8 @@ class TriangleMesh(Mesh):
     @staticmethod
     def _split_one_to_four(mesh: TriangleMesh) -> TriangleMesh:
         def get_area(f_idx):
-            v0, v1, v2 = [mesh.vertices[i] for i in mesh.faces[f_idx]]
+            face = mesh.faces[f_idx]
+            v0, v1, v2 = [mesh.nodes[i].point for i in face.v_indices]
             ax, ay, az = v0.x, v0.y, getattr(v0, 'z', 0.0)
             bx, by, bz = v1.x, v1.y, getattr(v1, 'z', 0.0)
             cx, cy, cz = v2.x, v2.y, getattr(v2, 'z', 0.0)
@@ -347,35 +473,37 @@ class TriangleMesh(Mesh):
 
         target_f_idx = max(range(len(mesh.faces)), key=get_area)
         target_face = mesh.faces[target_f_idx]
+        target_v = target_face.v_indices
         
         edge_map = defaultdict(list)
         for i, face in enumerate(mesh.faces):
+            v = face.v_indices
             for j in range(3):
-                edge = tuple(sorted((face[j], face[(j + 1) % 3])))
+                edge = tuple(sorted((v[j], v[(j + 1) % 3])))
                 edge_map[edge].append(i)
         
-        new_vertices = list(mesh.vertices)
+        new_nodes = list(mesh.nodes)
         mid_indices = []
         edges = []
         for j in range(3):
-            u_idx, v_idx = target_face[j], target_face[(j + 1) % 3]
+            u_idx, v_idx = target_v[j], target_v[(j + 1) % 3]
             edge = tuple(sorted((u_idx, v_idx)))
             edges.append(edge)
             
-            mid_idx = len(new_vertices)
-            v1, v2 = mesh.vertices[u_idx], mesh.vertices[v_idx]
-            if isinstance(v1, Point3D) and isinstance(v2, Point3D):
-                mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, mid_idx)
+            mid_idx = len(new_nodes)
+            v1_p, v2_p = mesh.nodes[u_idx].point, mesh.nodes[v_idx].point
+            if isinstance(v1_p, Point3D) and isinstance(v2_p, Point3D):
+                mid_p = Point3D((v1_p.x+v2_p.x)/2, (v1_p.y+v2_p.y)/2, (v1_p.z+v2_p.z)/2)
             else:
-                mid = Point2D((v1.x+v2.x)/2, (v1.y+v2.y)/2, mid_idx)
-            new_vertices.append(mid)
+                mid_p = Point2D((v1_p.x+v2_p.x)/2, (v1_p.y+v2_p.y)/2)
+            new_nodes.append(MeshNode(mid_idx, mid_p))
             mid_indices.append(mid_idx)
             
         m01, m12, m20 = mid_indices
-        v0, v1, v2 = target_face
+        v0, v1, v2 = target_v
         
-        new_faces = []
-        new_faces.extend([(v0, m01, m20), (v1, m12, m01), (v2, m20, m12), (m01, m12, m20)])
+        new_face_tuples = []
+        new_face_tuples.extend([(v0, m01, m20), (v1, m12, m01), (v2, m20, m12), (m01, m12, m20)])
         
         split_neighbor_indices = set()
         for j in range(3):
@@ -385,24 +513,27 @@ class TriangleMesh(Mesh):
             for n_idx in neighbors:
                 split_neighbor_indices.add(n_idx)
                 n_face = mesh.faces[n_idx]
-                opposite = [v for v in n_face if v not in edge][0]
-                new_faces.append((edge[0], mid, opposite))
-                new_faces.append((edge[1], mid, opposite))
+                n_v = n_face.v_indices
+                opposite = [v for v in n_v if v not in edge][0]
+                new_face_tuples.append((edge[0], mid, opposite))
+                new_face_tuples.append((edge[1], mid, opposite))
                 
-        final_faces = list(new_faces)
+        final_face_tuples = list(new_face_tuples)
         for i, face in enumerate(mesh.faces):
             if i == target_f_idx or i in split_neighbor_indices:
                 continue
-            final_faces.append(face)
+            final_face_tuples.append(face.v_indices)
             
-        return TriangleMesh(new_vertices, final_faces)
+        final_faces = [MeshFace(i, v) for i, v in enumerate(final_face_tuples)]
+        return TriangleMesh(new_nodes, final_faces)
 
     @staticmethod
     def _split_one_edge(mesh: TriangleMesh) -> TriangleMesh:
         edge_map = defaultdict(list)
         for i, face in enumerate(mesh.faces):
+            v = face.v_indices
             for j in range(3):
-                edge = tuple(sorted((face[j], face[(j + 1) % 3])))
+                edge = tuple(sorted((v[j], v[(j + 1) % 3])))
                 edge_map[edge].append(i)
         
         boundary_edges = [e for e, faces in edge_map.items() if len(faces) == 1]
@@ -411,28 +542,39 @@ class TriangleMesh(Mesh):
             edge = boundary_edges[0]
             f_idx = edge_map[edge][0]
             face = mesh.faces[f_idx]
-            new_vertices = list(mesh.vertices)
-            mid_idx = len(new_vertices)
-            v1, v2 = mesh.vertices[edge[0]], mesh.vertices[edge[1]]
-            mid = Point3D((v1.x+v2.x)/2, (v1.y+v2.y)/2, (v1.z+v2.z)/2, mid_idx) if isinstance(v1, Point3D) else Point2D((v1.x+v2.x)/2, (v1.y+v2.y)/2, mid_idx)
-            new_vertices.append(mid)
-            opposite = [v for v in face if v not in edge][0]
-            new_faces = [(edge[0], mid, opposite), (edge[1], mid, opposite)]
-            final_faces = [f for i, f in enumerate(mesh.faces) if i != f_idx] + new_faces
-            return TriangleMesh(new_vertices, final_faces)
+            v_indices = face.v_indices
+            new_nodes = list(mesh.nodes)
+            mid_idx = len(new_nodes)
+            v1_p, v2_p = mesh.nodes[edge[0]].point, mesh.nodes[edge[1]].point
+            if isinstance(v1_p, Point3D) and isinstance(v2_p, Point3D):
+                mid_p = Point3D((v1_p.x+v2_p.x)/2, (v1_p.y+v2_p.y)/2, (v1_p.z+v2_p.z)/2)
+            else:
+                mid_p = Point2D((v1_p.x+v2_p.x)/2, (v1_p.y+v2_p.y)/2)
+            new_nodes.append(MeshNode(mid_idx, mid_p))
+            opposite = [v for v in v_indices if v not in edge][0]
+            new_face_tuples = [(edge[0], mid_idx, opposite), (edge[1], mid_idx, opposite)]
+            final_face_tuples = [f.v_indices for i, f in enumerate(mesh.faces) if i != f_idx] + new_face_tuples
+            final_faces = [MeshFace(i, v) for i, v in enumerate(final_face_tuples)]
+            return TriangleMesh(new_nodes, final_faces)
         return mesh
 
 
 class QuadMesh(Mesh):
     """A 2D or 3D mesh composed of quadrilateral faces."""
 
-    @property
-    def faces(self) -> List[Tuple[int, int, int, int]]:
-        return self._elements
+    def __init__(self, 
+                 nodes: List[Union[MeshNode, Point2D, Point3D]], 
+                 faces: List[Union[MeshFace, Tuple[int, ...]]], 
+                 edges: Optional[List[MeshEdge]] = None):
+        if nodes and not isinstance(nodes[0], MeshNode):
+            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
+        if faces and not isinstance(faces[0], MeshFace):
+            faces = [MeshFace(i, f) for i, f in enumerate(faces)]
+        super().__init__(nodes=nodes, faces=faces, edges=edges)
 
     @classmethod
-    def from_triangles(cls, triangles: List[Tuple[Point2D, Point2D, Point2D]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None) -> TriangleMesh:
-        """Converts a list of Point triangles to a TriangleMesh object."""
+    def from_triangles(cls, triangles: List[Tuple[Point2D, Point2D, Point2D]]) -> "QuadMesh":
+        """Converts a list of Point triangles to a QuadMesh object."""
         unique_points = []
         point_to_idx = {}
         
@@ -442,19 +584,17 @@ class QuadMesh(Mesh):
                     point_to_idx[p] = len(unique_points)
                     unique_points.append(p)
         
-        faces = []
-        for tri in triangles:
-            faces.append((point_to_idx[tri[0]], point_to_idx[tri[1]], point_to_idx[tri[2]]))
+        nodes = [MeshNode(i, p) for i, p in enumerate(unique_points)]
+        faces = [MeshFace(i, (point_to_idx[t[0]], point_to_idx[t[1]], point_to_idx[t[2]])) for i, t in enumerate(triangles)]
             
-        return cls(unique_points, faces, skipped_points=skipped_points)
+        return cls(nodes, faces)
 
     @classmethod
     def from_file(cls, filename: str) -> QuadMesh:
         """Creates a QuadMesh from a file (OBJ, OFF, STL)."""
         from .meshio import MeshImporter
-        vertices, faces = MeshImporter.read(filename)
-        # Assumes faces are quads
-        return cls(vertices, faces)
+        mesh = MeshImporter.read(filename)
+        return cls(mesh.nodes, mesh.faces)
 
     def extract_chord(self, start_quad_idx: int, edge_index: int) -> List[int]:
         """
@@ -506,7 +646,8 @@ class QuadMesh(Mesh):
             # Exit from opposite side
             exit_edge_idx = (curr_entry + 2) % 4
             curr_face = self.faces[curr_idx]
-            u, v = curr_face[exit_edge_idx], curr_face[(exit_edge_idx + 1) % 4]
+            v_indices = curr_face.v_indices
+            u, v = v_indices[exit_edge_idx], v_indices[(exit_edge_idx + 1) % 4]
             exit_edge = tuple(sorted((u, v)))
             
             # Find neighbor across exit_edge
@@ -515,7 +656,8 @@ class QuadMesh(Mesh):
             
             for n_idx in self.topology.shared_edge_neighbors(curr_idx):
                 n_face = self.faces[n_idx]
-                n_edges = [tuple(sorted((n_face[k], n_face[(k + 1) % 4]))) for k in range(4)]
+                n_v = n_face.v_indices
+                n_edges = [tuple(sorted((n_v[k], n_v[(k + 1) % 4]))) for k in range(4)]
                 if exit_edge in n_edges:
                     next_idx = n_idx
                     next_entry = n_edges.index(exit_edge)
@@ -542,13 +684,19 @@ class QuadMesh(Mesh):
 class PolygonMesh(Mesh):
     """A 2D or 3D mesh composed of arbitrary polygonal faces."""
 
-    @property
-    def faces(self) -> List[Tuple[int, ...]]:
-        return self._elements
+    def __init__(self, 
+                 nodes: List[Union[MeshNode, Point2D, Point3D]], 
+                 faces: List[Union[MeshFace, Tuple[int, ...]]], 
+                 edges: Optional[List[MeshEdge]] = None):
+        if nodes and not isinstance(nodes[0], MeshNode):
+            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
+        if faces and not isinstance(faces[0], MeshFace):
+            faces = [MeshFace(i, f) for i, f in enumerate(faces)]
+        super().__init__(nodes=nodes, faces=faces, edges=edges)
 
     @classmethod
-    def from_triangles(cls, triangles: List[Tuple[Point2D, Point2D, Point2D]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None) -> TriangleMesh:
-        """Converts a list of Point triangles to a TriangleMesh object."""
+    def from_triangles(cls, triangles: List[Tuple[Point2D, Point2D, Point2D]]) -> "PolygonMesh":
+        """Converts a list of Point triangles to a PolygonMesh object."""
         unique_points = []
         point_to_idx = {}
         
@@ -558,38 +706,47 @@ class PolygonMesh(Mesh):
                     point_to_idx[p] = len(unique_points)
                     unique_points.append(p)
         
-        faces = []
-        for tri in triangles:
-            faces.append((point_to_idx[tri[0]], point_to_idx[tri[1]], point_to_idx[tri[2]]))
+        nodes = [MeshNode(i, p) for i, p in enumerate(unique_points)]
+        faces = [MeshFace(i, (point_to_idx[t[0]], point_to_idx[t[1]], point_to_idx[t[2]])) for i, t in enumerate(triangles)]
             
-        return cls(unique_points, faces, skipped_points=skipped_points)
+        return cls(nodes, faces)
 
     @classmethod
     def from_file(cls, filename: str) -> PolygonMesh:
         """Creates a PolygonMesh from a file (OBJ, OFF, STL)."""
         from .meshio import MeshImporter
-        vertices, faces = MeshImporter.read(filename)
-        return cls(vertices, [tuple(f) for f in faces])
+        mesh = MeshImporter.read(filename)
+        return cls(mesh.nodes, mesh.faces)
 
     def triangulate(self) -> TriangleMesh:
         """
         Converts the polygon mesh into a triangle mesh using fan triangulation.
         Each polygon with n vertices is split into n-2 triangles.
         """
-        from .meshio import OBJFileHandler
-        tri_faces = OBJFileHandler.triangulate_faces(self._elements)
-        return TriangleMesh(self._vertices, tri_faces)
+        tri_faces = []
+        face_id = 0
+        for face in self.faces:
+            v = face.v_indices
+            if len(v) == 3:
+                tri_faces.append(MeshFace(face_id, v))
+                face_id += 1
+            elif len(v) > 3:
+                for i in range(1, len(v) - 1):
+                    tri_faces.append(MeshFace(face_id, (v[0], v[i], v[i+1])))
+                    face_id += 1
+        return TriangleMesh(self.nodes, tri_faces)
 
     def euler_characteristic(self) -> int:
         """Calculates the Euler characteristic (V - E + F)."""
-        v = len(self._vertices)
-        f = len(self._elements)
+        v = len(self.nodes)
+        f = len(self.faces)
         edges = set()
-        for face in self._elements:
-            n = len(face)
+        for face in self.faces:
+            v_indices = face.v_indices
+            n = len(v_indices)
             for i in range(n):
-                u, v_idx = face[i], face[(i + 1) % n]
-                edges.add(tuple(sorted((u, v_idx))))
+                u, v_node = v_indices[i], v_indices[(i + 1) % n]
+                edges.add(tuple(sorted((u, v_node))))
         e = len(edges)
         return v - e + f
 
@@ -597,101 +754,44 @@ class PolygonMesh(Mesh):
 class TetMesh(Mesh):
     """A 3D volumetric mesh composed of tetrahedral cells."""
 
-    def __init__(self, vertices: List[Point3D], tets: List[Tuple[int, int, int, int]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None):
-        super().__init__(vertices, tets, skipped_points)
-
-    @property
-    def cells(self) -> List[Tuple[int, int, int, int]]:
-        return self._elements
+    def __init__(self, 
+                 nodes: List[Union[MeshNode, Point3D]], 
+                 cells: List[Union[MeshCell, Tuple[int, int, int, int]]], 
+                 edges: Optional[List[MeshEdge]] = None, 
+                 faces: Optional[List[MeshFace]] = None):
+        if nodes and not isinstance(nodes[0], MeshNode):
+            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
+        if cells and not isinstance(cells[0], MeshCell):
+            cells = [MeshCell(i, c) for i, c in enumerate(cells)]
+        super().__init__(nodes=nodes, cells=cells, edges=edges, faces=faces)
 
 
 class HexMesh(Mesh):
     """A 3D volumetric mesh composed of hexahedral cells."""
 
-    def __init__(self, vertices: List[Point3D], hexas: List[Tuple[int, int, int, int, int, int, int, int]], skipped_points: Optional[List[Tuple[Point2D, str]]] = None):
-        super().__init__(vertices, hexas, skipped_points)
+    def __init__(self, 
+                 nodes: List[Union[MeshNode, Point3D]], 
+                 cells: List[Union[MeshCell, Tuple[int, int, int, int, int, int, int, int]]], 
+                 edges: Optional[List[MeshEdge]] = None, 
+                 faces: Optional[List[MeshFace]] = None):
+        if nodes and not isinstance(nodes[0], MeshNode):
+            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
+        if cells and not isinstance(cells[0], MeshCell):
+            cells = [MeshCell(i, c) for i, c in enumerate(cells)]
+        super().__init__(nodes=nodes, cells=cells, edges=edges, faces=faces)
 
-    @property
-    def cells(self) -> List[Tuple[int, int, int, int, int, int, int, int]]:
-        return self._elements
-
-
-def mesh_edges(triangles):
-    edges = set()
-    for a, b, c in triangles:
-        edges.add(tuple(sorted((a.id, b.id))))
-        edges.add(tuple(sorted((b.id, c.id))))
-        edges.add(tuple(sorted((c.id, a.id))))
-    return edges
-
-
-def mesh_vertices(triangles):
-    vertices = {}
-    for triangle in triangles:
-        for vertex in triangle:
-            vertices[vertex.id] = vertex
-    return vertices
-
-
-def euler_characteristic(triangles):
-    vertices = mesh_vertices(triangles)
-    edges = mesh_edges(triangles)
-    faces = len(triangles)
-    chi = len(vertices) - len(edges) + faces
-    return {
-        "vertices": len(vertices),
-        "edges": len(edges),
-        "faces": faces,
-        "euler_characteristic": chi,
-    }
-
-
-def vertex_neighbors(triangles):
-    neighbors = defaultdict(set)
-    for a, b, c in triangles:
-        neighbors[a.id].update([b.id, c.id])
-        neighbors[b.id].update([a.id, c.id])
-        neighbors[c.id].update([a.id, b.id])
-    return {vertex_id: sorted(adjacent) for vertex_id, adjacent in neighbors.items()}
-
-
-def triangle_neighbors(triangles):
-    edge_to_triangles = defaultdict(list)
-    for triangle_index, (a, b, c) in enumerate(triangles):
-        edge_to_triangles[tuple(sorted((a.id, b.id)))].append(triangle_index)
-        edge_to_triangles[tuple(sorted((b.id, c.id)))].append(triangle_index)
-        edge_to_triangles[tuple(sorted((c.id, a.id)))].append(triangle_index)
-
-    neighbors = {triangle_index: set() for triangle_index in range(len(triangles))}
-    for owners in edge_to_triangles.values():
-        if len(owners) != 2:
-            continue
-        left, right = owners
-        neighbors[left].add(right)
-        neighbors[right].add(left)
-    return {triangle_index: sorted(adjacent) for triangle_index, adjacent in neighbors.items()}
-
-
-def mesh_neighbors(triangles):
-    return {
-        "vertex_neighbors": vertex_neighbors(triangles),
-        "triangle_neighbors": triangle_neighbors(triangles),
-    }
 
 
 __all__ = [
     "HexMesh",
     "Mesh",
+    "MeshCell",
+    "MeshEdge",
+    "MeshFace",
+    "MeshNode",
     "MeshTopology",
     "PolygonMesh",
     "QuadMesh",
     "TetMesh",
     "TriangleMesh",
-    "from_triangles",
-    "euler_characteristic",
-    "mesh_edges",
-    "mesh_neighbors",
-    "mesh_vertices",
-    "triangle_neighbors",
-    "vertex_neighbors",
 ]

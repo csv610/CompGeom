@@ -5,7 +5,7 @@ import math
 from ....kernel import Point2D, orientation_sign, in_circle, segment_angle as angle
 
 
-def triangulate_divide_and_conquer(points: list[Point2D]):
+def triangulate_divide_and_conquer(points: list[Point2D]) -> list[tuple[Point2D, Point2D, Point2D]]:
     """Delaunay Triangulation using the Divide and Conquer algorithm."""
     mesher = DivideAndConquerDelaunayMesher()
     return mesher.triangulate(points)
@@ -17,30 +17,27 @@ class DivideAndConquerDelaunayMesher:
     """
     def __init__(self):
         self.points: list[Point2D] = []
-        self.skipped: list[tuple[Point2D, str]] = []
 
-    def triangulate(self, points: list[Point2D]) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[tuple[Point2D, str]]]:
+    def triangulate(self, points: list[Point2D]) -> list[tuple[Point2D, Point2D, Point2D]]:
         """
         Performs Delaunay triangulation of the given points.
         
         Returns:
-            A tuple of (triangles, skipped_points).
+            A list of triangles.
         """
         if not points:
-            return [], []
+            return []
         
         # Sort points and remove duplicates
         sorted_points = sorted(points, key=lambda p: (p.x, p.y))
         unique_points = []
-        self.skipped = []
         for p in sorted_points:
             if unique_points and p.x == unique_points[-1].x and p.y == unique_points[-1].y:
-                self.skipped.append((p, "Duplicate Point"))
                 continue
             unique_points.append(p)
         
         if len(unique_points) < 2:
-            return [], self.skipped
+            return []
 
         self.points = unique_points
         adj = self._dc_triangulate(unique_points)
@@ -64,7 +61,7 @@ class DivideAndConquerDelaunayMesher:
                                 triangles.append((u, w, v))
                             seen.add(tri_key)
         
-        return triangles, self.skipped
+        return triangles
 
     def _dc_triangulate(self, points: list[Point2D]) -> dict[Point2D, list[Point2D]]:
         n = len(points)

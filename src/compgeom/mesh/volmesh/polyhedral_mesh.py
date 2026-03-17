@@ -1,7 +1,7 @@
 from __future__ import annotations
-from typing import List, Tuple, Optional, Set
+from typing import List, Tuple, Optional, Set, Union
 from ...kernel import Point3D
-from ..mesh import Mesh
+from ..mesh import Mesh, MeshNode
 
 class PolyhedralMesh(Mesh):
     """
@@ -11,24 +11,22 @@ class PolyhedralMesh(Mesh):
     """
 
     def __init__(self, 
-                 vertices: List[Point3D], 
+                 vertices: List[Union[MeshNode, Point3D]], 
                  cells: List[List[List[int]]], 
-                 seeds: Optional[List[Point3D]] = None,
-                 skipped_points: Optional[List[Tuple[Point3D, str]]] = None):
+                 seeds: Optional[List[Point3D]] = None):
         """
         Args:
-            vertices: List of Point3D vertices.
+            vertices: List of Point3D vertices or MeshNodes.
             cells: List of cells. Each cell is a list of faces. 
                    Each face is a list of vertex indices (int).
             seeds: The original seed points used to generate the Voronoi mesh.
-            skipped_points: Points that were not included in the mesh.
         """
-        # We need to flatten the cells for the base Mesh class if it expects a specific format.
-        # But our base Mesh.elements is List[Tuple[int, ...]]. 
-        # For PolyhedralMesh, we'll store a more complex structure.
-        # To maintain compatibility, we can store cell indices if we flatten faces.
-        # For now, let's keep it simple and store our own structure.
-        super().__init__(vertices, [], skipped_points)
+        if vertices and not isinstance(vertices[0], MeshNode):
+            nodes = [MeshNode(i, p) for i, p in enumerate(vertices)]
+        else:
+            nodes = vertices
+
+        super().__init__(nodes=nodes)
         self._poly_cells = cells
         self._seeds = seeds or []
         self._all_faces: List[Tuple[int, ...]] = []
@@ -39,13 +37,9 @@ class PolyhedralMesh(Mesh):
         unique_faces = set()
         for cell in self._poly_cells:
             for face in cell:
-                # Normalize face for uniqueness
-                # Sort indices but maintain winding order? 
-                # Actually, for just counting unique faces, we can use frozenset or canonical rotation.
+                # Canonical representation for uniqueness
                 canonical = tuple(sorted(face))
                 unique_faces.add(canonical)
-        # We don't really use _elements in the same way here.
-        # But we'll store the poly cells directly.
         pass
 
     @property

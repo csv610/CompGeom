@@ -50,7 +50,6 @@ class IncrementalDelaunayMesher3D:
     def __init__(self):
         self.active_tets: set[IncrementalTetrahedron] = set()
         self.super_vertices: set[Point3D] = set()
-        self.skipped: list[tuple[Point3D, str]] = []
 
     def initialize(self, points: Iterable[Point3D]):
         pts = list(points)
@@ -68,7 +67,6 @@ class IncrementalDelaunayMesher3D:
                 bad_tets.append(tet)
         
         if not bad_tets:
-            self.skipped.append((p, "Point outside or numerical issue"))
             return
 
         # Map from canonical face to (actual face, count)
@@ -97,34 +95,14 @@ class IncrementalDelaunayMesher3D:
                 continue
 
     def get_tets(self) -> list[tuple[Point3D, Point3D, Point3D, Point3D]]:
-        final = []
-        for t in self.active_tets:
-            if not any(v in self.super_vertices for v in t.vertices):
-                final.append(tuple(t.vertices))
-        return final
+        return [tuple(t.vertices) for t in self.active_tets 
+                if not any(v in self.super_vertices for v in t.vertices)]
 
-    def triangulate(self, points: list[Point3D]) -> tuple[list[tuple[Point3D, Point3D, Point3D, Point3D]], list[tuple[Point3D, str]]]:
-        if not points: return [], []
 
-        unique_points = []
-        seen = set()
-        skipped_initial = []
-        for p in points:
-            key = (p.x, p.y, p.z)
-            if key in seen:
-                skipped_initial.append((p, "Duplicate Point"))
-                continue
-            seen.add(key)
-            unique_points.append(p)
-
-        if not unique_points: return [], skipped_initial
-
-        self.initialize(unique_points)
-        for p in unique_points:
-            self.add_point(p)
-
-        return self.get_tets(), skipped_initial + self.skipped
-
-def triangulate_incremental_3d(points: list[Point3D]) -> tuple[list[tuple[Point3D, Point3D, Point3D, Point3D]], list[tuple[Point3D, str]]]:
+def triangulate_incremental_3d(points: list[Point3D]) -> list[tuple[Point3D, Point3D, Point3D, Point3D]]:
+    """Incremental Delaunay tetrahedralization."""
     mesher = IncrementalDelaunayMesher3D()
-    return mesher.triangulate(points)
+    mesher.initialize(points)
+    for p in points:
+        mesher.add_point(p)
+    return mesher.get_tets()

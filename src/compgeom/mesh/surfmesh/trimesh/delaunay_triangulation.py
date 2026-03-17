@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from collections import deque
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from ....kernel import Point2D, in_circle, orientation_sign
 from .delaunay_mesh_incremental import triangulate_incremental_fast
@@ -57,8 +57,6 @@ class DelaunayMesher:
         max_y = max(p.y for p in points)
         scale = max(max_x - min_x, max_y - min_y, 1.0)
 
-        skipped = []
-
         if rejection_ratio is not None:
             dist_threshold = scale * rejection_ratio
             filtered_points = []
@@ -67,7 +65,6 @@ class DelaunayMesher:
                 for existing in filtered_points:
                     if math.sqrt((p.x - existing.x)**2 + (p.y - existing.y)**2) < dist_threshold:
                         too_close = True
-                        skipped.append((p, f"Point too close (threshold: {dist_threshold})"))
                         break
                 if not too_close:
                     filtered_points.append(p)
@@ -87,13 +84,13 @@ class DelaunayMesher:
             points = jittered_points
 
         if algorithm == "incremental":
-            triangles, skipped = triangulate_incremental_fast(points, spatial_sort=spatial_sort)
+            triangles = triangulate_incremental_fast(points, spatial_sort=spatial_sort)
         elif algorithm == "divide_and_conquer":
-            triangles, skipped = triangulate_divide_and_conquer(points)
+            triangles = triangulate_divide_and_conquer(points)
         elif algorithm == "edge_flip":
-            triangles, skipped = triangulate_edgeflip(points, spatial_sort=spatial_sort)
+            triangles = triangulate_edgeflip(points, spatial_sort=spatial_sort)
         elif algorithm == "flip":
-            raw_triangles, skipped, super_triangle_vertices = triangulate_naive(points)
+            raw_triangles, _, super_triangle_vertices = triangulate_naive(points)
             mesh = build_topology(raw_triangles)
             DelaunayMesher.delaunay_flip(mesh)
             triangles = [
@@ -104,7 +101,7 @@ class DelaunayMesher:
             raise ValueError(f"Unknown algorithm: {algorithm}")
             
         from ...mesh import TriangleMesh
-        return TriangleMesh.from_triangles(triangles, skipped_points=skipped)
+        return TriangleMesh.from_triangles(triangles)
 
     @staticmethod
     def merge(mesh1: TriangleMesh, mesh2: TriangleMesh, algorithm: str = "edge_flip") -> TriangleMesh:
@@ -124,10 +121,10 @@ class DelaunayMesher:
         mesher = EdgeFlipDelaunayMesher()
         
         # Triangulate points of mesh2 into the structure of mesh1
-        triangles, skipped = mesher.triangulate(mesh2.vertices, existing_mesh=mesh1)
+        triangles = mesher.triangulate(mesh2.vertices, existing_mesh=mesh1)
         
         from ...mesh import TriangleMesh
-        return TriangleMesh.from_triangles(triangles, skipped_points=skipped)
+        return TriangleMesh.from_triangles(triangles)
 
     @staticmethod
     def constrained_triangulate(outer_boundary: list[Point2D], holes: list[list[Point2D]] | None = None) -> TriangleMesh:

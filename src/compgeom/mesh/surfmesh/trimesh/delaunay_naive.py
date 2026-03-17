@@ -27,11 +27,10 @@ class Triangle:
 def triangulate_naive(points: list[Point2D]):
     """Batch-oriented Naive Delaunay triangulation."""
     if not points:
-        return [], [], ()
+        return [], ()
 
     super_triangle = create_super_triangle(points)
     super_triangle_vertices = set(super_triangle)
-    skipped_points = []
     existing_points = set()
 
     # Build spatial index helpers to speed up point-location.
@@ -117,7 +116,6 @@ def triangulate_naive(points: list[Point2D]):
 
     for point in points:
         if point in existing_points or any(point == vertex for vertex in super_triangle_vertices):
-            skipped_points.append((point, "Duplicate/Coincident Point"))
             continue
 
         candidates = spatial_index.query(point)
@@ -134,7 +132,6 @@ def triangulate_naive(points: list[Point2D]):
                     break
 
         if not containing_entry:
-            skipped_points.append((point, "Outside super-triangle (Numerical Error)"))
             continue
 
         spatial_index.remove(containing_entry)
@@ -146,4 +143,4 @@ def triangulate_naive(points: list[Point2D]):
 
         existing_points.add(point)
 
-    return [entry.vertices for entry in triangles_list], skipped_points, super_triangle_vertices
+    return [entry.vertices for entry in triangles_list], super_triangle_vertices
