@@ -3,14 +3,14 @@ import math
 from collections import defaultdict
 from typing import List, Tuple
 
-from ..mesh import TriangleMesh
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 
 class MeshCurvature:
     """Calculates Gaussian and Mean curvature at mesh vertices."""
 
     @staticmethod
-    def gaussian_curvature(mesh: TriangleMesh) -> List[float]:
+    def gaussian_curvature(mesh: TriMesh) -> List[float]:
         """
         Calculates Gaussian curvature using the angle deficit method.
         K_i = (2*pi - sum(theta_ij)) / A_i
@@ -76,7 +76,7 @@ class MeshCurvature:
         return curvatures
 
     @staticmethod
-    def mean_curvature(mesh: TriangleMesh) -> List[float]:
+    def mean_curvature(mesh: TriMesh) -> List[float]:
         """
         Calculates Mean curvature magnitude using the cotangent Laplacian.
         |H_i| = 0.5 * |Laplace-Beltrami(v_i)|

@@ -2,7 +2,7 @@
 
 import numpy as np
 from typing import List, Tuple, Set
-from compgeom.mesh import Mesh, TriangleMesh
+from compgeom.mesh import Mesh, TriMesh
 from compgeom.kernel import Point3D
 
 class MeshRigidity:

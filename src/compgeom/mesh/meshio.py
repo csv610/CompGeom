@@ -7,7 +7,7 @@ import struct
 from typing import List, Tuple, Union, Optional
 
 from ..kernel import Point2D, Point3D
-from .mesh import Mesh, PolygonMesh, TriangleMesh
+from .mesh import Mesh, PolygonMesh, TriMesh
 
 
 class OBJFileHandler:
@@ -181,7 +181,7 @@ class STLFileHandler:
                     face.append(v_map[key])
                 f.read(2) # Skip attribute byte count
                 faces.append(face)
-        return TriangleMesh(vertices, [tuple(f) for f in faces])
+        return TriMesh(vertices, [tuple(f) for f in faces])
 
     @staticmethod
     def _read_ascii(filename: str) -> Mesh:
@@ -204,7 +204,7 @@ class STLFileHandler:
                 elif line.startswith("endfacet"):
                     faces.append(face)
                     face = []
-        return TriangleMesh(vertices, [tuple(f) for f in faces])
+        return TriMesh(vertices, [tuple(f) for f in faces])
 
     @staticmethod
     def write(filename: str, mesh: Mesh, binary: bool = True, **kwargs):

@@ -2,13 +2,13 @@
 import math
 from typing import List, Dict, Tuple
 
-from ..mesh import TriangleMesh
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 
 class MeshQuality:
     """Calculates geometric quality metrics for triangles."""
 
     @staticmethod
-    def aspect_ratio(mesh: TriangleMesh) -> List[float]:
+    def aspect_ratio(mesh: TriMesh) -> List[float]:
         """Calculates aspect ratio (R/r) for each triangle. Ideal is 1.0."""
         ratios = []
         for face in mesh.faces:
@@ -38,7 +38,7 @@ class MeshQuality:
         return ratios
 
     @staticmethod
-    def min_max_angles(mesh: TriangleMesh) -> List[Tuple[float, float]]:
+    def min_max_angles(mesh: TriMesh) -> List[Tuple[float, float]]:
         """Calculates minimum and maximum angles (in degrees) for each face."""
         angles = []
         for face in mesh.faces:

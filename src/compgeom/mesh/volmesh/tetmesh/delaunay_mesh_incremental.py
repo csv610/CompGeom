@@ -13,7 +13,7 @@ from ....kernel import (
 from .utils import PointGrid3D, create_super_tetrahedron
 
 if TYPE_CHECKING:
-    from ...mesh import TetMesh
+    from .tetmesh import TetMesh
 
 class IncrementalTetrahedron:
     """A tetrahedron in the incremental Delaunay mesh."""

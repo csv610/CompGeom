@@ -23,7 +23,7 @@ from .mesh import (
     PolygonMesh,
     QuadMesh,
     TetMesh,
-    TriangleMesh,
+    TriMesh,
 )
 from .edge_mesh import EdgeMesh
 from .meshalgo.mesh_coloring import MeshColoring
@@ -119,7 +119,7 @@ __all__ = [
     "TetMesh",
     "TetMeshQuality",
     "TriMeshRefiner",
-    "TriangleMesh",
+    "TriMesh",
     "TriangleToQuadConverter",
     "Triangle",
     "VoronoiDiagram",

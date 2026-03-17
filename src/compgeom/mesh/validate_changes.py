@@ -1,10 +1,10 @@
 
 import os
 from compgeom.kernel import Point2D, Point3D
-from compgeom.mesh.mesh import TriangleMesh, MeshNode, MeshFace, MeshCell, TetMesh, MeshTopology
+from compgeom.mesh import TriMesh, MeshNode, MeshFace, MeshCell, TetMesh, MeshTopology
 
 def test_triangle_mesh():
-    print("Testing TriangleMesh...")
+    print("Testing TriMesh...")
     # Test from_triangles
     p1 = Point2D(0, 0)
     p2 = Point2D(1, 0)
@@ -13,7 +13,7 @@ def test_triangle_mesh():
     
     triangles = [(p1, p2, p3), (p2, p4, p3)]
     
-    mesh = TriangleMesh.from_triangles(triangles)
+    mesh = TriMesh.from_triangles(triangles)
     print(f"Nodes: {len(mesh.nodes)}")
     print(f"Faces: {len(mesh.faces)}")
     
@@ -50,7 +50,7 @@ def test_tet_mesh_topology():
     assert neighbors == {1, 3}
 
 def test_from_file():
-    print("\nTesting TriangleMesh.from_file...")
+    print("\nTesting TriMesh.from_file...")
     # Create a temporary OBJ file
     obj_content = """v 0 0 0
 v 1 0 0
@@ -61,7 +61,7 @@ f 1 2 3
         f.write(obj_content)
     
     try:
-        mesh = TriangleMesh.from_file("test.obj")
+        mesh = TriMesh.from_file("test.obj")
         print(f"Nodes from file: {len(mesh.nodes)}")
         print(f"Faces from file: {len(mesh.faces)}")
         assert len(mesh.nodes) == 3

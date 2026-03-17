@@ -2,14 +2,14 @@
 import heapq
 from typing import List, Tuple, Set, Dict
 
-from compgeom.mesh import TriangleMesh
+from compgeom.mesh import TriMesh
 from mesh_geodesics import MeshGeodesics
 
 class MeshKGeodesics:
     """Calculates multiple alternative shortest paths on a mesh."""
 
     @staticmethod
-    def compute_k_shortest_paths(mesh: TriangleMesh, source_idx: int, target_idx: int, k: int) -> List[Tuple[float, List[int]]]:
+    def compute_k_shortest_paths(mesh: TriMesh, source_idx: int, target_idx: int, k: int) -> List[Tuple[float, List[int]]]:
         """
         Computes up to K shortest paths between source and target using Yen's algorithm.
         Returns a list of (distance, path) tuples.
@@ -84,7 +84,7 @@ class MeshKGeodesics:
 
     @staticmethod
     def _dijkstra_with_exclusions(
-        mesh: TriangleMesh, 
+        mesh: TriMesh, 
         source: int, 
         target: int, 
         adj: Dict[int, List[Tuple[int, float]]],

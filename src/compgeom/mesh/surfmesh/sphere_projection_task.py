@@ -6,7 +6,7 @@ import numpy as np
 from typing import List, Tuple, Set, Dict
 
 # Standard imports from current project
-from ..mesh import TriangleMesh
+from .trimesh.trimesh import TriMesh
 from ...kernel import Point3D, Sphere
 from .mesh_analysis import MeshAnalysis
 from .trimesh.primitives import Primitives
@@ -14,7 +14,7 @@ from .trimesh.primitives import Primitives
 class SphereProjector:
     """Handles projection of a mesh onto a sphere and subsequent optimization."""
 
-    def __init__(self, mesh: TriangleMesh, sphere: Sphere):
+    def __init__(self, mesh: TriMesh, sphere: Sphere):
         self.original_mesh = mesh
         self.sphere = sphere
         # Cache numpy version of sphere center for efficient vector operations
@@ -221,10 +221,10 @@ class SphereProjector:
             
             self.current_vertices = new_verts
 
-    def get_mesh(self) -> TriangleMesh:
-        """Returns the current state as a TriangleMesh object."""
+    def get_mesh(self) -> TriMesh:
+        """Returns the current state as a TriMesh object."""
         new_vertices = [Point3D(v[0], v[1], v[2], id=i) for i, v in enumerate(self.current_vertices)]
-        return TriangleMesh(new_vertices, [tuple(f) for f in self.faces])
+        return TriMesh(new_vertices, [tuple(f) for f in self.faces])
 
 # --- Wrapper functions for backward compatibility and testing ---
 
@@ -232,7 +232,7 @@ def calculate_sphere_radius(area: float) -> float:
     """Calculates the radius of a sphere with the given surface area."""
     return math.sqrt(area / (4.0 * math.pi))
 
-def project_to_sphere(mesh: TriangleMesh, center: Tuple[float, float, float] | Point3D, radius: float) -> TriangleMesh:
+def project_to_sphere(mesh: TriMesh, center: Tuple[float, float, float] | Point3D, radius: float) -> TriMesh:
     """Projects a mesh onto a sphere defined by center and radius."""
     if isinstance(center, tuple):
         center = Point3D(*center)
@@ -241,7 +241,7 @@ def project_to_sphere(mesh: TriangleMesh, center: Tuple[float, float, float] | P
     projector.project_initial()
     return projector.get_mesh()
 
-def is_mesh_valid_on_sphere(mesh: TriangleMesh, center: Tuple[float, float, float] | Point3D) -> bool:
+def is_mesh_valid_on_sphere(mesh: TriMesh, center: Tuple[float, float, float] | Point3D) -> bool:
     """Checks if the mesh is validly oriented and non-degenerate on a sphere."""
     if isinstance(center, tuple):
         center = Point3D(*center)
@@ -250,7 +250,7 @@ def is_mesh_valid_on_sphere(mesh: TriangleMesh, center: Tuple[float, float, floa
     projector = SphereProjector(mesh, sphere)
     return projector.is_valid()
 
-def as_rigid_as_possible(mesh: TriangleMesh, original_mesh: TriangleMesh, center: Tuple[float, float, float] | Point3D, radius: float, iterations: int = 50) -> TriangleMesh:
+def as_rigid_as_possible(mesh: TriMesh, original_mesh: TriMesh, center: Tuple[float, float, float] | Point3D, radius: float, iterations: int = 50) -> TriMesh:
     """Optimizes a projected mesh using ARAP strategy."""
     if isinstance(center, tuple):
         center = Point3D(*center)
@@ -261,7 +261,7 @@ def as_rigid_as_possible(mesh: TriangleMesh, original_mesh: TriangleMesh, center
     projector.optimize_arap(iterations=iterations)
     return projector.get_mesh()
 
-def as_conformal_as_possible(mesh: TriangleMesh, original_mesh: TriangleMesh, center: Tuple[float, float, float] | Point3D, radius: float, iterations: int = 50) -> TriangleMesh:
+def as_conformal_as_possible(mesh: TriMesh, original_mesh: TriMesh, center: Tuple[float, float, float] | Point3D, radius: float, iterations: int = 50) -> TriMesh:
     """Optimizes a projected mesh using ACAP strategy."""
     if isinstance(center, tuple):
         center = Point3D(*center)
@@ -281,7 +281,7 @@ def main():
     # Fix orientation (PlatonicSolid.icosahedron is CW, we want CCW)
     # This is important for outward-pointing normals
     new_faces = [(f[0], f[2], f[1]) for f in original_mesh.faces]
-    original_mesh = TriangleMesh(original_mesh.vertices, new_faces)
+    original_mesh = TriMesh(original_mesh.vertices, new_faces)
     
     # 1. Initialize Sphere and Projector
     area = MeshAnalysis.total_area(original_mesh)

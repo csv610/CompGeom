@@ -1,17 +1,17 @@
 """Convex Hull generation for 3D point sets."""
 from typing import List
 
-from ..mesh import TriangleMesh
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 
 class ConvexHull3D:
     """Generates the 3D Convex Hull of a point cloud."""
 
     @staticmethod
-    def compute(points: List[Point3D]) -> TriangleMesh:
+    def compute(points: List[Point3D]) -> TriMesh:
         """
         Computes the 3D convex hull using scipy.spatial.ConvexHull.
-        Returns a TriangleMesh representing the boundary of the hull.
+        Returns a TriMesh representing the boundary of the hull.
         """
         try:
             from scipy.spatial import ConvexHull
@@ -42,4 +42,4 @@ class ConvexHull3D:
             # Scipy ConvexHull simplices are oriented outward
             faces.append((old_to_new[simplex[0]], old_to_new[simplex[1]], old_to_new[simplex[2]]))
             
-        return TriangleMesh(hull_vertices, faces)
+        return TriMesh(hull_vertices, faces)

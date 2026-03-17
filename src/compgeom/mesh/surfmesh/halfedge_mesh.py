@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import List, Tuple, Optional, Dict, Set
 
-from ..mesh import TriangleMesh
+from .trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 
 class Vertex:
@@ -33,8 +33,8 @@ class HalfEdgeMesh:
         self.edges: List[HalfEdge] = []
 
     @classmethod
-    def from_triangle_mesh(cls, mesh: TriangleMesh) -> HalfEdgeMesh:
-        """Converts a TriangleMesh to a Half-Edge representation."""
+    def from_triangle_mesh(cls, mesh: TriMesh) -> HalfEdgeMesh:
+        """Converts a TriMesh to a Half-Edge representation."""
         he_mesh = cls()
         
         # 1. Create vertices
@@ -79,8 +79,8 @@ class HalfEdgeMesh:
                 
         return he_mesh
 
-    def to_triangle_mesh(self) -> TriangleMesh:
-        """Converts back to a standard TriangleMesh."""
+    def to_triangle_mesh(self) -> TriMesh:
+        """Converts back to a standard TriMesh."""
         verts = [v.point for v in self.vertices]
         faces = []
         for face in self.faces:
@@ -90,7 +90,7 @@ class HalfEdgeMesh:
                 edges.append(curr.vertex.idx)
                 curr = curr.next
             faces.append(tuple(edges))
-        return TriangleMesh(verts, faces)
+        return TriMesh(verts, faces)
 
     def vertex_neighbors(self, v_idx: int) -> Set[int]:
         """Returns the indices of neighbor vertices in O(Valence)."""

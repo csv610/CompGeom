@@ -4,14 +4,14 @@ import heapq
 from collections import defaultdict
 from typing import List, Tuple, Dict, Set
 
-from ..mesh import TriangleMesh
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 
 class MeshDecimator:
     """Simplifies triangle meshes using Quadric Error Metrics (QEM)."""
 
     @staticmethod
-    def decimate(mesh: TriangleMesh, target_faces: int) -> TriangleMesh:
+    def decimate(mesh: TriMesh, target_faces: int) -> TriMesh:
         """
         Reduces face count using QEM to preserve geometric features.
         """
@@ -147,4 +147,4 @@ class MeshDecimator:
             old_to_final[old] = old_to_final[curr]
             
         final_f = [tuple(old_to_final[i] for i in f) for f in faces.values()]
-        return TriangleMesh(final_v, final_f)
+        return TriMesh(final_v, final_f)

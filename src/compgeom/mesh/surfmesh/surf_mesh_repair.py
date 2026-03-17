@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ..mesh import TriangleMesh
+from .trimesh.trimesh import TriMesh
 from ...kernel import Point2D, Point3D
 
 
@@ -13,7 +13,7 @@ class SurfMeshRepair:
     """Repair tools for triangle meshes."""
 
     @staticmethod
-    def remove_duplicate_points(mesh: TriangleMesh, epsilon: float = 1e-8) -> TriangleMesh:
+    def remove_duplicate_points(mesh: TriMesh, epsilon: float = 1e-8) -> TriMesh:
         """Removes duplicate vertices and updates face indices."""
         old_vertices = mesh.vertices
         unique_vertices = []
@@ -40,10 +40,10 @@ class SurfMeshRepair:
             if len(set(new_face)) == 3:
                 new_faces.append(new_face)
 
-        return TriangleMesh(unique_vertices, new_faces)
+        return TriMesh(unique_vertices, new_faces)
 
     @staticmethod
-    def remove_duplicate_faces(mesh: TriangleMesh) -> TriangleMesh:
+    def remove_duplicate_faces(mesh: TriMesh) -> TriMesh:
         """Removes duplicate faces regardless of winding."""
         seen_faces = set()
         unique_faces = []
@@ -54,10 +54,10 @@ class SurfMeshRepair:
                 seen_faces.add(sorted_face)
                 unique_faces.append(face)
 
-        return TriangleMesh(mesh.vertices, unique_faces)
+        return TriMesh(mesh.vertices, unique_faces)
 
     @staticmethod
-    def fix_normals(mesh: TriangleMesh) -> TriangleMesh:
+    def fix_normals(mesh: TriMesh) -> TriMesh:
         """Ensures all faces have consistent normal orientation using BFS."""
         faces = mesh.faces
         num_faces = len(faces)
@@ -109,11 +109,11 @@ class SurfMeshRepair:
                                     break
 
         final_faces = [f for f in new_faces if f is not None]
-        return TriangleMesh(mesh.vertices, final_faces)
+        return TriMesh(mesh.vertices, final_faces)
 
     @staticmethod
     def _get_triangle_coords(
-        mesh: TriangleMesh, face_idx: int
+        mesh: TriMesh, face_idx: int
     ) -> Tuple[Tuple[float, float, float], Tuple[float, float, float], Tuple[float, float, float]]:
         face = mesh.faces[face_idx]
         v0 = mesh.vertices[face[0]]
@@ -181,7 +181,7 @@ class SurfMeshRepair:
         return True
 
     @staticmethod
-    def remove_self_intersections(mesh: TriangleMesh) -> TriangleMesh:
+    def remove_self_intersections(mesh: TriMesh) -> TriMesh:
         """Removes one of each pair of self-intersecting faces."""
         faces = mesh.faces
         vertices = mesh.vertices
@@ -227,10 +227,10 @@ class SurfMeshRepair:
                     to_remove.add(j)
 
         new_faces = [faces[i] for i in range(num_faces) if i not in to_remove]
-        return TriangleMesh(vertices, new_faces)
+        return TriMesh(vertices, new_faces)
 
     @staticmethod
-    def remove_degenerate_faces(mesh: TriangleMesh) -> TriangleMesh:
+    def remove_degenerate_faces(mesh: TriMesh) -> TriMesh:
         """Removes faces with zero area or duplicate vertices."""
         new_faces = []
         for face in mesh.faces:
@@ -246,10 +246,10 @@ class SurfMeshRepair:
                 area_sq = cx * cx + cy * cy + cz * cz
                 if area_sq > 1e-18:
                     new_faces.append(face)
-        return TriangleMesh(mesh.vertices, new_faces)
+        return TriMesh(mesh.vertices, new_faces)
 
     @staticmethod
-    def remove_non_manifold_faces(mesh: TriangleMesh) -> TriangleMesh:
+    def remove_non_manifold_faces(mesh: TriMesh) -> TriMesh:
         """Removes faces attached to edges shared by more than two faces."""
         faces = mesh.faces
         edge_to_faces = defaultdict(list)
@@ -264,10 +264,10 @@ class SurfMeshRepair:
                 to_remove.update(sharing_faces)
 
         new_faces = [faces[i] for i in range(len(faces)) if i not in to_remove]
-        return TriangleMesh(mesh.vertices, new_faces)
+        return TriMesh(mesh.vertices, new_faces)
 
     @staticmethod
-    def remove_isolated_vertices(mesh: TriangleMesh) -> TriangleMesh:
+    def remove_isolated_vertices(mesh: TriMesh) -> TriMesh:
         """Removes vertices that are not referenced by any face."""
         used_indices = set()
         for face in mesh.faces:
@@ -284,10 +284,10 @@ class SurfMeshRepair:
                 new_vertices.append(v)
 
         new_faces = [tuple(old_to_new[idx] for idx in face) for face in mesh.faces]
-        return TriangleMesh(new_vertices, new_faces)
+        return TriMesh(new_vertices, new_faces)
 
     @staticmethod
-    def remove_non_manifold_vertices(mesh: TriangleMesh) -> TriangleMesh:
+    def remove_non_manifold_vertices(mesh: TriMesh) -> TriMesh:
         """Removes faces to ensure no vertex is non-manifold."""
         faces = mesh.faces
         if not faces:
@@ -343,10 +343,10 @@ class SurfMeshRepair:
             return mesh
 
         new_faces = [f for i, f in enumerate(faces) if i not in to_remove]
-        return TriangleMesh(mesh.vertices, new_faces)
+        return TriMesh(mesh.vertices, new_faces)
 
     @staticmethod
-    def remove_small_components(mesh: TriangleMesh, min_fraction: float = 0.05) -> TriangleMesh:
+    def remove_small_components(mesh: TriMesh, min_fraction: float = 0.05) -> TriMesh:
         """Removes disconnected components smaller than a threshold fraction."""
         faces = mesh.faces
         if not faces:
@@ -395,10 +395,10 @@ class SurfMeshRepair:
                 keep_faces.extend(comp)
 
         new_faces = [faces[i] for i in keep_faces]
-        return TriangleMesh(mesh.vertices, new_faces)
+        return TriMesh(mesh.vertices, new_faces)
 
     @staticmethod
-    def orient_normals_outward(mesh: TriangleMesh) -> TriangleMesh:
+    def orient_normals_outward(mesh: TriMesh) -> TriMesh:
         """Ensures normals for closed components point outward using signed volume."""
         faces = mesh.faces
         if not faces:
@@ -461,10 +461,10 @@ class SurfMeshRepair:
                     f = new_faces[f_idx]
                     new_faces[f_idx] = (f[0], f[2], f[1])
 
-        return TriangleMesh(mesh.vertices, new_faces)
+        return TriMesh(mesh.vertices, new_faces)
 
     @staticmethod
-    def repair(mesh: TriangleMesh) -> TriangleMesh:
+    def repair(mesh: TriMesh) -> TriMesh:
         """Runs the standard repair pipeline."""
         mesh = SurfMeshRepair.remove_duplicate_points(mesh)
         mesh = SurfMeshRepair.remove_degenerate_faces(mesh)

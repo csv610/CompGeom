@@ -2,14 +2,14 @@
 from typing import List, Tuple, Optional
 import math
 
-from ..mesh import TriangleMesh
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 
 class MeshQueries:
     """Algorithms for querying spatial relationships with a mesh."""
 
     @staticmethod
-    def _single_ray_tri_intersect(mesh: TriangleMesh, face_idx: int, origin: Tuple[float,float,float], direction: Tuple[float,float,float]) -> Optional[float]:
+    def _single_ray_tri_intersect(mesh: TriMesh, face_idx: int, origin: Tuple[float,float,float], direction: Tuple[float,float,float]) -> Optional[float]:
         """Helper to test a single triangle for intersection."""
         face = mesh.faces[face_idx]
         v0, v1, v2 = [mesh.vertices[idx] for idx in face]
@@ -46,7 +46,7 @@ class MeshQueries:
         return t if t > eps else None
 
     @staticmethod
-    def ray_intersect(mesh: TriangleMesh, origin: Tuple[float,float,float], direction: Tuple[float,float,float], use_spatial: bool = True) -> List[Tuple[int, float]]:
+    def ray_intersect(mesh: TriMesh, origin: Tuple[float,float,float], direction: Tuple[float,float,float], use_spatial: bool = True) -> List[Tuple[int, float]]:
         """
         Returns a list of (face_idx, distance) for all intersections along the ray.
         Accelerated by AABBTree by default.
@@ -113,7 +113,7 @@ class MeshQueries:
         return (ap[0] - v*ab[0] - w*ac[0])**2 + (ap[1] - v*ab[1] - w*ac[1])**2 + (ap[2] - v*ab[2] - w*ac[2])**2
 
     @staticmethod
-    def compute_sdf(mesh: TriangleMesh, point: Tuple[float, float, float], use_spatial: bool = True) -> float:
+    def compute_sdf(mesh: TriMesh, point: Tuple[float, float, float], use_spatial: bool = True) -> float:
         """
         Computes the Signed Distance Function (SDF) from a point to the mesh.
         Using exact point-triangle distance.
@@ -136,7 +136,7 @@ class MeshQueries:
         distance = math.sqrt(min_dist_sq)
         
     @staticmethod
-    def slice_mesh(mesh: TriangleMesh, plane_origin: Tuple[float,float,float], plane_normal: Tuple[float,float,float]) -> List[Tuple[Point3D, Point3D]]:
+    def slice_mesh(mesh: TriMesh, plane_origin: Tuple[float,float,float], plane_normal: Tuple[float,float,float]) -> List[Tuple[Point3D, Point3D]]:
         """
         Slices the mesh with a plane and returns a list of line segments (edges).
         Segments represent the intersection of the surface with the plane.
@@ -188,7 +188,7 @@ class MeshQueries:
                 segments.append((unique_pts[0], unique_pts[1]))
                 
     @staticmethod
-    def mesh_intersection(mesh_a: TriangleMesh, mesh_b: TriangleMesh) -> List[Tuple[int, int]]:
+    def mesh_intersection(mesh_a: TriMesh, mesh_b: TriMesh) -> List[Tuple[int, int]]:
         """
         Detects intersections between two meshes.
         Returns a list of (face_idx_a, face_idx_b) pairs that intersect.
@@ -235,7 +235,7 @@ class MeshQueries:
         return results
 
     @staticmethod
-    def extract_intersection_lines(mesh_a: TriangleMesh, mesh_b: TriangleMesh) -> List[Tuple[Point3D, Point3D]]:
+    def extract_intersection_lines(mesh_a: TriMesh, mesh_b: TriMesh) -> List[Tuple[Point3D, Point3D]]:
         """
         Extracts the exact polylines representing the intersection path between two meshes.
         Essential for CAD and tool-path generation.
@@ -244,7 +244,7 @@ class MeshQueries:
         pass # Implementation logic here
                 
     @staticmethod
-    def generalized_winding_number(mesh: TriangleMesh, point: Tuple[float, float, float]) -> float:
+    def generalized_winding_number(mesh: TriMesh, point: Tuple[float, float, float]) -> float:
         """
         Calculates the Generalized Winding Number of a point with respect to the mesh.
         Robust for meshes with holes or self-intersections.
@@ -270,7 +270,7 @@ class MeshQueries:
         return wn / (4.0 * math.pi)
 
     @staticmethod
-    def poisson_disk_sampling(mesh: TriangleMesh, min_dist: float, k_attempts: int = 30) -> List[Point3D]:
+    def poisson_disk_sampling(mesh: TriMesh, min_dist: float, k_attempts: int = 30) -> List[Point3D]:
         """
         Generates a uniform distribution of points on the mesh surface.
         Points are separated by at least min_dist.

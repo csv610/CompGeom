@@ -3,7 +3,7 @@ import math
 from collections import defaultdict
 from typing import List, Tuple, Set, Dict
 
-from ..mesh import TriangleMesh
+from .trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 from .mesh_processing import MeshProcessing
 
@@ -15,7 +15,7 @@ class AdaptiveRemesher:
     """Remeshes based on a sizing field derived from local curvature."""
 
     @staticmethod
-    def remesh(mesh: TriangleMesh, min_edge: float, max_edge: float, iterations: int = 3) -> TriangleMesh:
+    def remesh(mesh: TriMesh, min_edge: float, max_edge: float, iterations: int = 3) -> TriMesh:
         """
         Adapts triangle density to surface curvature.
         Sharp areas get min_edge, flat areas get max_edge.
@@ -52,7 +52,7 @@ class AdaptiveRemesher:
         return current_mesh
 
     @staticmethod
-    def _adaptive_split(mesh: TriangleMesh, sizing_field: List[float]) -> TriangleMesh:
+    def _adaptive_split(mesh: TriMesh, sizing_field: List[float]) -> TriMesh:
         vertices = list(mesh.vertices)
         faces = []
         for face in mesh.faces:
@@ -81,9 +81,9 @@ class AdaptiveRemesher:
                     faces.append(face)
             else:
                 faces.append(face)
-        return TriangleMesh(vertices, faces)
+        return TriMesh(vertices, faces)
 
     @staticmethod
-    def _adaptive_collapse(mesh: TriangleMesh, sizing_field: List[float]) -> TriangleMesh:
+    def _adaptive_collapse(mesh: TriMesh, sizing_field: List[float]) -> TriMesh:
         # Re-use Decimator with curvature-aware logic would go here
         return mesh

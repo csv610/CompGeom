@@ -1,10 +1,11 @@
-"""Conversion from TriangleMesh to QuadMesh via maximum cardinality matching."""
+"""Conversion from TriMesh to QuadMesh via maximum cardinality matching."""
 
 from __future__ import annotations
 from typing import List, Tuple, Union, Set, Dict
 
 from ....kernel.geometry import Point2D, Point3D
-from ...mesh import TriangleMesh, QuadMesh
+from ..trimesh.trimesh import TriMesh
+from .quadmesh import QuadMesh
 
 class BlossomAlgorithm:
     """Edmonds' blossom algorithm for maximum cardinality matching."""
@@ -86,10 +87,10 @@ class BlossomAlgorithm:
         return self.match
 
 class MaxMatchingTriangleToQuadConverter:
-    """Converts a TriangleMesh to a QuadMesh using maximum cardinality matching."""
+    """Converts a TriMesh to a QuadMesh using maximum cardinality matching."""
 
     @staticmethod
-    def convert(mesh: TriangleMesh) -> QuadMesh:
+    def convert(mesh: TriMesh) -> QuadMesh:
         """
         Combines pairs of adjacent triangles into quadrilaterals.
         Uses Edmonds' blossom algorithm for maximum cardinality matching.

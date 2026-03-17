@@ -2,7 +2,7 @@
 import math
 from typing import List, Tuple
 
-from ..mesh import TetMesh
+from .tetmesh.tetmesh import TetMesh
 
 class TetMeshQuality:
     """Calculates geometric quality metrics for tetrahedra."""

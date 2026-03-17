@@ -3,14 +3,14 @@ import math
 from collections import defaultdict
 from typing import List, Tuple, Dict, Set
 
-from ..mesh import TriangleMesh
+from .trimesh.trimesh import TriMesh
 from ...kernel import Point2D, Point3D
 
 class MeshParameterization:
     """Flattens a 3D mesh patch onto a 2D plane."""
 
     @staticmethod
-    def harmonic_map(mesh: TriangleMesh) -> List[Point2D]:
+    def harmonic_map(mesh: TriMesh) -> List[Point2D]:
         """
         Computes a harmonic parameterization of a disk-like mesh with a single boundary.
         Maps the boundary to a unit circle, and solves the Laplacian for interior vertices.
@@ -102,7 +102,7 @@ class MeshParameterization:
         return [Point2D(uv[0], uv[1]) for uv in uv_coords]
 
     @staticmethod
-    def lscm(mesh: TriangleMesh) -> List[Point2D]:
+    def lscm(mesh: TriMesh) -> List[Point2D]:
         """
         Computes a Least Squares Conformal Map (LSCM) for the mesh.
         Unlike harmonic mapping, LSCM preserves angles and allows the boundary 

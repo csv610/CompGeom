@@ -38,7 +38,7 @@ for mod_name in broken_modules:
 
 try:
     from compgeom.kernel import Point3D
-    from compgeom.mesh.mesh import TetMesh
+    from .tetmesh import TetMesh
     from compgeom.mesh.volmesh.tetmesh.refine import refine_tetmesh_global, refine_tetmesh_local, TetMeshRefiner
     
     print("Testing Global Refinement (Midpoint)...")

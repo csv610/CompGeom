@@ -1,6 +1,6 @@
 
 import numpy as np
-from compgeom.mesh import TriangleMesh
+from compgeom.mesh import TriMesh
 from compgeom.kernel import Point3D
 from mesh_rigidity import MeshRigidity
 
@@ -13,7 +13,7 @@ def test_triangle_rigidity():
         Point3D(0.5, 0.866, 0.0)
     ]
     f = [(0, 1, 2)]
-    mesh = TriangleMesh(v, f)
+    mesh = TriMesh(v, f)
     
     # If we fix nodes 0 and 1, the triangle is in 2D rigid, 
     # but in 3D node 2 can rotate around edge (0,1).
@@ -36,7 +36,7 @@ def test_tetrahedron_rigidity():
         Point3D(0.5, 0.288, 0.816)
     ]
     f = [(0, 1, 2), (0, 1, 3), (1, 2, 3), (2, 0, 3)]
-    mesh = TriangleMesh(v, f)
+    mesh = TriMesh(v, f)
     
     # A tetrahedron with 3 nodes fixed should be rigid in 3D (the 4th node is fixed by 3 edges).
     rigid = MeshRigidity.is_rigid(mesh, fixed_node_indices=[0, 1, 2])
@@ -72,7 +72,7 @@ def test_chain_rigidity():
         Point3D(0.5, -0.866, 0.0) # 3
     ]
     f = [(0, 1, 2), (0, 1, 3)]
-    mesh = TriangleMesh(v, f)
+    mesh = TriMesh(v, f)
     
     # Each free node (2 and 3) can rotate around edge (0,1) independently.
     # So we should have 2 DOFs (one for each triangle flap).

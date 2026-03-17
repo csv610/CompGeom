@@ -4,14 +4,14 @@ import math
 from collections import defaultdict
 from typing import List, Dict, Tuple
 
-from compgeom.mesh import TriangleMesh
+from compgeom.mesh import TriMesh
 from compgeom.kernel import Point3D
 
 class MeshGeodesics:
     """Calculates distances along the surface of a mesh."""
 
     @staticmethod
-    def get_adjacency_list(mesh: TriangleMesh) -> Dict[int, List[Tuple[int, float]]]:
+    def get_adjacency_list(mesh: TriMesh) -> Dict[int, List[Tuple[int, float]]]:
         """Builds adjacency list with unique edge lengths."""
         adj = defaultdict(list)
         processed_edges = set()
@@ -29,7 +29,7 @@ class MeshGeodesics:
         return adj
 
     @staticmethod
-    def get_vertex_to_faces(mesh: TriangleMesh) -> Dict[int, List[int]]:
+    def get_vertex_to_faces(mesh: TriMesh) -> Dict[int, List[int]]:
         """Maps each vertex index to a list of incident face indices."""
         v2f = defaultdict(list)
         for i, face in enumerate(mesh.faces):
@@ -38,7 +38,7 @@ class MeshGeodesics:
         return v2f
 
     @staticmethod
-    def compute_distances(mesh: TriangleMesh, source_vertex_idx: int) -> List[float]:
+    def compute_distances(mesh: TriMesh, source_vertex_idx: int) -> List[float]:
         """
         Computes approximate geodesic distances from a source vertex to all other vertices
         using Dijkstra's algorithm along the mesh edges.
@@ -47,7 +47,7 @@ class MeshGeodesics:
         return distances
 
     @staticmethod
-    def compute_geodesic_path(mesh: TriangleMesh, source_vertex_idx: int, target_vertex_idx: int) -> Tuple[float, List[int]]:
+    def compute_geodesic_path(mesh: TriMesh, source_vertex_idx: int, target_vertex_idx: int) -> Tuple[float, List[int]]:
         """
         Computes the shortest path along the mesh edges from a source vertex to a target vertex.
         Returns a tuple containing the distance and the list of vertex indices forming the path.
@@ -66,7 +66,7 @@ class MeshGeodesics:
         return distances[target_vertex_idx], path[::-1]
 
     @staticmethod
-    def compute_distances_fmm(mesh: TriangleMesh, source_vertex_idx: int) -> List[float]:
+    def compute_distances_fmm(mesh: TriMesh, source_vertex_idx: int) -> List[float]:
         """
         Computes accurate geodesic distances from a source vertex using the Fast Marching Method.
         """
@@ -74,7 +74,7 @@ class MeshGeodesics:
         return distances
 
     @staticmethod
-    def compute_geodesic_path_fmm(mesh: TriangleMesh, source_vertex_idx: int, target_vertex_idx: int) -> Tuple[float, List[int]]:
+    def compute_geodesic_path_fmm(mesh: TriMesh, source_vertex_idx: int, target_vertex_idx: int) -> Tuple[float, List[int]]:
         """
         Computes accurate geodesic distance and approximate path using FMM and Dijkstra-backtracking.
         """
@@ -92,12 +92,12 @@ class MeshGeodesics:
         return distances[target_vertex_idx], path[::-1]
 
     @staticmethod
-    def compute_distance_field(mesh: TriangleMesh, source_vertex_idx: int, location: str = 'vertex', method: str = 'fmm') -> List[float]:
+    def compute_distance_field(mesh: TriMesh, source_vertex_idx: int, location: str = 'vertex', method: str = 'fmm') -> List[float]:
         """
         Calculates a geodesic distance field across the mesh starting from a source vertex.
         
         Args:
-            mesh: The TriangleMesh.
+            mesh: The TriMesh.
             source_vertex_idx: Index of the source vertex.
             location: Where to compute distances: 'vertex' (nodes) or 'face' (cell centers).
             method: The algorithm to use: 'fmm' (Fast Marching Method, accurate) or 'dijkstra' (edge-based, fast).
@@ -120,7 +120,7 @@ class MeshGeodesics:
             raise ValueError(f"Unknown location: {location}. Choose 'vertex' or 'face'.")
 
     @staticmethod
-    def compute_face_distances(mesh: TriangleMesh, vertex_distances: List[float]) -> List[float]:
+    def compute_face_distances(mesh: TriMesh, vertex_distances: List[float]) -> List[float]:
         """
         Computes distances at face centroids (cell centers) by averaging their vertex distances.
         """
@@ -132,7 +132,7 @@ class MeshGeodesics:
         return face_distances
 
     @staticmethod
-    def sort_vertices_by_distance(mesh: TriangleMesh, source_vertex_idx: int, method: str = 'fmm') -> List[Tuple[int, float]]:
+    def sort_vertices_by_distance(mesh: TriMesh, source_vertex_idx: int, method: str = 'fmm') -> List[Tuple[int, float]]:
         """
         Sorts all vertices in the mesh by their geodesic distance from a source vertex.
         
@@ -145,7 +145,7 @@ class MeshGeodesics:
         return sorted(indexed_distances, key=lambda x: x[1])
 
     @staticmethod
-    def _fmm(mesh: TriangleMesh, source_idx: int, target_idx: int = None) -> Tuple[List[float], List[int]]:
+    def _fmm(mesh: TriMesh, source_idx: int, target_idx: int = None) -> Tuple[List[float], List[int]]:
         """
         Internal Fast Marching Method (FMM) implementation.
         """
@@ -337,7 +337,7 @@ class MeshGeodesics:
         return d_c_tri
 
     @staticmethod
-    def _dijkstra(mesh: TriangleMesh, source_idx: int, target_idx: int = None) -> Tuple[List[float], List[int]]:
+    def _dijkstra(mesh: TriMesh, source_idx: int, target_idx: int = None) -> Tuple[List[float], List[int]]:
         """
         Internal Dijkstra implementation that optionally stops at target and returns predecessors.
         """

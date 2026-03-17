@@ -2,14 +2,14 @@
 from collections import defaultdict
 from typing import List, Tuple, Dict, Set
 
-from ..mesh import TriangleMesh
+from .trimesh.trimesh import TriMesh
 from .surf_mesh_repair import SurfMeshRepair
 
 class MeshValidation:
     """Provides rigorous checks for mesh integrity."""
 
     @staticmethod
-    def is_manifold(mesh: TriangleMesh) -> bool:
+    def is_manifold(mesh: TriMesh) -> bool:
         """Checks both edge and vertex manifoldness."""
         # 1. Edge manifoldness (max 2 faces per edge)
         edge_to_faces = defaultdict(int)
@@ -35,7 +35,7 @@ class MeshValidation:
         return True
 
     @staticmethod
-    def has_self_intersections(mesh: TriangleMesh) -> bool:
+    def has_self_intersections(mesh: TriMesh) -> bool:
         """Checks if any faces in the mesh intersect each other."""
         from .mesh_queries import MeshQueries
         intersections = MeshQueries.mesh_intersection(mesh, mesh)
@@ -46,7 +46,7 @@ class MeshValidation:
         return False
 
     @staticmethod
-    def validate(mesh: TriangleMesh) -> Dict[str, bool]:
+    def validate(mesh: TriMesh) -> Dict[str, bool]:
         """Returns a full report of mesh validity."""
         results = {
             "no_degenerate_faces": all(len(set(f)) == 3 for f in mesh.faces),

@@ -16,7 +16,7 @@ from .utils import PointGrid, create_super_triangle, hilbert_key
 
 
 if TYPE_CHECKING:
-    from .mesh import TriangleMesh
+    from .mesh import TriMesh
 
 
 class IncrementalTriangle:

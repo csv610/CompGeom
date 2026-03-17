@@ -8,18 +8,18 @@ from ....kernel import Point3D
 from .platonic_solids import PlatonicSolid
 
 if TYPE_CHECKING:
-    from ...mesh import TriangleMesh
+    from .trimesh import TriMesh
 
 class Primitives:
     """Generates meshes for common geometric primitives."""
 
     @staticmethod
-    def _create_mesh(vertices: List[Point3D], faces: List[Tuple[int, int, int]]) -> TriangleMesh:
-        from ...mesh import TriangleMesh
-        return TriangleMesh(vertices, faces)
+    def _create_mesh(vertices: List[Point3D], faces: List[Tuple[int, int, int]]) -> TriMesh:
+        from .trimesh import TriMesh
+        return TriMesh(vertices, faces)
 
     @staticmethod
-    def sphere(radius: float = 1.0, subdivisions: int = 3) -> TriangleMesh:
+    def sphere(radius: float = 1.0, subdivisions: int = 3) -> TriMesh:
         """Generates an isotropic sphere mesh using icosahedron subdivision."""
         from .mesh_refinement import TriMeshRefiner
         mesh = PlatonicSolid.icosahedron(size=1.0)
@@ -40,7 +40,7 @@ class Primitives:
         return Primitives._create_mesh(new_vertices, mesh.faces)
 
     @staticmethod
-    def ellipsoid(rx: float = 1.0, ry: float = 1.0, rz: float = 1.0, subdivisions: int = 3) -> TriangleMesh:
+    def ellipsoid(rx: float = 1.0, ry: float = 1.0, rz: float = 1.0, subdivisions: int = 3) -> TriMesh:
         """Generates an isotropic ellipsoid mesh."""
         mesh = Primitives.sphere(radius=1.0, subdivisions=subdivisions)
         
@@ -52,21 +52,21 @@ class Primitives:
         return Primitives._create_mesh(new_vertices, mesh.faces)
 
     @staticmethod
-    def oblate_spheroid(equatorial_radius: float = 1.0, polar_radius: float = 0.8, subdivisions: int = 3) -> TriangleMesh:
+    def oblate_spheroid(equatorial_radius: float = 1.0, polar_radius: float = 0.8, subdivisions: int = 3) -> TriMesh:
         """Generates an oblate spheroid mesh (flattened sphere)."""
         if polar_radius > equatorial_radius:
             raise ValueError("For an oblate spheroid, equatorial_radius must be greater than polar_radius.")
         return Primitives.ellipsoid(rx=equatorial_radius, ry=equatorial_radius, rz=polar_radius, subdivisions=subdivisions)
 
     @staticmethod
-    def prolate_spheroid(equatorial_radius: float = 0.8, polar_radius: float = 1.0, subdivisions: int = 3) -> TriangleMesh:
+    def prolate_spheroid(equatorial_radius: float = 0.8, polar_radius: float = 1.0, subdivisions: int = 3) -> TriMesh:
         """Generates a prolate spheroid mesh (stretched sphere)."""
         if polar_radius < equatorial_radius:
             raise ValueError("For a prolate spheroid, polar_radius must be greater than equatorial_radius.")
         return Primitives.ellipsoid(rx=equatorial_radius, ry=equatorial_radius, rz=polar_radius, subdivisions=subdivisions)
 
     @staticmethod
-    def torus(major_radius: float = 1.0, minor_radius: float = 0.3, major_segments: int = 32, minor_segments: int = 16) -> TriangleMesh:
+    def torus(major_radius: float = 1.0, minor_radius: float = 0.3, major_segments: int = 32, minor_segments: int = 16) -> TriMesh:
         """Generates a torus mesh."""
         vertices = []
         for i in range(major_segments + 1):
@@ -91,12 +91,12 @@ class Primitives:
         return Primitives._create_mesh(vertices, faces)
 
     @staticmethod
-    def cube(size: float = 1.0) -> TriangleMesh:
+    def cube(size: float = 1.0) -> TriMesh:
         """Generates a regular cube mesh."""
         return PlatonicSolid.cube(size)
 
     @staticmethod
-    def cuboid(length: float = 1.0, width: float = 1.0, height: float = 1.0) -> TriangleMesh:
+    def cuboid(length: float = 1.0, width: float = 1.0, height: float = 1.0) -> TriMesh:
         """Generates a cuboid (rectangular prism) mesh."""
         l = length / 2.0
         w = width / 2.0
@@ -115,7 +115,7 @@ class Primitives:
         return Primitives._create_mesh(v, f)
 
     @staticmethod
-    def quad(width: float = 1.0, height: float = 1.0) -> TriangleMesh:
+    def quad(width: float = 1.0, height: float = 1.0) -> TriMesh:
         """Generates a planar quad (rectangle) mesh in the XY plane."""
         w2 = width / 2.0
         h2 = height / 2.0
@@ -129,7 +129,7 @@ class Primitives:
         return Primitives._create_mesh(vertices, faces)
 
     @staticmethod
-    def polygon(radius: float = 1.0, segments: int = 32) -> TriangleMesh:
+    def polygon(radius: float = 1.0, segments: int = 32) -> TriMesh:
         """Generates a planar regular n-gon mesh in the XY plane."""
         vertices = [Point3D(0.0, 0.0, 0.0, id=0)]
         for i in range(segments):
@@ -145,7 +145,7 @@ class Primitives:
         return Primitives._create_mesh(vertices, faces)
 
     @staticmethod
-    def cylinder(radius: float = 1.0, height: float = 1.0, segments: int = 32, height_segments: int = 1) -> TriangleMesh:
+    def cylinder(radius: float = 1.0, height: float = 1.0, segments: int = 32, height_segments: int = 1) -> TriMesh:
         """Generates a cylinder mesh."""
         vertices = []
         h_half = height / 2.0
@@ -186,17 +186,17 @@ class Primitives:
         return Primitives._create_mesh(vertices, faces)
 
     @staticmethod
-    def hexagonal_prism(radius: float = 1.0, height: float = 1.0, height_segments: int = 1) -> TriangleMesh:
+    def hexagonal_prism(radius: float = 1.0, height: float = 1.0, height_segments: int = 1) -> TriMesh:
         """Generates a hexagonal prism mesh."""
         return Primitives.cylinder(radius, height, segments=6, height_segments=height_segments)
 
     @staticmethod
-    def triangular_prism(radius: float = 1.0, height: float = 1.0, height_segments: int = 1) -> TriangleMesh:
+    def triangular_prism(radius: float = 1.0, height: float = 1.0, height_segments: int = 1) -> TriMesh:
         """Generates a triangular prism mesh."""
         return Primitives.cylinder(radius, height, segments=3, height_segments=height_segments)
 
     @staticmethod
-    def cone(radius: float = 1.0, height: float = 1.0, segments: int = 32, height_segments: int = 1) -> TriangleMesh:
+    def cone(radius: float = 1.0, height: float = 1.0, segments: int = 32, height_segments: int = 1) -> TriMesh:
         """Generates a cone mesh."""
         vertices = []
         h_half = height / 2.0
@@ -245,28 +245,28 @@ class Primitives:
         return Primitives._create_mesh(vertices, faces)
 
     @staticmethod
-    def pyramid(base_size: float = 1.0, height: float = 1.0, base_segments: int = 4, height_segments: int = 1) -> TriangleMesh:
+    def pyramid(base_size: float = 1.0, height: float = 1.0, base_segments: int = 4, height_segments: int = 1) -> TriMesh:
         """Generates a pyramid mesh with a regular n-gon base."""
         # Radius such that the side length of the base n-gon is base_size
         radius = base_size / (2.0 * math.sin(math.pi / base_segments))
         return Primitives.cone(radius, height, segments=base_segments, height_segments=height_segments)
 
     @staticmethod
-    def tetrahedron(size: float = 1.0) -> TriangleMesh:
+    def tetrahedron(size: float = 1.0) -> TriMesh:
         """Generates a regular tetrahedron mesh."""
         return PlatonicSolid.tetrahedron(size)
 
     @staticmethod
-    def octahedron(size: float = 1.0) -> TriangleMesh:
+    def octahedron(size: float = 1.0) -> TriMesh:
         """Generates a regular octahedron mesh."""
         return PlatonicSolid.octahedron(size)
 
     @staticmethod
-    def dodecahedron(size: float = 1.0) -> TriangleMesh:
+    def dodecahedron(size: float = 1.0) -> TriMesh:
         """Generates a regular dodecahedron mesh."""
         return PlatonicSolid.dodecahedron(size)
 
     @staticmethod
-    def icosahedron(size: float = 1.0) -> TriangleMesh:
+    def icosahedron(size: float = 1.0) -> TriMesh:
         """Generates a regular icosahedron mesh."""
         return PlatonicSolid.icosahedron(size)

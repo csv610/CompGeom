@@ -7,14 +7,14 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 from compgeom.kernel import Point2D, Point3D
 from compgeom.kernel import distance
-from compgeom.mesh.mesh import TriangleMesh
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 
 
 class MeshTransfer:
     """Transfers triangulation from one polygonal domain to another with minimum distortion."""
 
     @staticmethod
-    def transfer(source_mesh: TriangleMesh, target_polygon: List[Point2D]) -> TriangleMesh:
+    def transfer(source_mesh: TriMesh, target_polygon: List[Point2D]) -> TriMesh:
         """
         Transfers the topology of source_mesh to the domain defined by target_polygon.
         Uses Harmonic Mapping (Barycentric Mapping) to minimize distortion.
@@ -24,7 +24,7 @@ class MeshTransfer:
             target_polygon: List of Points defining the new boundary.
             
         Returns:
-            A new TriangleMesh with source topology and target geometry.
+            A new TriMesh with source topology and target geometry.
         """
         # 1. Extract boundary of the source mesh
         boundary_edges = source_mesh.topology.boundary_edges()
@@ -128,7 +128,7 @@ class MeshTransfer:
             if max_diff < 1e-6:
                 break
 
-        return TriangleMesh(new_vertices_coords, source_mesh.faces)
+        return TriMesh(new_vertices_coords, source_mesh.faces)
 
 
 from collections import defaultdict

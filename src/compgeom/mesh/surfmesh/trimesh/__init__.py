@@ -1,5 +1,6 @@
 """Triangle mesh algorithms (Delaunay and others)."""
 
+from .trimesh import TriMesh
 from .delaunay_triangulation import (
     DelaunayMesher,
     triangulate,
@@ -20,6 +21,7 @@ from .domain_mesher import DomainMesher
 from compgeom.mesh.surfmesh.node_move_constraints import VertexConstraint
 
 __all__ = [
+    "TriMesh",
     "DelaunayMesher",
     "triangulate",
     "DTriangle",

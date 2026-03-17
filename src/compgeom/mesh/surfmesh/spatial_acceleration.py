@@ -4,10 +4,10 @@ import math
 from typing import List, Tuple, Optional, Union
 
 try:
-    from ..mesh import TriangleMesh
+    from .trimesh.trimesh import TriMesh
     from ...kernel import Point3D
 except ImportError:
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -31,7 +31,7 @@ class AABBNode:
 class AABBTree:
     """Bounding Volume Hierarchy (AABB Tree) for accelerating mesh queries."""
 
-    def __init__(self, mesh: TriangleMesh, max_faces_per_leaf: int = 10):
+    def __init__(self, mesh: TriMesh, max_faces_per_leaf: int = 10):
         self.mesh = mesh
         self.faces = mesh.faces
         self.vertices = mesh.vertices
@@ -169,7 +169,7 @@ class AABBTree:
 
 def main():
     print("--- spatial_acceleration.py Demo ---")
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         vertices=[Point3D(0,0,0), Point3D(1,0,0), Point3D(0,1,0)],
         faces=[(0,1,2)]
     )

@@ -1,14 +1,14 @@
 """Boolean operations (CSG) for surface meshes."""
 from typing import List, Tuple, Set
 
-from ..mesh import TriangleMesh
+from .trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 
 class MeshBooleans:
     """Constructive Solid Geometry operations for triangle meshes."""
 
     @staticmethod
-    def boolean_operation(mesh_a: TriangleMesh, mesh_b: TriangleMesh, operation: str = 'union') -> TriangleMesh:
+    def boolean_operation(mesh_a: TriMesh, mesh_b: TriMesh, operation: str = 'union') -> TriMesh:
         """
         Performs a boolean operation ('union', 'intersection', 'difference') on two meshes.
         Note: This is a simplified CSG algorithm using ray-casting classification.
@@ -18,7 +18,7 @@ class MeshBooleans:
         
         # 1. Classify vertices/faces of A against B
         # For simplicity, we classify based on centroids
-        def classify_faces(mesh_target: TriangleMesh, mesh_tester: TriangleMesh) -> Tuple[List[int], List[int]]:
+        def classify_faces(mesh_target: TriMesh, mesh_tester: TriMesh) -> Tuple[List[int], List[int]]:
             inside_faces = []
             outside_faces = []
             
@@ -75,18 +75,18 @@ class MeshBooleans:
         # by keeping or dropping whole faces (works well for dense meshes or voxel-like structures).
         
         from .surf_mesh_repair import SurfMeshRepair
-        combined = TriangleMesh(vertices, faces)
+        combined = TriMesh(vertices, faces)
         # Clean up isolated vertices left over from dropped faces
         return SurfMeshRepair.remove_isolated_vertices(combined)
 
     @staticmethod
-    def union(mesh_a: TriangleMesh, mesh_b: TriangleMesh) -> TriangleMesh:
+    def union(mesh_a: TriMesh, mesh_b: TriMesh) -> TriMesh:
         return MeshBooleans.boolean_operation(mesh_a, mesh_b, 'union')
 
     @staticmethod
-    def intersection(mesh_a: TriangleMesh, mesh_b: TriangleMesh) -> TriangleMesh:
+    def intersection(mesh_a: TriMesh, mesh_b: TriMesh) -> TriMesh:
         return MeshBooleans.boolean_operation(mesh_a, mesh_b, 'intersection')
 
     @staticmethod
-    def difference(mesh_a: TriangleMesh, mesh_b: TriangleMesh) -> TriangleMesh:
+    def difference(mesh_a: TriMesh, mesh_b: TriMesh) -> TriMesh:
         return MeshBooleans.boolean_operation(mesh_a, mesh_b, 'difference')

@@ -23,7 +23,7 @@ from .utils import PointGrid, create_super_triangle, hilbert_key
 
 
 if TYPE_CHECKING:
-    from .mesh import TriangleMesh
+    from .mesh import TriMesh
 
 
 class EdgeFlipTriangle:
@@ -241,8 +241,8 @@ class EdgeFlipDelaunayMesher:
         return [tuple(t.vertices) for t in self.active_triangles 
                 if not any(v in self.super_vertices for v in t.vertices)]
 
-    def initialize_from_mesh(self, mesh: TriangleMesh):
-        """Seeds the mesher with an existing TriangleMesh to avoid starting from scratch."""
+    def initialize_from_mesh(self, mesh: TriMesh):
+        """Seeds the mesher with an existing TriMesh to avoid starting from scratch."""
         self.active_triangles = set()
         self.vertex_to_triangles = {}
         
@@ -278,7 +278,7 @@ class EdgeFlipDelaunayMesher:
         # Note: This mesh doesn't have a super-triangle. 
         self.root = tri_list[0] if tri_list else None
 
-    def triangulate(self, points: list[Point2D], existing_mesh: TriangleMesh | None = None, spatial_sort: bool = True) -> list[tuple[Point2D, Point2D, Point2D]]:
+    def triangulate(self, points: list[Point2D], existing_mesh: TriMesh | None = None, spatial_sort: bool = True) -> list[tuple[Point2D, Point2D, Point2D]]:
         if not points and not existing_mesh: return []
         
         unique_points = []

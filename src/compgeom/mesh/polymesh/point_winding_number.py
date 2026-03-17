@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from typing import List, Union, Tuple
 
-from ..mesh import PolygonMesh
+from ..surfmesh.polymesh.polymesh import PolygonMesh
 from ...kernel import Point2D, Point3D
 
 

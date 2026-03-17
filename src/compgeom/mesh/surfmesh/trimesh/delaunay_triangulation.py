@@ -20,7 +20,7 @@ from .delaunay_topology import (
 )
 
 if TYPE_CHECKING:
-    from ...mesh import TriangleMesh
+    from .trimesh import TriMesh
 
 
 class DelaunayMesher:
@@ -32,7 +32,7 @@ class DelaunayMesher:
     """
 
     @staticmethod
-    def triangulate(points: list[Point2D], algorithm: str = "incremental", spatial_sort: bool = True, jitter: bool = False, rejection_ratio: Optional[float] = None) -> TriangleMesh:
+    def triangulate(points: list[Point2D], algorithm: str = "incremental", spatial_sort: bool = True, jitter: bool = False, rejection_ratio: Optional[float] = None) -> TriMesh:
         """
         Performs Delaunay triangulation using the specified algorithm.
         
@@ -44,11 +44,11 @@ class DelaunayMesher:
             rejection_ratio: If provided, filters out points that are closer than (rejection_ratio * bounding_box_scale).
             
         Returns:
-            A TriangleMesh object.
+            A TriMesh object.
         """
         if not points:
-            from ...mesh import TriangleMesh
-            return TriangleMesh.from_triangles([])
+            from .trimesh import TriMesh
+            return TriMesh.from_triangles([])
 
         # Calculate bounding box for jitter and rejection scaling
         min_x = min(p.x for p in points)
@@ -100,11 +100,11 @@ class DelaunayMesher:
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
             
-        from ...mesh import TriangleMesh
-        return TriangleMesh.from_triangles(triangles)
+        from .trimesh import TriMesh
+        return TriMesh.from_triangles(triangles)
 
     @staticmethod
-    def merge(mesh1: TriangleMesh, mesh2: TriangleMesh, algorithm: str = "edge_flip") -> TriangleMesh:
+    def merge(mesh1: TriMesh, mesh2: TriMesh, algorithm: str = "edge_flip") -> TriMesh:
         """
         Merges two Delaunay meshes into a single Delaunay mesh.
         
@@ -123,15 +123,15 @@ class DelaunayMesher:
         # Triangulate points of mesh2 into the structure of mesh1
         triangles = mesher.triangulate(mesh2.vertices, existing_mesh=mesh1)
         
-        from ...mesh import TriangleMesh
-        return TriangleMesh.from_triangles(triangles)
+        from .trimesh import TriMesh
+        return TriMesh.from_triangles(triangles)
 
     @staticmethod
-    def constrained_triangulate(outer_boundary: list[Point2D], holes: list[list[Point2D]] | None = None) -> TriangleMesh:
+    def constrained_triangulate(outer_boundary: list[Point2D], holes: list[list[Point2D]] | None = None) -> TriMesh:
         """Performs Constrained Delaunay Triangulation."""
         triangles, _ = constrained_delaunay_triangulation(outer_boundary, holes)
-        from ...mesh import TriangleMesh
-        return TriangleMesh.from_triangles(triangles)
+        from .trimesh import TriMesh
+        return TriMesh.from_triangles(triangles)
 
     @staticmethod
     def dynamic_triangulate(width: float = 1000, height: float = 1000) -> DynamicDelaunay:
@@ -256,7 +256,7 @@ class DelaunayMesher:
         return get_nondelaunay_triangles(mesh)
 
 
-def triangulate(points: list[Point2D], algorithm: str = "incremental") -> TriangleMesh:
+def triangulate(points: list[Point2D], algorithm: str = "incremental") -> TriMesh:
     """Standalone shortcut for DelaunayMesher.triangulate."""
     return DelaunayMesher.triangulate(points, algorithm)
 

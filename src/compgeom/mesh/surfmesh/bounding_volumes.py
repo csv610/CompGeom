@@ -1,14 +1,14 @@
 """Advanced bounding volumes and PCA alignment."""
 from typing import Tuple, List
 
-from ..mesh import TriangleMesh
+from .trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 
 class BoundingVolumes:
     """Calculates Oriented Bounding Boxes (OBB), Minimum Bounding Spheres, and Ellipsoids."""
 
     @staticmethod
-    def compute_obb(mesh: TriangleMesh) -> Tuple[Point3D, Tuple[Tuple[float, float, float], ...], Tuple[float, float, float]]:
+    def compute_obb(mesh: TriMesh) -> Tuple[Point3D, Tuple[Tuple[float, float, float], ...], Tuple[float, float, float]]:
         """
         Computes the Oriented Bounding Box using PCA (Principal Component Analysis).
         Returns: (Center, Axes Matrix 3x3, Extents (half-sizes))
@@ -207,7 +207,7 @@ class BoundingVolumes:
         return Point3D(*center), tuple(axes)
 
     @staticmethod
-    def pca_align(mesh: TriangleMesh) -> TriangleMesh:
+    def pca_align(mesh: TriMesh) -> TriMesh:
         """
         Aligns the mesh to the world axes based on its Principal Components.
         Translates centroid to origin and rotates so its longest axis is X, etc.
@@ -234,4 +234,4 @@ class BoundingVolumes:
         aligned = np.dot(centered, eigenvectors)
         
         new_vertices = [Point3D(p[0], p[1], p[2]) for p in aligned]
-        return TriangleMesh(new_vertices, mesh.faces)
+        return TriMesh(new_vertices, mesh.faces)

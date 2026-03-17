@@ -40,7 +40,7 @@ class VoronoiDiagram:
         Computes the Voronoi cells using the Delaunay Dual property.
         Returns a PolygonMesh object.
         """
-        from ..mesh import PolygonMesh
+        from ..surfmesh.polymesh.polymesh import PolygonMesh
 
         if not points:
             return PolygonMesh([], [])

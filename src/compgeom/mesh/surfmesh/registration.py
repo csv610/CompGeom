@@ -1,14 +1,14 @@
 """Mesh registration algorithms (Iterative Closest Point)."""
 from typing import Tuple
 
-from ..mesh import TriangleMesh
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 
 class MeshRegistration:
     """Aligns meshes to each other."""
 
     @staticmethod
-    def icp(source: TriangleMesh, target: TriangleMesh, max_iterations: int = 20, tolerance: float = 1e-5) -> Tuple[TriangleMesh, Tuple]:
+    def icp(source: TriMesh, target: TriMesh, max_iterations: int = 20, tolerance: float = 1e-5) -> Tuple[TriMesh, Tuple]:
         """
         Iterative Closest Point (ICP) algorithm.
         Aligns the source mesh to the target mesh.
@@ -73,4 +73,4 @@ class MeshRegistration:
             transform = np.dot(T_mat, transform)
             
         new_vertices = [Point3D(p[0], p[1], p[2]) for p in src_pts]
-        return TriangleMesh(new_vertices, source.faces), tuple(map(tuple, transform))
+        return TriMesh(new_vertices, source.faces), tuple(map(tuple, transform))

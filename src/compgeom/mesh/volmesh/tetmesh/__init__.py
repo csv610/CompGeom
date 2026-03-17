@@ -1,3 +1,4 @@
+from .tetmesh import TetMesh
 from .delaunay_tetmesh import DelaunayTetMesher, tetmesher, triangulate
 from .delaunay_mesh_incremental import IncrementalDelaunayMesher3D, triangulate_incremental_3d
 from .refine import (
@@ -9,6 +10,7 @@ from .refine import (
 )
 
 __all__ = [
+    'TetMesh',
     'DelaunayTetMesher',
     'tetmesher',
     'triangulate',

@@ -2,14 +2,14 @@
 from collections import defaultdict
 from typing import List, Tuple, Set
 
-from ..mesh import TriangleMesh
+from .trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 
 class MeshProcessing:
     """Algorithms that modify the mesh geometry or topology."""
 
     @staticmethod
-    def laplacian_smoothing(mesh: TriangleMesh, iterations: int = 1, lambda_factor: float = 0.5) -> TriangleMesh:
+    def laplacian_smoothing(mesh: TriMesh, iterations: int = 1, lambda_factor: float = 0.5) -> TriMesh:
         """Applies uniform Laplacian smoothing to interior vertices."""
         vertices = mesh.vertices
         faces = mesh.faces
@@ -62,10 +62,10 @@ class MeshProcessing:
                 temp_vertices.append(Point3D(nx, ny, nz))
             new_vertices = temp_vertices
             
-        return TriangleMesh(new_vertices, faces)
+        return TriMesh(new_vertices, faces)
 
     @staticmethod
-    def fill_holes(mesh: TriangleMesh) -> TriangleMesh:
+    def fill_holes(mesh: TriMesh) -> TriMesh:
         """Fills boundary holes by connecting boundary loops to their centroids."""
         # Detect boundary edges
         edge_counts = defaultdict(int)
@@ -133,7 +133,7 @@ class MeshProcessing:
                 new_faces.append((u, v, c_idx))
                 
     @staticmethod
-    def bilateral_smoothing(mesh: TriangleMesh, iterations: int = 1, sigma_c: float = 1.0, sigma_s: float = 0.1) -> TriangleMesh:
+    def bilateral_smoothing(mesh: TriMesh, iterations: int = 1, sigma_c: float = 1.0, sigma_s: float = 0.1) -> TriMesh:
         """
         Applies feature-preserving bilateral smoothing to the mesh.
         sigma_c: Spatial neighborhood variance (influences how far neighbors affect smoothing)
@@ -161,7 +161,7 @@ class MeshProcessing:
         
         for _ in range(iterations):
             # Recompute normals at each iteration
-            temp_mesh = TriangleMesh(new_vertices, faces)
+            temp_mesh = TriMesh(new_vertices, faces)
             v_normals = MeshAnalysis.compute_vertex_normals(temp_mesh)
             
             temp_verts = []
@@ -195,10 +195,10 @@ class MeshProcessing:
                     
             new_vertices = temp_verts
             
-        return TriangleMesh(new_vertices, faces)
+        return TriMesh(new_vertices, faces)
 
     @staticmethod
-    def taubin_smoothing(mesh: TriangleMesh, iterations: int = 10, lambda_factor: float = 0.5, mu_factor: float = -0.53) -> TriangleMesh:
+    def taubin_smoothing(mesh: TriMesh, iterations: int = 10, lambda_factor: float = 0.5, mu_factor: float = -0.53) -> TriMesh:
         """
         Applies non-shrinking smoothing using the Taubin (lambda-mu) algorithm.
         Typically, lambda > 0 and mu < -lambda.
@@ -212,7 +212,7 @@ class MeshProcessing:
         return current_mesh
 
     @staticmethod
-    def loop_subdivision(mesh: TriangleMesh, iterations: int = 1) -> TriangleMesh:
+    def loop_subdivision(mesh: TriMesh, iterations: int = 1) -> TriMesh:
         """
         Applies Loop subdivision to refine the mesh and smooth its surface.
         Each triangle is split into four smaller triangles.
@@ -322,7 +322,7 @@ class MeshProcessing:
                 new_faces.append((e01, e12, e20))
                 
     @staticmethod
-    def mesh_offset(mesh: TriangleMesh, distance: float, create_solid: bool = False) -> TriangleMesh:
+    def mesh_offset(mesh: TriMesh, distance: float, create_solid: bool = False) -> TriMesh:
         """
         Offsets the mesh surface by a given distance along vertex normals.
         If create_solid is True, it creates a thickened shell with closed walls.
@@ -340,7 +340,7 @@ class MeshProcessing:
             offset_verts.append(ov)
             
         if not create_solid:
-            return TriangleMesh(offset_verts, mesh.faces)
+            return TriMesh(offset_verts, mesh.faces)
             
         # 3. Create a solid shell (thickening)
         # Combine original and offset vertices
@@ -371,7 +371,7 @@ class MeshProcessing:
                     directed_boundary.append((u, v))
                     
     @staticmethod
-    def mesh_clipping(mesh: TriangleMesh, plane_origin: Tuple[float,float,float], plane_normal: Tuple[float,float,float], cap: bool = True) -> Tuple[TriangleMesh, TriangleMesh]:
+    def mesh_clipping(mesh: TriMesh, plane_origin: Tuple[float,float,float], plane_normal: Tuple[float,float,float], cap: bool = True) -> Tuple[TriMesh, TriMesh]:
         """
         Splits the mesh into two parts using a plane.
         Returns a tuple (mesh_above, mesh_below).
@@ -425,13 +425,13 @@ class MeshProcessing:
         # This version partitions whole faces.
         
         from .surf_mesh_repair import SurfMeshRepair
-        ma = SurfMeshRepair.remove_isolated_vertices(TriangleMesh(verts_above, faces_above))
-        mb = SurfMeshRepair.remove_isolated_vertices(TriangleMesh(verts_below, faces_below))
+        ma = SurfMeshRepair.remove_isolated_vertices(TriMesh(verts_above, faces_above))
+        mb = SurfMeshRepair.remove_isolated_vertices(TriMesh(verts_below, faces_below))
         
         return ma, mb
 
     @staticmethod
-    def catmull_clark(mesh: TriangleMesh, iterations: int = 1) -> TriangleMesh:
+    def catmull_clark(mesh: TriMesh, iterations: int = 1) -> TriMesh:
         """
         Applies Catmull-Clark subdivision (Structural skeleton).
         Essential for quad-based high-end character animation.

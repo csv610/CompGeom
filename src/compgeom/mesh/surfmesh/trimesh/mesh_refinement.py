@@ -7,7 +7,7 @@ import math
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 from ....kernel import Point2D, Point3D
-from ...mesh import TriangleMesh
+from .trimesh import TriMesh
 
 
 class TriMeshRefiner:
@@ -30,7 +30,7 @@ class TriMeshRefiner:
         return 0.5 * math.sqrt(cp_x**2 + cp_y**2 + cp_z**2)
 
     @staticmethod
-    def subdivide_linear(mesh: TriangleMesh) -> TriangleMesh:
+    def subdivide_linear(mesh: TriMesh) -> TriMesh:
         """
         Refines the mesh by splitting each triangle into 4 smaller triangles.
         New vertices are placed exactly at the midpoints of the original edges.
@@ -70,10 +70,10 @@ class TriMeshRefiner:
             new_faces.append((v2, m20, m12))
             new_faces.append((m01, m12, m20))
             
-        return TriangleMesh(new_vertices, new_faces)
+        return TriMesh(new_vertices, new_faces)
 
     @staticmethod
-    def refine_uniform(mesh: TriangleMesh, max_area_ratio: float) -> TriangleMesh:
+    def refine_uniform(mesh: TriMesh, max_area_ratio: float) -> TriMesh:
         """
         Refines the mesh iteratively by splitting the largest triangles until 
         all triangles have an area less than (total_mesh_area * max_area_ratio).
@@ -128,7 +128,7 @@ class TriMeshRefiner:
                 heapq.heappush(pq, (-f_area, nf))
 
         final_faces = [f for _, f in pq]
-        return TriangleMesh(vertices, final_faces)
+        return TriMesh(vertices, final_faces)
 
 
 __all__ = ["TriMeshRefiner"]

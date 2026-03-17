@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import List, Tuple, Dict, Set
 
 from ....kernel import Point3D
-from ...mesh import TetMesh
+from .tetmesh import TetMesh
 
 def refine_tetmesh_centroid(mesh: TetMesh, element_ids: List[int] = None) -> TetMesh:
     """
@@ -20,7 +20,8 @@ def refine_tetmesh_centroid(mesh: TetMesh, element_ids: List[int] = None) -> Tet
     
     for i, tet in enumerate(mesh.cells):
         if i in ids_to_refine:
-            v0, v1, v2, v3 = [mesh.vertices[idx] for idx in tet]
+            v_indices = tet.v_indices
+            v0, v1, v2, v3 = [mesh.vertices[idx] for idx in v_indices]
             centroid = Point3D(
                 (v0.x + v1.x + v2.x + v3.x) / 4.0,
                 (v0.y + v1.y + v2.y + v3.y) / 4.0,
@@ -30,12 +31,12 @@ def refine_tetmesh_centroid(mesh: TetMesh, element_ids: List[int] = None) -> Tet
             new_vertices.append(centroid)
             
             # Split into 4 tets connecting centroid to each face
-            new_cells.append((tet[0], tet[1], tet[2], centroid_idx))
-            new_cells.append((tet[0], tet[1], tet[3], centroid_idx))
-            new_cells.append((tet[0], tet[2], tet[3], centroid_idx))
-            new_cells.append((tet[1], tet[2], tet[3], centroid_idx))
+            new_cells.append((v_indices[0], v_indices[1], v_indices[2], centroid_idx))
+            new_cells.append((v_indices[0], v_indices[1], v_indices[3], centroid_idx))
+            new_cells.append((v_indices[0], v_indices[2], v_indices[3], centroid_idx))
+            new_cells.append((v_indices[1], v_indices[2], v_indices[3], centroid_idx))
         else:
-            new_cells.append(tet)
+            new_cells.append(tet.v_indices)
         
     return TetMesh(new_vertices, new_cells)
 
@@ -66,8 +67,8 @@ def refine_tetmesh_midpoint(mesh: TetMesh) -> TetMesh:
 
     new_cells = []
     for tet in mesh.cells:
-        v0, v1, v2, v3 = tet
-        
+        v0, v1, v2, v3 = tet.v_indices
+
         # Midpoints of the 6 edges
         m01 = get_midpoint(v0, v1)
         m02 = get_midpoint(v0, v2)
@@ -75,21 +76,22 @@ def refine_tetmesh_midpoint(mesh: TetMesh) -> TetMesh:
         m12 = get_midpoint(v1, v2)
         m13 = get_midpoint(v1, v3)
         m23 = get_midpoint(v2, v3)
-        
+
         # 4 tetrahedra at the vertices
         new_cells.append((v0, m01, m02, m03))
         new_cells.append((v1, m01, m12, m13))
         new_cells.append((v2, m02, m12, m23))
         new_cells.append((v3, m03, m13, m23))
-        
+
         # The remaining octahedron in the middle can be split into 4 tetrahedra
         # by choosing one of its diagonals. Let's use m01-m23 as the diagonal.
         new_cells.append((m01, m12, m02, m23))
         new_cells.append((m01, m12, m13, m23))
         new_cells.append((m01, m03, m13, m23))
-        new_cells.append((m01, m03, m02, m23))
+        new_cells.append((m01, m02, m03, m23))
 
     return TetMesh(new_vertices, new_cells)
+
 
 def refine_tetmesh_global(mesh: TetMesh) -> TetMesh:
     """

@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 from ....kernel import Point3D
 from ....polygon.polygon import generate_points_in_triangle
-from ...mesh import TriangleMesh
+from ...surfmesh.trimesh.trimesh import TriMesh
 
 
 class MeshVoxelizer:
@@ -15,7 +15,7 @@ class MeshVoxelizer:
 
     @staticmethod
     def voxelize(
-        mesh: TriangleMesh, 
+        mesh: TriMesh, 
         voxel_size: float,
         fill_interior: bool = True
     ) -> Union[Set[Tuple[int, int, int]], 'openvdb.FloatGrid']:
@@ -31,7 +31,7 @@ class MeshVoxelizer:
 
     @staticmethod
     def voxelize_native(
-        mesh: TriangleMesh, 
+        mesh: TriMesh, 
         voxel_size: float,
         fill_interior: bool = False
     ) -> Set[Tuple[int, int, int]]:
@@ -88,7 +88,7 @@ class MeshVoxelizer:
 
     @staticmethod
     def voxelize_openvdb(
-        mesh: TriangleMesh, 
+        mesh: TriMesh, 
         voxel_size: float,
         bandwidth: float = 3.0,
         fill_interior: bool = True

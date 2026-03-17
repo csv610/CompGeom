@@ -1,18 +1,19 @@
-"""Conversion from TriangleMesh to QuadMesh via 1-to-3 splitting."""
+"""Conversion from TriMesh to QuadMesh via 1-to-3 splitting."""
 
 from __future__ import annotations
 
 from typing import Dict, List, Set, Tuple, Union
 
 from ....kernel.geometry import Point2D, Point3D
-from ...mesh import TriangleMesh, QuadMesh
+from ..trimesh.trimesh import TriMesh
+from .quadmesh import QuadMesh
 
 
 class TriangleToQuadConverter:
-    """Converts a TriangleMesh to a QuadMesh using midpoint-centroid splitting."""
+    """Converts a TriMesh to a QuadMesh using midpoint-centroid splitting."""
 
     @staticmethod
-    def convert(mesh: TriangleMesh) -> QuadMesh:
+    def convert(mesh: TriMesh) -> QuadMesh:
         """
         Transforms each triangle into 3 quadrilaterals.
         Each edge is split at its midpoint, and a vertex is added at the triangle centroid.

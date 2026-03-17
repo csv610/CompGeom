@@ -4,7 +4,7 @@ import numpy as np
 from collections import defaultdict
 from typing import List, Tuple
 
-from compgeom.mesh import TriangleMesh
+from compgeom.mesh import TriMesh
 from compgeom.kernel import Point3D
 from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
 from compgeom.mesh.surfmesh.trimesh.primitives import Primitives
@@ -17,7 +17,7 @@ from sphere_projection_task import (
     apply_spherical_smoothing
 )
 
-def get_edge_lengths(mesh: TriangleMesh) -> dict:
+def get_edge_lengths(mesh: TriMesh) -> dict:
     lengths = {}
     for face in mesh.faces:
         for i in range(3):
@@ -28,7 +28,7 @@ def get_edge_lengths(mesh: TriangleMesh) -> dict:
                 lengths[(u, v)] = d
     return lengths
 
-def get_angles(mesh: TriangleMesh) -> List[float]:
+def get_angles(mesh: TriMesh) -> List[float]:
     all_angles = []
     for face in mesh.faces:
         v_idx = face
@@ -74,7 +74,7 @@ def main():
     rx, ry, rz = 2.0, 1.0, 1.0
     orig = Primitives.ellipsoid(rx=rx, ry=ry, rz=rz, subdivisions=2)
     new_faces = [(f[0], f[2], f[1]) for f in orig.faces]
-    orig = TriangleMesh(orig.vertices, new_faces)
+    orig = TriMesh(orig.vertices, new_faces)
     
     com = MeshAnalysis.center_of_mass(orig)
     radius = calculate_sphere_radius(MeshAnalysis.total_area(orig))

@@ -1,7 +1,7 @@
 
 import unittest
 import math
-from compgeom.mesh import TriangleMesh
+from compgeom.mesh import TriMesh
 from compgeom.kernel import Point3D
 from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
 from compgeom.mesh.surfmesh.trimesh.primitives import Primitives
@@ -22,7 +22,7 @@ class TestSphereProjection(unittest.TestCase):
         self.mesh = Primitives.ellipsoid(rx=self.rx, ry=self.ry, rz=self.rz, subdivisions=1)
         # Fix orientation to CCW
         new_faces = [(f[0], f[2], f[1]) for f in self.mesh.faces]
-        self.mesh = TriangleMesh(self.mesh.vertices, new_faces)
+        self.mesh = TriMesh(self.mesh.vertices, new_faces)
         self.com = MeshAnalysis.center_of_mass(self.mesh)
         self.area = MeshAnalysis.total_area(self.mesh)
         self.radius = calculate_sphere_radius(self.area)
@@ -55,13 +55,13 @@ class TestSphereProjection(unittest.TestCase):
         
         # If sphere is CW, reverse it
         if not is_mesh_valid_on_sphere(sphere, center):
-            sphere = TriangleMesh(sphere.vertices, [(f[0], f[2], f[1]) for f in sphere.faces])
+            sphere = TriMesh(sphere.vertices, [(f[0], f[2], f[1]) for f in sphere.faces])
             
         self.assertTrue(is_mesh_valid_on_sphere(sphere, center))
         
         # An inverted sphere should be invalid
         inverted_faces = [(f[0], f[2], f[1]) for f in sphere.faces]
-        inverted_sphere = TriangleMesh(sphere.vertices, inverted_faces)
+        inverted_sphere = TriMesh(sphere.vertices, inverted_faces)
         self.assertFalse(is_mesh_valid_on_sphere(inverted_sphere, center))
 
     def test_optimization_runs(self):

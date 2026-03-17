@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Tuple
 from compgeom.kernel import Point3D
 
 if TYPE_CHECKING:
-    from ...mesh import TriangleMesh
+    from .trimesh.trimesh import TriMesh
 
 
 class VertexConstraint:
@@ -168,9 +168,9 @@ class VertexConstraint:
                                target_cap_center.z + radial_dz * r_scale, id=p.id)
 
     @staticmethod
-    def project_to_mesh(p: Point3D, mesh: TriangleMesh) -> Point3D:
+    def project_to_mesh(p: Point3D, mesh: TriMesh) -> Point3D:
         """
-        Projects a point p onto the nearest point on a TriangleMesh.
+        Projects a point p onto the nearest point on a TriMesh.
         This is a brute-force implementation checking all triangles.
         """
         min_dist_sq = float('inf')

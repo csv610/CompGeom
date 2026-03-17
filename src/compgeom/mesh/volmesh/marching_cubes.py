@@ -1,7 +1,7 @@
 """Marching Cubes algorithm for surface reconstruction from scalar fields."""
 from typing import List, Tuple, Callable
 
-from ..mesh import TriangleMesh
+from ..surfmesh.trimesh.trimesh import TriMesh
 from ...kernel import Point3D
 
 class MarchingCubes:
@@ -37,7 +37,7 @@ class MarchingCubes:
                     bmin: Tuple[float,float,float], 
                     bmax: Tuple[float,float,float], 
                     resolution: int = 20, 
-                    isovalue: float = 0.0) -> TriangleMesh:
+                    isovalue: float = 0.0) -> TriMesh:
         """
         Evaluates the scalar field over a grid and extracts the isosurface.
         
@@ -101,4 +101,4 @@ class MarchingCubes:
                     
         # Note: A full implementation requires embedding the 256x16 integer array.
         # This skeleton establishes the API for the geometry pipeline.
-        return TriangleMesh(vertices, faces)
+        return TriMesh(vertices, faces)

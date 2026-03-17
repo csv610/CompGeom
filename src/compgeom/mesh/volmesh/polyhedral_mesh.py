@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Tuple, Optional, Set, Union
 from ...kernel import Point3D
-from ..mesh import Mesh, MeshNode
+from ..mesh_base import Mesh, MeshNode
 
 class PolyhedralMesh(Mesh):
     """

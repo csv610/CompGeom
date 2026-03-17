@@ -7,19 +7,19 @@ from typing import TYPE_CHECKING, List, Tuple
 from ....kernel import Point3D
 
 if TYPE_CHECKING:
-    from ...mesh import TriangleMesh
+    from .trimesh import TriMesh
 
 
 class PlatonicSolid:
     """Generates meshes for the five Platonic solids."""
 
     @staticmethod
-    def _create_mesh(vertices: List[Point3D], faces: List[Tuple[int, int, int]]) -> TriangleMesh:
-        from ...mesh import TriangleMesh
-        return TriangleMesh(vertices, faces)
+    def _create_mesh(vertices: List[Point3D], faces: List[Tuple[int, int, int]]) -> TriMesh:
+        from .trimesh import TriMesh
+        return TriMesh(vertices, faces)
 
     @staticmethod
-    def tetrahedron(size: float = 1.0) -> TriangleMesh:
+    def tetrahedron(size: float = 1.0) -> TriMesh:
         """Generates a regular tetrahedron mesh."""
         s = size / math.sqrt(3)
         v = [
@@ -32,7 +32,7 @@ class PlatonicSolid:
         return PlatonicSolid._create_mesh(v, f)
 
     @staticmethod
-    def cube(size: float = 1.0) -> TriangleMesh:
+    def cube(size: float = 1.0) -> TriMesh:
         """Generates a cube (hexahedron) mesh."""
         s = size / 2.0
         v = [
@@ -49,7 +49,7 @@ class PlatonicSolid:
         return PlatonicSolid._create_mesh(v, f)
 
     @staticmethod
-    def octahedron(size: float = 1.0) -> TriangleMesh:
+    def octahedron(size: float = 1.0) -> TriMesh:
         """Generates a regular octahedron mesh."""
         s = size / math.sqrt(2)
         v = [
@@ -64,7 +64,7 @@ class PlatonicSolid:
         return PlatonicSolid._create_mesh(v, f)
 
     @staticmethod
-    def icosahedron(size: float = 1.0) -> TriangleMesh:
+    def icosahedron(size: float = 1.0) -> TriMesh:
         """Generates a regular icosahedron mesh."""
         phi = (1 + math.sqrt(5)) / 2.0
         scale = size / math.sqrt(1 + phi**2)
@@ -85,7 +85,7 @@ class PlatonicSolid:
         return PlatonicSolid._create_mesh(v, f)
 
     @staticmethod
-    def dodecahedron(size: float = 1.0) -> TriangleMesh:
+    def dodecahedron(size: float = 1.0) -> TriMesh:
         """Generates a regular dodecahedron mesh."""
         phi = (1 + math.sqrt(5)) / 2.0
         # Circumradius of a dodecahedron with edge length 2/phi is sqrt(3)

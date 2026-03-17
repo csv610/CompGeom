@@ -9,7 +9,7 @@ from ....kernel import Point2D
 from .delaunay_triangulation import DelaunayMesher
 
 if TYPE_CHECKING:
-    from ...mesh import TriangleMesh
+    from .trimesh import TriMesh
 
 
 class DomainMesher:
@@ -84,7 +84,7 @@ class DomainMesher:
         rejection_ratio: float = 0.001,
         outer_boundary: Optional[List[Point2D]] = None,
         jitter: bool = True
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """Helper to triangulate boundary and internal points."""
         # Use the refined boundary points for sampling if no outer_boundary is provided
         search_boundary = outer_boundary or boundary_points
@@ -132,7 +132,7 @@ class DomainMesher:
             
         # Filter triangles whose centroids are outside the outer_boundary
         from ....polygon.polygon_metrics import is_point_in_polygon
-        from ...mesh import TriangleMesh
+        from .trimesh import TriMesh
         
         final_faces = []
         for face in mesh.faces:
@@ -141,7 +141,7 @@ class DomainMesher:
             if is_point_in_polygon(centroid, outer_boundary):
                 final_faces.append(face)
         
-        return TriangleMesh(mesh.vertices, final_faces)
+        return TriMesh(mesh.vertices, final_faces)
 
     @staticmethod
     def square(
@@ -150,7 +150,7 @@ class DomainMesher:
         num_internal_points: Optional[int] = None,
         rejection_ratio: float = 0.001,
         jitter: bool = True
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """Generates a refined triangle mesh for a square."""
         corners = [
             Point2D(0, 0),
@@ -173,7 +173,7 @@ class DomainMesher:
         num_internal_points: Optional[int] = None,
         rejection_ratio: float = 0.001,
         jitter: bool = True
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """Generates a refined triangle mesh for a rectangle."""
         corners = [
             Point2D(0, 0),
@@ -195,7 +195,7 @@ class DomainMesher:
         num_internal_points: Optional[int] = None,
         rejection_ratio: float = 0.001,
         jitter: bool = True
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """Generates a refined triangle mesh for an equilateral triangle."""
         h = side_length * math.sqrt(3) / 2
         corners = [
@@ -217,7 +217,7 @@ class DomainMesher:
         num_internal_points: Optional[int] = None,
         rejection_ratio: float = 0.001,
         jitter: bool = True
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """Generates a refined triangle mesh for a circle."""
         num_segments = max(8, math.ceil(2 * math.pi * radius / boundary_segment_length))
         boundary = []

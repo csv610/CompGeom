@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import List, Tuple, Set, Union
 
-from ..mesh import TriangleMesh
+from .trimesh.trimesh import TriMesh
 from ...kernel import Point2D, Point3D
 
 class AlphaShape:
@@ -47,9 +47,9 @@ class AlphaShape:
         return list(boundary_edges)
 
     @staticmethod
-    def compute_3d(points: List[Point3D], alpha: float) -> TriangleMesh:
+    def compute_3d(points: List[Point3D], alpha: float) -> TriMesh:
         """
-        Computes the 3D alpha shape. Returns a TriangleMesh of the boundary.
+        Computes the 3D alpha shape. Returns a TriMesh of the boundary.
         """
         from ..volmesh.tetmesh.delaunay_tetmesh import triangulate as triangulate_3d
         
@@ -96,4 +96,4 @@ class AlphaShape:
                     else:
                         boundary_faces.add(f)
                         
-        return TriangleMesh(tet_mesh.vertices, list(boundary_faces))
+        return TriMesh(tet_mesh.vertices, list(boundary_faces))
