@@ -7,7 +7,7 @@ from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
 from compgeom.mesh.surfmesh.trimesh.primitives import Primitives
 
 # Import functions from our task script
-from sphere_projection_task import (
+from .sphere_projection_task import (
     calculate_sphere_radius,
     project_to_sphere,
     is_mesh_valid_on_sphere,
