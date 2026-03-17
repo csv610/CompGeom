@@ -6,6 +6,7 @@ from typing import Optional, TYPE_CHECKING, Tuple, List
 from decimal import Decimal
 
 from .point import Point2D
+from .line_segment import LineSegment
 from .math_utils import (
     EPSILON, 
     distance,
@@ -28,6 +29,98 @@ class Circle2D:
 
     def __repr__(self) -> str:
         return f"Circle2D(c={self.center}, r={self.radius})"
+
+
+def common_tangents(c1: Circle2D, c2: Circle2D) -> List[LineSegment[Point2D]]:
+    """Return all common tangent segments between two circles.
+    
+    A common tangent segment is a segment whose endpoints are the points of 
+    tangency on each circle.
+    """
+    dx = c2.center.x - c1.center.x
+    dy = c2.center.y - c1.center.y
+    d2 = dx*dx + dy*dy
+    d = math.sqrt(d2)
+    
+    if d < EPSILON:
+        return []
+
+    res: List[LineSegment[Point2D]] = []
+    alpha = math.atan2(dy, dx)
+    
+    # External tangents: cos(beta) = (r1 - r2) / d
+    dr = c1.radius - c2.radius
+    if abs(dr) <= d + EPSILON:
+        cos_beta = max(-1.0, min(1.0, dr / d))
+        beta = math.acos(cos_beta)
+        
+        # If beta is very small (near 0 or pi), the two tangents are essentially the same
+        if abs(beta) < 1e-10 or abs(beta - math.pi) < 1e-10:
+            angles = [alpha + beta]
+        else:
+            angles = [alpha + beta, alpha - beta]
+
+        for a in angles:
+            p1 = Point2D(c1.center.x + c1.radius * math.cos(a),
+                         c1.center.y + c1.radius * math.sin(a))
+            p2 = Point2D(c2.center.x + c2.radius * math.cos(a),
+                         c2.center.y + c2.radius * math.sin(a))
+            res.append(LineSegment(p1, p2))
+            
+    # Internal tangents: cos(beta) = (r1 + r2) / d
+    sr = c1.radius + c2.radius
+    if sr <= d + EPSILON:
+        cos_beta = max(-1.0, min(1.0, sr / d))
+        beta = math.acos(cos_beta)
+        
+        if abs(beta) < 1e-10:
+            angles = [alpha]
+        else:
+            angles = [alpha + beta, alpha - beta]
+
+        for a in angles:
+            p1 = Point2D(c1.center.x + c1.radius * math.cos(a),
+                         c1.center.y + c1.radius * math.sin(a))
+            a2 = a + math.pi
+            p2 = Point2D(c2.center.x + c2.radius * math.cos(a2),
+                         c2.center.y + c2.radius * math.sin(a2))
+            res.append(LineSegment(p1, p2))
+            
+    return res
+
+
+def tangents_from_point(circle: Circle2D, point: Point2D) -> List[LineSegment[Point2D]]:
+    """Return the two tangent segments from a point outside the circle to the circle.
+    
+    If the point is inside the circle, return an empty list.
+    If the point is on the circle, return a single zero-length segment [LineSegment(point, point)].
+    """
+    d = distance(circle.center, point)
+    
+    if d < circle.radius - EPSILON:
+        return []
+        
+    if abs(d - circle.radius) < EPSILON:
+        return [LineSegment(point, point)]
+        
+    # Angle from center to point
+    phi = math.atan2(point.y - circle.center.y, point.x - circle.center.x)
+    
+    # Angle between CP and CT (tangent point)
+    # cos(alpha) = radius / d
+    alpha = math.acos(circle.radius / d)
+    
+    res = []
+    # Two tangents for point outside
+    for sign in [1, -1]:
+        angle = phi + sign * alpha
+        t = Point2D(
+            circle.center.x + circle.radius * math.cos(angle),
+            circle.center.y + circle.radius * math.sin(angle)
+        )
+        res.append(LineSegment(point, t))
+        
+    return res
 
 
 # Robust decimal incircle predicate helper
@@ -195,6 +288,8 @@ def perimeter(radius: float) -> float:
 
 __all__ = [
     "Circle2D",
+    "common_tangents",
+    "tangents_from_point",
     "robust_in_circle",
     "incircle_det",
     "incircle_sign",

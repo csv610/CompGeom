@@ -1,7 +1,4 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from PoissonDiskSampler import PoissonDiskSampler
+from compgeom.point.PoissonDiskSampler import PoissonDiskSampler
 import math
 
 def test_poisson_disk_sampler():

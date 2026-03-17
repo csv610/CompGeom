@@ -6,7 +6,7 @@ from typing import Tuple, List
 from .point import Point3D
 from .math_utils import EPSILON
 from .tetrahedron import volume as tet_volume, orientation_sign
-from .sphere import Sphere3D, from_two_points, from_three_points, from_four_points
+from .sphere import Sphere, from_two_points, from_three_points, from_four_points
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,7 +41,19 @@ class Hexahedron:
         """Check if the hexahedron is convex."""
         return is_convex(*self.vertices)
 
-    def min_sphere(self) -> Sphere3D:
+    def contains_point(self, p: Point3D) -> bool:
+        """Check if point p is inside the hexahedron."""
+        return contains_point(p, *self.vertices)
+
+    def faces(self) -> Tuple[Tuple[Point3D, Point3D, Point3D, Point3D], ...]:
+        """Return the 6 faces of the hexahedron as tuples of 4 points."""
+        return faces(*self.vertices)
+
+    def edges(self) -> Tuple[Tuple[Point3D, Point3D], ...]:
+        """Return the 12 edges of the hexahedron as tuples of 2 points."""
+        return edges(*self.vertices)
+
+    def min_sphere(self) -> Sphere:
         """Return the minimum bounding sphere of the hexahedron."""
         return min_sphere(*self.vertices)
 
@@ -120,13 +132,87 @@ def is_convex(
     return True
 
 
+def contains_point(
+    p: Point3D, 
+    v1: Point3D, v2: Point3D, v3: Point3D, v4: Point3D, 
+    v5: Point3D, v6: Point3D, v7: Point3D, v8: Point3D
+) -> bool:
+    """
+    Check if point p is inside the hexahedron.
+    Assumes the hexahedron is convex.
+    """
+    pts = [v1, v2, v3, v4, v5, v6, v7, v8]
+    face_definitions = [
+        (0, 3, 2, 1), # bottom
+        (4, 5, 6, 7), # top
+        (0, 1, 5, 4), # front
+        (1, 2, 6, 5), # right
+        (2, 3, 7, 6), # back
+        (3, 0, 4, 7), # left
+    ]
+    
+    for face in face_definitions:
+        f_pts = [pts[i] for i in face]
+        # Reference point: pick first vertex not in face
+        ref_idx = next(i for i in range(8) if i not in face)
+        ref_sign = orientation_sign(f_pts[0], f_pts[1], f_pts[2], pts[ref_idx])
+        
+        if ref_sign == 0:
+            for i in range(8):
+                if i not in face:
+                    ref_sign = orientation_sign(f_pts[0], f_pts[1], f_pts[2], pts[i])
+                    if ref_sign != 0: break
+        
+        if ref_sign == 0: continue # Degenerate face or hex
+        
+        p_sign = orientation_sign(f_pts[0], f_pts[1], f_pts[2], p)
+        if p_sign != 0 and p_sign != ref_sign:
+            return False
+    return True
+
+
+def faces(
+    v1: Point3D, v2: Point3D, v3: Point3D, v4: Point3D, 
+    v5: Point3D, v6: Point3D, v7: Point3D, v8: Point3D
+) -> Tuple[Tuple[Point3D, Point3D, Point3D, Point3D], ...]:
+    """
+    Return the 6 faces of the hexahedron. 
+    Each face is returned as a tuple of 4 points in counter-clockwise order when viewed from outside.
+    """
+    pts = [v1, v2, v3, v4, v5, v6, v7, v8]
+    face_definitions = [
+        (0, 3, 2, 1), # bottom (v1, v4, v3, v2)
+        (4, 5, 6, 7), # top (v5, v6, v7, v8)
+        (0, 1, 5, 4), # front (v1, v2, v6, v5)
+        (1, 2, 6, 5), # right (v2, v3, v7, v6)
+        (2, 3, 7, 6), # back (v3, v4, v8, v7)
+        (3, 0, 4, 7), # left (v4, v1, v5, v8)
+    ]
+    
+    return tuple(tuple(pts[i] for i in face) for face in face_definitions)
+
+
+def edges(
+    v1: Point3D, v2: Point3D, v3: Point3D, v4: Point3D, 
+    v5: Point3D, v6: Point3D, v7: Point3D, v8: Point3D
+) -> Tuple[Tuple[Point3D, Point3D], ...]:
+    """Return the 12 edges of the hexahedron."""
+    pts = [v1, v2, v3, v4, v5, v6, v7, v8]
+    edge_definitions = [
+        (0, 1), (1, 2), (2, 3), (3, 0), # bottom
+        (4, 5), (5, 6), (6, 7), (7, 4), # top
+        (0, 4), (1, 5), (2, 6), (3, 7), # vertical
+    ]
+    return tuple(tuple(pts[i] for i in edge) for edge in edge_definitions)
+
+
 def min_sphere(
     v1: Point3D, v2: Point3D, v3: Point3D, v4: Point3D, 
     v5: Point3D, v6: Point3D, v7: Point3D, v8: Point3D
-) -> Sphere3D:
+) -> Sphere:
     """Return the minimum bounding sphere that contains all 8 points of the hexahedron."""
     points = [v1, v2, v3, v4, v5, v6, v7, v8]
-    candidates: list[Sphere3D] = []
+    candidates: list[Sphere] = []
     for i in range(8):
         for j in range(i + 1, 8):
             s = from_two_points(points[i], points[j])
@@ -212,6 +298,9 @@ __all__ = [
     "centroid",
     "volume",
     "is_convex",
+    "contains_point",
+    "faces",
+    "edges",
     "min_sphere",
     "barycentric_coords",
 ]

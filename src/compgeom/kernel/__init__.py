@@ -24,6 +24,8 @@ from .line_segment import (
 
 from .circle import (
     Circle2D,
+    common_tangents,
+    tangents_from_point,
     incircle_det,
     incircle_sign,
     in_circle,
@@ -63,7 +65,7 @@ from .hexahedron import (
 )
 
 from .sphere import (
-    Sphere3D,
+    Sphere,
     insphere_det,
     insphere_sign,
     in_sphere,

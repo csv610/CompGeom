@@ -10,7 +10,7 @@ from .tetrahedron import orientation_sign
 
 
 @dataclass(frozen=True, slots=True)
-class Sphere3D:
+class Sphere:
     center: Point3D
     radius: float
 
@@ -18,20 +18,20 @@ class Sphere3D:
         return distance_3d(self.center, point) <= self.radius + EPSILON
 
     def __repr__(self) -> str:
-        return f"Sphere3D(c={self.center}, r={self.radius})"
+        return f"Sphere(c={self.center}, r={self.radius})"
 
 
-def from_two_points(p1: Point3D, p2: Point3D) -> Sphere3D:
+def from_two_points(p1: Point3D, p2: Point3D) -> Sphere:
     """Return the smallest sphere defined by two points as diameter."""
     center = Point3D(
         (p1.x + p2.x) / 2.0,
         (p1.y + p2.y) / 2.0,
         (p1.z + p2.z) / 2.0
     )
-    return Sphere3D(center, distance_3d(p1, p2) / 2.0)
+    return Sphere(center, distance_3d(p1, p2) / 2.0)
 
 
-def from_three_points(p1: Point3D, p2: Point3D, p3: Point3D) -> Sphere3D:
+def from_three_points(p1: Point3D, p2: Point3D, p3: Point3D) -> Sphere:
     """Return the smallest sphere with three points on its surface (circumcircle in 3D)."""
     # Finding the circumcenter of the triangle in 3D
     # The center lies on the plane of the triangle
@@ -59,10 +59,10 @@ def from_three_points(p1: Point3D, p2: Point3D, p3: Point3D) -> Sphere3D:
     k1 = v1v1 * (v2v2 - v1v2) / (2.0 * a)
     k2 = v2v2 * (v1v1 - v1v2) / (2.0 * a)
     center = p1 + v1 * k1 + v2 * k2
-    return Sphere3D(center, distance_3d(center, p1))
+    return Sphere(center, distance_3d(center, p1))
 
 
-def from_four_points(p1: Point3D, p2: Point3D, p3: Point3D, p4: Point3D) -> Sphere3D:
+def from_four_points(p1: Point3D, p2: Point3D, p3: Point3D, p4: Point3D) -> Sphere:
     """Return the circumsphere of a tetrahedron."""
     # Using the property that the circumcenter is equidistant from all vertices.
     # We solve a system of linear equations.
@@ -102,7 +102,7 @@ def from_four_points(p1: Point3D, p2: Point3D, p3: Point3D, p4: Point3D) -> Sphe
     dz = det3([m[0][0], m[0][1], m[0][3]], [m[1][0], m[1][1], m[1][3]], [m[2][0], m[2][1], m[2][3]])
     
     center = Point3D(dx / d, dy / d, dz / d)
-    return Sphere3D(center, distance_3d(center, p1))
+    return Sphere(center, distance_3d(center, p1))
 
 def _decimal_insphere(a: Point3D, b: Point3D, c: Point3D, d: Point3D, e: Point3D) -> Decimal:
     ax, ay, az = Decimal(str(a.x)) - Decimal(str(e.x)), Decimal(str(a.y)) - Decimal(str(e.y)), Decimal(str(a.z)) - Decimal(str(e.z))
@@ -165,4 +165,4 @@ def insphere_sign(a: Point3D, b: Point3D, c: Point3D, d: Point3D, e: Point3D) ->
 def in_sphere(a: Point3D, b: Point3D, c: Point3D, d: Point3D, e: Point3D) -> bool:
     return insphere_sign(a, b, c, d, e) > 0
 
-__all__ = ['insphere_det', 'insphere_sign', 'in_sphere']
+__all__ = ['Sphere', 'from_two_points', 'from_three_points', 'from_four_points', 'insphere_det', 'insphere_sign', 'in_sphere']
