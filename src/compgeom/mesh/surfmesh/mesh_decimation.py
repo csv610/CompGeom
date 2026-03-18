@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import List, Tuple, Dict, Set
 
 from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.kernel import Point3D
 
 class MeshDecimator:
     """Simplifies triangle meshes using Quadric Error Metrics (QEM)."""

@@ -1,7 +1,7 @@
 """Surface mesh processing and primitive generation."""
 
-from .platonic_solids import PlatonicSolid
-from .primitives import Primitives
+from compgeom.mesh.surfmesh.platonic_solids import PlatonicSolid
+from compgeom.mesh.surfmesh.primitives import Primitives
 
 __all__ = [
     "PlatonicSolid",

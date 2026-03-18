@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Optional, Tuple, Union
-from ....kernel import Point3D
-from ...mesh_base import Mesh, MeshNode, MeshCell, MeshEdge, MeshFace
+from compgeom.kernel import Point3D
+from compgeom.mesh.mesh_base import Mesh, MeshNode, MeshCell, MeshEdge, MeshFace
 
 class TetMesh(Mesh):
     """A 3D volumetric mesh composed of tetrahedral cells."""

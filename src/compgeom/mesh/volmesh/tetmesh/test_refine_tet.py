@@ -1,6 +1,6 @@
 import pytest
 from compgeom.kernel import Point3D
-from .tetmesh import TetMesh
+from compgeom.mesh.volmesh.tetmesh.tetmesh import TetMesh
 from compgeom.mesh.volmesh.tetmesh.refine import (
     refine_tetmesh_centroid, 
     refine_tetmesh_midpoint,

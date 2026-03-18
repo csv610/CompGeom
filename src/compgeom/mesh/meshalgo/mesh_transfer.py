@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 from compgeom.kernel import Point2D, Point3D
 from compgeom.kernel import distance
 from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.mesh.mesh_topology import MeshTopology
 
 
 class MeshTransfer:
@@ -27,7 +28,8 @@ class MeshTransfer:
             A new TriMesh with source topology and target geometry.
         """
         # 1. Extract boundary of the source mesh
-        boundary_edges = source_mesh.topology.boundary_edges()
+        topo = MeshTopology(source_mesh)
+        boundary_edges = topo.boundary_edges()
         if not boundary_edges:
             raise ValueError("Source mesh has no boundary.")
 
@@ -110,7 +112,7 @@ class MeshTransfer:
                 if i in boundary_indices:
                     continue
                 
-                neighbors = source_mesh.topology.vertex_neighbors(i)
+                neighbors = topo.vertex_neighbors(i)
                 if not neighbors:
                     continue
                 

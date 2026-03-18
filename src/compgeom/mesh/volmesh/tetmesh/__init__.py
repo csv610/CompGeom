@@ -1,7 +1,7 @@
-from .tetmesh import TetMesh
-from .delaunay_tetmesh import DelaunayTetMesher, tetmesher, triangulate
-from .delaunay_mesh_incremental import IncrementalDelaunayMesher3D, triangulate_incremental_3d
-from .refine import (
+from compgeom.mesh.volmesh.tetmesh.tetmesh import TetMesh
+from compgeom.mesh.volmesh.tetmesh.delaunay_tetmesh import DelaunayTetMesher, tetmesher, triangulate
+from compgeom.mesh.volmesh.tetmesh.delaunay_mesh_incremental import IncrementalDelaunayMesher3D, triangulate_incremental_3d
+from compgeom.mesh.volmesh.tetmesh.refine import (
     refine_tetmesh_centroid,
     refine_tetmesh_midpoint,
     refine_tetmesh_global,

@@ -3,8 +3,8 @@ from collections import defaultdict
 import math
 from typing import List, Tuple, Dict
 
-from .trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point3D
 
 class MeshAnalysis:
     """Provides algorithms for analyzing surface meshes."""
@@ -123,7 +123,9 @@ class MeshAnalysis:
             total_vol += vol
             
         if abs(total_vol) < 1e-12:
-            return mesh.centroid.x, mesh.centroid.y, getattr(mesh.centroid, 'z', 0.0)
+            from compgeom.mesh.mesh_geometry import MeshGeometry
+            centroid = MeshGeometry.centroid(mesh)
+            return centroid.x, centroid.y, getattr(centroid, 'z', 0.0)
             
         return cx/total_vol, cy/total_vol, cz/total_vol
 
@@ -253,7 +255,7 @@ class MeshAnalysis:
         Calculates the approximate Hausdorff distance between two meshes.
         dH(A, B) = max( sup_{a in A} inf_{b in B} d(a,b), sup_{b in B} inf_{a in A} d(a,b) )
         """
-        from .mesh_queries import MeshQueries
+        from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
         
         def one_way_dist(m1, m2):
             max_d = 0.0
@@ -276,10 +278,12 @@ class MeshAnalysis:
     @staticmethod
     def generate_report(mesh: TriMesh) -> str:
         """Generates a comprehensive geometric and topological report."""
+        from compgeom.mesh.mesh_topology import MeshTopology
         area = MeshAnalysis.total_area(mesh)
         volume = MeshAnalysis.total_volume(mesh)
         com = MeshAnalysis.center_of_mass(mesh)
-        is_watertight = mesh.is_watertight()
+        is_watertight = MeshTopology(mesh).is_watertight()
+        betti_0, betti_1, betti_2 = mesh.betti_numbers()
         
         # Euler characteristic
         v = len(mesh.vertices)
@@ -298,6 +302,7 @@ class MeshAnalysis:
             f"Faces:    {f}",
             f"Edges:    {e}",
             f"Euler Characteristic: {euler} (Genus: {(2-euler)//2})",
+            f"Betti Numbers: b0={betti_0}, b1={betti_1}, b2={betti_2}",
             f"Watertight: {'Yes' if is_watertight else 'No'}",
             f"Surface Area: {area:.6f}",
             f"Volume:       {volume:.6f}",

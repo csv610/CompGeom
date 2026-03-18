@@ -3,10 +3,10 @@ from typing import List, Tuple, Dict, Set, Optional
 from collections import defaultdict
 import math
 
-from ...kernel import Point3D
-from .tetmesh.delaunay_tetmesh import DelaunayTetMesher
-from .tetmesh.utils import get_tet_circumcenter
-from .polyhedral_mesh import PolyhedralMesh
+from compgeom.kernel import Point3D
+from compgeom.mesh.volmesh.tetmesh.delaunay_tetmesh import DelaunayTetMesher
+from compgeom.mesh.volmesh.tetmesh.utils import get_tet_circumcenter
+from compgeom.mesh.volmesh.polyhedral_mesh import PolyhedralMesh
 
 class VoronoiDiagram3D:
     """
@@ -30,7 +30,7 @@ class VoronoiDiagram3D:
         self.points = points
         
         # 1. Compute Delaunay Tetrahedralization (keeping super-tetrahedron tets for infinite cells)
-        from .tetmesh.delaunay_mesh_incremental import IncrementalDelaunayMesher3D
+        from compgeom.mesh.volmesh.tetmesh.delaunay_mesh_incremental import IncrementalDelaunayMesher3D
         mesher = IncrementalDelaunayMesher3D()
         mesher.triangulate(points)
         

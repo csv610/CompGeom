@@ -4,9 +4,9 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Optional, List, Tuple
 
-from ....kernel import Point3D
-from .tetmesh import TetMesh
-from .delaunay_mesh_incremental import triangulate_incremental_3d
+from compgeom.kernel import Point3D
+from compgeom.mesh.volmesh.tetmesh.tetmesh import TetMesh
+from compgeom.mesh.volmesh.tetmesh.delaunay_mesh_incremental import triangulate_incremental_3d
 
 class DelaunayTetMesher:
     """

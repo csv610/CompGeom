@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import List, Tuple
 
 from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.kernel import Point3D
 
 class MeshCurvature:
     """Calculates Gaussian and Mean curvature at mesh vertices."""

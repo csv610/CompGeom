@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import List, Optional, Tuple, Union, Any
+from typing import List, Optional, Tuple, Union, Any, Set
 
-from ...mesh_base import Mesh, MeshNode, MeshFace, MeshEdge
+from compgeom.mesh.mesh_base import Mesh, MeshNode, MeshFace, MeshEdge
+from compgeom.mesh.mesh_topology import MeshTopology
 
 class QuadMesh(Mesh):
     """A 2D or 3D mesh composed of quadrilateral faces."""
@@ -36,7 +37,7 @@ class QuadMesh(Mesh):
     @classmethod
     def from_file(cls, filename: str) -> QuadMesh:
         """Creates a QuadMesh from a file (OBJ, OFF, STL)."""
-        from ..meshio import MeshImporter
+        from compgeom.mesh.surfmesh.meshio import MeshImporter
         mesh = MeshImporter.read(filename)
         return cls(mesh.nodes, mesh.faces)
 
@@ -98,7 +99,7 @@ class QuadMesh(Mesh):
             next_idx = None
             next_entry = -1
             
-            for n_idx in self.topology.shared_edge_neighbors(curr_idx):
+            for n_idx in MeshTopology(self).shared_edge_neighbors(curr_idx):
                 n_face = self.faces[n_idx]
                 n_v = n_face.v_indices
                 n_edges = [tuple(sorted((n_v[k], n_v[(k + 1) % 4]))) for k in range(4)]

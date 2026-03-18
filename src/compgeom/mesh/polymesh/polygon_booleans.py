@@ -2,7 +2,7 @@
 from typing import List, Tuple
 import math
 
-from ...kernel import Point2D
+from compgeom.kernel import Point2D
 
 class PolygonBooleans:
     """Provides Union, Intersection, and Difference for 2D polygons."""

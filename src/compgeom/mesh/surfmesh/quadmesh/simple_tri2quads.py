@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Dict, List, Set, Tuple, Union
 
-from ....kernel.geometry import Point2D, Point3D
-from ..trimesh.trimesh import TriMesh
-from .quadmesh import QuadMesh
+from compgeom.kernel.geometry import Point2D, Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.mesh.surfmesh.quadmesh.quadmesh import QuadMesh
 
 
 class TriangleToQuadConverter:

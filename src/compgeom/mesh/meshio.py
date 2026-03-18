@@ -6,8 +6,8 @@ import os
 import struct
 from typing import List, Tuple, Union, Optional
 
-from ..kernel import Point2D, Point3D
-from .mesh import Mesh, PolygonMesh, TriMesh
+from compgeom.kernel import Point2D, Point3D
+from compgeom.mesh.mesh import Mesh, PolygonMesh, TriMesh
 
 
 class OBJFileHandler:

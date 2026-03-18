@@ -1,8 +1,8 @@
 """Advanced bounding volumes and PCA alignment."""
 from typing import Tuple, List
 
-from .trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point3D
 
 class BoundingVolumes:
     """Calculates Oriented Bounding Boxes (OBB), Minimum Bounding Spheres, and Ellipsoids."""

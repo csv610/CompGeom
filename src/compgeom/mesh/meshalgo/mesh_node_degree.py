@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-from compgeom.mesh import Mesh
+from compgeom.mesh import Mesh, MeshTopology
 
 
 class MeshNodeDegree:
@@ -24,9 +24,10 @@ class MeshNodeDegree:
         n_vertices = len(mesh.vertices)
         degrees = []
         
+        topo = MeshTopology(mesh)
         for i in range(n_vertices):
             # The degree of a vertex is the number of its neighbors
-            neighbors = mesh.topology.vertex_neighbors(i)
+            neighbors = topo.vertex_neighbors(i)
             degrees.append(len(neighbors))
             
         return degrees

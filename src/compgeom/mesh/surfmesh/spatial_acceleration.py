@@ -4,8 +4,8 @@ import math
 from typing import List, Tuple, Optional, Union
 
 try:
-    from .trimesh.trimesh import TriMesh
-    from ...kernel import Point3D
+    from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+    from compgeom.kernel import Point3D
 except ImportError:
     class TriMesh:
         def __init__(self, vertices=None, faces=None):
@@ -136,7 +136,7 @@ class AABBTree:
             
         if node.is_leaf():
             try:
-                from ..mesh_queries import MeshQueries
+                from compgeom.mesh.mesh_queries import MeshQueries
             except ImportError:
                 from unittest.mock import MagicMock
                 MeshQueries = MagicMock()

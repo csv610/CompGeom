@@ -1,23 +1,23 @@
 """Triangle mesh algorithms (Delaunay and others)."""
 
-from .trimesh import TriMesh
-from .delaunay_triangulation import (
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import (
     DelaunayMesher,
     triangulate,
     DTriangle,
     MeshTriangle,
 )
-from .delaunay_dc import triangulate_divide_and_conquer, DivideAndConquerDelaunayMesher
-from .delaunay_dynamic import DynamicDelaunay
-from .delaunay_constrained import constrained_delaunay_triangulation
-from .delaunay_topology import (
+from compgeom.mesh.surfmesh.trimesh.delaunay_dc import triangulate_divide_and_conquer, DivideAndConquerDelaunayMesher
+from compgeom.mesh.surfmesh.trimesh.delaunay_dynamic import DynamicDelaunay
+from compgeom.mesh.surfmesh.trimesh.delaunay_constrained import constrained_delaunay_triangulation
+from compgeom.mesh.surfmesh.trimesh.delaunay_topology import (
     build_topology,
     is_delaunay,
     get_nondelaunay_triangles,
 )
-from ..platonic_solids import PlatonicSolid
-from ..primitives import Primitives
-from .domain_mesher import DomainMesher
+from compgeom.mesh.surfmesh.platonic_solids import PlatonicSolid
+from compgeom.mesh.surfmesh.primitives import Primitives
+from compgeom.mesh.surfmesh.trimesh.domain_mesher import DomainMesher
 from compgeom.mesh.surfmesh.node_move_constraints import VertexConstraint
 
 __all__ = [

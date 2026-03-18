@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple, TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .mesh_base import Mesh
+    from compgeom.mesh.mesh_base import Mesh
 
 
 class MeshTopology:
@@ -42,6 +42,87 @@ class MeshTopology:
         if self._e2e_edge is None:
             self._build_e2e_edge()
         return self._e2e_edge.get(element_idx, set())
+
+    def is_watertight(self) -> bool:
+        """Returns True if the mesh is closed (no boundary edges)."""
+        return len(self.boundary_edges()) == 0
+
+    def is_orientable(self) -> bool:
+        """
+        Checks if the surface mesh is orientable.
+        """
+        if self._mesh.cells:
+            return True
+
+        faces = [f.v_indices for f in self._mesh.faces]
+        if not faces:
+            return True
+
+        edge_to_faces = defaultdict(list)
+        for i, face in enumerate(faces):
+            for edge in self._get_element_edges(face):
+                edge_to_faces[tuple(sorted(edge))].append(i)
+        
+        if any(len(f_indices) > 2 for f_indices in edge_to_faces.values()):
+            return False
+
+        face_orientations = {} 
+        unvisited = set(range(len(faces)))
+
+        while unvisited:
+            start_face = next(iter(unvisited))
+            queue = [start_face]
+            face_orientations[start_face] = 1
+            unvisited.remove(start_face)
+
+            while queue:
+                curr_idx = queue.pop(0)
+                curr_orient = face_orientations[curr_idx]
+                curr_face = faces[curr_idx]
+                
+                curr_edges = self._get_element_edges(curr_face)
+                if curr_orient == -1:
+                    curr_edges = [(v, u) for u, v in reversed(curr_edges)]
+
+                for u, v in curr_edges:
+                    sorted_edge = tuple(sorted((u, v)))
+                    neighbor_indices = edge_to_faces[sorted_edge]
+                    
+                    for neighbor_idx in neighbor_indices:
+                        if neighbor_idx == curr_idx:
+                            continue
+                        
+                        neighbor_face = faces[neighbor_idx]
+                        neighbor_edges = self._get_element_edges(neighbor_face)
+                        
+                        # In the neighbor, we need the edge to be (v, u)
+                        if (v, u) in neighbor_edges:
+                            required_orient = 1
+                        elif (u, v) in neighbor_edges:
+                            required_orient = -1
+                        else:
+                            continue
+                        
+                        if neighbor_idx in face_orientations:
+                            if face_orientations[neighbor_idx] != required_orient:
+                                return False
+                        else:
+                            face_orientations[neighbor_idx] = required_orient
+                            queue.append(neighbor_idx)
+                            if neighbor_idx in unvisited:
+                                unvisited.remove(neighbor_idx)
+                            
+        return True
+
+    def get_edges(self) -> Set[Tuple[int, int]]:
+        """Extracts unique sorted edges from the mesh topology."""
+        edges = set()
+        n_vertices = len(self._mesh.vertices)
+        for i in range(n_vertices):
+            for neighbor in self.vertex_neighbors(i):
+                if i < neighbor:
+                    edges.add((i, neighbor))
+        return edges
 
     def boundary_edges(self) -> List[Tuple[int, int]]:
         """Returns a list of edges (as vertex index pairs) that belong to only one element."""

@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from typing import Iterable, TYPE_CHECKING, Tuple
 
-from ....kernel import Point3D, hilbert_key
+from compgeom.kernel import Point3D, hilbert_key
 
 
 class PointGrid3D:

@@ -3,8 +3,8 @@
 from __future__ import annotations
 from typing import List, Tuple, Dict, Set
 
-from ....kernel import Point3D
-from .tetmesh import TetMesh
+from compgeom.kernel import Point3D
+from compgeom.mesh.volmesh.tetmesh.tetmesh import TetMesh
 
 def refine_tetmesh_centroid(mesh: TetMesh, element_ids: List[int] = None) -> TetMesh:
     """
@@ -142,7 +142,7 @@ class TetMeshRefiner:
         """
         Refines the mesh by inserting circumcenters of the specified tetrahedra.
         """
-        from .utils import get_tet_circumcenter
+        from compgeom.mesh.volmesh.tetmesh.utils import get_tet_circumcenter
         new_vertices = list(self.mesh.vertices)
         new_cells = []
         

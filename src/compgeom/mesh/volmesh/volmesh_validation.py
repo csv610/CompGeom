@@ -1,8 +1,8 @@
 from __future__ import annotations
 import math
 from typing import List, Tuple, Dict
-from ...kernel import Point3D
-from .polyhedral_mesh import PolyhedralMesh
+from compgeom.kernel import Point3D
+from compgeom.mesh.volmesh.polyhedral_mesh import PolyhedralMesh
 
 def validate_voronoi_mesh(mesh: PolyhedralMesh, tolerance: float = 1e-7) -> Tuple[bool, List[str]]:
     """

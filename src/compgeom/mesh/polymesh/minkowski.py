@@ -2,7 +2,7 @@
 import math
 from typing import List
 
-from ...kernel import Point2D
+from compgeom.kernel import Point2D
 
 class MinkowskiSum:
     """Calculates the Minkowski sum of two convex polygons."""

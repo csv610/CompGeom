@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Dict, List, Set, Tuple
 
-from ..mesh_base import Mesh
+from compgeom.mesh.mesh_base import Mesh
+from compgeom.mesh.mesh_topology import MeshTopology
 
 
 class MeshColoring:
@@ -23,9 +24,10 @@ class MeshColoring:
         coloring: Dict[int, int] = {}
         
         # Greedy coloring
+        topo = MeshTopology(mesh)
         for i in range(n_elements):
             # Find colors used by neighbors (sharing an edge)
-            neighbor_indices = mesh.topology.shared_edge_neighbors(i)
+            neighbor_indices = topo.shared_edge_neighbors(i)
             neighbor_colors = {coloring[n] for n in neighbor_indices if n in coloring}
             
             # Assign the smallest available color
@@ -49,9 +51,10 @@ class MeshColoring:
         coloring: Dict[int, int] = {}
         
         # Greedy coloring
+        topo = MeshTopology(mesh)
         for i in range(n_vertices):
             # Find colors used by neighbor vertices
-            neighbor_indices = mesh.topology.vertex_neighbors(i)
+            neighbor_indices = topo.vertex_neighbors(i)
             neighbor_colors = {coloring[n] for n in neighbor_indices if n in coloring}
             
             # Assign the smallest available color

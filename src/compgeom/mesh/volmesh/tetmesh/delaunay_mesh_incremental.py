@@ -4,16 +4,16 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Iterable, List, Set, Tuple, Optional, Dict
 
-from ....kernel import (
+from compgeom.kernel import (
     EPSILON,
     Point3D,
     tetra_orientation_sign,
     in_sphere,
 )
-from .utils import PointGrid3D, create_super_tetrahedron
+from compgeom.mesh.volmesh.tetmesh.utils import PointGrid3D, create_super_tetrahedron
 
 if TYPE_CHECKING:
-    from .tetmesh import TetMesh
+    from compgeom.mesh.volmesh.tetmesh.tetmesh import TetMesh
 
 class IncrementalTetrahedron:
     """A tetrahedron in the incremental Delaunay mesh."""

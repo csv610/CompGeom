@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import List, Optional, Tuple, Union, Any
 
-from ...mesh_base import Mesh, MeshNode, MeshFace, MeshEdge
-from ..trimesh.trimesh import TriMesh
+from compgeom.mesh.mesh_base import Mesh, MeshNode, MeshFace, MeshEdge
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 
 class PolygonMesh(Mesh):
     """A 2D or 3D mesh composed of arbitrary polygonal faces."""
@@ -37,7 +37,7 @@ class PolygonMesh(Mesh):
     @classmethod
     def from_file(cls, filename: str) -> PolygonMesh:
         """Creates a PolygonMesh from a file (OBJ, OFF, STL)."""
-        from ..meshio import MeshImporter
+        from compgeom.mesh.surfmesh.meshio import MeshImporter
         mesh = MeshImporter.read(filename)
         return cls(mesh.nodes, mesh.faces)
 

@@ -1,12 +1,29 @@
 """Mesh processing algorithms: smoothing and hole filling."""
 from collections import defaultdict
-from typing import List, Tuple, Set
+from typing import List, Tuple, Set, TYPE_CHECKING
 
-from .trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point3D
+
+if TYPE_CHECKING:
+    from compgeom.mesh.mesh_base import Mesh
 
 class MeshProcessing:
     """Algorithms that modify the mesh geometry or topology."""
+
+    @staticmethod
+    def flip_normals(mesh: 'Mesh'):
+        """Flips the normals of all faces in the mesh by reversing their vertex order."""
+        from dataclasses import replace
+        from compgeom.mesh.mesh_topology import MeshTopology
+        
+        new_faces = []
+        for face in mesh.faces:
+            new_v = tuple(reversed(face.v_indices))
+            new_faces.append(replace(face, v_indices=new_v))
+        
+        mesh._faces = new_faces
+        mesh._topology = MeshTopology(mesh)
 
     @staticmethod
     def laplacian_smoothing(mesh: TriMesh, iterations: int = 1, lambda_factor: float = 0.5) -> TriMesh:
@@ -140,7 +157,7 @@ class MeshProcessing:
         sigma_s: Signal variance (influences how much normals/features affect smoothing)
         """
         import math
-        from .mesh_analysis import MeshAnalysis
+        from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
         
         vertices = list(mesh.vertices)
         faces = mesh.faces
@@ -327,7 +344,7 @@ class MeshProcessing:
         Offsets the mesh surface by a given distance along vertex normals.
         If create_solid is True, it creates a thickened shell with closed walls.
         """
-        from .mesh_analysis import MeshAnalysis
+        from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
         
         # 1. Compute weighted vertex normals
         v_normals = MeshAnalysis.compute_vertex_normals(mesh)
@@ -424,7 +441,7 @@ class MeshProcessing:
         # For a full clipping, we must compute exact cut vertices and re-triangulate.
         # This version partitions whole faces.
         
-        from .surf_mesh_repair import SurfMeshRepair
+        from compgeom.mesh.surfmesh.surf_mesh_repair import SurfMeshRepair
         ma = SurfMeshRepair.remove_isolated_vertices(TriMesh(verts_above, faces_above))
         mb = SurfMeshRepair.remove_isolated_vertices(TriMesh(verts_below, faces_below))
         

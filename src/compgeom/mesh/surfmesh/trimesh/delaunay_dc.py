@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import math
-from ....kernel import Point2D, orientation_sign, in_circle, segment_angle as angle
+from compgeom.kernel import Point2D, orientation_sign, in_circle, segment_angle as angle
 
 
 def triangulate_divide_and_conquer(points: list[Point2D]) -> list[tuple[Point2D, Point2D, Point2D]]:

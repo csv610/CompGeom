@@ -2,7 +2,7 @@
 from typing import List, Tuple, Set
 import math
 
-from ...kernel import Point2D
+from compgeom.kernel import Point2D
 
 class SweepLine:
     """Provides sweep-line algorithms essential for EDA and layout analysis."""

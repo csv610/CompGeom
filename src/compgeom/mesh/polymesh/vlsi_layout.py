@@ -1,7 +1,7 @@
 """VLSI and Chip Design layout algorithms."""
 from typing import List, Tuple
 
-from ...kernel import Point2D
+from compgeom.kernel import Point2D
 
 class VLSILayout:
     """Provides algorithms for Manhattan geometry and layout analysis."""

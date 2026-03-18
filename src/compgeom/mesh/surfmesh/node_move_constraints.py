@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Tuple
 from compgeom.kernel import Point3D
 
 if TYPE_CHECKING:
-    from .trimesh.trimesh import TriMesh
+    from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 
 
 class VertexConstraint:

@@ -4,8 +4,8 @@ from __future__ import annotations
 import math
 from typing import List, Union, Tuple
 
-from ..surfmesh.polymesh.polymesh import PolygonMesh
-from ...kernel import Point2D, Point3D
+from compgeom.mesh.surfmesh.polymesh.polymesh import PolygonMesh
+from compgeom.kernel import Point2D, Point3D
 
 
 def point_winding_number(point: Union[Point2D, Point3D], polygon_vertices: List[Union[Point2D, Point3D]]) -> int:

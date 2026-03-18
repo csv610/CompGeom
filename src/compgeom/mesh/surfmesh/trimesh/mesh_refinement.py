@@ -6,8 +6,8 @@ import heapq
 import math
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ....kernel import Point2D, Point3D
-from .trimesh import TriMesh
+from compgeom.kernel import Point2D, Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 
 
 class TriMeshRefiner:

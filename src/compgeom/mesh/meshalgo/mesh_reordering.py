@@ -6,6 +6,7 @@ from collections import deque
 from typing import Dict, List, Set, Tuple
 
 from compgeom.mesh.mesh_base import Mesh
+from compgeom.mesh.mesh_topology import MeshTopology
 
 
 class CuthillMcKee:
@@ -25,7 +26,8 @@ class CuthillMcKee:
             return []
 
         # Adjacency for elements (sharing an edge)
-        adj = {i: mesh.topology.shared_edge_neighbors(i) for i in range(n_elements)}
+        topo = MeshTopology(mesh)
+        adj = {i: topo.shared_edge_neighbors(i) for i in range(n_elements)}
         degrees = {i: len(adj[i]) for i in range(n_elements)}
         
         return CuthillMcKee._cuthill_mckee_core(n_elements, adj, degrees, reverse)
@@ -43,7 +45,8 @@ class CuthillMcKee:
             return []
 
         # Adjacency for vertices
-        adj = {i: mesh.topology.vertex_neighbors(i) for i in range(n_vertices)}
+        topo = MeshTopology(mesh)
+        adj = {i: topo.vertex_neighbors(i) for i in range(n_vertices)}
         degrees = {i: len(adj[i]) for i in range(n_vertices)}
         
         return CuthillMcKee._cuthill_mckee_core(n_vertices, adj, degrees, reverse)
@@ -81,4 +84,53 @@ class CuthillMcKee:
         return permutation
 
 
-__all__ = ["CuthillMcKee"]
+class MeshReorderer:
+    """Provides methods for applying reorderings to a mesh."""
+
+    @staticmethod
+    def reorder_nodes(mesh: Mesh, new_node_indices: List[int]):
+        """
+        Renumbers the nodes and updates element connectivity.
+        """
+        from dataclasses import replace
+        from compgeom.mesh.mesh_topology import MeshTopology
+
+        if len(new_node_indices) != len(mesh.nodes):
+            raise ValueError("new_node_indices must have the same length as nodes.")
+
+        old_to_new = {old_idx: new_idx for new_idx, old_idx in enumerate(new_node_indices)}
+        
+        # New nodes with updated IDs
+        new_nodes = []
+        for new_idx, old_idx in enumerate(new_node_indices):
+            node = mesh.nodes[old_idx]
+            new_nodes.append(replace(node, id=new_idx))
+        
+        # Access protected members to update mesh state
+        mesh._nodes = new_nodes
+
+        # Update edges
+        new_edges = []
+        for edge in mesh.edges:
+            new_v = tuple(old_to_new[v_idx] for v_idx in edge.v_indices)
+            new_edges.append(replace(edge, v_indices=new_v))
+        mesh._edges = new_edges
+
+        # Update faces
+        new_faces = []
+        for face in mesh.faces:
+            new_v = tuple(old_to_new[v_idx] for v_idx in face.v_indices)
+            new_faces.append(replace(face, v_indices=new_v))
+        mesh._faces = new_faces
+
+        # Update cells
+        new_cells = []
+        for cell in mesh.cells:
+            new_v = tuple(old_to_new[v_idx] for v_idx in cell.v_indices)
+            new_cells.append(replace(cell, v_indices=new_v))
+        mesh._cells = new_cells
+
+        mesh._topology = MeshTopology(mesh)
+
+
+__all__ = ["CuthillMcKee", "MeshReorderer"]

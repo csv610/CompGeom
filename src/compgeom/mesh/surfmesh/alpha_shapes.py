@@ -3,8 +3,8 @@ from __future__ import annotations
 import math
 from typing import List, Tuple, Set, Union
 
-from .trimesh.trimesh import TriMesh
-from ...kernel import Point2D, Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point2D, Point3D
 
 class AlphaShape:
     """Reconstructs the concave hull of a point set using the alpha-shape algorithm."""
@@ -15,7 +15,7 @@ class AlphaShape:
         Computes the 2D alpha shape. Returns a list of boundary edges.
         alpha: Radius of the rolling ball. Large alpha approaches convex hull.
         """
-        from .trimesh.delaunay_triangulation import triangulate
+        from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import triangulate
         
         # 1. Perform Delaunay triangulation
         mesh = triangulate(points)
@@ -51,7 +51,7 @@ class AlphaShape:
         """
         Computes the 3D alpha shape. Returns a TriMesh of the boundary.
         """
-        from ..volmesh.tetmesh.delaunay_tetmesh import triangulate as triangulate_3d
+        from compgeom.mesh.volmesh.tetmesh.delaunay_tetmesh import triangulate as triangulate_3d
         
         # 1. 3D Delaunay
         tet_mesh = triangulate_3d(points)

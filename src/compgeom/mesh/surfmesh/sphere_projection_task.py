@@ -6,10 +6,11 @@ import numpy as np
 from typing import List, Tuple, Set, Dict
 
 # Standard imports from current project
-from .trimesh.trimesh import TriMesh
-from ...kernel import Point3D, Sphere
-from .mesh_analysis import MeshAnalysis
-from .primitives import Primitives
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point3D, Sphere
+from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+from compgeom.mesh.surfmesh.primitives import Primitives
+from compgeom.mesh.mesh_topology import MeshTopology
 
 class SphereProjector:
     """Handles projection of a mesh onto a sphere and subsequent optimization."""
@@ -24,7 +25,7 @@ class SphereProjector:
         self.fixed_indices = set(mesh.faces[0]) if mesh.faces else set()
         
         # Use existing topology helper from mesh
-        self.topology = mesh.topology
+        self.topology = MeshTopology(mesh)
         
         # Current work state
         self.current_vertices = np.array([[v.x, v.y, v.z] for v in mesh.vertices], dtype=np.float64)

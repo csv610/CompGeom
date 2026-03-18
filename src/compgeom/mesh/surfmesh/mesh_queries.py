@@ -3,7 +3,7 @@ from typing import List, Tuple, Optional
 import math
 
 from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.kernel import Point3D
 
 class MeshQueries:
     """Algorithms for querying spatial relationships with a mesh."""
@@ -52,7 +52,7 @@ class MeshQueries:
         Accelerated by AABBTree by default.
         """
         if use_spatial:
-            from .spatial_acceleration import AABBTree
+            from compgeom.mesh.surfmesh.spatial_acceleration import AABBTree
             tree = AABBTree(mesh)
             return tree.ray_intersect(origin, direction)
             
@@ -193,8 +193,8 @@ class MeshQueries:
         Detects intersections between two meshes.
         Returns a list of (face_idx_a, face_idx_b) pairs that intersect.
         """
-        from .spatial_acceleration import AABBTree
-        from .surf_mesh_repair import SurfMeshRepair
+        from compgeom.mesh.surfmesh.spatial_acceleration import AABBTree
+        from compgeom.mesh.surfmesh.surf_mesh_repair import SurfMeshRepair
         
         tree_a = AABBTree(mesh_a)
         tree_b = AABBTree(mesh_b)

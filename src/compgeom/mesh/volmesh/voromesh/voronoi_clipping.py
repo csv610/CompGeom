@@ -3,8 +3,8 @@ import math
 from typing import List, Tuple, Dict, Set, Optional
 from collections import defaultdict
 
-from ...kernel import Point3D, Plane
-from ...kernel.math_utils import EPSILON
+from compgeom.kernel import Point3D, Plane
+from compgeom.kernel.math_utils import EPSILON
 
 def clip_polyhedron_by_plane(vertices: List[Point3D], 
                               faces: List[List[int]], 

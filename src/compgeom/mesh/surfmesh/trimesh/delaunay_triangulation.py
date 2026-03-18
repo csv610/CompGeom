@@ -5,14 +5,14 @@ import math
 from collections import deque
 from typing import TYPE_CHECKING, Optional
 
-from ....kernel import Point2D, in_circle, orientation_sign
-from .delaunay_mesh_incremental import triangulate_incremental_fast
-from .delaunay_dc import triangulate_divide_and_conquer
-from .delaunay_naive import triangulate_naive, Triangle
-from .delaunay_dynamic import DynamicDelaunay, DTriangle
-from .delaunay_constrained import constrained_delaunay_triangulation
-from .delaunay_mesh_edgeflip import triangulate_edgeflip
-from .delaunay_topology import (
+from compgeom.kernel import Point2D, in_circle, orientation_sign
+from compgeom.mesh.surfmesh.trimesh.delaunay_mesh_incremental import triangulate_incremental_fast
+from compgeom.mesh.surfmesh.trimesh.delaunay_dc import triangulate_divide_and_conquer
+from compgeom.mesh.surfmesh.trimesh.delaunay_naive import triangulate_naive, Triangle
+from compgeom.mesh.surfmesh.trimesh.delaunay_dynamic import DynamicDelaunay, DTriangle
+from compgeom.mesh.surfmesh.trimesh.delaunay_constrained import constrained_delaunay_triangulation
+from compgeom.mesh.surfmesh.trimesh.delaunay_mesh_edgeflip import triangulate_edgeflip
+from compgeom.mesh.surfmesh.trimesh.delaunay_topology import (
     MeshTriangle,
     build_topology,
     is_delaunay,
@@ -20,7 +20,7 @@ from .delaunay_topology import (
 )
 
 if TYPE_CHECKING:
-    from .trimesh import TriMesh
+    from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 
 
 class DelaunayMesher:
@@ -47,7 +47,7 @@ class DelaunayMesher:
             A TriMesh object.
         """
         if not points:
-            from .trimesh import TriMesh
+            from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
             return TriMesh.from_triangles([])
 
         # Calculate bounding box for jitter and rejection scaling
@@ -100,7 +100,7 @@ class DelaunayMesher:
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
             
-        from .trimesh import TriMesh
+        from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
         return TriMesh.from_triangles(triangles)
 
     @staticmethod
@@ -117,20 +117,20 @@ class DelaunayMesher:
             all_points = list(set(mesh1.vertices) | set(mesh2.vertices))
             return DelaunayMesher.triangulate(all_points, algorithm=algorithm)
             
-        from .delaunay_mesh_edgeflip import EdgeFlipDelaunayMesher
+        from compgeom.mesh.surfmesh.trimesh.delaunay_mesh_edgeflip import EdgeFlipDelaunayMesher
         mesher = EdgeFlipDelaunayMesher()
         
         # Triangulate points of mesh2 into the structure of mesh1
         triangles = mesher.triangulate(mesh2.vertices, existing_mesh=mesh1)
         
-        from .trimesh import TriMesh
+        from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
         return TriMesh.from_triangles(triangles)
 
     @staticmethod
     def constrained_triangulate(outer_boundary: list[Point2D], holes: list[list[Point2D]] | None = None) -> TriMesh:
         """Performs Constrained Delaunay Triangulation."""
         triangles, _ = constrained_delaunay_triangulation(outer_boundary, holes)
-        from .trimesh import TriMesh
+        from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
         return TriMesh.from_triangles(triangles)
 
     @staticmethod

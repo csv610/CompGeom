@@ -1,8 +1,8 @@
 import unittest
 import math
 from compgeom.mesh import (
-    MeshNode, MeshEdge, MeshFace, MeshCell, 
-    TriMesh, QuadMesh, PolygonMesh, TetMesh, HexMesh
+    MeshNode, MeshEdge, MeshFace, MeshCell, MeshAffineTransform, MeshGeometry, MeshProcessing,
+    TriMesh, QuadMesh, PolygonMesh, TetMesh, HexMesh, MeshTopology
 )
 from compgeom.kernel import Point2D, Point3D
 
@@ -34,25 +34,35 @@ class TestTriMesh(unittest.TestCase):
         self.assertEqual(len(self.mesh.vertices), 3)
 
     def test_centroid(self):
-        c = self.mesh.centroid
+        c = MeshGeometry.centroid(self.mesh)
         self.assertAlmostEqual(c.x, 1/3)
         self.assertAlmostEqual(c.y, 1/3)
 
     def test_bounding_box(self):
-        bbox = self.mesh.bounding_box()
+        bbox = MeshGeometry.bounding_box(self.mesh)
         self.assertEqual(bbox, ((0.0, 0.0), (1.0, 1.0)))
 
     def test_transformations(self):
         # Translate
-        self.mesh.translate(1.0, 2.0)
+        MeshAffineTransform.translate(self.mesh, 1.0, 2.0)
         self.assertAlmostEqual(self.mesh.nodes[0].point.x, 1.0)
         self.assertAlmostEqual(self.mesh.nodes[0].point.y, 2.0)
         
         # Scale
-        self.mesh.scale(2.0, 3.0)
+        MeshAffineTransform.scale(self.mesh, 2.0, 3.0)
         # nodes[0] was at (1,2), now should be (2,6)
         self.assertAlmostEqual(self.mesh.nodes[0].point.x, 2.0)
         self.assertAlmostEqual(self.mesh.nodes[0].point.y, 6.0)
+
+    def test_flip_normals(self):
+        # Initial face: (0, 1, 2)
+        self.assertEqual(self.mesh.faces[0].v_indices, (0, 1, 2))
+        
+        # Flip normals
+        MeshProcessing.flip_normals(self.mesh)
+        
+        # New face should be (2, 1, 0)
+        self.assertEqual(self.mesh.faces[0].v_indices, (2, 1, 0))
 
     def test_euler_characteristic(self):
         # V=3, E=3, F=1 -> 3 - 3 + 1 = 1
@@ -60,13 +70,13 @@ class TestTriMesh(unittest.TestCase):
 
     def test_is_watertight(self):
         # A single triangle is not watertight
-        self.assertFalse(self.mesh.is_watertight())
+        self.assertFalse(MeshTopology(self.mesh).is_watertight())
         
         # A tetrahedron is watertight
         pts = [Point3D(0,0,0), Point3D(1,0,0), Point3D(0,1,0), Point3D(0,0,1)]
         faces = [(0,1,2), (0,2,3), (0,3,1), (1,3,2)]
         tet = TriMesh(pts, faces)
-        self.assertTrue(tet.is_watertight())
+        self.assertTrue(MeshTopology(tet).is_watertight())
 
 class TestMeshTopology(unittest.TestCase):
     def test_topology_queries(self):
@@ -75,7 +85,7 @@ class TestMeshTopology(unittest.TestCase):
         pts = [Point2D(0,0), Point2D(1,0), Point2D(0,1), Point2D(1,1)]
         faces = [(0,1,2), (1,3,2)]
         mesh = TriMesh(pts, faces)
-        topo = mesh.topology
+        topo = MeshTopology(mesh)
         
         # Vertex neighbors of 1 should be 0, 2, 3
         self.assertEqual(topo.vertex_neighbors(1), {0, 2, 3})
@@ -143,7 +153,7 @@ class TestVolMeshTopology(unittest.TestCase):
         pts = [Point3D(0,0,0), Point3D(1,0,0), Point3D(0,1,0), Point3D(0,0,1), Point3D(0,0,-1)]
         cells = [(0,1,2,3), (0,1,2,4)]
         mesh = TetMesh(pts, cells)
-        topo = mesh.topology
+        topo = MeshTopology(mesh)
         
         # Total faces per cell: 4. Shared face: (0,1,2).
         # Faces in cell 0: (0,1,2), (0,1,3), (0,2,3), (1,2,3)
@@ -161,7 +171,7 @@ class TestVolMeshTopology(unittest.TestCase):
         pts = [Point3D(0,0,0), Point3D(1,0,0), Point3D(0,1,0), Point3D(0,0,1)]
         cells = [(0,1,2,3)]
         mesh = TetMesh(pts, cells)
-        topo = mesh.topology
+        topo = MeshTopology(mesh)
         
         boundaries = topo.boundary_edges()
         self.assertEqual(len(boundaries), 6)
@@ -172,7 +182,7 @@ class TestVolMeshTopology(unittest.TestCase):
         mesh2 = TetMesh(pts2, cells2)
         # Shared edges of face (0,1,2): (0,1), (1,2), (2,0)
         # These 3 edges should NOT be in boundary_edges because they are shared by 2 elements
-        topo2 = mesh2.topology
+        topo2 = MeshTopology(mesh2)
         boundaries2 = topo2.boundary_edges()
         # 6 (non-shared edges) = 6 boundary edges
         self.assertEqual(len(boundaries2), 6)
@@ -192,7 +202,7 @@ class TestVolMeshTopology(unittest.TestCase):
             (4, 5, 7, 6, 8, 9, 11, 10) # Hex 1
         ]
         mesh = HexMesh(pts, cells)
-        topo = mesh.topology
+        topo = MeshTopology(mesh)
         
         # 2 hexes, each 6 faces. 1 shared face -> 5 + 5 = 10 boundary faces.
         boundary_faces = topo.boundary_faces()

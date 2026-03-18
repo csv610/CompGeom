@@ -3,9 +3,9 @@ from collections import defaultdict
 import math
 from typing import List, Union, Tuple
 
-from .trimesh.trimesh import TriMesh
-from .quadmesh.quadmesh import QuadMesh
-from .polymesh.polymesh import PolygonMesh
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.mesh.surfmesh.quadmesh.quadmesh import QuadMesh
+from compgeom.mesh.surfmesh.polymesh.polymesh import PolygonMesh
 
 def _compute_face_normal(vertices, face_v_indices) -> Tuple[float, float, float]:
     """Helper to compute a face normal."""

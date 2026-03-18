@@ -2,8 +2,8 @@
 from __future__ import annotations
 from typing import List, Tuple, Optional, Dict, Set
 
-from .trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point3D
 
 class Vertex:
     def __init__(self, idx: int, point: Point3D):

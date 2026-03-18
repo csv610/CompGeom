@@ -3,9 +3,10 @@
 from __future__ import annotations
 from typing import List, Tuple, Union, Set, Dict
 
-from ....kernel.geometry import Point2D, Point3D
-from ..trimesh.trimesh import TriMesh
-from .quadmesh import QuadMesh
+from compgeom.kernel.geometry import Point2D, Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.mesh.surfmesh.quadmesh.quadmesh import QuadMesh
+from compgeom.mesh.mesh_topology import MeshTopology
 
 class BlossomAlgorithm:
     """Edmonds' blossom algorithm for maximum cardinality matching."""
@@ -108,8 +109,9 @@ class MaxMatchingTriangleToQuadConverter:
             return QuadMesh(mesh.vertices, [])
 
         adj = []
+        topo = MeshTopology(mesh)
         for i in range(faces_to_match):
-            neighbors = mesh.topology.shared_edge_neighbors(i)
+            neighbors = topo.shared_edge_neighbors(i)
             # Only consider neighbors that are within the faces_to_match range
             valid_neighbors = {n for n in neighbors if n < faces_to_match}
             adj.append(valid_neighbors)

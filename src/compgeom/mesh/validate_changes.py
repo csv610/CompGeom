@@ -21,7 +21,7 @@ def test_triangle_mesh():
     assert len(mesh.faces) == 2
 
     # Test MeshTopology
-    topo = mesh.topology
+    topo = MeshTopology(mesh)
     neighbors = topo.vertex_neighbors(0) # Node 0 (0,0) is connected to 1 (1,0) and 2 (0,1)
     print(f"Neighbors of node 0: {neighbors}")
     assert 1 in neighbors
@@ -39,15 +39,15 @@ def test_tet_mesh_topology():
     cells = [MeshCell(0, (0, 1, 2, 3))]
     
     mesh = TetMesh(nodes, cells)
-    topo = mesh.topology
+    topo = MeshTopology(mesh)
     
     print(f"Cells: {len(mesh.cells)}")
     assert len(mesh.cells) == 1
     
-    # In the current implementation, TetMesh topology only connects cyclic neighbors in v_indices
+    # TetMesh topology connects all vertices in the cell
     neighbors = topo.vertex_neighbors(0)
     print(f"Neighbors of node 0 in TetMesh: {neighbors}")
-    assert neighbors == {1, 3}
+    assert neighbors == {1, 2, 3}
 
 def test_from_file():
     print("\nTesting TriMesh.from_file...")

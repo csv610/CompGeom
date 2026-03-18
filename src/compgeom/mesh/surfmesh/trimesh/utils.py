@@ -4,12 +4,12 @@ from __future__ import annotations
 import math
 from typing import Iterable, TYPE_CHECKING, Tuple
 
-from ....kernel import Point2D, hilbert_key
+from compgeom.kernel import Point2D, hilbert_key
 
 
 if TYPE_CHECKING:
-    from .delaunay_mesh_edgeflip import EdgeFlipTriangle
-    from .delaunay_mesh_incremental import IncrementalTriangle
+    from compgeom.mesh.surfmesh.trimesh.delaunay_mesh_edgeflip import EdgeFlipTriangle
+    from compgeom.mesh.surfmesh.trimesh.delaunay_mesh_incremental import IncrementalTriangle
 
 class PointGrid:
     """Simple 2D grid for fast nearest-neighbor search."""

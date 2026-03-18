@@ -5,11 +5,11 @@ import math
 import random
 from typing import TYPE_CHECKING, List, Optional
 
-from ....kernel import Point2D
-from .delaunay_triangulation import DelaunayMesher
+from compgeom.kernel import Point2D
+from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import DelaunayMesher
 
 if TYPE_CHECKING:
-    from .trimesh import TriMesh
+    from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 
 
 class DomainMesher:
@@ -52,7 +52,7 @@ class DomainMesher:
         else:
             num_points = num_internal_points
         
-        from ....polygon.polygon_metrics import is_point_in_polygon
+        from compgeom.polygon.polygon_metrics import is_point_in_polygon
         
         internal_points = []
         buffer = segment_length * 0.5
@@ -131,8 +131,8 @@ class DomainMesher:
             return mesh
             
         # Filter triangles whose centroids are outside the outer_boundary
-        from ....polygon.polygon_metrics import is_point_in_polygon
-        from .trimesh import TriMesh
+        from compgeom.polygon.polygon_metrics import is_point_in_polygon
+        from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
         
         final_faces = []
         for face in mesh.faces:

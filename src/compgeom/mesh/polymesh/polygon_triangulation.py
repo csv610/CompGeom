@@ -2,7 +2,7 @@
 from typing import List, Tuple
 import math
 
-from ...kernel import Point2D
+from compgeom.kernel import Point2D
 
 class PolygonTriangulation:
     """Triangulates simple 2D polygons."""

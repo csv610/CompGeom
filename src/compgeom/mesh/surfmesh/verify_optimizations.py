@@ -7,7 +7,7 @@ from typing import List, Tuple
 from compgeom.mesh import TriMesh
 from compgeom.kernel import Point3D
 from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
-from .primitives import Primitives
+from compgeom.mesh.surfmesh.primitives import Primitives
 
 from sphere_projection_task import (
     calculate_sphere_radius,

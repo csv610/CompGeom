@@ -1,7 +1,7 @@
 """Dynamic Delaunay Triangulation for incremental point insertion."""
 
 from __future__ import annotations
-from ....kernel import EPSILON, Point2D, cross_product, in_circle
+from compgeom.kernel import EPSILON, Point2D, cross_product, in_circle
 
 
 class DTriangle:

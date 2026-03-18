@@ -1,8 +1,8 @@
 """Marching Cubes algorithm for surface reconstruction from scalar fields."""
 from typing import List, Tuple, Callable
 
-from ..surfmesh.trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point3D
 
 class MarchingCubes:
     """Extracts a polygonal mesh of an isosurface from a 3D scalar field."""

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 import math
-from ....kernel import Point2D, contains_point, cross_product
-from .utils import create_super_triangle
+from compgeom.kernel import Point2D, contains_point, cross_product
+from compgeom.mesh.surfmesh.trimesh.utils import create_super_triangle
 
 
 class Triangle:

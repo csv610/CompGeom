@@ -5,14 +5,14 @@ from __future__ import annotations
 import math
 from typing import Iterable, Union
 
-from ...kernel import (
+from compgeom.kernel import (
     Point2D,
     clip_polygon,
     cross_product,
     sub,
     triangle_circumcenter,
 )
-from ..surfmesh.trimesh.delaunay_triangulation import (
+from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import (
     DTriangle,
     DelaunayMesher,
     DynamicDelaunay,
@@ -21,7 +21,7 @@ from ..surfmesh.trimesh.delaunay_triangulation import (
     build_topology,
     triangulate,
 )
-from ..surfmesh.trimesh.delaunay_mesh_incremental import IncrementalDelaunayMesher, IncrementalTriangle
+from compgeom.mesh.surfmesh.trimesh.delaunay_mesh_incremental import IncrementalDelaunayMesher, IncrementalTriangle
 
 
 class VoronoiDiagram:
@@ -40,7 +40,7 @@ class VoronoiDiagram:
         Computes the Voronoi cells using the Delaunay Dual property.
         Returns a PolygonMesh object.
         """
-        from ..surfmesh.polymesh.polymesh import PolygonMesh
+        from compgeom.mesh.surfmesh.polymesh.polymesh import PolygonMesh
 
         if not points:
             return PolygonMesh([], [])
@@ -118,7 +118,7 @@ class VoronoiDiagram:
         2. Each cell is convex.
         3. Vertices of the cell are closer to their defining site than to others.
         """
-        from ..kernel import orientation_sign, length_sq, sub
+        from compgeom.mesh.kernel import orientation_sign, length_sq, sub
         
         if not self.cells:
             return True
@@ -284,8 +284,8 @@ if __name__ == "__main__":
     import argparse
     import random
     import time
-    from ...graphics.geo_plot import GeomPlot
-    from ..meshio import MeshExporter
+    from compgeom.graphics.geo_plot import GeomPlot
+    from compgeom.mesh.meshio import MeshExporter
 
     parser = argparse.ArgumentParser(description="Generate and plot a Voronoi Diagram.")
     parser.add_argument("-n", "--points", type=int, default=50, help="Number of random points (default: 50)")

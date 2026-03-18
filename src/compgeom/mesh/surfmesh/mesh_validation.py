@@ -2,8 +2,9 @@
 from collections import defaultdict
 from typing import List, Tuple, Dict, Set
 
-from .trimesh.trimesh import TriMesh
-from .surf_mesh_repair import SurfMeshRepair
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.mesh.surfmesh.surf_mesh_repair import SurfMeshRepair
+from compgeom.mesh.mesh_topology import MeshTopology
 
 class MeshValidation:
     """Provides rigorous checks for mesh integrity."""
@@ -37,7 +38,7 @@ class MeshValidation:
     @staticmethod
     def has_self_intersections(mesh: TriMesh) -> bool:
         """Checks if any faces in the mesh intersect each other."""
-        from .mesh_queries import MeshQueries
+        from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
         intersections = MeshQueries.mesh_intersection(mesh, mesh)
         # Filter out adjacent faces (they always "intersect" at edges/verts)
         for i, j in intersections:
@@ -51,7 +52,8 @@ class MeshValidation:
         results = {
             "no_degenerate_faces": all(len(set(f)) == 3 for f in mesh.faces),
             "is_edge_manifold": True,
-            "is_watertight": mesh.is_watertight(),
+            "is_watertight": MeshTopology(mesh).is_watertight(),
+            "is_orientable": MeshTopology(mesh).is_orientable(),
             "consistent_normals": True,
             "no_self_intersections": not MeshValidation.has_self_intersections(mesh)
         }

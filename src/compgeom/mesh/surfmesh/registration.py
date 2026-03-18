@@ -2,7 +2,7 @@
 from typing import Tuple
 
 from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.kernel import Point3D
 
 class MeshRegistration:
     """Aligns meshes to each other."""

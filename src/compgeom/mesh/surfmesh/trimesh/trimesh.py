@@ -3,8 +3,8 @@ import math
 from collections import defaultdict
 from typing import List, Optional, Tuple, Union
 
-from ....kernel import Point2D, Point3D
-from ...mesh_base import Mesh, MeshNode, MeshFace, MeshEdge
+from compgeom.kernel import Point2D, Point3D
+from compgeom.mesh.mesh_base import Mesh, MeshNode, MeshFace, MeshEdge
 
 class TriMesh(Mesh):
     """A 2D or 3D mesh composed of triangular faces."""
@@ -43,7 +43,7 @@ class TriMesh(Mesh):
     @classmethod
     def from_file(cls, filename: str) -> TriMesh:
         """Creates a TriMesh from a file (OBJ, OFF, STL)."""
-        from ..meshio import MeshImporter
+        from compgeom.mesh.surfmesh.meshio import MeshImporter
         mesh = MeshImporter.read(filename)
         
         nodes = mesh.nodes
@@ -71,6 +71,68 @@ class TriMesh(Mesh):
             edges.add(tuple(sorted((v_indices[2], v_indices[0]))))
         e = len(edges)
         return v - e + f
+
+    def betti_numbers(self) -> tuple[int, int, int]:
+        """
+        Computes the Betti numbers (b0, b1, b2) of the triangle mesh.
+
+        The mesh is treated as a 2-dimensional simplicial complex and the
+        homology is computed over Z2. This avoids orientation requirements and
+        works for open, closed, and disconnected triangle meshes.
+        """
+        vertex_count = len(self.nodes)
+
+        edge_to_index: dict[tuple[int, int], int] = {}
+        for face in self.faces:
+            v_indices = face.v_indices
+            for i in range(3):
+                edge = tuple(sorted((v_indices[i], v_indices[(i + 1) % 3])))
+                if edge not in edge_to_index:
+                    edge_to_index[edge] = len(edge_to_index)
+
+        edge_count = len(edge_to_index)
+        face_count = len(self.faces)
+
+        boundary_1_columns = [0] * edge_count
+        for edge, edge_idx in edge_to_index.items():
+            u, v = edge
+            boundary_1_columns[edge_idx] = (1 << u) | (1 << v)
+
+        boundary_2_columns = [0] * face_count
+        for face_idx, face in enumerate(self.faces):
+            column = 0
+            v_indices = face.v_indices
+            for i in range(3):
+                edge = tuple(sorted((v_indices[i], v_indices[(i + 1) % 3])))
+                column |= 1 << edge_to_index[edge]
+            boundary_2_columns[face_idx] = column
+
+        rank_boundary_1 = self._gf2_rank(boundary_1_columns)
+        rank_boundary_2 = self._gf2_rank(boundary_2_columns)
+
+        b0 = vertex_count - rank_boundary_1
+        b1 = edge_count - rank_boundary_1 - rank_boundary_2
+        b2 = face_count - rank_boundary_2
+        return b0, b1, b2
+
+    @staticmethod
+    def _gf2_rank(columns: list[int]) -> int:
+        """Returns the rank of a binary matrix given as integer bit-columns."""
+        basis: dict[int, int] = {}
+        rank = 0
+
+        for value in columns:
+            column = value
+            while column:
+                pivot = column.bit_length() - 1
+                if pivot in basis:
+                    column ^= basis[pivot]
+                    continue
+                basis[pivot] = column
+                rank += 1
+                break
+
+        return rank
 
     def ensure_even_elements(self) -> TriMesh:
         """

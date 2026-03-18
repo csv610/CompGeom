@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 from typing import List, Optional, Tuple, Union
 
-from .mesh import Mesh, MeshNode, MeshEdge
-from ..kernel import Point2D, Point3D
+from compgeom.mesh.mesh import Mesh, MeshNode, MeshEdge
+from compgeom.kernel import Point2D, Point3D
 
 
 class EdgeMesh(Mesh):

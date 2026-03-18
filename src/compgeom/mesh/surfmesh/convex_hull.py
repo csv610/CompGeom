@@ -2,7 +2,7 @@
 from typing import List
 
 from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.kernel import Point3D
 
 class ConvexHull3D:
     """Generates the 3D Convex Hull of a point cloud."""

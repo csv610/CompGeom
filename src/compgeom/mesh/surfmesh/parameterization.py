@@ -3,8 +3,8 @@ import math
 from collections import defaultdict
 from typing import List, Tuple, Dict, Set
 
-from .trimesh.trimesh import TriMesh
-from ...kernel import Point2D, Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point2D, Point3D
 
 class MeshParameterization:
     """Flattens a 3D mesh patch onto a 2D plane."""

@@ -5,9 +5,9 @@ from __future__ import annotations
 import math
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from ....kernel import Point3D
-from ....polygon.polygon import generate_points_in_triangle
-from ...surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point3D
+from compgeom.polygon.polygon import generate_points_in_triangle
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 
 
 class MeshVoxelizer:

@@ -3,9 +3,9 @@ import math
 from collections import defaultdict
 from typing import List, Tuple, Set, Dict
 
-from .trimesh.trimesh import TriMesh
-from ...kernel import Point3D
-from .mesh_processing import MeshProcessing
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point3D
+from compgeom.mesh.surfmesh.mesh_processing import MeshProcessing
 
 class IsotropicRemesher:
     # ... (Isotropic code remains)
@@ -20,8 +20,8 @@ class AdaptiveRemesher:
         Adapts triangle density to surface curvature.
         Sharp areas get min_edge, flat areas get max_edge.
         """
-        from .curvature import MeshCurvature
-        from .mesh_processing import MeshProcessing
+        from compgeom.mesh.surfmesh.curvature import MeshCurvature
+        from compgeom.mesh.surfmesh.mesh_processing import MeshProcessing
         
         current_mesh = mesh
         for _ in range(iterations):

@@ -4,10 +4,10 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, List, Tuple
 
-from ...kernel import Point3D
+from compgeom.kernel import Point3D
 
 if TYPE_CHECKING:
-    from .trimesh import TriMesh
+    from compgeom.mesh.surfmesh.trimesh import TriMesh
 
 
 class PlatonicSolid:
@@ -15,7 +15,7 @@ class PlatonicSolid:
 
     @staticmethod
     def _create_mesh(vertices: List[Point3D], faces: List[Tuple[int, int, int]]) -> TriMesh:
-        from .trimesh import TriMesh
+        from compgeom.mesh.surfmesh.trimesh import TriMesh
         return TriMesh(vertices, faces)
 
     @staticmethod

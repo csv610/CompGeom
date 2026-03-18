@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from .trimesh.trimesh import TriMesh
-from ...kernel import Point2D, Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point2D, Point3D
 
 
 class SurfMeshRepair:

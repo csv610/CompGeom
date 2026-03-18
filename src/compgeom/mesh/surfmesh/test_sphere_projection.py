@@ -4,10 +4,10 @@ import math
 from compgeom.mesh import TriMesh
 from compgeom.kernel import Point3D
 from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
-from .primitives import Primitives
+from compgeom.mesh.surfmesh.primitives import Primitives
 
 # Import functions from our task script
-from .sphere_projection_task import (
+from compgeom.mesh.surfmesh.sphere_projection_task import (
     calculate_sphere_radius,
     project_to_sphere,
     is_mesh_valid_on_sphere,

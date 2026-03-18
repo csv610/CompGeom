@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Iterable
 
-from ....kernel import (
+from compgeom.kernel import (
     EPSILON,
     Point2D,
     contains_point,
@@ -19,11 +19,11 @@ from ....kernel import (
     robust_orientation,
     robust_in_circle,
 )
-from .utils import PointGrid, create_super_triangle, hilbert_key
+from compgeom.mesh.surfmesh.trimesh.utils import PointGrid, create_super_triangle, hilbert_key
 
 
 if TYPE_CHECKING:
-    from .mesh import TriMesh
+    from compgeom.mesh.surfmesh.trimesh.mesh import TriMesh
 
 
 class EdgeFlipTriangle:

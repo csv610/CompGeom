@@ -2,7 +2,7 @@
 
 import numpy as np
 from typing import List, Tuple, Set
-from compgeom.mesh import Mesh, TriMesh
+from compgeom.mesh import Mesh, TriMesh, MeshTopology
 from compgeom.kernel import Point3D
 
 class MeshRigidity:
@@ -20,8 +20,9 @@ class MeshRigidity:
         elif hasattr(mesh, 'topology'):
             # Fallback to topology if available
             n_vertices = len(mesh.vertices)
+            topo = MeshTopology(mesh)
             for i in range(n_vertices):
-                neighbors = mesh.topology.vertex_neighbors(i)
+                neighbors = topo.vertex_neighbors(i)
                 for neighbor in neighbors:
                     edges.add(tuple(sorted((i, neighbor))))
         return edges

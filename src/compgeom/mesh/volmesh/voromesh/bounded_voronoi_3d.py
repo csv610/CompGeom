@@ -3,9 +3,9 @@ import math
 from typing import List, Tuple, Dict, Set, Optional
 from collections import defaultdict
 
-from ...kernel import Point3D, Plane
-from .polyhedral_mesh import PolyhedralMesh
-from .voronoi_clipping import clip_polyhedron_by_plane
+from compgeom.kernel import Point3D, Plane
+from compgeom.mesh.volmesh.polyhedral_mesh import PolyhedralMesh
+from compgeom.mesh.volmesh.voronoi_clipping import clip_polyhedron_by_plane
 
 class BoundedVoronoi3D:
     """
@@ -122,11 +122,11 @@ class BoundedVoronoi3D:
             return PolyhedralMesh([], [], seeds=[])
             
         # 1. Compute Delaunay to get neighbors
-        from .voronoi_3d import VoronoiDiagram3D
+        from compgeom.mesh.volmesh.voronoi_3d import VoronoiDiagram3D
         from collections import defaultdict
         
         # We need the Delaunay triangulation to know which points are neighbors
-        from .tetmesh.delaunay_mesh_incremental import IncrementalDelaunayMesher3D
+        from compgeom.mesh.volmesh.tetmesh.delaunay_mesh_incremental import IncrementalDelaunayMesher3D
         mesher = IncrementalDelaunayMesher3D()
         mesher.triangulate(points)
         

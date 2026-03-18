@@ -1,5 +1,5 @@
 """PolygonMesh specific algorithms and utilities."""
 
-from .polymesh import PolygonMesh
+from compgeom.mesh.surfmesh.polymesh.polymesh import PolygonMesh
 
 __all__ = ["PolygonMesh"]

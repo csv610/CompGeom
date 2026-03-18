@@ -1,8 +1,8 @@
 """Boolean operations (CSG) for surface meshes."""
 from typing import List, Tuple, Set
 
-from .trimesh.trimesh import TriMesh
-from ...kernel import Point3D
+from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.kernel import Point3D
 
 class MeshBooleans:
     """Constructive Solid Geometry operations for triangle meshes."""
@@ -14,7 +14,7 @@ class MeshBooleans:
         Note: This is a simplified CSG algorithm using ray-casting classification.
         For production, a robust exact arithmetic kernel is required.
         """
-        from .mesh_queries import MeshQueries
+        from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
         
         # 1. Classify vertices/faces of A against B
         # For simplicity, we classify based on centroids
@@ -74,7 +74,7 @@ class MeshBooleans:
         # and re-triangulating the intersecting faces. This version approximates it
         # by keeping or dropping whole faces (works well for dense meshes or voxel-like structures).
         
-        from .surf_mesh_repair import SurfMeshRepair
+        from compgeom.mesh.surfmesh.surf_mesh_repair import SurfMeshRepair
         combined = TriMesh(vertices, faces)
         # Clean up isolated vertices left over from dropped faces
         return SurfMeshRepair.remove_isolated_vertices(combined)
