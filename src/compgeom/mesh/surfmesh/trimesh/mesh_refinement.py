@@ -59,8 +59,9 @@ class TriMeshRefiner:
             midpoints[edge] = idx
             return idx
 
-        for face in old_faces:
-            v0, v1, v2 = face
+        for face_obj in old_faces:
+            v_indices = getattr(face_obj, 'v_indices', face_obj)
+            v0, v1, v2 = v_indices
             m01 = get_midpoint(v0, v1)
             m12 = get_midpoint(v1, v2)
             m20 = get_midpoint(v2, v0)

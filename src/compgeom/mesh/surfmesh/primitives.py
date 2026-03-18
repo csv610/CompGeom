@@ -4,24 +4,24 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, List, Tuple
 
-from ....kernel import Point3D
-from ..platonic_solids import PlatonicSolid
+from ...kernel import Point3D
+from .platonic_solids import PlatonicSolid
 
 if TYPE_CHECKING:
-    from .trimesh import TriMesh
+    from .trimesh.trimesh import TriMesh
 
 class Primitives:
     """Generates meshes for common geometric primitives."""
 
     @staticmethod
     def _create_mesh(vertices: List[Point3D], faces: List[Tuple[int, int, int]]) -> TriMesh:
-        from .trimesh import TriMesh
+        from .trimesh.trimesh import TriMesh
         return TriMesh(vertices, faces)
 
     @staticmethod
     def sphere(radius: float = 1.0, subdivisions: int = 3) -> TriMesh:
         """Generates an isotropic sphere mesh using icosahedron subdivision."""
-        from .mesh_refinement import TriMeshRefiner
+        from .trimesh.mesh_refinement import TriMeshRefiner
         mesh = PlatonicSolid.icosahedron(size=1.0)
         
         for _ in range(subdivisions):

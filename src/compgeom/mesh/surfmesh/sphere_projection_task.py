@@ -9,7 +9,7 @@ from typing import List, Tuple, Set, Dict
 from .trimesh.trimesh import TriMesh
 from ...kernel import Point3D, Sphere
 from .mesh_analysis import MeshAnalysis
-from .trimesh.primitives import Primitives
+from .primitives import Primitives
 
 class SphereProjector:
     """Handles projection of a mesh onto a sphere and subsequent optimization."""

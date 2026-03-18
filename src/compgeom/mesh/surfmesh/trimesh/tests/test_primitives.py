@@ -1,7 +1,7 @@
 """Tests for primitive mesh generation."""
 
 import unittest
-from compgeom.mesh.surfmesh.trimesh.primitives import Primitives
+from compgeom.mesh.surfmesh.primitives import Primitives
 
 class TestPrimitives(unittest.TestCase):
     def test_sphere(self):

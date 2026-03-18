@@ -4,7 +4,7 @@ import math
 from compgeom.mesh import TriMesh
 from compgeom.kernel import Point3D
 from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
-from compgeom.mesh.surfmesh.trimesh.primitives import Primitives
+from .primitives import Primitives
 
 # Import functions from our task script
 from .sphere_projection_task import (

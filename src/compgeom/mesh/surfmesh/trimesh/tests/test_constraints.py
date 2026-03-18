@@ -58,7 +58,7 @@ class TestVertexConstraint(unittest.TestCase):
         self.assertAlmostEqual(projected.z, 0.5)
 
     def test_project_to_mesh(self):
-        from compgeom.mesh.surfmesh.trimesh.primitives import Primitives
+        from compgeom.mesh.surfmesh.primitives import Primitives
         mesh = Primitives.tetrahedron(size=2.0)
         p = Point3D(5.0, 5.0, 5.0, id=5)
         
