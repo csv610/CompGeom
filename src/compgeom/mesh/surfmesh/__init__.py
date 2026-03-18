@@ -1,6 +1,6 @@
 """Surface mesh processing and primitive generation."""
 
-from .trimesh.platonic_solids import PlatonicSolid
+from .platonic_solids import PlatonicSolid
 from .trimesh.primitives import Primitives
 
 __all__ = [

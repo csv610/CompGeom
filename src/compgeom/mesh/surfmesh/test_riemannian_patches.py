@@ -5,7 +5,7 @@ import os
 # Add the src directory to the path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
-from compgeom.mesh.surfmesh.trimesh.platonic_solids import PlatonicSolid
+from compgeom.mesh.surfmesh.platonic_solids import PlatonicSolid
 from compgeom.mesh.surfmesh.riemannian_patches import identify_riemannian_patches
 
 def test_platonic_solids():

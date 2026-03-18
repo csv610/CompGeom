@@ -15,7 +15,7 @@ from .delaunay_topology import (
     is_delaunay,
     get_nondelaunay_triangles,
 )
-from .platonic_solids import PlatonicSolid
+from ..platonic_solids import PlatonicSolid
 from .primitives import Primitives
 from .domain_mesher import DomainMesher
 from compgeom.mesh.surfmesh.node_move_constraints import VertexConstraint

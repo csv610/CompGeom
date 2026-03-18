@@ -5,7 +5,7 @@ import math
 from typing import TYPE_CHECKING, List, Tuple
 
 from ....kernel import Point3D
-from .platonic_solids import PlatonicSolid
+from ..platonic_solids import PlatonicSolid
 
 if TYPE_CHECKING:
     from .trimesh import TriMesh
