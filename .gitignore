@@ -58,3 +58,4 @@ venv.bak/
 
 # MacOS
 .DS_Store
+docs/source/_build/
