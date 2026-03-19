@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import List, Sequence, TypeVar, Tuple, Union
 
-from ..kernel import (
+from compgeom.kernel import (
     Point2D,
     Point3D,
     is_on_segment,
@@ -14,12 +14,12 @@ from ..kernel import (
     signed_area_twice,
     distance,
 )
-from .tolerance import EPSILON, is_zero, are_close, is_negative
+from compgeom.polygon.tolerance import EPSILON, is_zero, are_close, is_negative
 def triangulate_polygon_with_holes(*args, **kwargs): 
-    from .polygon_decomposer import triangulate_polygon_with_holes as func 
+    from compgeom.polygon.polygon_decomposer import triangulate_polygon_with_holes as func 
     return func(*args, **kwargs) 
 def get_convex_diameter(*args, **kwargs): 
-    from .polygon_metrics import get_convex_diameter as func 
+    from compgeom.polygon.polygon_metrics import get_convex_diameter as func 
     return func(*args, **kwargs)
 
 PolygonT = TypeVar("PolygonT", bound="Polygon")

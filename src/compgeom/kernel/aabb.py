@@ -2,9 +2,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Tuple, Union, Optional
 
-from .point import Point2D, Point3D
-from .math_utils import EPSILON
-from .ray import Ray
+from compgeom.kernel.point import Point2D, Point3D
+from compgeom.kernel.math_utils import EPSILON
+from compgeom.kernel.ray import Ray
 
 
 @dataclass(frozen=True, slots=True)

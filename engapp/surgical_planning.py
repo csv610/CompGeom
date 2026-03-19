@@ -5,10 +5,10 @@ import math
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
 
 
@@ -39,7 +39,7 @@ class SurgicalPlanning:
 
     @staticmethod
     def safety_margin_analysis(
-        critical_structure: TriangleMesh,
+        critical_structure: TriMesh,
         drill_path_start: Point3D,
         drill_path_end: Point3D,
     ) -> float:
@@ -74,7 +74,7 @@ class SurgicalPlanning:
 
     @staticmethod
     def project_onto_bone(
-        point: Point3D, bone_mesh: TriangleMesh
+        point: Point3D, bone_mesh: TriMesh
     ) -> Tuple[Point3D, float]:
         """
         Finds the closest point on the bone surface mesh to a surgical instrument.

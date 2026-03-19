@@ -4,11 +4,11 @@ import argparse
 from typing import Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -31,7 +31,7 @@ class FluidDynamics:
 
     @staticmethod
     def calculate_frontal_area(
-        mesh: TriangleMesh, flow_direction: Tuple[float, float, float]
+        mesh: TriMesh, flow_direction: Tuple[float, float, float]
     ) -> float:
         """
         Calculates the projected frontal area of an object facing the flow direction.
@@ -42,11 +42,11 @@ class FluidDynamics:
 
     @staticmethod
     def generate_wind_tunnel_domain(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         padding_front: float = 2.0,
         padding_back: float = 5.0,
         padding_sides: float = 2.0,
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """
         Generates a bounding box representing the fluid domain (wind tunnel) around an object.
         """
@@ -54,7 +54,7 @@ class FluidDynamics:
         # Mock generating a box mesh
         vertices = [Point3D() for _ in range(8)]
         faces = [[0, 1, 2] for _ in range(12)]
-        return TriangleMesh(vertices, faces)
+        return TriMesh(vertices, faces)
 
 
 def main():
@@ -101,7 +101,7 @@ def main():
     args = parser.parse_args()
 
     # Create a mock mesh
-    mock_mesh = TriangleMesh([Point3D(0, 0, 0)], [[0, 0, 0]])
+    mock_mesh = TriMesh([Point3D(0, 0, 0)], [[0, 0, 0]])
     cfd = FluidDynamics()
 
     if args.command == "calculate_frontal_area":

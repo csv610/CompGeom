@@ -6,13 +6,13 @@ import random
 from typing import List
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
     from compgeom.mesh.surfmesh.convex_hull import ConvexHull3D
     from compgeom.mesh.surfmesh.mesh_decimation import MeshDecimator
     from compgeom.mesh.surfmesh.mesh_processing import MeshProcessing
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
     ConvexHull3D = object
     MeshDecimator = object
@@ -63,11 +63,11 @@ class SwarovskiCrystals:
 
     @staticmethod
     def convert_raw_diamond_to_crystal(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         target_faces: int = 48,
         smoothing_iterations: int = 10,
         symmetry_planes: str = "xy",
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """
         Processes a 'raw' diamond mesh into a Swarovski crystal.
         Objectives fulfillment:
@@ -155,7 +155,7 @@ def main():
             try:
                 from compgeom.mesh.meshio import from_file
                 verts, faces = from_file(args.input)
-                raw_mesh = TriangleMesh(verts, faces)
+                raw_mesh = TriMesh(verts, faces)
             except ImportError:
                 print("Error: compgeom.mesh.meshio not available for loading files.")
                 return
@@ -185,7 +185,7 @@ def main():
                 raw_mesh = ConvexHull3D.compute(pts)
             except Exception:
                 # Fallback if ConvexHull3D is mock
-                raw_mesh = TriangleMesh(pts, [])
+                raw_mesh = TriMesh(pts, [])
             print(f"Generated raw mesh with {len(raw_mesh.vertices)} vertices.")
 
         if not raw_mesh:

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from .convex_hull import ConvexHull
-from .polygon import (
+from compgeom.polygon.convex_hull import ConvexHull
+from compgeom.polygon.polygon import (
     Polygon,
     PolygonProperties,
     Triangle,
 )
-from .polygon_decomposer import (
+from compgeom.polygon.polygon_decomposer import (
     triangulate_polygon,
     triangulate_polygon_with_holes,
     convex_decompose_polygon,
@@ -18,15 +18,15 @@ from .polygon_decomposer import (
     decompose_polygon,
     verify_polygon_decomposition,
 )
-from .polygon_similarity import get_polygon_signature, polygons_are_similar
-from .polygon_matching import reorder_to_match
-from .polygon_simplification import resolve_self_intersections
-from .polygon_polynomial import (
+from compgeom.polygon.polygon_similarity import get_polygon_signature, polygons_are_similar
+from compgeom.polygon.polygon_matching import reorder_to_match
+from compgeom.polygon.polygon_simplification import resolve_self_intersections
+from compgeom.polygon.polygon_polynomial import (
     approximate_polygon_polynomial,
     evaluate_polynomial,
     solve_linear_system,
 )
-from .polygon_generator import (
+from compgeom.polygon.polygon_generator import (
     generate_convex_polygon,
     generate_concave_polygon,
     generate_star_shaped_polygon,
@@ -35,34 +35,34 @@ from .polygon_generator import (
     generate_dragon_curve,
     generate_de_rham_curve,
 )
-from .polygon_visibility import compute_visibility_polygon
-from .polygon_guards import art_gallery_guards, guard_polygon
-from .circle_packing import (
+from compgeom.polygon.polygon_visibility import compute_visibility_polygon
+from compgeom.polygon.polygon_guards import art_gallery_guards, guard_polygon
+from compgeom.polygon.circle_packing import (
     pack_circles,
     optimal_radius,
     calculate_circle_packing_efficiency,
     visualize_circle_packing,
 )
-from .polygon_boolean import (
+from compgeom.polygon.polygon_boolean import (
     polygon_union,
     polygon_intersection,
     polygon_difference,
     polygon_xor,
 )
-from .polygon_smoothing import (
+from compgeom.polygon.polygon_smoothing import (
     resample_polygon,
     fourier_smooth_polygon,
     mean_curvature_flow_polygon,
 )
-from .distance_map import solve_distance_map, visualize_distance_map_svg
-from .medial_axis import sample_boundary_for_medial_axis, approximate_medial_axis
-from .planar import (
+from compgeom.polygon.distance_map import solve_distance_map, visualize_distance_map_svg
+from compgeom.polygon.medial_axis import sample_boundary_for_medial_axis, approximate_medial_axis
+from compgeom.polygon.planar import (
     DCEL,
     DCELFace,
     DCELHalfEdge,
     DCELVertex,
 )
-from .polygon_utils import (
+from compgeom.polygon.polygon_utils import (
     ensure_ccw,
     ensure_cw,
     rotate_polygon,
@@ -71,21 +71,21 @@ from .polygon_utils import (
     cleanup_polygon,
     segment_inside_boundaries,
 )
-from .polygon_metrics import (
+from compgeom.polygon.polygon_metrics import (
     get_polygon_properties,
     is_polygon_convex,
     get_reflex_vertices,
     get_convex_diameter,
     is_point_in_polygon,
 )
-from .polygon_path import segment_inside_polygon, shortest_path_in_polygon
-from .polygon_sampling import (
+from compgeom.polygon.polygon_path import segment_inside_polygon, shortest_path_in_polygon
+from compgeom.polygon.polygon_sampling import (
     get_perimeter_distances,
     sample_polygon_boundary,
     get_parametric_coordinate,
 )
-from .poly_square import poly_square
-from .polygon_symmetry import get_polygon_moments, orient_polygon_for_symmetry
+from compgeom.polygon.poly_square import poly_square
+from compgeom.polygon.polygon_symmetry import get_polygon_moments, orient_polygon_for_symmetry
 
 __all__ = [
     "approximate_medial_axis",

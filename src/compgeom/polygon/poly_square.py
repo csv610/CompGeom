@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 from typing import Sequence
 
-from ..kernel import Point2D
-from .polygon import Polygon
+from compgeom.kernel import Point2D
+from compgeom.polygon.polygon import Polygon
 
 
 def poly_square(polygon: Polygon | Sequence[Point2D], segment_index: int = 0) -> list[Point2D]:

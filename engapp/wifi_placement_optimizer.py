@@ -5,11 +5,11 @@ import math
 from typing import List, Tuple, Optional
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -70,7 +70,7 @@ class WifiOptimizer:
     def calculate_signal_strength(
         router_pos: Tuple[float, float, float],
         target_pos: Tuple[float, float, float],
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         wall_loss_db: float = 3.0,
     ) -> float:
         """
@@ -114,7 +114,7 @@ class WifiOptimizer:
 
     @staticmethod
     def find_optimal_placement(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         test_points: List[Tuple[float, float, float]],
         router_candidates: List[Tuple[float, float, float]],
     ) -> Tuple[Tuple[float, float, float], float]:

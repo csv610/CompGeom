@@ -3,7 +3,7 @@ import math
 import pytest
 
 from compgeom.kernel import Point3D
-from compgeom.mesh import TriangleMesh
+from compgeom.mesh import TriMesh
 from compgeom.mesh.surfmesh.bounding_volumes import BoundingVolumes
 from compgeom.mesh.surfmesh.curvature import MeshCurvature
 from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
@@ -11,14 +11,14 @@ from compgeom.mesh.surfmesh.mesh_quality import MeshQuality
 
 
 def make_triangle():
-    return TriangleMesh(
+    return TriMesh(
         [Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         [(0, 1, 2)],
     )
 
 
 def make_tetra_surface():
-    return TriangleMesh(
+    return TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -26,6 +26,27 @@ def make_tetra_surface():
             Point3D(0, 0, 1),
         ],
         [(0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)],
+    )
+
+
+def make_annulus():
+    return TriMesh(
+        [
+            Point3D(0, 0, 0),
+            Point3D(3, 0, 0),
+            Point3D(3, 3, 0),
+            Point3D(0, 3, 0),
+            Point3D(1, 1, 0),
+            Point3D(2, 1, 0),
+            Point3D(2, 2, 0),
+            Point3D(1, 2, 0),
+        ],
+        [
+            (0, 1, 5), (0, 5, 4),
+            (1, 2, 6), (1, 6, 5),
+            (2, 3, 7), (2, 7, 6),
+            (3, 0, 4), (3, 4, 7),
+        ],
     )
 
 
@@ -71,8 +92,25 @@ def test_generate_report_contains_topology_and_mass_properties():
     assert "Vertices: 4" in report
     assert "Faces:    4" in report
     assert "Euler Characteristic: 2" in report
+    assert "Betti Numbers: b0=1, b1=0, b2=1" in report
     assert "Watertight: Yes" in report
     assert "Center of Mass: (0.2500, 0.2500, 0.2500)" in report
+
+
+def test_betti_numbers_for_open_closed_disconnected_and_holed_meshes():
+    triangle = make_triangle()
+    tetra = make_tetra_surface()
+    annulus = make_annulus()
+    disconnected = TriMesh(
+        tetra.vertices + [Point3D(p.x + 3.0, p.y, p.z) for p in tetra.vertices],
+        [face.v_indices for face in tetra.faces]
+        + [tuple(index + 4 for index in face.v_indices) for face in tetra.faces],
+    )
+
+    assert triangle.betti_numbers() == (1, 0, 0)
+    assert tetra.betti_numbers() == (1, 0, 1)
+    assert annulus.betti_numbers() == (1, 1, 0)
+    assert disconnected.betti_numbers() == (2, 0, 2)
 
 
 def test_curvature_methods_return_per_vertex_values():
@@ -132,7 +170,7 @@ def test_compute_min_sphere_and_min_ellipse_for_tetra_points():
 
 
 def test_pca_align_recenters_mesh_around_origin():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),

@@ -4,11 +4,11 @@ import argparse
 from typing import Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -29,7 +29,7 @@ class SpacecraftStructures:
         bmax: Tuple[float, float, float],
         cell_size: float,
         strut_radius: float,
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """
         Generates a 3D truss/lattice structure within a bounding box.
         Essential for mass-optimization in spacecraft components.
@@ -61,18 +61,18 @@ class SpacecraftStructures:
                     # Add connections to neighbors (Octet-truss pattern)
                     # ...
 
-        return TriangleMesh(all_verts, all_faces)
+        return TriMesh(all_verts, all_faces)
 
     @staticmethod
     def honeycomb_panel(
         width: float, length: float, height: float, cell_size: float
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """
         Generates a 3D honeycomb sandwich panel.
         Standard lightweight structural element for satellite solar arrays and bulkheads.
         """
         # Implementation of 2D hex grid extruded to 3D
-        return TriangleMesh([], [])
+        return TriMesh([], [])
 
 
 def main():

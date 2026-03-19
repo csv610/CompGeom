@@ -10,7 +10,21 @@ requires-python = ">=3.12"
 dependencies = [
     "pytest",
     "pytest-cov",
-    # Add any dependencies if needed
+    # Core scientific computing
+    "numpy",
+    "scipy",
+]
+
+[project.optional-dependencies]
+viz = [
+    "matplotlib",
+    "pyvista",
+]
+geometry = [
+    "shapely",
+]
+all = [
+    "compgeom[viz,geometry]",
 ]
 
 [project.scripts]

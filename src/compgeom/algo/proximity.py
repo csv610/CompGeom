@@ -6,7 +6,7 @@ import math
 import random
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
-from ..kernel import (
+from compgeom.kernel import (
     EPSILON,
     Point2D,
     cross_product,
@@ -23,8 +23,8 @@ from ..kernel import (
     signed_area_twice,
     support,
 )
-from ..polygon.convex_hull import GrahamScan
-from ..polygon.polygon_metrics import is_point_in_polygon
+from compgeom.polygon.convex_hull import GrahamScan
+from compgeom.polygon.polygon_metrics import is_point_in_polygon
 
 
 class ClosestPair:
@@ -161,7 +161,7 @@ class LargestEmptyCircle:
             return Point2D(0, 0), 0.0
 
         hull = GrahamScan().generate(points)
-        from ..mesh.surfmesh.trimesh.delaunay_triangulation import triangulate
+        from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import triangulate
         mesh = triangulate(points)
         triangles = [(mesh.vertices[f[0]], mesh.vertices[f[1]], mesh.vertices[f[2]]) for f in mesh.faces]
         
@@ -182,7 +182,7 @@ class LargestEmptyCircle:
             else: 
                 for i in range(len(hull)): 
                     p1, p2 = hull[i], hull[(i + 1) % len(hull)] 
-                    from ..kernel import ray_segment_intersection_2d 
+                    from compgeom.kernel import ray_segment_intersection_2d 
                     res = ray_segment_intersection_2d(a, math.atan2(center.y - a.y, center.x - a.x), p1, p2) 
                     if res: 
                         _, hit = res 
@@ -393,7 +393,7 @@ class LargestEmptySphere:
 
     @staticmethod
     def find(points: List['Point3D']) -> Tuple['Point3D', float]:
-        from ..kernel import Point3D, distance_3d
+        from compgeom.kernel import Point3D, distance_3d
         if len(points) < 4:
             if len(points) == 2:
                 p1, p2 = points
@@ -410,7 +410,7 @@ class LargestEmptySphere:
         pts_array = np.array([[p.x, p.y, getattr(p, 'z', 0.0)] for p in points])
         delaunay = Delaunay(pts_array)
         
-        from ..kernel.sphere import from_four_points
+        from compgeom.kernel.sphere import from_four_points
         
         max_radius = -1.0
         best_center = None
@@ -471,7 +471,7 @@ class LargestEmptyOrientedBox:
     def find(points: List['Point3D']) -> dict:
         import numpy as np
         from scipy.spatial import ConvexHull, Delaunay
-        from ..kernel import Point3D
+        from compgeom.kernel import Point3D
 
         if len(points) < 4:
             return {"volume": 0.0, "center": Point3D(0,0,0), "width": 0.0, "height": 0.0, "depth": 0.0, "axes": ((1,0,0),(0,1,0),(0,0,1)), "corners": []}
@@ -487,7 +487,7 @@ class LargestEmptyOrientedBox:
         
         # 1. Largest Empty Sphere center
         try:
-            from .proximity import LargestEmptySphere
+            from compgeom.algo.proximity import LargestEmptySphere
             les_center, _ = LargestEmptySphere.find(points)
             seeds.append(np.array([les_center.x, les_center.y, les_center.z]))
         except ImportError:
@@ -719,7 +719,7 @@ class LargestEmptyOrientedEllipsoid:
     def find(points: List['Point3D']) -> dict:
         import numpy as np
         from scipy.spatial import ConvexHull, Delaunay
-        from ..kernel import Point3D
+        from compgeom.kernel import Point3D
 
         if len(points) < 4:
             return {"volume": 0.0, "center": Point3D(0,0,0), "radii": (0,0,0), "axes": ((1,0,0),(0,1,0),(0,0,1))}
@@ -733,7 +733,7 @@ class LargestEmptyOrientedEllipsoid:
 
         seeds = []
         try:
-            from .proximity import LargestEmptySphere
+            from compgeom.algo.proximity import LargestEmptySphere
             les_center, les_r = LargestEmptySphere.find(points)
             seeds.append((np.array([les_center.x, les_center.y, les_center.z]), les_r))
         except Exception:
@@ -845,7 +845,7 @@ class LargestEmptyOrientedRectangle:
     def find(points: List['Point2D']) -> dict:
         import numpy as np
         from scipy.spatial import ConvexHull, Delaunay
-        from ..kernel import Point2D, distance
+        from compgeom.kernel import Point2D, distance
 
         if len(points) < 3:
             return {"area": 0.0, "center": Point2D(0,0), "width": 0.0, "height": 0.0, "angle": 0.0, "corners": []}
@@ -859,7 +859,7 @@ class LargestEmptyOrientedRectangle:
 
         seeds = []
         try:
-            from .proximity import LargestEmptyCircle
+            from compgeom.algo.proximity import LargestEmptyCircle
             lec_center, lec_r = LargestEmptyCircle.find(points)
             seeds.append((np.array([lec_center.x, lec_center.y]), lec_r))
         except Exception:
@@ -996,7 +996,7 @@ class LargestEmptyOrientedEllipse:
     def find(points: List['Point2D']) -> dict:
         import numpy as np
         from scipy.spatial import ConvexHull, Delaunay
-        from ..kernel import Point2D
+        from compgeom.kernel import Point2D
 
         if len(points) < 3:
             return {"area": 0.0, "center": Point2D(0,0), "radii": (0,0), "angle": 0.0}
@@ -1010,7 +1010,7 @@ class LargestEmptyOrientedEllipse:
 
         seeds = []
         try:
-            from .proximity import LargestEmptyCircle
+            from compgeom.algo.proximity import LargestEmptyCircle
             lec_center, lec_r = LargestEmptyCircle.find(points)
             seeds.append((np.array([lec_center.x, lec_center.y]), lec_r))
         except Exception:

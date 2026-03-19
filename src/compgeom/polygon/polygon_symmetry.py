@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 from typing import Sequence
 
-from ..kernel import Point2D
-from .polygon import Polygon
+from compgeom.kernel import Point2D
+from compgeom.polygon.polygon import Polygon
 
 
 def get_polygon_moments(vertices: Sequence[Point2D]) -> tuple[float, float, float, float]:

@@ -2,51 +2,57 @@
 from typing import List, Tuple, Optional
 import math
 
-from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.mesh.surfmesh.surface_mesh import SurfaceMesh
 from compgeom.kernel import Point3D
 
 class MeshQueries:
     """Algorithms for querying spatial relationships with a mesh."""
 
     @staticmethod
-    def _single_ray_tri_intersect(mesh: TriMesh, face_idx: int, origin: Tuple[float,float,float], direction: Tuple[float,float,float]) -> Optional[float]:
-        """Helper to test a single triangle for intersection."""
+    def _single_ray_face_intersect(mesh: SurfaceMesh, face_idx: int, origin: Tuple[float,float,float], direction: Tuple[float,float,float]) -> Optional[float]:
+        """Helper to test a single face (polygon) for intersection."""
         face = mesh.faces[face_idx]
-        v0, v1, v2 = [mesh.vertices[idx] for idx in face]
-        p0 = (v0.x, v0.y, getattr(v0, 'z', 0.0))
-        p1 = (v1.x, v1.y, getattr(v1, 'z', 0.0))
-        p2 = (v2.x, v2.y, getattr(v2, 'z', 0.0))
+        v_indices = face.v_indices
+        p0_v = mesh.vertices[v_indices[0]]
+        p0 = (p0_v.x, p0_v.y, getattr(p0_v, 'z', 0.0))
         
-        # Möller–Trumbore
+        min_t = float('inf')
+        found = False
         eps = 1e-8
-        edge1 = (p1[0]-p0[0], p1[1]-p0[1], p1[2]-p0[2])
-        edge2 = (p2[0]-p0[0], p2[1]-p0[1], p2[2]-p0[2])
         
-        dx, dy, dz = direction
-        h = (dy*edge2[2] - dz*edge2[1], dz*edge2[0] - dx*edge2[2], dx*edge2[1] - dy*edge2[0])
-        a = edge1[0]*h[0] + edge1[1]*h[1] + edge1[2]*h[2]
-        
-        if -eps < a < eps:
-            return None
+        for i in range(1, len(v_indices) - 1):
+            p1_v = mesh.vertices[v_indices[i]]
+            p2_v = mesh.vertices[v_indices[i+1]]
+            p1 = (p1_v.x, p1_v.y, getattr(p1_v, 'z', 0.0))
+            p2 = (p2_v.x, p2_v.y, getattr(p2_v, 'z', 0.0))
             
-        f = 1.0 / a
-        s = (origin[0]-p0[0], origin[1]-p0[1], origin[2]-p0[2])
-        u = f * (s[0]*h[0] + s[1]*h[1] + s[2]*h[2])
-        
-        if u < 0.0 or u > 1.0:
-            return None
+            # Möller–Trumbore
+            edge1 = (p1[0]-p0[0], p1[1]-p0[1], p1[2]-p0[2])
+            edge2 = (p2[0]-p0[0], p2[1]-p0[1], p2[2]-p0[2])
+            dx, dy, dz = direction
+            h = (dy*edge2[2] - dz*edge2[1], dz*edge2[0] - dx*edge2[2], dx*edge2[1] - dy*edge2[0])
+            a = edge1[0]*h[0] + edge1[1]*h[1] + edge1[2]*h[2]
             
-        q = (s[1]*edge1[2] - s[2]*edge1[1], s[2]*edge1[0] - s[0]*edge1[2], s[0]*edge1[1] - s[1]*edge1[0])
-        v = f * (dx*q[0] + dy*q[1] + dz*q[2])
-        
-        if v < 0.0 or u + v > 1.0:
-            return None
+            if -eps < a < eps: continue
             
-        t = f * (edge2[0]*q[0] + edge2[1]*q[1] + edge2[2]*q[2])
-        return t if t > eps else None
+            f = 1.0 / a
+            s = (origin[0]-p0[0], origin[1]-p0[1], origin[2]-p0[2])
+            u = f * (s[0]*h[0] + s[1]*h[1] + s[2]*h[2])
+            if u < 0.0 or u > 1.0: continue
+                
+            q = (s[1]*edge1[2] - s[2]*edge1[1], s[2]*edge1[0] - s[0]*edge1[2], s[0]*edge1[1] - s[1]*edge1[0])
+            v = f * (dx*q[0] + dy*q[1] + dz*q[2])
+            if v < 0.0 or u + v > 1.0: continue
+                
+            t = f * (edge2[0]*q[0] + edge2[1]*q[1] + edge2[2]*q[2])
+            if t > eps and t < min_t:
+                min_t = t
+                found = True
+                
+        return min_t if found else None
 
     @staticmethod
-    def ray_intersect(mesh: TriMesh, origin: Tuple[float,float,float], direction: Tuple[float,float,float], use_spatial: bool = True) -> List[Tuple[int, float]]:
+    def ray_intersect(mesh: SurfaceMesh, origin: Tuple[float,float,float], direction: Tuple[float,float,float], use_spatial: bool = True) -> List[Tuple[int, float]]:
         """
         Returns a list of (face_idx, distance) for all intersections along the ray.
         Accelerated by AABBTree by default.
@@ -59,7 +65,7 @@ class MeshQueries:
         # Brute force fallback
         intersections = []
         for i in range(len(mesh.faces)):
-            t = MeshQueries._single_ray_tri_intersect(mesh, i, origin, direction)
+            t = MeshQueries._single_ray_face_intersect(mesh, i, origin, direction)
             if t is not None:
                 intersections.append((i, t))
                 
@@ -113,7 +119,7 @@ class MeshQueries:
         return (ap[0] - v*ab[0] - w*ac[0])**2 + (ap[1] - v*ab[1] - w*ac[1])**2 + (ap[2] - v*ab[2] - w*ac[2])**2
 
     @staticmethod
-    def compute_sdf(mesh: TriMesh, point: Tuple[float, float, float], use_spatial: bool = True) -> float:
+    def compute_sdf(mesh: SurfaceMesh, point: Tuple[float, float, float], use_spatial: bool = True) -> float:
         """
         Computes the Signed Distance Function (SDF) from a point to the mesh.
         Using exact point-triangle distance.
@@ -124,19 +130,26 @@ class MeshQueries:
         # In a full implementation, we would use the AABBTree to narrow down candidate triangles
         # for exact distance. For now, we perform a brute force exact calculation.
         for face in mesh.faces:
-            v0, v1, v2 = [mesh.vertices[idx] for idx in face]
-            p0 = (v0.x, v0.y, getattr(v0, 'z', 0.0))
-            p1 = (v1.x, v1.y, getattr(v1, 'z', 0.0))
-            p2 = (v2.x, v2.y, getattr(v2, 'z', 0.0))
+            v_indices = face.v_indices
+            # Handle general polygon by triangulating with a fan (v0, vi, vi+1)
+            p0_v = mesh.vertices[v_indices[0]]
+            p0 = (p0_v.x, p0_v.y, getattr(p0_v, 'z', 0.0))
             
-            d_sq = MeshQueries._point_triangle_dist_sq(point, p0, p1, p2)
-            if d_sq < min_dist_sq:
-                min_dist_sq = d_sq
+            for i in range(1, len(v_indices) - 1):
+                p1_v = mesh.vertices[v_indices[i]]
+                p2_v = mesh.vertices[v_indices[i+1]]
+                p1 = (p1_v.x, p1_v.y, getattr(p1_v, 'z', 0.0))
+                p2 = (p2_v.x, p2_v.y, getattr(p2_v, 'z', 0.0))
+                
+                d_sq = MeshQueries._point_triangle_dist_sq(point, p0, p1, p2)
+                if d_sq < min_dist_sq:
+                    min_dist_sq = d_sq
                 
         distance = math.sqrt(min_dist_sq)
+        return distance
         
     @staticmethod
-    def slice_mesh(mesh: TriMesh, plane_origin: Tuple[float,float,float], plane_normal: Tuple[float,float,float]) -> List[Tuple[Point3D, Point3D]]:
+    def slice_mesh(mesh: SurfaceMesh, plane_origin: Tuple[float,float,float], plane_normal: Tuple[float,float,float]) -> List[Tuple[Point3D, Point3D]]:
         """
         Slices the mesh with a plane and returns a list of line segments (edges).
         Segments represent the intersection of the surface with the plane.
@@ -153,7 +166,7 @@ class MeshQueries:
             return (p.x - plane_origin[0]) * nx + (p.y - plane_origin[1]) * ny + (getattr(p, 'z', 0.0) - plane_origin[2]) * nz
 
         for face in mesh.faces:
-            v_idx = list(face)
+            v_idx = face.v_indices
             pts = [mesh.vertices[i] for i in v_idx]
             dists = [get_dist(p) for p in pts]
             
@@ -188,7 +201,7 @@ class MeshQueries:
                 segments.append((unique_pts[0], unique_pts[1]))
                 
     @staticmethod
-    def mesh_intersection(mesh_a: TriMesh, mesh_b: TriMesh) -> List[Tuple[int, int]]:
+    def mesh_intersection(mesh_a: SurfaceMesh, mesh_b: SurfaceMesh) -> List[Tuple[int, int]]:
         """
         Detects intersections between two meshes.
         Returns a list of (face_idx_a, face_idx_b) pairs that intersect.
@@ -235,7 +248,7 @@ class MeshQueries:
         return results
 
     @staticmethod
-    def extract_intersection_lines(mesh_a: TriMesh, mesh_b: TriMesh) -> List[Tuple[Point3D, Point3D]]:
+    def extract_intersection_lines(mesh_a: SurfaceMesh, mesh_b: SurfaceMesh) -> List[Tuple[Point3D, Point3D]]:
         """
         Extracts the exact polylines representing the intersection path between two meshes.
         Essential for CAD and tool-path generation.
@@ -244,7 +257,7 @@ class MeshQueries:
         pass # Implementation logic here
                 
     @staticmethod
-    def generalized_winding_number(mesh: TriMesh, point: Tuple[float, float, float]) -> float:
+    def generalized_winding_number(mesh: SurfaceMesh, point: Tuple[float, float, float]) -> float:
         """
         Calculates the Generalized Winding Number of a point with respect to the mesh.
         Robust for meshes with holes or self-intersections.
@@ -254,7 +267,7 @@ class MeshQueries:
         px, py, pz = point
         
         for face in mesh.faces:
-            v0, v1, v2 = [mesh.vertices[idx] for idx in face]
+            v0, v1, v2 = [mesh.vertices[idx] for idx in face.v_indices]
             a = (v0.x - px, v0.y - py, getattr(v0, 'z', 0.0) - pz)
             b = (v1.x - px, v1.y - py, getattr(v1, 'z', 0.0) - pz)
             c = (v2.x - px, v2.y - py, getattr(v2, 'z', 0.0) - pz)
@@ -270,7 +283,7 @@ class MeshQueries:
         return wn / (4.0 * math.pi)
 
     @staticmethod
-    def poisson_disk_sampling(mesh: TriMesh, min_dist: float, k_attempts: int = 30) -> List[Point3D]:
+    def poisson_disk_sampling(mesh: SurfaceMesh, min_dist: float, k_attempts: int = 30) -> List[Point3D]:
         """
         Generates a uniform distribution of points on the mesh surface.
         Points are separated by at least min_dist.

@@ -5,10 +5,10 @@ import math
 from typing import Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
 
 
@@ -58,7 +58,7 @@ class TelecomPropagation:
         return -1.0
 
     @staticmethod
-    def check_line_of_sight(mesh: TriangleMesh, tx: Point3D, rx: Point3D) -> bool:
+    def check_line_of_sight(mesh: TriMesh, tx: Point3D, rx: Point3D) -> bool:
         """
         Checks if there is a clear Line-of-Sight (LoS) between transmitter and receiver.
         Returns True if clear, False if blocked by the mesh.

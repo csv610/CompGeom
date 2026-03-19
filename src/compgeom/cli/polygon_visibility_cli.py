@@ -5,7 +5,7 @@ import math
 
 from compgeom import EPSILON, Point2D, cross_product, is_on_segment
 from compgeom import is_point_in_polygon
-from ._shared import print_lines
+from compgeom.cli._shared import print_lines
 
 
 def _dot(a: Point2D, b: Point2D) -> float:

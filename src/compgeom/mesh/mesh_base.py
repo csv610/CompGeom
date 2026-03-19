@@ -38,6 +38,15 @@ class MeshFace:
     v_indices: Tuple[int, ...]
     attributes: Dict = field(default_factory=dict)
 
+    def __iter__(self):
+        return iter(self.v_indices)
+
+    def __len__(self):
+        return len(self.v_indices)
+
+    def __getitem__(self, index):
+        return self.v_indices[index]
+
 
 @dataclass(frozen=True)
 class MeshCell:
@@ -46,15 +55,28 @@ class MeshCell:
     v_indices: Tuple[int, ...]
     attributes: Dict = field(default_factory=dict)
 
+    def __iter__(self):
+        return iter(self.v_indices)
+
+    def __len__(self):
+        return len(self.v_indices)
+
+    def __getitem__(self, index):
+        return self.v_indices[index]
+
 
 class Mesh(ABC):
     """Abstract base class for all mesh types."""
 
     def __init__(self, 
-                 nodes: List[MeshNode], 
+                 nodes: Optional[List[Union[MeshNode, Point2D, Point3D]]] = None, 
                  edges: Optional[List[MeshEdge]] = None, 
                  faces: Optional[List[MeshFace]] = None, 
                  cells: Optional[List[MeshCell]] = None):
+        if nodes and not isinstance(nodes[0], MeshNode):
+            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
+        elif nodes is None:
+            nodes = []
         self._nodes = nodes
         self._edges = edges or []
         self._faces = faces or []

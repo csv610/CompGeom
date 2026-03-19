@@ -4,9 +4,9 @@ import math
 from typing import Optional, TYPE_CHECKING, Tuple, List
 from decimal import Decimal
 
-from .point import Point3D
-from .math_utils import EPSILON, distance_3d
-from .tetrahedron import orientation_sign
+from compgeom.kernel.point import Point3D
+from compgeom.kernel.math_utils import EPSILON, distance_3d
+from compgeom.kernel.tetrahedron import orientation_sign
 
 
 @dataclass(frozen=True, slots=True)

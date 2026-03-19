@@ -3,14 +3,14 @@ from collections import defaultdict
 import math
 from typing import List, Tuple, Dict
 
-from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.mesh.surfmesh.surface_mesh import SurfaceMesh
 from compgeom.kernel import Point3D
 
 class MeshAnalysis:
     """Provides algorithms for analyzing surface meshes."""
 
     @staticmethod
-    def compute_face_normals(mesh: TriMesh) -> List[Tuple[float, float, float]]:
+    def compute_face_normals(mesh: SurfaceMesh) -> List[Tuple[float, float, float]]:
         """Computes the normal vector for each face in the mesh."""
         normals = []
         for face in mesh.faces:
@@ -34,7 +34,7 @@ class MeshAnalysis:
         return normals
 
     @staticmethod
-    def compute_vertex_normals(mesh: TriMesh) -> List[Tuple[float, float, float]]:
+    def compute_vertex_normals(mesh: SurfaceMesh) -> List[Tuple[float, float, float]]:
         """Computes area-weighted vertex normals for smooth shading."""
         v_normals = [[0.0, 0.0, 0.0] for _ in range(len(mesh.vertices))]
         
@@ -68,7 +68,7 @@ class MeshAnalysis:
         return res
 
     @staticmethod
-    def total_area(mesh: TriMesh) -> float:
+    def total_area(mesh: SurfaceMesh) -> float:
         """Calculates the total surface area of the mesh."""
         total = 0.0
         for face in mesh.faces:
@@ -82,7 +82,7 @@ class MeshAnalysis:
         return total
 
     @staticmethod
-    def total_volume(mesh: TriMesh) -> float:
+    def total_volume(mesh: SurfaceMesh) -> float:
         """Calculates the total volume enclosed by the surface using the divergence theorem."""
         total = 0.0
         for face in mesh.faces:
@@ -97,7 +97,7 @@ class MeshAnalysis:
         return total
 
     @staticmethod
-    def center_of_mass(mesh: TriMesh) -> Tuple[float, float, float]:
+    def center_of_mass(mesh: SurfaceMesh) -> Tuple[float, float, float]:
         """Calculates the center of mass (centroid) of the volume enclosed by the surface."""
         total_vol = 0.0
         cx, cy, cz = 0.0, 0.0, 0.0
@@ -130,7 +130,7 @@ class MeshAnalysis:
         return cx/total_vol, cy/total_vol, cz/total_vol
 
     @staticmethod
-    def inertia_tensor(mesh: TriMesh) -> Tuple[Tuple[float, float, float], Tuple[float, float, float], Tuple[float, float, float]]:
+    def inertia_tensor(mesh: SurfaceMesh) -> Tuple[Tuple[float, float, float], Tuple[float, float, float], Tuple[float, float, float]]:
         """
         Calculates the 3x3 inertia tensor matrix (assuming uniform unit density).
         Returns a tuple of 3 tuples: ((Ixx, Ixy, Ixz), (Iyx, Iyy, Iyz), (Izx, Izy, Izz)).
@@ -250,7 +250,7 @@ class MeshAnalysis:
         return normals
 
     @staticmethod
-    def hausdorff_distance(mesh_a: TriMesh, mesh_b: TriMesh, sample_count: int = 1000) -> float:
+    def hausdorff_distance(mesh_a: SurfaceMesh, mesh_b: SurfaceMesh, sample_count: int = 1000) -> float:
         """
         Calculates the approximate Hausdorff distance between two meshes.
         dH(A, B) = max( sup_{a in A} inf_{b in B} d(a,b), sup_{b in B} inf_{a in A} d(a,b) )
@@ -276,7 +276,7 @@ class MeshAnalysis:
         return max(one_way_dist(mesh_a, mesh_b), one_way_dist(mesh_b, mesh_a))
 
     @staticmethod
-    def generate_report(mesh: TriMesh) -> str:
+    def generate_report(mesh: SurfaceMesh) -> str:
         """Generates a comprehensive geometric and topological report."""
         from compgeom.mesh.mesh_topology import MeshTopology
         area = MeshAnalysis.total_area(mesh)

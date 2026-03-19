@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
-from ..kernel import EPSILON, Point2D
+from compgeom.kernel import EPSILON, Point2D
 
 
 @dataclass

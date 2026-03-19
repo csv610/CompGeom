@@ -6,7 +6,7 @@ import math
 import random
 from typing import Dict, List, Optional, Set, Tuple
 
-from .space_filling_curves import SpaceFillingCurves
+from compgeom.algo.space_filling_curves import SpaceFillingCurves
 
 
 class RandomWalker:

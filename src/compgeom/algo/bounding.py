@@ -5,10 +5,10 @@ from __future__ import annotations
 import math
 import random
 
-from ..kernel import EPSILON, Point2D
-from ..kernel import rotate_2d, unrotate_2d
-from ..polygon.convex_hull import GrahamScan
-from .proximity import welzl, LargestEmptyCircle
+from compgeom.kernel import EPSILON, Point2D
+from compgeom.kernel import rotate_2d, unrotate_2d
+from compgeom.polygon.convex_hull import GrahamScan
+from compgeom.algo.proximity import welzl, LargestEmptyCircle
 
 
 def largest_empty_circle(points):
@@ -109,31 +109,31 @@ def minimum_bounding_box(points):
 
 def largest_empty_sphere(points):
     """Finds the largest empty sphere whose center is within the 3D convex hull."""
-    from .proximity import LargestEmptySphere
+    from compgeom.algo.proximity import LargestEmptySphere
     return LargestEmptySphere.find(list(points))
 
 
 def largest_empty_oriented_box(points):
     """Finds the largest empty oriented box within a 3D convex hull."""
-    from .proximity import LargestEmptyOrientedBox
+    from compgeom.algo.proximity import LargestEmptyOrientedBox
     return LargestEmptyOrientedBox.find(list(points))
 
 
 def largest_empty_oriented_ellipsoid(points):
     """Finds the largest empty oriented ellipsoid within a 3D convex hull."""
-    from .proximity import LargestEmptyOrientedEllipsoid
+    from compgeom.algo.proximity import LargestEmptyOrientedEllipsoid
     return LargestEmptyOrientedEllipsoid.find(list(points))
 
 
 def largest_empty_oriented_rectangle(points):
     """Finds the largest empty oriented rectangle within a 2D convex hull."""
-    from .proximity import LargestEmptyOrientedRectangle
+    from compgeom.algo.proximity import LargestEmptyOrientedRectangle
     return LargestEmptyOrientedRectangle.find(list(points))
 
 
 def largest_empty_oriented_ellipse(points):
     """Finds the largest empty oriented ellipse within a 2D convex hull."""
-    from .proximity import LargestEmptyOrientedEllipse
+    from compgeom.algo.proximity import LargestEmptyOrientedEllipse
     return LargestEmptyOrientedEllipse.find(list(points))
 
 __all__ = ["largest_empty_oriented_ellipse", "largest_empty_oriented_rectangle", "largest_empty_oriented_ellipsoid", "largest_empty_oriented_box", "largest_empty_sphere", "largest_empty_circle", "minimum_bounding_box", "minimum_enclosing_circle"]

@@ -342,7 +342,7 @@ print(inside.is_exterior, hole.is_exterior, outside.is_exterior)
 ### Mesh topology and adjacency queries
 
 ```python
-from compgeom import Point2D, TriangleMesh
+from compgeom import Point2D, TriMesh
 
 vertices = [
     Point2D(0, 0, 0),
@@ -352,7 +352,7 @@ vertices = [
 ]
 faces = [(0, 1, 2), (1, 3, 2)]
 
-mesh = TriangleMesh(vertices, faces)
+mesh = TriMesh(vertices, faces)
 
 print(mesh.topology.vertex_neighbors(1))
 print(mesh.topology.shared_edge_neighbors(0))
@@ -380,9 +380,9 @@ print(chi)
 ### Mesh refinement
 
 ```python
-from compgeom import Point2D, TriMeshRefiner, TriangleMesh
+from compgeom import Point2D, TriMeshRefiner, TriMesh
 
-mesh = TriangleMesh(
+mesh = TriMesh(
     [Point2D(0, 0, 0), Point2D(2, 0, 1), Point2D(0, 2, 2)],
     [(0, 1, 2)],
 )
@@ -397,9 +397,9 @@ print(len(uniform.vertices), len(uniform.faces))
 ### Mesh reordering
 
 ```python
-from compgeom import CuthillMcKee, Point2D, TriangleMesh
+from compgeom import CuthillMcKee, Point2D, TriMesh
 
-mesh = TriangleMesh(
+mesh = TriMesh(
     [
         Point2D(0, 0, 0),
         Point2D(1, 0, 1),
@@ -419,9 +419,9 @@ print(mesh.faces)
 ### Mesh coloring
 
 ```python
-from compgeom import MeshColoring, Point2D, TriangleMesh
+from compgeom import MeshColoring, Point2D, TriMesh
 
-mesh = TriangleMesh(
+mesh = TriMesh(
     [
         Point2D(0, 0, 0),
         Point2D(1, 0, 1),
@@ -441,9 +441,9 @@ print(element_colors)
 ### Triangle-to-quad conversion
 
 ```python
-from compgeom import Point2D, TriangleMesh, TriangleToQuadConverter
+from compgeom import Point2D, TriMesh, TriangleToQuadConverter
 
-mesh = TriangleMesh(
+mesh = TriMesh(
     [Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2)],
     [(0, 1, 2)],
 )
@@ -457,9 +457,9 @@ print(quad_mesh.elements)
 ### Mesh topology transfer
 
 ```python
-from compgeom import MeshTransfer, Point2D, TriangleMesh
+from compgeom import MeshTransfer, Point2D, TriMesh
 
-source = TriangleMesh(
+source = TriMesh(
     [
         Point2D(0, 0, 0),
         Point2D(1, 0, 1),

@@ -5,13 +5,13 @@ from typing import List, Tuple, Optional
 import math
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
     from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
     from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
 except ImportError:
     # Standalone fallbacks for external usage/testing
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -97,7 +97,7 @@ class SolarAnalysis:
 
     @staticmethod
     def sky_view_factor(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         point: Tuple[float, float, float],
         samples: int = 100,
         normal: Tuple[float, float, float] = (0, 0, 1),
@@ -154,7 +154,7 @@ class SolarAnalysis:
         return visible_sky / samples
 
     @staticmethod
-    def mesh_sky_view_factor(mesh: TriangleMesh, samples: int = 64) -> List[float]:
+    def mesh_sky_view_factor(mesh: TriMesh, samples: int = 64) -> List[float]:
         """
         Calculates SVF for every face center of the mesh.
         """
@@ -179,7 +179,7 @@ class SolarAnalysis:
 
     @staticmethod
     def incident_solar_radiation(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         sun_dir: Tuple[float, float, float],
         intensity_direct: float = 1000.0,
         intensity_diffuse: Optional[float] = None,
@@ -225,7 +225,7 @@ class SolarAnalysis:
 
     @staticmethod
     def daily_cumulative_radiation(
-        mesh: TriangleMesh, latitude: float, day_of_year: int, step_hours: float = 1.0
+        mesh: TriMesh, latitude: float, day_of_year: int, step_hours: float = 1.0
     ) -> List[float]:
         """
         Simulates radiation over a whole day and returns cumulative Wh/m^2.
@@ -283,7 +283,7 @@ def main():
     args = parser.parse_args()
 
     # Default mesh for CLI tools
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         vertices=[Point3D(0, 0, 0), Point3D(10, 0, 0), Point3D(0, 10, 0)],
         faces=[(0, 1, 2)],
     )

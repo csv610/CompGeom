@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 import math
 
 if TYPE_CHECKING:
-    from .polygon import Polygon
+    from compgeom.polygon.polygon import Polygon
 
-from ..kernel import Point2D
-from .line_segment import ray_segment_intersection
-from .tolerance import are_close
+from compgeom.kernel import Point2D
+from compgeom.polygon.line_segment import ray_segment_intersection
+from compgeom.polygon.tolerance import are_close
 
 
 def compute_visibility_polygon(viewpoint: Point2D, polygon: Polygon | list[Point2D]) -> Polygon:
@@ -18,7 +18,7 @@ def compute_visibility_polygon(viewpoint: Point2D, polygon: Polygon | list[Point
     Computes the visibility polygon from a given viewpoint within or on the boundary of a polygon.
     Uses a simple ray-casting approach (for demonstration, not optimal).
     """
-    from .polygon import Polygon
+    from compgeom.polygon.polygon import Polygon
     
     poly_obj = polygon if isinstance(polygon, Polygon) else Polygon(polygon)
     if not poly_obj.contains_point(viewpoint) and not poly_obj.point_on_boundary(viewpoint):

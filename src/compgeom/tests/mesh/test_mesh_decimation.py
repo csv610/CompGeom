@@ -1,9 +1,9 @@
 from compgeom.kernel import Point3D
-from compgeom.mesh import MeshDecimator, TriangleMesh
+from compgeom.mesh import MeshDecimator, TriMesh
 
 
 def test_decimate_returns_input_mesh_when_target_is_not_smaller():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -19,7 +19,7 @@ def test_decimate_returns_input_mesh_when_target_is_not_smaller():
 
 
 def test_decimate_reduces_two_triangle_patch_to_one_triangle():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -39,7 +39,7 @@ def test_decimate_reduces_two_triangle_patch_to_one_triangle():
 
 
 def test_decimate_four_triangle_strip_preserves_outer_extent():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),

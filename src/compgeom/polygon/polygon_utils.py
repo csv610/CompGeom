@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Callable, Sequence
 
-from ..kernel import Point2D, is_on_segment
-from .line_segment import proper_segment_intersection
-from .polygon import Polygon
-from .tolerance import are_close, EPSILON
+from compgeom.kernel import Point2D, is_on_segment
+from compgeom.polygon.line_segment import proper_segment_intersection
+from compgeom.polygon.polygon import Polygon
+from compgeom.polygon.tolerance import are_close, EPSILON
 
 
 def ensure_ccw(polygon: Polygon | Sequence[Point2D]) -> Polygon:

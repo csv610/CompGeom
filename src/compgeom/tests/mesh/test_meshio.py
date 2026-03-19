@@ -1,7 +1,7 @@
 import os
 import pytest
 from compgeom.kernel import Point2D, Point3D
-from compgeom.mesh.mesh import TriangleMesh
+from compgeom.mesh.mesh import TriMesh
 from compgeom.mesh.meshio import (
     OBJFileHandler,
     OFFFileHandler,
@@ -15,7 +15,7 @@ from compgeom.mesh.meshio import (
 def sample_mesh():
     vertices = [Point3D(0, 0, 0, 0), Point3D(1, 0, 0, 1), Point3D(0, 1, 0, 2)]
     faces = [(0, 1, 2)]
-    return TriangleMesh(vertices, faces)
+    return TriMesh(vertices, faces)
 
 def test_obj_io(sample_mesh, tmp_path):
     filename = str(tmp_path / 'test.obj')

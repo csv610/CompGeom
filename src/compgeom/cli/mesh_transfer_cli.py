@@ -2,7 +2,7 @@ import argparse
 import sys
 import math
 from compgeom import Point2D
-from compgeom import TriangleMesh, MeshTransfer, OBJFileHandler
+from compgeom import TriMesh, MeshTransfer, OBJFileHandler
 
 def main():
     parser = argparse.ArgumentParser(description="Transfer mesh topology to a new polygonal domain.")
@@ -14,7 +14,7 @@ def main():
     
     # 1. Load source mesh
     print(f"Reading source mesh from {args.input}...")
-    source_mesh = TriangleMesh.from_file(args.input)
+    source_mesh = TriMesh.from_file(args.input)
     print(f"Source: {len(source_mesh.vertices)} vertices, {len(source_mesh.faces)} triangles.")
     
     # 2. Define target polygon

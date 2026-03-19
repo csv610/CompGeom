@@ -5,13 +5,13 @@ from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING, Tuple, List
 from decimal import Decimal
 
-from .point import Point2D
-from .line_segment import LineSegment
-from .math_utils import (
+from compgeom.kernel.point import Point2D
+from compgeom.kernel.line_segment import LineSegment
+from compgeom.kernel.math_utils import (
     EPSILON, 
     distance,
 )
-from .triangle import orientation_sign, circumcenter
+from compgeom.kernel.triangle import orientation_sign, circumcenter
 
 @dataclass(frozen=True, slots=True)
 class Circle2D:

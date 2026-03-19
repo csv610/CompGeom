@@ -7,7 +7,7 @@ import fractions
 from decimal import getcontext
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
-from .point import EPSILON, Point2D, Point3D
+from compgeom.kernel.point import EPSILON, Point2D, Point3D
 
 # Set precision once for the module
 getcontext().prec = 50

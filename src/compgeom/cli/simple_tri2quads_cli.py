@@ -1,15 +1,15 @@
-"""Command-line tool for TriangleMesh to QuadMesh conversion."""
+"""Command-line tool for TriMesh to QuadMesh conversion."""
 
 from __future__ import annotations
 
 import argparse
 import sys
 
-from compgeom import OBJFileHandler, TriangleMesh, TriangleToQuadConverter
+from compgeom import OBJFileHandler, TriMesh, TriangleToQuadConverter
 
 def main():
-    parser = argparse.ArgumentParser(description="Convert TriangleMesh to QuadMesh (1-to-3 split).")
-    parser.add_argument("input", help="Input OBJ file (TriangleMesh)")
+    parser = argparse.ArgumentParser(description="Convert TriMesh to QuadMesh (1-to-3 split).")
+    parser.add_argument("input", help="Input OBJ file (TriMesh)")
     parser.add_argument("output", help="Output OBJ file (QuadMesh)")
     
     args = parser.parse_args()
@@ -20,7 +20,7 @@ def main():
         vertices = mesh.vertices
         # Ensure input is triangulated
         tri_faces = mesh.elements if len(mesh.elements[0]) == 3 else []
-        tri_mesh = TriangleMesh(vertices, tri_faces)
+        tri_mesh = TriMesh(vertices, tri_faces)
     except Exception as e:
         print(f"Error reading file: {e}")
         sys.exit(1)

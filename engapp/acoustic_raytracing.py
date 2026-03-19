@@ -5,10 +5,10 @@ import math
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
 
 

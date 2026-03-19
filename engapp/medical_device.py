@@ -4,11 +4,11 @@ import math
 import argparse
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -27,7 +27,7 @@ class MedicalDeviceGeometry:
     """Provides algorithms for medical device design and bio-surface analysis."""
 
     @staticmethod
-    def surface_roughness(mesh: TriangleMesh) -> float:
+    def surface_roughness(mesh: TriMesh) -> float:
         """
         Calculates the Ra (Average Roughness) of the surface.
         In medical manufacturing (implants), surface finish is critical for osseointegration.
@@ -86,7 +86,7 @@ class MedicalDeviceGeometry:
         wire_thickness: float,
         cell_count_circular: int,
         cell_count_longitudinal: int,
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """
         Generates a 3D cylindrical lattice mesh representing a medical stent.
         Essential for interventional cardiology device design.
@@ -117,10 +117,10 @@ class MedicalDeviceGeometry:
                 faces.append((p1, p2, p3))
                 faces.append((p1, p3, p4))
 
-        return TriangleMesh(vertices, faces)
+        return TriMesh(vertices, faces)
 
     @staticmethod
-    def porosity_analysis(mesh: TriangleMesh, volume_bbox: float) -> float:
+    def porosity_analysis(mesh: TriMesh, volume_bbox: float) -> float:
         """
         Calculates the porosity percentage of a 3D printed lattice/bone scaffold.
         Ratio of empty space to total volume.
@@ -168,7 +168,7 @@ def main():
     args = parser.parse_args()
 
     # Mock setup
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         vertices=[Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         faces=[(0, 1, 2)],
     )

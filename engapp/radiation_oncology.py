@@ -5,11 +5,11 @@ import math
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -62,7 +62,7 @@ class RadiationOncology:
 
     @staticmethod
     def calculate_tissue_depth(
-        body_mesh: TriangleMesh, beam_source: Point3D, tumor_center: Point3D
+        body_mesh: TriMesh, beam_source: Point3D, tumor_center: Point3D
     ) -> float:
         """
         Calculates how much tissue the radiation beam must pass through to reach the tumor.
@@ -100,7 +100,7 @@ class RadiationOncology:
 
     @staticmethod
     def check_organ_collision(
-        oar_mesh: TriangleMesh, beam_source: Point3D, tumor_center: Point3D
+        oar_mesh: TriMesh, beam_source: Point3D, tumor_center: Point3D
     ) -> bool:
         """
         Checks if a radiation beam passes through an Organ-at-Risk (OAR).

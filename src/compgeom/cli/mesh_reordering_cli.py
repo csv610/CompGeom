@@ -1,9 +1,10 @@
 import argparse
+import random
 import sys
 from compgeom import Point2D
-from compgeom import TriangleMesh, CuthillMcKee, OBJFileHandler
+from compgeom import TriMesh, CuthillMcKee, OBJFileHandler
 
-def calculate_dual_bandwidth(mesh: TriangleMesh):
+def calculate_dual_bandwidth(mesh: TriMesh):
     adj = {i: mesh.topology.shared_edge_neighbors(i) for i in range(len(mesh.faces))}
     bandwidth = 0
     for i, neighbors in adj.items():
@@ -11,7 +12,7 @@ def calculate_dual_bandwidth(mesh: TriangleMesh):
             bandwidth = max(bandwidth, abs(i - j))
     return bandwidth
 
-def calculate_nodal_bandwidth(mesh: TriangleMesh):
+def calculate_nodal_bandwidth(mesh: TriMesh):
     adj = {i: mesh.topology.vertex_neighbors(i) for i in range(len(mesh.vertices))}
     bandwidth = 0
     for i, neighbors in adj.items():
@@ -30,10 +31,9 @@ def main():
     
     if args.input:
         print(f"Reading mesh from {args.input}...")
-        mesh = TriangleMesh.from_file(args.input)
+        mesh = TriMesh.from_file(args.input)
     else:
         # Create a shuffled grid
-        import random
         vertices = [Point2D(x,y) for y in range(4) for x in range(4)]
         faces = []
         for j in range(3):
@@ -47,7 +47,7 @@ def main():
         shuffled_vertices = [vertices[i] for i in v_map]
         inv_map = {old: new for new, old in enumerate(v_map)}
         shuffled_faces = [tuple(inv_map[v] for v in f) for f in faces]
-        mesh = TriangleMesh(shuffled_vertices, shuffled_faces)
+        mesh = TriMesh(shuffled_vertices, shuffled_faces)
         print("Using default shuffled 3x3 grid.")
         
     print(f"Mesh: {len(mesh.vertices)} vertices, {len(mesh.faces)} triangles.")
@@ -57,7 +57,7 @@ def main():
         print(f"Initial Dual Bandwidth: {initial_bw}")
         new_order = CuthillMcKee.reorder_elements(mesh, reverse=not args.no_reverse)
         reordered_faces = [mesh.faces[i] for i in new_order]
-        new_mesh = TriangleMesh(mesh.vertices, reordered_faces)
+        new_mesh = TriMesh(mesh.vertices, reordered_faces)
         final_bw = calculate_dual_bandwidth(new_mesh)
     else:
         initial_bw = calculate_nodal_bandwidth(mesh)
@@ -67,7 +67,7 @@ def main():
         reordered_vertices = [mesh.vertices[i] for i in new_order]
         inv_map = {old: new for new, old in enumerate(new_order)}
         updated_faces = [tuple(inv_map[v] for v in f) for f in mesh.faces]
-        new_mesh = TriangleMesh(reordered_vertices, updated_faces)
+        new_mesh = TriMesh(reordered_vertices, updated_faces)
         final_bw = calculate_nodal_bandwidth(new_mesh)
         
     print(f"Final Bandwidth ({args.target}): {final_bw}")

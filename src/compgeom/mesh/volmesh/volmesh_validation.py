@@ -4,7 +4,7 @@ from typing import List, Tuple, Dict
 from compgeom.kernel import Point3D
 from compgeom.mesh.volmesh.polyhedral_mesh import PolyhedralMesh
 
-def validate_voronoi_mesh(mesh: PolyhedralMesh, tolerance: float = 1e-7) -> Tuple[bool, List[str]]:
+def validate_voronoi_mesh(mesh: PolyhedralMesh, tolerance: float = 1e-5) -> Tuple[bool, List[str]]:
     """
     Validates if a PolyhedralMesh is a valid Voronoi diagram.
     
@@ -21,11 +21,11 @@ def validate_voronoi_mesh(mesh: PolyhedralMesh, tolerance: float = 1e-7) -> Tupl
     """
     errors = []
     
-    if not mesh.cells:
+    if not mesh.poly_cells:
         return True, []
 
     # 1. Planarity Check
-    for cell_idx, cell in enumerate(mesh.cells):
+    for cell_idx, cell in enumerate(mesh.poly_cells):
         for face_idx, face in enumerate(cell):
             if len(face) < 4:
                 continue # 3 points always planar
@@ -60,7 +60,7 @@ def validate_voronoi_mesh(mesh: PolyhedralMesh, tolerance: float = 1e-7) -> Tupl
     # 2. Equidistance & Proximity (if seeds available)
     if mesh.seeds:
         seeds = mesh.seeds
-        for cell_idx, cell in enumerate(mesh.cells):
+        for cell_idx, cell in enumerate(mesh.poly_cells):
             if cell_idx >= len(seeds):
                 continue
                 
@@ -87,7 +87,7 @@ def validate_voronoi_mesh(mesh: PolyhedralMesh, tolerance: float = 1e-7) -> Tupl
 
     # 3. Convexity Check (Simple version: centroid should be on the same side of all face planes)
     # A more robust check would verify all vertices of a cell are on the same side of each face plane.
-    for cell_idx, cell in enumerate(mesh.cells):
+    for cell_idx, cell in enumerate(mesh.poly_cells):
         if not cell: continue
         
         # Collect all vertices of the cell

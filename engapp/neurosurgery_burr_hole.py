@@ -5,10 +5,10 @@ import math
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
 
 
@@ -17,13 +17,13 @@ class BurrHolePlanning:
 
     @staticmethod
     def entry_point_normal(
-        mesh: TriangleMesh, point_idx: int
+        mesh: TriMesh, point_idx: int
     ) -> Tuple[float, float, float]:
         """
         Calculates the surface normal at a specific vertex index.
         Used to ensure the burr drill is perpendicular to the skull.
         """
-        # In a real TriangleMesh, we would average the normals of all adjacent faces.
+        # In a real TriMesh, we would average the normals of all adjacent faces.
         # Here we mock the behavior by finding faces containing the vertex.
         verts = (
             mesh.vertices()

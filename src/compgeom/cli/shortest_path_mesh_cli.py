@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from compgeom import Point2D
-from ._shared import demo_mesh_lines
+from compgeom.cli._shared import demo_mesh_lines
 from compgeom.algo.path import shortest_path
 
 

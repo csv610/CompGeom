@@ -5,11 +5,11 @@ import argparse
 from typing import Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -40,7 +40,7 @@ class ArchitectureEngineering:
 
     @staticmethod
     def panelize_surface(
-        mesh: TriangleMesh, panel_width: float, panel_height: float
+        mesh: TriMesh, panel_width: float, panel_height: float
     ) -> Tuple[int, Tuple[float, float, float]]:
         """
         Optimizes the placement of fixed-size quadrilateral panels to cover a surface.
@@ -166,7 +166,7 @@ class ArchitectureEngineering:
 
     @staticmethod
     def calculate_roof_area(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         up_vector: Tuple[float, float, float] = (0, 0, 1),
         tolerance_deg: float = 10.0,
     ) -> float:
@@ -179,7 +179,7 @@ class ArchitectureEngineering:
     @staticmethod
     def generate_parametric_house(
         width: float, length: float, wall_height: float, roof_height: float
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """
         Generates a simple 3D mesh of a house with a pitched roof.
         """
@@ -211,7 +211,7 @@ class ArchitectureEngineering:
             [8, 5, 9],
             [4, 8, 9],  # Roof (simplified)
         ]
-        return TriangleMesh(vertices, faces)
+        return TriMesh(vertices, faces)
 
 
 def main():
@@ -253,7 +253,7 @@ def main():
 
     if args.command in ["panelize", "roof-area"]:
         try:
-            mesh = TriangleMesh.from_file(args.mesh_file)
+            mesh = TriMesh.from_file(args.mesh_file)
         except Exception as e:
             print(f"Error loading mesh: {e}")
             return

@@ -6,9 +6,9 @@ import math
 from typing import TYPE_CHECKING, List, Tuple
 
 if TYPE_CHECKING:
-    from .polygon import Polygon
+    from compgeom.polygon.polygon import Polygon
 
-from ..kernel import Point2D
+from compgeom.kernel import Point2D
 
 
 def solve_linear_system(matrix: List[List[float]], b: List[float]) -> List[float]:

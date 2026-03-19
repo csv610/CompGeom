@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .point import Point2D, Point3D
-from .math_utils import (
+from compgeom.kernel.point import Point2D, Point3D
+from compgeom.kernel.math_utils import (
     EPSILON,
     cross_product,
     distance,
@@ -14,7 +14,7 @@ from .math_utils import (
     length_sq,
     sub,
 )
-from .line_segment import intersect_lines
+from compgeom.kernel.line_segment import intersect_lines
 
 
 import math

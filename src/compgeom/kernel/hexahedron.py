@@ -3,10 +3,10 @@ import math
 from dataclasses import dataclass
 from typing import Tuple, List
 
-from .point import Point3D
-from .math_utils import EPSILON
-from .tetrahedron import volume as tet_volume, orientation_sign
-from .sphere import Sphere, from_two_points, from_three_points, from_four_points
+from compgeom.kernel.point import Point3D
+from compgeom.kernel.math_utils import EPSILON
+from compgeom.kernel.tetrahedron import volume as tet_volume, orientation_sign
+from compgeom.kernel.sphere import Sphere, from_two_points, from_three_points, from_four_points
 
 
 @dataclass(frozen=True, slots=True)

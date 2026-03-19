@@ -5,11 +5,11 @@ from __future__ import annotations
 import heapq
 from typing import Sequence
 
-from .exceptions import PointOutsidePolygonError, PolygonPathNotFoundError
-from .tolerance import EPSILON
-from ..kernel import Point2D, distance
-from .polygon import Polygon
-from .polygon_utils import segment_inside_boundaries
+from compgeom.polygon.exceptions import PointOutsidePolygonError, PolygonPathNotFoundError
+from compgeom.polygon.tolerance import EPSILON
+from compgeom.kernel import Point2D, distance
+from compgeom.polygon.polygon import Polygon
+from compgeom.polygon.polygon_utils import segment_inside_boundaries
 
 
 def segment_inside_polygon(polygon: Polygon | Sequence[Point2D], start: Point2D, end: Point2D) -> bool:

@@ -6,9 +6,9 @@ import math
 import cmath
 from typing import List, Sequence
 
-from ..kernel import Point2D, distance
-from .polygon import Polygon
-from .tolerance import EPSILON
+from compgeom.kernel import Point2D, distance
+from compgeom.polygon.polygon import Polygon
+from compgeom.polygon.tolerance import EPSILON
 
 
 def resample_polygon(polygon: Polygon | Sequence[Point2D], n_points: int) -> list[Point2D]:

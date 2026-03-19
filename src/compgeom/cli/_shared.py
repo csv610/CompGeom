@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sys
+import numpy as np
+import pyvista as pv
 from collections.abc import Iterable, Sequence
 
 from compgeom import Point2D
@@ -103,9 +105,6 @@ def visualize_with_pyvista(
     polygons: list[list[Point2D]] | None = None,
 ) -> None:
     """Visualize points, meshes, and polygons using pyvista."""
-    import numpy as np
-    import pyvista as pv
-
     plotter = pv.Plotter()
 
     if points:

@@ -66,7 +66,7 @@ from compgeom.algo.shapes import (
 )
 from compgeom.graphics.geo_plot import GeomPlot
 from compgeom.graphics.visualization import generate_svg_path, save_png, save_svg
-from compgeom.mesh import CuthillMcKee, MeshColoring, MeshTransfer, PolygonMesh, QuadMesh, TriangleMesh, VoronoiDiagram
+from compgeom.mesh import CuthillMcKee, MeshColoring, MeshTransfer, PolygonMesh, QuadMesh, TriMesh, VoronoiDiagram
 from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import (
     DTriangle,
     DelaunayMesher,
@@ -196,7 +196,7 @@ def test_point_sampler_helpers_generate_points_in_expected_domains():
 
 def test_mesh_coloring_reordering_and_voronoi_diagram_helpers():
     vertices = [Point2D(0, 0), Point2D(1, 0), Point2D(0, 1), Point2D(1, 1)]
-    mesh = TriangleMesh(vertices, [(0, 1, 2), (1, 3, 2)])
+    mesh = TriMesh(vertices, [(0, 1, 2), (1, 3, 2)])
 
     element_colors = MeshColoring.color_elements(mesh)
     vertex_colors = MeshColoring.color_vertices(mesh)
@@ -299,7 +299,7 @@ def test_mesh_transfer_maps_boundary_to_target_polygon():
         Point2D(0, 1),
         Point2D(0.5, 0.5),
     ]
-    mesh = TriangleMesh(vertices, [(0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4)])
+    mesh = TriMesh(vertices, [(0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4)])
     target = [Point2D(0, 0), Point2D(2, 0), Point2D(2, 1), Point2D(0, 1)]
 
     transferred = MeshTransfer.transfer(mesh, target)
@@ -363,7 +363,7 @@ def test_space_filling_curve_generators_and_visualization():
 
 
 def test_mesh_refinement_and_triangle_to_quad_conversion():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [Point2D(0, 0), Point2D(2, 0), Point2D(0, 2)],
         [(0, 1, 2)],
     )
@@ -439,7 +439,7 @@ def test_mesh_io_handlers_round_trip_common_formats():
 
 
 def test_geoplot_renders_mesh_polygon_voronoi_and_points():
-    mesh = TriangleMesh([Point2D(0, 0), Point2D(1, 0), Point2D(0, 1)], [(0, 1, 2)])
+    mesh = TriMesh([Point2D(0, 0), Point2D(1, 0), Point2D(0, 1)], [(0, 1, 2)])
     polygon = Polygon([Point2D(0, 0), Point2D(2, 0), Point2D(1, 1)])
     diagram = VoronoiDiagram()
     diagram.compute([Point2D(0, 0, 0), Point2D(2, 0, 1)], boundary_type="square")
@@ -521,7 +521,7 @@ def test_circle_packer_handles_empty_and_packs_rectangle_domain():
 
 
 def test_mesh_core_helpers_cover_topology_and_even_element_repairs():
-    triangle_mesh = TriangleMesh(
+    triangle_mesh = TriMesh(
         [Point2D(0, 0), Point2D(1, 0), Point2D(1, 1), Point2D(0, 1)],
         [(0, 1, 2), (0, 2, 3)],
     )
@@ -542,11 +542,11 @@ def test_mesh_core_helpers_cover_topology_and_even_element_repairs():
     assert triangle_mesh.topology.element_neighbors(0) == {1}
     assert triangle_mesh.topology.shared_edge_neighbors(0) == {1}
 
-    split_even = TriangleMesh([Point2D(0, 0), Point2D(2, 0), Point2D(0, 2)], [(0, 1, 2)]).ensure_even_elements()
+    split_even = TriMesh([Point2D(0, 0), Point2D(2, 0), Point2D(0, 2)], [(0, 1, 2)]).ensure_even_elements()
     assert len(split_even.faces) % 2 == 0
     assert len(split_even.vertices) > 3
 
-    odd_two = TriangleMesh(
+    odd_two = TriMesh(
         [Point2D(0, 0), Point2D(2, 0), Point2D(1, 1), Point2D(0, 2), Point2D(2, 2)],
         [(0, 1, 2), (0, 2, 3), (1, 4, 2)],
     )
@@ -576,19 +576,19 @@ def test_mesh_and_triangle_utilities_cover_standalone_helpers():
     assert get_nondelaunay_triangles(build_topology(tris)) == set()
 
     assert len(DelaunayMesher.build_mesh_topology(tris)) == 2
-    mesh = TriangleMesh.from_triangles(tris)
-    assert isinstance(mesh, TriangleMesh)
+    mesh = TriMesh.from_triangles(tris)
+    assert isinstance(mesh, TriMesh)
     assert mesh.faces == [(0, 1, 2), (1, 3, 2)]
 
     tri_mesh = DelaunayMesher.triangulate(
         [Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2), Point2D(1, 1, 3)],
         algorithm="incremental",
     )
-    assert isinstance(tri_mesh, TriangleMesh)
+    assert isinstance(tri_mesh, TriMesh)
     constrained = DelaunayMesher.constrained_triangulate(
         [Point2D(0, 0), Point2D(2, 0), Point2D(2, 2), Point2D(0, 2)]
     )
-    assert isinstance(constrained, TriangleMesh)
+    assert isinstance(constrained, TriMesh)
     dynamic = DelaunayMesher.dynamic_triangulate(10, 10)
     assert isinstance(dynamic, DynamicDelaunay)
     assert DelaunayMesher.check_is_delaunay(build_topology(tris)) is True
@@ -598,7 +598,7 @@ def test_mesh_and_triangle_utilities_cover_standalone_helpers():
         DelaunayMesher.triangulate([Point2D(0, 0), Point2D(1, 0), Point2D(0, 1)], algorithm="unknown")
 
     mesh = triangulate([Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2), Point2D(0, 1, 2)])
-    assert isinstance(mesh, TriangleMesh)
+    assert isinstance(mesh, TriMesh)
 
 
 def test_dynamic_and_low_level_triangle_classes():
@@ -669,13 +669,13 @@ def test_point_tree_helpers_cover_quadtree_display_and_simplifier(capsys):
 def test_delaunay_remaining_paths_cover_divide_and_conquer_and_flips():
     points = [Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2), Point2D(1, 1, 3)]
     mesh_dc = DelaunayMesher.triangulate(points, algorithm="divide_and_conquer")
-    assert isinstance(mesh_dc, TriangleMesh)
+    assert isinstance(mesh_dc, TriMesh)
 
     mesh_flip = DelaunayMesher.triangulate(
         [Point2D(0, 0, 0), Point2D(1, 0, 1), Point2D(0, 1, 2), Point2D(1, 1, 3)],
         algorithm="flip",
     )
-    assert isinstance(mesh_flip, TriangleMesh)
+    assert isinstance(mesh_flip, TriMesh)
 
     non_delaunay = build_topology(
         [
@@ -723,13 +723,14 @@ def test_visualization_helpers_generate_and_save_outputs(monkeypatch):
 
 
 def test_mesh_voxelizer_native_and_fallback_paths(monkeypatch):
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [
             Point3D(0, 0, 0, 0),
             Point3D(1, 0, 0, 1),
-            Point3D(0, 1, 1, 2),
+            Point3D(0, 1, 0, 2),
+            Point3D(1, 1, 1, 3),
         ],
-        [(0, 1, 2)],
+        [(0, 1, 2), (1, 3, 2)],
     )
 
     voxels = MeshVoxelizer.voxelize_native(mesh, voxel_size=0.5, fill_interior=False)
@@ -956,7 +957,7 @@ def test_voronoi_square_compute_and_triangle_to_quad_edge_reuse():
             assert -1.0 <= vertex.x <= 3.0
             assert -0.5 <= vertex.y <= 2.5
 
-    mesh2d = TriangleMesh(
+    mesh2d = TriMesh(
         [Point2D(0, 0), Point2D(1, 0), Point2D(1, 1), Point2D(0, 1)],
         [(0, 1, 2), (0, 2, 3)],
     )
@@ -970,7 +971,7 @@ def test_voronoi_square_compute_and_triangle_to_quad_edge_reuse():
     ]
     assert shared_midpoints == [6]
 
-    mesh3d = TriangleMesh(
+    mesh3d = TriMesh(
         [Point3D(0, 0, 0, 0), Point3D(2, 0, 0, 1), Point3D(0, 2, 2, 2)],
         [(0, 1, 2)],
     )

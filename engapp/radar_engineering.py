@@ -5,11 +5,11 @@ import math
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -26,7 +26,7 @@ class RadarEngineering:
 
     @staticmethod
     def _compute_normals_fallback(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
     ) -> List[Tuple[float, float, float]]:
         """Fallback for face normals computation."""
         normals = []
@@ -52,7 +52,7 @@ class RadarEngineering:
 
     @staticmethod
     def compute_los_visibility(
-        mesh: TriangleMesh, source_pos: Tuple[float, float, float]
+        mesh: TriMesh, source_pos: Tuple[float, float, float]
     ) -> List[bool]:
         """
         Determines which faces are visible from a radar/signal source.
@@ -110,7 +110,7 @@ class RadarEngineering:
 
     @staticmethod
     def estimated_rcs(
-        mesh: TriangleMesh, incident_dir: Tuple[float, float, float]
+        mesh: TriMesh, incident_dir: Tuple[float, float, float]
     ) -> float:
         """
         Provides a first-order Radar Cross Section (RCS) estimate using Physical Optics.
@@ -176,7 +176,7 @@ def main():
     args = parser.parse_args()
 
     # Simple Mesh for Demo
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         vertices=[Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         faces=[(0, 1, 2)],
     )

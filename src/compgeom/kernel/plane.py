@@ -3,8 +3,8 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
-from .point import Point3D
-from .math_utils import EPSILON
+from compgeom.kernel.point import Point3D
+from compgeom.kernel.math_utils import EPSILON
 
 @dataclass(frozen=True, slots=True)
 class Plane:

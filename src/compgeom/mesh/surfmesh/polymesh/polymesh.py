@@ -1,20 +1,17 @@
 from __future__ import annotations
 from typing import List, Optional, Tuple, Union, Any
 
-from compgeom.mesh.mesh_base import Mesh, MeshNode, MeshFace, MeshEdge
+from compgeom.mesh.mesh_base import MeshNode, MeshFace, MeshEdge
 from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
+from compgeom.mesh.surfmesh.surface_mesh import SurfaceMesh
 
-class PolygonMesh(Mesh):
+class PolygonMesh(SurfaceMesh):
     """A 2D or 3D mesh composed of arbitrary polygonal faces."""
 
     def __init__(self, 
                  nodes: List[Union[MeshNode, Any]], 
                  faces: List[Union[MeshFace, Tuple[int, ...]]], 
                  edges: Optional[List[MeshEdge]] = None):
-        if nodes and not isinstance(nodes[0], MeshNode):
-            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
-        if faces and not isinstance(faces[0], MeshFace):
-            faces = [MeshFace(i, f) for i, f in enumerate(faces)]
         super().__init__(nodes=nodes, faces=faces, edges=edges)
 
     @classmethod
@@ -58,17 +55,3 @@ class PolygonMesh(Mesh):
                     tri_faces.append(MeshFace(face_id, (v[0], v[i], v[i+1])))
                     face_id += 1
         return TriMesh(self.nodes, tri_faces)
-
-    def euler_characteristic(self) -> int:
-        """Calculates the Euler characteristic (V - E + F)."""
-        v = len(self.nodes)
-        f = len(self.faces)
-        edges = set()
-        for face in self.faces:
-            v_indices = face.v_indices
-            n = len(v_indices)
-            for i in range(n):
-                u, v_node = v_indices[i], v_indices[(i + 1) % n]
-                edges.add(tuple(sorted((u, v_node))))
-        e = len(edges)
-        return v - e + f

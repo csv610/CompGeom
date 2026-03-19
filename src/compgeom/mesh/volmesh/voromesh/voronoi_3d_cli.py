@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
         mesh = bv.compute(points)
         print(f"Computed cylinder-bounded 3D Voronoi diagram.")
 
-    print(f"Result: {len(mesh.vertices)} Voronoi vertices, {len(mesh.cells)} cells.")
+    print(f"Result: {len(mesh.vertices)} Voronoi vertices, {len(mesh.poly_cells)} cells.")
     
     if args.visualize:
         try:
@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
             
             # Add Voronoi cells
             v_coords = np.array([[v.x, v.y, v.z] for v in mesh.vertices])
-            for cell_faces in mesh.cells:
+            for cell_faces in mesh.poly_cells:
                 if not cell_faces: continue
                 # We can represent each cell as a PolyData
                 pv_faces = []

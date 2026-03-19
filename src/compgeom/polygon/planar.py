@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Sequence
 
-from .exceptions import DegeneratePolygonError
-from .tolerance import EPSILON
-from ..kernel import Point2D
-from .polygon import Polygon
+from compgeom.polygon.exceptions import DegeneratePolygonError
+from compgeom.polygon.tolerance import EPSILON
+from compgeom.kernel import Point2D
+from compgeom.polygon.polygon import Polygon
 
 
 @dataclass

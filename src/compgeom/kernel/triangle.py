@@ -4,13 +4,13 @@ from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING, Tuple, List, Any
 from decimal import Decimal
 
-from .point import Point2D, Point3D
-from .math_utils import (
+from compgeom.kernel.point import Point2D, Point3D
+from compgeom.kernel.math_utils import (
     EPSILON, 
     cross_product, 
     distance,
 )
-from .ray import Ray
+from compgeom.kernel.ray import Ray
 
 @dataclass(frozen=True, slots=True)
 class Triangle2D:

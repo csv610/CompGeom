@@ -3,7 +3,7 @@ import math
 from dataclasses import dataclass
 from typing import Tuple, List, Optional
 
-from .point import Point2D, Point3D
+from compgeom.kernel.point import Point2D, Point3D
 
 
 @dataclass(frozen=True, slots=True)

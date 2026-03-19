@@ -3,10 +3,10 @@
 import argparse
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
 
 
@@ -15,11 +15,11 @@ class CFDAnalysis:
 
     @staticmethod
     def generate_boundary_layers(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         thickness: float,
         layers: int = 3,
         growth_factor: float = 1.2,
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """
         Generates layered volumetric elements (represented here as offset surface shells)
         along the boundary of a mesh. Essential for capturing fluid friction in CFD.
@@ -45,7 +45,7 @@ class CFDAnalysis:
 
             current_thickness *= growth_factor
 
-        return TriangleMesh(all_vertices, all_faces)
+        return TriMesh(all_vertices, all_faces)
 
 
 def main():
@@ -65,7 +65,7 @@ def main():
 
     if args.command == "boundary-layers":
         try:
-            mesh = TriangleMesh.from_file(args.mesh_file)
+            mesh = TriMesh.from_file(args.mesh_file)
             new_mesh = CFDAnalysis.generate_boundary_layers(
                 mesh, args.thickness, args.layers, args.growth_factor
             )

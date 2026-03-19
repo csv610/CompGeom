@@ -5,11 +5,11 @@ import math
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -26,8 +26,8 @@ class VascularStenting:
 
     @staticmethod
     def radial_expansion(
-        stent: TriangleMesh, initial_radius: float, target_radius: float
-    ) -> TriangleMesh:
+        stent: TriMesh, initial_radius: float, target_radius: float
+    ) -> TriMesh:
         """
         Simulates the radial expansion of a stent from a catheter to the vessel wall.
         Scales vertices in the XY plane while preserving Z-length.
@@ -41,11 +41,11 @@ class VascularStenting:
                 Point3D(v.x * scale_factor, v.y * scale_factor, getattr(v, "z", 0.0))
             )
 
-        return TriangleMesh(expanded_vertices, stent.faces)
+        return TriMesh(expanded_vertices, stent.faces)
 
     @staticmethod
     def calculate_mar(
-        stent: TriangleMesh, vessel_radius: float, vessel_length: float
+        stent: TriMesh, vessel_radius: float, vessel_length: float
     ) -> float:
         """
         Calculates the Metal-to-Artery Ratio (MAR).
@@ -86,8 +86,8 @@ class VascularStenting:
 
     @staticmethod
     def map_to_centerline(
-        stent: TriangleMesh, centerline: List[Point3D]
-    ) -> TriangleMesh:
+        stent: TriMesh, centerline: List[Point3D]
+    ) -> TriMesh:
         """
         Deforms a straight cylindrical stent to follow a curved vessel centerline.
         Uses a simplified Parallel Transport Frame approach.
@@ -116,7 +116,7 @@ class VascularStenting:
 
             deformed_vertices.append(Point3D(new_x, new_y, new_z))
 
-        return TriangleMesh(deformed_vertices, stent.faces)
+        return TriMesh(deformed_vertices, stent.faces)
 
 
 def main():
@@ -153,7 +153,7 @@ def main():
             p1, p2 = i * circ + j, (i + 1) * circ + j
             p3 = (i + 1) * circ + (j + 1) % circ
             faces.append((p1, p2, p3))
-    stent = TriangleMesh(vertices, faces)
+    stent = TriMesh(vertices, faces)
 
     if args.command == "expand":
         expanded = VascularStenting.radial_expansion(stent, args.initial_radius, args.target_radius)

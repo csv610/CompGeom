@@ -6,7 +6,7 @@ import math
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..kernel import Point2D
+    from compgeom.kernel import Point2D
 
 EPSILON: float = 1e-9
 

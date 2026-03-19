@@ -4,11 +4,11 @@ import argparse
 from typing import Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -23,18 +23,18 @@ class GamingGeometry:
 
     @staticmethod
     def generate_navmesh(
-        mesh: TriangleMesh, max_slope_deg: float = 45.0, agent_radius: float = 0.5
-    ) -> TriangleMesh:
+        mesh: TriMesh, max_slope_deg: float = 45.0, agent_radius: float = 0.5
+    ) -> TriMesh:
         """
         Extracts walkable surfaces to generate a Navigation Mesh (NavMesh) for AI pathfinding.
         """
         # Mock implementation
-        return TriangleMesh(
+        return TriMesh(
             [Point3D() for _ in range(10)], [[0, 1, 2] for _ in range(5)]
         )
 
     @staticmethod
-    def compute_bounding_sphere(mesh: TriangleMesh) -> Tuple[Point3D, float]:
+    def compute_bounding_sphere(mesh: TriMesh) -> Tuple[Point3D, float]:
         """
         Computes a fast bounding sphere for frustum culling.
         Returns (center, radius).
@@ -73,7 +73,7 @@ def main():
 
     args = parser.parse_args()
 
-    mock_mesh = TriangleMesh([Point3D(0, 0, 0)], [[0, 0, 0]])
+    mock_mesh = TriMesh([Point3D(0, 0, 0)], [[0, 0, 0]])
     game_geom = GamingGeometry()
 
     if args.command == "generate_navmesh":

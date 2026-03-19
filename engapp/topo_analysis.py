@@ -5,12 +5,12 @@ from typing import List
 import math
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
     from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
     from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
     MeshAnalysis = object
     MeshQueries = object
@@ -20,7 +20,7 @@ class TopoAnalysis:
     """Provides algorithms for terrain modeling and contour extraction."""
 
     @staticmethod
-    def extract_contours(mesh: TriangleMesh, elevation: float) -> List[List[Point3D]]:
+    def extract_contours(mesh: TriMesh, elevation: float) -> List[List[Point3D]]:
         """
         Extracts elevation isocontours from a terrain mesh.
         Returns a list of polylines (contours) at the specified height.
@@ -76,7 +76,7 @@ class TopoAnalysis:
         return polylines
 
     @staticmethod
-    def earthwork_volume(mesh_base: TriangleMesh, mesh_top: TriangleMesh) -> float:
+    def earthwork_volume(mesh_base: TriMesh, mesh_top: TriMesh) -> float:
         """
         Calculates the volume of soil/material between two surfaces.
         Essential for civil engineering construction sites.

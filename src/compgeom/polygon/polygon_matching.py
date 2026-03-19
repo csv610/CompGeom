@@ -5,13 +5,14 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Sequence
 
-from .exceptions import PolygonError
+from compgeom.polygon.exceptions import PolygonError
 
 if TYPE_CHECKING:
-    from .polygon import Polygon
+    from compgeom.polygon.polygon import Polygon
 
-from ..kernel import Point2D
-from .polygon_similarity import get_polygon_signature
+from compgeom.kernel import Point2D
+from compgeom.polygon.polygon import Polygon
+from compgeom.polygon.polygon_similarity import get_polygon_signature
 
 
 def reorder_to_match(
@@ -24,9 +25,6 @@ def reorder_to_match(
     Reorders (cyclically shifts and potentially reverses) the vertices of poly2 
     to maximally match poly1 based on their geometric shape (similarity signature).
     """
-    # Importing Polygon here to avoid circular dependency
-    from .polygon import Polygon
-    
     p1 = poly1
     p2 = poly2
     

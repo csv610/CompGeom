@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, List, Set, Dict, Tuple, Sequence
 from collections import defaultdict
 
 if TYPE_CHECKING:
-    from .polygon import Polygon
+    from compgeom.polygon.polygon import Polygon
 
-from ..kernel import Point2D, cross_product, distance
-from .tolerance import EPSILON, is_zero, are_close
+from compgeom.kernel import Point2D, cross_product, distance
+from compgeom.polygon.tolerance import EPSILON, is_zero, are_close
 
 
 def _intersect_segments(p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) -> Point2D | None:
@@ -43,7 +43,7 @@ def resolve_self_intersections(polygon: Polygon | Sequence[Point2D]) -> list[Poi
     Resolves self-intersections in a polygon by splitting segments at intersection
     points and returning a simple boundary.
     """
-    from .polygon import Polygon
+    from compgeom.polygon.polygon import Polygon
     poly_obj = polygon if isinstance(polygon, Polygon) else Polygon(polygon)
     vertices = list(poly_obj.vertices)
     n = len(vertices)

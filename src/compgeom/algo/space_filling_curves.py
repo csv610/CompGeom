@@ -127,7 +127,7 @@ class SpaceFillingCurves:
     @staticmethod
     def visualize(indices: List[int], width: int, height: int, cell_size: int = 20) -> str:
         """Return an SVG image string representing the curve path."""
-        from ..graphics.visualization import generate_svg_path
+        from compgeom.graphics.visualization import generate_svg_path
 
         return generate_svg_path(indices, width, height, cell_size)
 
@@ -136,7 +136,7 @@ class SpaceFillingCurves:
         indices: List[int], width: int, height: int, filename: str, cell_size: int = 20
     ):
         """Save the curve visualization to a file (SVG or PNG)."""
-        from ..graphics.visualization import generate_svg_path, save_png, save_svg
+        from compgeom.graphics.visualization import generate_svg_path, save_png, save_svg
 
         svg = generate_svg_path(indices, width, height, cell_size)
         if filename.lower().endswith(".png"):

@@ -1,6 +1,6 @@
 import numpy as np
-from tet2hex import refine_tet_to_hex
-from hex2tet import hex_to_tet_6, refine_hex_to_tet_24
+from .tet2hex import refine_tet_to_hex
+from .hex2tet import hex_to_tet_6, refine_hex_to_tet_24
 
 def get_total_volume(pts, tets):
     vol = 0

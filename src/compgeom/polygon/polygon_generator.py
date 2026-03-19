@@ -6,9 +6,9 @@ import math
 import random
 from typing import List, Tuple, TypeVar, Union
 
-from ..kernel import Point2D, Point3D
-from .convex_hull import MonotoneChain
-from .polygon import Polygon
+from compgeom.kernel import Point2D, Point3D
+from compgeom.polygon.convex_hull import MonotoneChain
+from compgeom.polygon.polygon import Polygon
 
 PolygonT = TypeVar("PolygonT", bound=Polygon)
 

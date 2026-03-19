@@ -5,11 +5,11 @@ import math
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -26,7 +26,7 @@ class PrecisionViticulture:
 
     @staticmethod
     def calculate_terrain_following_path(
-        ground_mesh: TriangleMesh,
+        ground_mesh: TriMesh,
         survey_points: List[Tuple[float, float]],
         altitude: float,
     ) -> List[Point3D]:
@@ -102,7 +102,7 @@ class PrecisionViticulture:
         return math.pi * (radius**2)
 
     @staticmethod
-    def estimate_vine_density(ground_mesh: TriangleMesh, mesh_area: float) -> float:
+    def estimate_vine_density(ground_mesh: TriMesh, mesh_area: float) -> float:
         """
         Estimates the potential vine count based on surface area and spacing.
         Vineyards on slopes have more surface area than their 2D footprint.

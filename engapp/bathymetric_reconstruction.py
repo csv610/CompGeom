@@ -5,10 +5,10 @@ import argparse
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
 
 
@@ -61,7 +61,7 @@ class BathymetricReconstruction:
         return grid
 
     @staticmethod
-    def estimate_displaced_volume(mesh: TriangleMesh) -> float:
+    def estimate_displaced_volume(mesh: TriMesh) -> float:
         """
         Estimates the volume of the reconstructed mesh to guess ship weight.
         Uses the divergence theorem (sum of signed tetrahedron volumes).
@@ -145,7 +145,7 @@ def main():
         print(f"Sample value [0][0][0]: {grid[0][0][0]}")
     elif args.command == "estimate-volume":
         try:
-            mesh = TriangleMesh.from_file(args.mesh_file)
+            mesh = TriMesh.from_file(args.mesh_file)
             vol = BathymetricReconstruction.estimate_displaced_volume(mesh)
             print(f"Estimated volume: {vol}")
         except Exception as e:

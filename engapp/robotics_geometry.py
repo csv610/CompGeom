@@ -4,11 +4,11 @@ import argparse
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
     from compgeom.mesh.surfmesh.mesh_processing import MeshProcessing
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
     MeshProcessing = object
 
@@ -17,14 +17,14 @@ class RoboticsGeometry:
     """Provides algorithms for robot interaction and environment topology."""
 
     @staticmethod
-    def read_mesh_file(file_path: str) -> TriangleMesh:
-        """Reads a 3D mesh file and returns a TriangleMesh object."""
-        if hasattr(TriangleMesh, "from_file"):
-            return TriangleMesh.from_file(file_path)
-        return TriangleMesh()
+    def read_mesh_file(file_path: str) -> TriMesh:
+        """Reads a 3D mesh file and returns a TriMesh object."""
+        if hasattr(TriMesh, "from_file"):
+            return TriMesh.from_file(file_path)
+        return TriMesh()
 
     @staticmethod
-    def skeletonize(mesh: TriangleMesh) -> List[Tuple[Point3D, Point3D]]:
+    def skeletonize(mesh: TriMesh) -> List[Tuple[Point3D, Point3D]]:
         """
         Extracts a 1D skeleton (graph) from a 3D surface mesh.
         Used for character rigging and robot path planning (centerline extraction).
@@ -34,8 +34,8 @@ class RoboticsGeometry:
 
     @staticmethod
     def configuration_space_obstacle(
-        mesh: TriangleMesh, robot_radius: float
-    ) -> TriangleMesh:
+        mesh: TriMesh, robot_radius: float
+    ) -> TriMesh:
         """
         Calculates the C-Space obstacle by offsetting the environment mesh
         by the robot's collision radius.
@@ -73,8 +73,8 @@ def main():
             return
     else:
         # Demo Mesh
-        if TriangleMesh is not object and Point3D is not object:
-            mesh = TriangleMesh(
+        if TriMesh is not object and Point3D is not object:
+            mesh = TriMesh(
                 vertices=[Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
                 faces=[(0, 1, 2)],
             )

@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 from typing import Sequence
 
-from ..kernel import Point2D, cross_product, distance
-from .polygon import Polygon, PolygonProperties
+from compgeom.kernel import Point2D, cross_product, distance
+from compgeom.polygon.polygon import Polygon, PolygonProperties
 
 
 def get_polygon_properties(polygon: Polygon | Sequence[Point2D]) -> PolygonProperties:

@@ -1,7 +1,7 @@
 import pytest
 
 from compgeom.kernel import Point3D
-from compgeom.mesh import TriangleMesh
+from compgeom.mesh import TriMesh
 from compgeom.mesh.surfmesh.halfedge_mesh import HalfEdgeMesh
 from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
 from compgeom.mesh.surfmesh.mesh_validation import MeshValidation
@@ -9,7 +9,7 @@ from compgeom.mesh.surfmesh.spatial_acceleration import AABBTree
 
 
 def make_patch():
-    return TriangleMesh(
+    return TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -21,7 +21,7 @@ def make_patch():
 
 
 def make_crossing_triangles():
-    return TriangleMesh(
+    return TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(2, 0, 0),
@@ -57,7 +57,7 @@ def test_halfedge_assigns_twins_on_shared_edge_only():
 
 
 def test_single_ray_triangle_intersection_and_distance_helpers():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         [(0, 1, 2)],
     )
@@ -75,7 +75,7 @@ def test_single_ray_triangle_intersection_and_distance_helpers():
 
 
 def test_ray_intersect_matches_between_bruteforce_and_spatial_tree():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         [(0, 1, 2)],
     )
@@ -88,7 +88,7 @@ def test_ray_intersect_matches_between_bruteforce_and_spatial_tree():
 
 
 def test_compute_sdf_and_slice_mesh_currently_return_none():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         [(0, 1, 2)],
     )
@@ -108,7 +108,7 @@ def test_mesh_intersection_and_self_intersection_detection_on_crossing_faces():
 
 
 def test_generalized_winding_number_currently_raises_name_error():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -143,6 +143,7 @@ def test_mesh_validation_report_for_open_patch():
         "no_degenerate_faces": True,
         "is_edge_manifold": True,
         "is_watertight": False,
+        "is_orientable": True,
         "consistent_normals": True,
         "no_self_intersections": True,
     }

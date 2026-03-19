@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 
-from ..kernel import EPSILON, Point2D, Point3D, cross_product
-from ..kernel import distance
+from compgeom.kernel import EPSILON, Point2D, Point3D, cross_product
+from compgeom.kernel import distance
 
 
 class ConvexHull:
@@ -21,11 +21,11 @@ class ConvexHull:
             points: A list of Point2D or Point3D objects.
             algorithm: The algorithm to use for 2D points ("scipy", "graham_scan", "monotone_chain", "quickhull", "chan").
                        Defaults to "scipy".
-                       For 3D points, a TriangleMesh is returned using SciPy's Qhull.
+                       For 3D points, a TriMesh is returned using SciPy's Qhull.
 
         Returns:
             A list of Point2D representing the hull boundary for 2D points,
-            or a TriangleMesh for 3D points.
+            or a TriMesh for 3D points.
         """
         if not points:
             return []
@@ -45,7 +45,7 @@ class ConvexHull:
             return generator_cls().generate(points)
 
         if isinstance(p0, Point3D):
-            from ..mesh.surfmesh.convex_hull import ConvexHull3D
+            from compgeom.mesh.surfmesh.convex_hull import ConvexHull3D
             return ConvexHull3D.compute(points)
 
         raise TypeError("Points must be a list of Point2D or Point3D objects.")
@@ -79,7 +79,7 @@ class ConvexHullGenerator(ABC):
             if cross_product(hull[i - 1], hull[i], hull[(i + 1) % len(hull)]) <= EPSILON:
                 return False
 
-        from .polygon import Polygon
+        from compgeom.polygon.polygon import Polygon
 
         hull_polygon = Polygon(hull)
         for point in unique_points:

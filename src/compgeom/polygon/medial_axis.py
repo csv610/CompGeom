@@ -5,10 +5,10 @@ from __future__ import annotations
 import math
 from typing import List, Set, Tuple, Sequence, Dict
 
-from ..kernel import Point2D, triangle_circumcenter, length, sub
-from .polygon import Polygon
-from ..mesh.surfmesh.trimesh.delaunay_triangulation import build_topology, triangulate
-from .tolerance import EPSILON
+from compgeom.kernel import Point2D, triangle_circumcenter, length, sub
+from compgeom.polygon.polygon import Polygon
+from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import build_topology, triangulate
+from compgeom.polygon.tolerance import EPSILON
 
 
 def sample_boundary_for_medial_axis(polygon: Polygon | Sequence[Point2D], max_segment_length: float = 0.25) -> list[Point2D]:

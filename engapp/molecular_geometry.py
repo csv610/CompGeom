@@ -6,11 +6,11 @@ import sys
 from typing import List
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
     from compgeom.mesh.volmesh.marching_cubes import MarchingCubes
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
     MarchingCubes = object
 
@@ -23,7 +23,7 @@ class MolecularGeometry:
         atomic_coordinates: List[Point3D],
         atomic_radii: List[float],
         probe_radius: float = 1.4,
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """
         Computes the Solvent Accessible Surface (SAS) of a molecule.
         Reconstructs the surface by rolling a spherical probe over the atoms.
@@ -66,7 +66,7 @@ class MolecularGeometry:
         )
 
     @staticmethod
-    def molecular_volume(mesh: TriangleMesh) -> float:
+    def molecular_volume(mesh: TriMesh) -> float:
         """Calculates the volume of the molecular surface (SAS or SES)."""
         try:
             from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
@@ -78,7 +78,7 @@ class MolecularGeometry:
         return MeshAnalysis.total_volume(mesh)
 
     @staticmethod
-    def detect_pockets(mesh: TriangleMesh, min_depth: float) -> List[List[int]]:
+    def detect_pockets(mesh: TriMesh, min_depth: float) -> List[List[int]]:
         """
         Identifies potential binding pockets/cavities on the protein surface.
         Uses Mean Curvature to find concave regions.

@@ -3,8 +3,8 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar, Optional
 
-from .point import Point2D, Point3D
-from .math_utils import EPSILON
+from compgeom.kernel.point import Point2D, Point3D
+from compgeom.kernel.math_utils import EPSILON
 
 PointType = TypeVar('PointType', 'Point2D', 'Point3D')
 

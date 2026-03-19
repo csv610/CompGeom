@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..kernel.line_segment import intersect_proper as _proper_segment_intersection, intersect_ray as _ray_segment_intersection
+from compgeom.kernel.line_segment import intersect_proper as _proper_segment_intersection, intersect_ray as _ray_segment_intersection
 
 
 def proper_segment_intersection(p1, p2, p3, p4):

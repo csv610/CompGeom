@@ -5,11 +5,11 @@ import argparse
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -72,7 +72,7 @@ class KneeSurgeryAlignment:
 
     @staticmethod
     def gap_analysis(
-        distal_femur: TriangleMesh, resection_plane: Tuple[float, float, float, float]
+        distal_femur: TriMesh, resection_plane: Tuple[float, float, float, float]
     ) -> float:
         """
         Estimates the 'Gap' or thickness of bone to be removed.

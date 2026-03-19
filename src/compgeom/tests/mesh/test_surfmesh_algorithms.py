@@ -3,7 +3,7 @@ import builtins
 import pytest
 
 from compgeom.kernel import Point2D, Point3D
-from compgeom.mesh import TriangleMesh
+from compgeom.mesh import TriMesh
 from compgeom.mesh.surfmesh.alpha_shapes import AlphaShape
 from compgeom.mesh.surfmesh.convex_hull import ConvexHull3D
 from compgeom.mesh.surfmesh.mesh_booleans import MeshBooleans
@@ -57,7 +57,7 @@ def test_alpha_shape_3d_returns_empty_mesh_for_simple_tetra_case():
 
 @pytest.mark.parametrize("operation", ["union", "intersection", "difference"])
 def test_mesh_booleans_currently_fail_because_sdf_returns_none(operation):
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         [(0, 1, 2)],
     )
@@ -82,7 +82,7 @@ def test_convex_hull_reports_missing_scipy_dependency(monkeypatch):
 
 def test_harmonic_map_reports_missing_scipy_dependency(monkeypatch):
     block_scipy_imports(monkeypatch)
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -97,7 +97,7 @@ def test_harmonic_map_reports_missing_scipy_dependency(monkeypatch):
 
 
 def test_lscm_returns_zero_uvs_for_each_vertex():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         [(0, 1, 2)],
     )
@@ -109,11 +109,11 @@ def test_lscm_returns_zero_uvs_for_each_vertex():
 
 def test_icp_reports_missing_scipy_dependency(monkeypatch):
     block_scipy_imports(monkeypatch)
-    source = TriangleMesh(
+    source = TriMesh(
         [Point3D(1, 0, 0), Point3D(2, 0, 0), Point3D(1, 1, 0)],
         [(0, 1, 2)],
     )
-    target = TriangleMesh(
+    target = TriMesh(
         [Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         [(0, 1, 2)],
     )

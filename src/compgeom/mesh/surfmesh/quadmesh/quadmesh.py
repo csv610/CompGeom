@@ -1,20 +1,17 @@
 from __future__ import annotations
 from typing import List, Optional, Tuple, Union, Any, Set
 
-from compgeom.mesh.mesh_base import Mesh, MeshNode, MeshFace, MeshEdge
+from compgeom.mesh.mesh_base import MeshNode, MeshFace, MeshEdge
 from compgeom.mesh.mesh_topology import MeshTopology
+from compgeom.mesh.surfmesh.surface_mesh import SurfaceMesh
 
-class QuadMesh(Mesh):
+class QuadMesh(SurfaceMesh):
     """A 2D or 3D mesh composed of quadrilateral faces."""
 
     def __init__(self, 
                  nodes: List[Union[MeshNode, Any]], 
                  faces: List[Union[MeshFace, Tuple[int, ...]]], 
                  edges: Optional[List[MeshEdge]] = None):
-        if nodes and not isinstance(nodes[0], MeshNode):
-            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
-        if faces and not isinstance(faces[0], MeshFace):
-            faces = [MeshFace(i, f) for i, f in enumerate(faces)]
         super().__init__(nodes=nodes, faces=faces, edges=edges)
 
     @classmethod

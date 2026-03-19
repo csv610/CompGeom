@@ -5,10 +5,10 @@ import argparse
 from typing import Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
 
 
@@ -40,7 +40,7 @@ class AerospaceGeometry:
     @staticmethod
     def generate_ellipsoid_mesh(
         a: float, b: float, c: float, resolution: int = 30
-    ) -> TriangleMesh:
+    ) -> TriMesh:
         """
         Generates a 3D mesh of an ellipsoid (standard for planetary body modeling).
         a, b, c: semi-axes lengths.
@@ -66,7 +66,7 @@ class AerospaceGeometry:
                 faces.append((p1, p2, p1 + 1))
                 faces.append((p1 + 1, p2, p2 + 1))
 
-        return TriangleMesh(vertices, faces)
+        return TriMesh(vertices, faces)
 
     @staticmethod
     def rotation_stability(inertia_tensor: Tuple[Tuple[float, ...], ...]) -> str:

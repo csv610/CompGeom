@@ -3,7 +3,7 @@ import argparse
 
 from compgeom import Point2D
 from compgeom import welzl
-from ._shared import demo_points
+from compgeom.cli._shared import demo_points
 
 
 def _parse_points(lines: list[str]) -> list[Point2D]:

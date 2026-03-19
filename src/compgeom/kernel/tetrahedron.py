@@ -3,9 +3,9 @@ import math
 from typing import Optional, TYPE_CHECKING, Tuple, List, Any
 from decimal import Decimal
 
-from .point import Point3D
+from compgeom.kernel.point import Point3D
 
-from .math_utils import (
+from compgeom.kernel.math_utils import (
     EPSILON,
 )
 

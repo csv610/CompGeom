@@ -5,11 +5,11 @@ import math
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -68,7 +68,7 @@ class SmartCityVisibility:
 
     @staticmethod
     def is_visible(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         observer: Tuple[float, float, float],
         target: Tuple[float, float, float],
     ) -> bool:
@@ -102,7 +102,7 @@ class SmartCityVisibility:
 
     @staticmethod
     def calculate_illumination_score(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         light_pos: Tuple[float, float, float],
         sample_points: List[Tuple[float, float, float]],
     ) -> float:

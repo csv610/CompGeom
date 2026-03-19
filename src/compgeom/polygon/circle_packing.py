@@ -5,9 +5,9 @@ from __future__ import annotations
 import math
 from typing import List, Tuple
 
-from ..kernel import Point2D, dist_point_to_segment
-from .polygon_metrics import is_point_in_polygon, get_polygon_properties
-from .tolerance import is_negative, EPSILON
+from compgeom.kernel import Point2D, dist_point_to_segment
+from compgeom.polygon.polygon_metrics import is_point_in_polygon, get_polygon_properties
+from compgeom.polygon.tolerance import is_negative, EPSILON
 
 
 def pack_circles(polygon: List[Point2D], radius: float) -> List[Point2D]:

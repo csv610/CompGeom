@@ -6,7 +6,7 @@ import math
 import random
 from typing import List, Optional
 
-from ..kernel import Point2D, Point3D
+from compgeom.kernel import Point2D, Point3D
 
 
 class PointSampler:
@@ -88,7 +88,7 @@ class PointSampler:
     @staticmethod
     def in_triangle(a: Point2D, b: Point2D, c: Point2D, n_points: int = 100) -> List[Point2D]:
         """Samples points uniformly from the interior of a triangle."""
-        from ..polygon.polygon import generate_points_in_triangle
+        from compgeom.polygon.polygon import generate_points_in_triangle
 
         return generate_points_in_triangle(a, b, c, n_points)
 

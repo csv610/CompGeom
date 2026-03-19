@@ -1,10 +1,10 @@
 import argparse
 import sys
 from compgeom import Point3D
-from compgeom import TriangleMesh, MeshVoxelizer, OBJFileHandler
+from compgeom import TriMesh, MeshVoxelizer, OBJFileHandler
 
 def create_cube():
-    """Returns a TriangleMesh representing a unit cube."""
+    """Returns a TriMesh representing a unit cube."""
     vertices = [
         Point3D(0, 0, 0, 0), Point3D(1, 0, 0, 1), Point3D(1, 1, 0, 2), Point3D(0, 1, 0, 3),
         Point3D(0, 0, 1, 4), Point3D(1, 0, 1, 5), Point3D(1, 1, 1, 6), Point3D(0, 1, 1, 7)
@@ -17,7 +17,7 @@ def create_cube():
         (0, 3, 7), (0, 7, 4), # Left
         (1, 2, 6), (1, 6, 5)  # Right
     ]
-    return TriangleMesh(vertices, faces)
+    return TriMesh(vertices, faces)
 
 def main():
     parser = argparse.ArgumentParser(description="Voxelize a 3D triangular mesh.")
@@ -31,7 +31,7 @@ def main():
     
     if args.input:
         print(f"Reading mesh from {args.input}...")
-        mesh = TriangleMesh.from_file(args.input)
+        mesh = TriMesh.from_file(args.input)
     else:
         mesh = create_cube()
         print("Using default unit cube mesh.")

@@ -6,11 +6,11 @@ from typing import List, Tuple
 from collections import defaultdict
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -27,7 +27,7 @@ class DraftingTools:
 
     @staticmethod
     def draft_analysis(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         pull_direction: Tuple[float, float, float],
         min_angle_deg: float,
     ) -> List[int]:
@@ -70,7 +70,7 @@ class DraftingTools:
 
     @staticmethod
     def extract_silhouette(
-        mesh: TriangleMesh, view_direction: Tuple[float, float, float]
+        mesh: TriMesh, view_direction: Tuple[float, float, float]
     ) -> List[Tuple[int, int]]:
         """
         Extracts the silhouette edges of the mesh from a given view direction.
@@ -159,7 +159,7 @@ def main():
     args = parser.parse_args()
 
     # Shared demo mesh
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         vertices=[Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0)],
         faces=[(0, 1, 2)],
     )

@@ -3,9 +3,9 @@ import math
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING, Tuple, Generic, TypeVar
 
-from .point import Point2D, Point3D
+from compgeom.kernel.point import Point2D, Point3D
 
-from .math_utils import (
+from compgeom.kernel.math_utils import (
     EPSILON, 
     cross_product, 
     distance,

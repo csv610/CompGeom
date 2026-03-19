@@ -5,10 +5,10 @@ import math
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
 
 
@@ -17,7 +17,7 @@ class CSpaceExtraction:
 
     @staticmethod
     def is_path_clear(
-        start: Point3D, end: Point3D, mesh: TriangleMesh, radius: float
+        start: Point3D, end: Point3D, mesh: TriMesh, radius: float
     ) -> bool:
         """
         Checks if a path is valid for an object of given radius in C-Space.
@@ -53,7 +53,7 @@ class CSpaceExtraction:
         return True
 
     @staticmethod
-    def calculate_passability(mesh: TriangleMesh, object_radius: float) -> float:
+    def calculate_passability(mesh: TriMesh, object_radius: float) -> float:
         """
         Estimates the 'tightness' of the narrowest gap in the mesh for an object of given radius.
         Returns a clearance value. Negative means the object is larger than the gap.

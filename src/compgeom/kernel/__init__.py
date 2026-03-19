@@ -1,7 +1,7 @@
-from .geometry import *
-from .math_utils import *
+from compgeom.kernel.geometry import *
+from compgeom.kernel.math_utils import *
 
-from .triangle import (
+from compgeom.kernel.triangle import (
     area as triangle_area,
     circumcenter as triangle_circumcenter,
     incenter as triangle_incenter,
@@ -12,7 +12,7 @@ from .triangle import (
     orientation_sign, orientation_sign as triangle_orientation_sign
 )
 
-from .line_segment import (
+from compgeom.kernel.line_segment import (
     intersect_lines,
     distance_to_point as dist_point_to_segment,
     contains_point as is_on_segment,
@@ -22,7 +22,7 @@ from .line_segment import (
     angle as segment_angle
 )
 
-from .circle import (
+from compgeom.kernel.circle import (
     Circle2D,
     common_tangents,
     tangents_from_point,
@@ -36,7 +36,7 @@ from .circle import (
     perimeter as circle_perimeter
 )
 
-from .quad import (
+from compgeom.kernel.quad import (
     area as quad_area,
     is_convex as is_convex_quad,
     split_to_triangles as split_quad_to_triangles,
@@ -47,7 +47,7 @@ from .quad import (
     barycentric_coords as quad_barycentric_coords
 )
 
-from .tetrahedron import (
+from compgeom.kernel.tetrahedron import (
     orientation as tetra_orientation,
     orientation_sign as tetra_orientation_sign,
     volume as tetra_volume,
@@ -55,7 +55,7 @@ from .tetrahedron import (
     barycentric_coords as tetra_barycentric_coords
 )
 
-from .hexahedron import (
+from compgeom.kernel.hexahedron import (
     Hexahedron,
     centroid as hexa_centroid,
     volume as hexa_volume,
@@ -64,7 +64,7 @@ from .hexahedron import (
     barycentric_coords as hexa_barycentric_coords
 )
 
-from .sphere import (
+from compgeom.kernel.sphere import (
     Sphere,
     insphere_det,
     insphere_sign,
@@ -74,24 +74,24 @@ from .sphere import (
     from_four_points as sphere_from_four_points
 )
 
-from .plane import (
+from compgeom.kernel.plane import (
     Plane
 )
 
-from .ray import (
+from compgeom.kernel.ray import (
     Ray
 )
 
-from .polygon import (
+from compgeom.kernel.polygon import (
     Polygon2D
 )
 
-from .aabb import (
+from compgeom.kernel.aabb import (
     AABB2D,
     AABB3D
 )
 
-from .transformation import (
+from compgeom.kernel.transformation import (
     Transformation
 )
 

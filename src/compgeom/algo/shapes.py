@@ -6,8 +6,8 @@ import math
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple, Union
 
-from ..kernel import Point2D, Point3D
-from ..kernel import distance, distance_3d, signed_area_twice
+from compgeom.kernel import Point2D, Point3D
+from compgeom.kernel import distance, distance_3d, signed_area_twice
 
 
 class Shape(ABC):
@@ -217,7 +217,7 @@ class Triangle(Shape2D):
 
     @property
     def diameter(self) -> float:
-        from ..polygon.polygon import get_convex_diameter
+        from compgeom.polygon.polygon import get_convex_diameter
         return get_convex_diameter([self.a, self.b, self.c])
 
     @property

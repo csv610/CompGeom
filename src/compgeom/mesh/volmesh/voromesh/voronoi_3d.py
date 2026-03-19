@@ -32,7 +32,9 @@ class VoronoiDiagram3D:
         # 1. Compute Delaunay Tetrahedralization (keeping super-tetrahedron tets for infinite cells)
         from compgeom.mesh.volmesh.tetmesh.delaunay_mesh_incremental import IncrementalDelaunayMesher3D
         mesher = IncrementalDelaunayMesher3D()
-        mesher.triangulate(points)
+        mesher.initialize(points)
+        for p in points:
+            mesher.add_point(p)
         
         # Get ALL tets (including those connected to super-vertices)
         all_tets = [tuple(t.vertices) for t in mesher.active_tets]

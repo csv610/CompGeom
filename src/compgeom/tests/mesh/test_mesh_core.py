@@ -1,11 +1,11 @@
 import pytest
 from compgeom.kernel import Point2D, Point3D
-from compgeom.mesh.mesh import TriangleMesh, QuadMesh, PolygonMesh, MeshTopology
+from compgeom.mesh.mesh import TriMesh, QuadMesh, PolygonMesh, MeshTopology
 
 def test_triangle_mesh_basic():
     vertices = [Point2D(0, 0, id=0), Point2D(1, 0, id=1), Point2D(0, 1, id=2), Point2D(1, 1, id=3)]
     faces = [(0, 1, 2), (1, 3, 2)]
-    mesh = TriangleMesh(vertices, faces)
+    mesh = TriMesh(vertices, faces)
     assert len(mesh.vertices) == 4
     assert len(mesh.faces) == 2
     assert mesh.euler_characteristic() == 1 # V=4, E=5, F=2 -> 4-5+2 = 1
@@ -14,7 +14,7 @@ def test_triangle_mesh_basic():
 
 def test_mesh_centroid_and_bbox():
     vertices = [Point2D(0, 0), Point2D(2, 0), Point2D(1, 2)]
-    mesh = TriangleMesh(vertices, [(0, 1, 2)])
+    mesh = TriMesh(vertices, [(0, 1, 2)])
     centroid = mesh.centroid
     assert centroid.x == pytest.approx(1.0)
     assert centroid.y == pytest.approx(2/3)
@@ -25,7 +25,7 @@ def test_mesh_centroid_and_bbox():
 def test_mesh_topology_neighbors():
     vertices = [Point2D(0, 0, id=0), Point2D(1, 0, id=1), Point2D(0, 1, id=2), Point2D(1, 1, id=3)]
     faces = [(0, 1, 2), (1, 3, 2)]
-    mesh = TriangleMesh(vertices, faces)
+    mesh = TriMesh(vertices, faces)
     topo = mesh.topology
     assert topo.vertex_neighbors(0) == {1, 2}
     assert topo.vertex_elements(1) == {0, 1}
@@ -56,7 +56,7 @@ def test_polygon_mesh_triangulate():
 def test_mesh_reorder_nodes():
     vertices = [Point2D(0,0), Point2D(1,0), Point2D(0,1)]
     faces = [(0, 1, 2)]
-    mesh = TriangleMesh(vertices, faces)
+    mesh = TriMesh(vertices, faces)
     mesh.reorder_nodes([2, 0, 1])
     assert mesh.vertices[0] == Point2D(0, 1)
     assert mesh.faces[0] == (1, 2, 0) # Old 0 is now 1, old 1 is now 2, old 2 is now 0
@@ -64,13 +64,13 @@ def test_mesh_reorder_nodes():
 def test_triangle_mesh_3d():
     vertices = [Point3D(0,0,0), Point3D(1,0,0), Point3D(0,1,0), Point3D(0,0,1)]
     faces = [(0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)]
-    mesh = TriangleMesh(vertices, faces)
+    mesh = TriMesh(vertices, faces)
     assert mesh.is_watertight() is True
     assert mesh.euler_characteristic() == 2 # Tetrahedron V=4, E=6, F=4 -> 4-6+4=2
 
 def test_ensure_even_elements():
     vertices = [Point2D(0,0), Point2D(1,0), Point2D(0,1)]
-    mesh = TriangleMesh(vertices, [(0, 1, 2)])
+    mesh = TriMesh(vertices, [(0, 1, 2)])
     assert len(mesh.faces) == 1
     even_mesh = mesh.ensure_even_elements()
     assert len(even_mesh.faces) % 2 == 0

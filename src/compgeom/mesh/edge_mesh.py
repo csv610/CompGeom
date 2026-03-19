@@ -15,8 +15,6 @@ class EdgeMesh(Mesh):
     def __init__(self, 
                  nodes: List[Union[MeshNode, Point2D, Point3D]], 
                  edges: List[Union[MeshEdge, Tuple[int, int]]]):
-        if nodes and not isinstance(nodes[0], MeshNode):
-            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
         if edges and not isinstance(edges[0], MeshEdge):
             edges = [MeshEdge(i, e) for i, e in enumerate(edges)]
         super().__init__(nodes=nodes, edges=edges)

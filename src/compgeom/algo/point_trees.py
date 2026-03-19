@@ -6,8 +6,8 @@ import math
 from dataclasses import dataclass
 from typing import Callable, Dict, Generic, Iterable, List, Optional, Sequence, Set, Tuple, TypeVar, Union
 
-from ..kernel import Point2D, Point3D
-from ..kernel import distance, distance_3d
+from compgeom.kernel import Point2D, Point3D
+from compgeom.kernel import distance, distance_3d
 
 T = TypeVar("T")
 

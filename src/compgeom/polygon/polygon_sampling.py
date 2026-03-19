@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from typing import Sequence, List, Tuple
-from ..kernel import Point2D, distance, is_on_segment
-from .polygon import Polygon
-from .tolerance import is_zero
+from compgeom.kernel import Point2D, distance, is_on_segment
+from compgeom.polygon.polygon import Polygon
+from compgeom.polygon.tolerance import is_zero
 
 
 def get_perimeter_distances(vertices: Sequence[Point2D]) -> List[float]:

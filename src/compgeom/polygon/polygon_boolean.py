@@ -6,9 +6,9 @@ import math
 from collections import defaultdict
 from typing import List, Optional, Tuple
 
-from ..kernel import Point2D, is_on_segment, cross_product
-from .polygon import Polygon
-from .tolerance import are_close, is_zero, EPSILON
+from compgeom.kernel import Point2D, is_on_segment, cross_product
+from compgeom.polygon.polygon import Polygon
+from compgeom.polygon.tolerance import are_close, is_zero, EPSILON
 
 
 def verify_boolean_op(poly_a: Polygon, poly_b: Polygon, results: List[Polygon], op: str) -> bool:
@@ -211,7 +211,7 @@ def _classify_segment(p1: Point2D, p2: Point2D, poly: Polygon) -> str:
     mid = Point2D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
     
     # Check boundary first as it's more specific
-    from ..kernel import dist_point_to_segment
+    from compgeom.kernel import dist_point_to_segment
     if any(dist_point_to_segment(mid, poly.vertices[i], poly.vertices[(i+1)%len(poly)]) < 1e-5 for i in range(len(poly))):
         return "on_boundary"
     

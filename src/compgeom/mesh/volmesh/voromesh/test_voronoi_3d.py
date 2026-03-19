@@ -2,9 +2,9 @@ import pytest
 import math
 from compgeom.kernel import Point3D
 from compgeom.mesh.volmesh.polyhedral_mesh import PolyhedralMesh
-from compgeom.mesh.volmesh.voronoi_3d import VoronoiDiagram3D
+from compgeom.mesh.volmesh.voromesh.voronoi_3d import VoronoiDiagram3D
 from compgeom.mesh.volmesh.volmesh_validation import validate_voronoi_mesh
-from compgeom.mesh.volmesh.bounded_voronoi_3d import BoundedVoronoi3D
+from compgeom.mesh.volmesh.voromesh.bounded_voronoi_3d import BoundedVoronoi3D
 
 def test_polyhedral_mesh_instantiation():
     vertices = [Point3D(0,0,0), Point3D(1,0,0), Point3D(0,1,0), Point3D(0,0,1)]
@@ -13,7 +13,7 @@ def test_polyhedral_mesh_instantiation():
     cells = [faces]
     mesh = PolyhedralMesh(vertices, cells)
     assert len(mesh.vertices) == 4
-    assert len(mesh.cells) == 1
+    assert len(mesh.poly_cells) == 1
     assert len(mesh.get_cell_faces(0)) == 4
 
 def test_voronoi_3d_basic():
@@ -29,7 +29,7 @@ def test_voronoi_3d_basic():
     mesh = voronoi.compute(points)
     
     assert len(mesh.vertices) >= 1
-    assert len(mesh.cells) == 5
+    assert len(mesh.poly_cells) == 5
 
 def test_bounded_voronoi_box():
     # 2 points in a box
@@ -41,7 +41,7 @@ def test_bounded_voronoi_box():
     bv = BoundedVoronoi3D.from_box(Point3D(0, 0, 0), Point3D(1, 1, 1))
     mesh = bv.compute(points)
     
-    assert len(mesh.cells) == 2
+    assert len(mesh.poly_cells) == 2
     
     # Validate the mesh
     is_valid, errors = validate_voronoi_mesh(mesh)
@@ -49,7 +49,7 @@ def test_bounded_voronoi_box():
     
     # For these points, the bisector is x=0.5. 
     # Each cell should have 6 faces (5 from box, 1 from bisector).
-    for cell in mesh.cells:
+    for cell in mesh.poly_cells:
         assert len(cell) == 6
 
 def test_bounded_voronoi_sphere():
@@ -60,9 +60,9 @@ def test_bounded_voronoi_sphere():
     bv = BoundedVoronoi3D.from_sphere(Point3D(0, 0, 0), radius, num_planes=num_planes)
     mesh = bv.compute(points)
     
-    assert len(mesh.cells) == 1
+    assert len(mesh.poly_cells) == 1
     # The cell should have 'num_planes' faces if they all clip the box.
-    assert len(mesh.cells[0]) >= num_planes
+    assert len(mesh.poly_cells[0]) >= num_planes
     
     is_valid, errors = validate_voronoi_mesh(mesh)
     assert is_valid, f"Sphere-bounded Voronoi validation failed: {errors}"
@@ -75,9 +75,9 @@ def test_bounded_voronoi_cylinder():
     bv = BoundedVoronoi3D.from_cylinder(Point3D(0, 0, 0), radius, height, num_sides=num_sides)
     mesh = bv.compute(points)
     
-    assert len(mesh.cells) == 1
+    assert len(mesh.poly_cells) == 1
     # Cylinder should have num_sides + 2 faces.
-    assert len(mesh.cells[0]) == num_sides + 2
+    assert len(mesh.poly_cells[0]) == num_sides + 2
     
     is_valid, errors = validate_voronoi_mesh(mesh)
     assert is_valid, f"Cylinder-bounded Voronoi validation failed: {errors}"
@@ -101,6 +101,6 @@ def test_voronoi_random_points():
     bv = BoundedVoronoi3D.from_box(Point3D(0, 0, 0), Point3D(1, 1, 1))
     mesh = bv.compute(points)
     
-    assert len(mesh.cells) == 10
+    assert len(mesh.poly_cells) == 10
     is_valid, errors = validate_voronoi_mesh(mesh)
     assert is_valid, f"Random Voronoi validation failed: {errors}"

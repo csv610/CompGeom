@@ -3,8 +3,8 @@ import math
 from dataclasses import dataclass
 from typing import List, Tuple
 
-from .point import Point2D
-from .math_utils import EPSILON, cross_product, signed_area_twice
+from compgeom.kernel.point import Point2D
+from compgeom.kernel.math_utils import EPSILON, cross_product, signed_area_twice
 
 
 @dataclass(frozen=True, slots=True)

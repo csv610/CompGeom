@@ -2,14 +2,14 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Tuple, List, Union
 
-from .point import Point2D, Point3D
-from .circle import Circle2D, from_two_points, from_three_points, incircle_sign
-from .math_utils import (
+from compgeom.kernel.point import Point2D, Point3D
+from compgeom.kernel.circle import Circle2D, from_two_points, from_three_points, incircle_sign
+from compgeom.kernel.math_utils import (
     EPSILON, 
     cross_product,
 )
-from .triangle import area as triangle_area
-from .tetrahedron import orientation_sign
+from compgeom.kernel.triangle import area as triangle_area
+from compgeom.kernel.tetrahedron import orientation_sign
 
 
 def min_circle(p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) -> Circle2D:

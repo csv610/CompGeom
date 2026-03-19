@@ -135,10 +135,10 @@ simplified = PointSimplifier.simplify(points, ratio=0.001, protected_ids=protect
 **Objective:** Map the triangulation from one polygonal boundary to a completely different boundary shape while minimizing geometric distortion using **Harmonic Mapping**.
 
 ```python
-from compgeom.mesh import TriangleMesh, MeshTransfer
+from compgeom.mesh import TriMesh, MeshTransfer
 
 # 1. Load a source mesh (e.g., a high-quality grid in a square)
-source = TriangleMesh.from_file("square_grid.obj")
+source = TriMesh.from_file("square_grid.obj")
 
 # 2. Define a new target boundary (e.g., an L-shape)
 target_poly = [Point2D(0,0), Point2D(2,0), Point2D(2,1), Point2D(1,1), Point2D(1,2), Point2D(0,2)]
@@ -152,10 +152,10 @@ new_mesh = MeshTransfer.transfer(source, target_poly)
 **Objective:** Load a mesh and reorder its vertices to optimize matrix bandwidth.
 
 ```python
-from compgeom.mesh import TriangleMesh, CuthillMcKee
+from compgeom.mesh import TriMesh, CuthillMcKee
 
 # 1. Load directly from OBJ file
-mesh = TriangleMesh.from_file("model.obj")
+mesh = TriMesh.from_file("model.obj")
 
 # 2. Compute Reverse Cuthill-McKee (RCM) permutation
 new_indices = CuthillMcKee.reorder_vertices(mesh)
@@ -168,9 +168,9 @@ mesh.reorder_nodes(new_indices)
 **Objective:** Convert a 3D triangular mesh into a solid voxel grid.
 
 ```python
-from compgeom.mesh import TriangleMesh, MeshVoxelizer
+from compgeom.mesh import TriMesh, MeshVoxelizer
 
-mesh = TriangleMesh.from_file("model.obj")
+mesh = TriMesh.from_file("model.obj")
 
 # fill_interior=True uses a scanline algorithm to fill the volume
 voxels = MeshVoxelizer.voxelize(mesh, voxel_size=0.01, fill_interior=True)
@@ -191,7 +191,7 @@ mesh1 = DelaunayMesher.triangulate(points, algorithm="edge_flip")
 tetra = PlatonicSolid.tetrahedron(size=2.0)
 
 # 3. Merge meshes (Optimized via Incremental Seeding)
-# Note: Merge works best for TriangleMesh objects
+# Note: Merge works best for TriMesh objects
 merged = DelaunayMesher.merge(mesh1, tetra)
 ```
 

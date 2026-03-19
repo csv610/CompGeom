@@ -5,11 +5,11 @@ import argparse
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
     # Standalone execution
-    TriangleMesh = object
+    TriMesh = object
     Point3D = object
 
 
@@ -18,7 +18,7 @@ class AdditiveMfg:
 
     @staticmethod
     def detect_overhangs(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         threshold_angle_deg: float = 45.0,
         gravity_dir: Tuple[float, float, float] = (0, 0, -1),
     ) -> Tuple[List[int], float]:
@@ -59,7 +59,7 @@ class AdditiveMfg:
 
     @staticmethod
     def estimate_print_time(
-        mesh: TriangleMesh, layer_height: float, speed: float
+        mesh: TriMesh, layer_height: float, speed: float
     ) -> float:
         """
         Provides a very rough estimate of 3D printing time based on surface area and layers.
@@ -138,7 +138,7 @@ class AdditiveMfg:
 
     @staticmethod
     def find_optimal_rotation(
-        mesh: TriangleMesh,
+        mesh: TriMesh,
         num_samples: int = 100,
         threshold_angle_deg: float = 45.0,
         gravity_dir: Tuple[float, float, float] = (0, 0, -1),
@@ -286,7 +286,7 @@ class AdditiveMfg:
         return -1.0
 
     @staticmethod
-    def identify_thin_structures(mesh: TriangleMesh, min_thickness: float) -> List[int]:
+    def identify_thin_structures(mesh: TriMesh, min_thickness: float) -> List[int]:
         """
         Identifies faces that belong to thin walls (thickness < min_thickness).
         Uses ray casting inward from each face.
@@ -344,7 +344,7 @@ class AdditiveMfg:
         return thin_faces
 
     @staticmethod
-    def filter_printable_mesh(mesh: TriangleMesh, min_thickness: float) -> TriangleMesh:
+    def filter_printable_mesh(mesh: TriMesh, min_thickness: float) -> TriMesh:
         """
         Returns a new mesh with thin structures removed.
         """
@@ -352,7 +352,7 @@ class AdditiveMfg:
             AdditiveMfg.identify_thin_structures(mesh, min_thickness)
         )
 
-        from compgeom.mesh import TriangleMesh
+        from compgeom.mesh import TriMesh
 
         all_faces = mesh.faces()
         verts = mesh.vertices()
@@ -366,9 +366,9 @@ class AdditiveMfg:
         if not printable_triangles:
             # If everything is thin, return empty mesh or similar?
             # Let's return empty if all thin.
-            return TriangleMesh.from_triangles([])
+            return TriMesh.from_triangles([])
 
-        return TriangleMesh.from_triangles(printable_triangles)
+        return TriMesh.from_triangles(printable_triangles)
 
 
 def main():
@@ -438,7 +438,7 @@ def main():
 
     if args.command in ["detect-overhangs", "estimate-time", "optimal-rotation", "thin-structures", "filter-mesh"]:
         try:
-            mesh = TriangleMesh.from_file(args.mesh_file)
+            mesh = TriMesh.from_file(args.mesh_file)
         except Exception as e:
             print(f"Error loading mesh: {e}")
             return

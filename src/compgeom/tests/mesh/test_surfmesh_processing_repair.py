@@ -1,14 +1,14 @@
 import pytest
 
 from compgeom.kernel import Point3D
-from compgeom.mesh import TriangleMesh
+from compgeom.mesh import TriMesh
 from compgeom.mesh.surfmesh.mesh_processing import MeshProcessing
 from compgeom.mesh.surfmesh.remesher import AdaptiveRemesher
 from compgeom.mesh.surfmesh.surf_mesh_repair import SurfMeshRepair
 
 
 def make_open_patch():
-    return TriangleMesh(
+    return TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -20,7 +20,7 @@ def make_open_patch():
 
 
 def make_pyramid_patch():
-    return TriangleMesh(
+    return TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(2, 0, 0),
@@ -83,7 +83,7 @@ def test_catmull_clark_returns_input_mesh():
 
 
 def test_repair_duplicate_and_degenerate_cleanup_helpers():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(0, 0, 0),
@@ -101,7 +101,7 @@ def test_repair_duplicate_and_degenerate_cleanup_helpers():
 
 
 def test_repair_duplicate_faces_and_fix_normals():
-    mesh = TriangleMesh(
+    mesh = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -112,14 +112,14 @@ def test_repair_duplicate_faces_and_fix_normals():
     )
 
     unique = SurfMeshRepair.remove_duplicate_faces(mesh)
-    fixed = SurfMeshRepair.fix_normals(TriangleMesh(mesh.vertices, [(0, 1, 2), (1, 2, 3)]))
+    fixed = SurfMeshRepair.fix_normals(TriMesh(mesh.vertices, [(0, 1, 2), (1, 2, 3)]))
 
     assert unique.faces == [(0, 1, 2), (1, 2, 3)]
     assert fixed.faces == [(0, 1, 2), (2, 1, 3)]
 
 
 def test_repair_non_manifold_and_isolated_vertex_helpers():
-    non_manifold_faces = TriangleMesh(
+    non_manifold_faces = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -129,7 +129,7 @@ def test_repair_non_manifold_and_isolated_vertex_helpers():
         ],
         [(0, 1, 2), (0, 1, 3), (0, 1, 4)],
     )
-    non_manifold_vertex = TriangleMesh(
+    non_manifold_vertex = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -141,7 +141,7 @@ def test_repair_non_manifold_and_isolated_vertex_helpers():
         ],
         [(0, 1, 2), (1, 3, 4), (1, 5, 6)],
     )
-    isolated = TriangleMesh(
+    isolated = TriMesh(
         [Point3D(0, 0, 0), Point3D(1, 0, 0), Point3D(0, 1, 0), Point3D(5, 5, 5)],
         [(0, 1, 2)],
     )
@@ -152,7 +152,7 @@ def test_repair_non_manifold_and_isolated_vertex_helpers():
 
 
 def test_repair_self_intersection_component_filtering_and_pipeline():
-    crossing = TriangleMesh(
+    crossing = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(2, 0, 0),
@@ -163,7 +163,7 @@ def test_repair_self_intersection_component_filtering_and_pipeline():
         ],
         [(0, 1, 2), (3, 4, 5)],
     )
-    components = TriangleMesh(
+    components = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(1, 0, 0),
@@ -177,7 +177,7 @@ def test_repair_self_intersection_component_filtering_and_pipeline():
         ],
         [(0, 1, 2), (1, 3, 2), (1, 4, 3), (6, 7, 8)],
     )
-    noisy = TriangleMesh(
+    noisy = TriMesh(
         [
             Point3D(0, 0, 0),
             Point3D(0, 0, 0),

@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-
 from compgeom import euler_characteristic
-from compgeom.mesh import MeshImporter, OBJFileHandler
+from compgeom.mesh import MeshImporter, OBJFileHandler, PolygonMesh
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -20,7 +19,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     # Ensure all faces are triangles for euler_characteristic function
-    from compgeom.mesh.mesh import PolygonMesh
     if isinstance(mesh, PolygonMesh):
         mesh = mesh.triangulate()
     vertices, faces = mesh.vertices, mesh.elements

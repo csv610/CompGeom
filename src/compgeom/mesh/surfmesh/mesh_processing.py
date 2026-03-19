@@ -2,6 +2,7 @@
 from collections import defaultdict
 from typing import List, Tuple, Set, TYPE_CHECKING
 
+from compgeom.mesh.surfmesh.surface_mesh import SurfaceMesh
 from compgeom.mesh.surfmesh.trimesh.trimesh import TriMesh
 from compgeom.kernel import Point3D
 
@@ -26,7 +27,7 @@ class MeshProcessing:
         mesh._topology = MeshTopology(mesh)
 
     @staticmethod
-    def laplacian_smoothing(mesh: TriMesh, iterations: int = 1, lambda_factor: float = 0.5) -> TriMesh:
+    def laplacian_smoothing(mesh: SurfaceMesh, iterations: int = 1, lambda_factor: float = 0.5) -> SurfaceMesh:
         """Applies uniform Laplacian smoothing to interior vertices."""
         vertices = mesh.vertices
         faces = mesh.faces
@@ -79,10 +80,10 @@ class MeshProcessing:
                 temp_vertices.append(Point3D(nx, ny, nz))
             new_vertices = temp_vertices
             
-        return TriMesh(new_vertices, faces)
+        return SurfaceMesh(new_vertices, faces)
 
     @staticmethod
-    def fill_holes(mesh: TriMesh) -> TriMesh:
+    def fill_holes(mesh: SurfaceMesh) -> SurfaceMesh:
         """Fills boundary holes by connecting boundary loops to their centroids."""
         # Detect boundary edges
         edge_counts = defaultdict(int)
@@ -150,7 +151,7 @@ class MeshProcessing:
                 new_faces.append((u, v, c_idx))
                 
     @staticmethod
-    def bilateral_smoothing(mesh: TriMesh, iterations: int = 1, sigma_c: float = 1.0, sigma_s: float = 0.1) -> TriMesh:
+    def bilateral_smoothing(mesh: SurfaceMesh, iterations: int = 1, sigma_c: float = 1.0, sigma_s: float = 0.1) -> SurfaceMesh:
         """
         Applies feature-preserving bilateral smoothing to the mesh.
         sigma_c: Spatial neighborhood variance (influences how far neighbors affect smoothing)
@@ -178,7 +179,7 @@ class MeshProcessing:
         
         for _ in range(iterations):
             # Recompute normals at each iteration
-            temp_mesh = TriMesh(new_vertices, faces)
+            temp_mesh = SurfaceMesh(new_vertices, faces)
             v_normals = MeshAnalysis.compute_vertex_normals(temp_mesh)
             
             temp_verts = []
@@ -212,10 +213,10 @@ class MeshProcessing:
                     
             new_vertices = temp_verts
             
-        return TriMesh(new_vertices, faces)
+        return SurfaceMesh(new_vertices, faces)
 
     @staticmethod
-    def taubin_smoothing(mesh: TriMesh, iterations: int = 10, lambda_factor: float = 0.5, mu_factor: float = -0.53) -> TriMesh:
+    def taubin_smoothing(mesh: SurfaceMesh, iterations: int = 10, lambda_factor: float = 0.5, mu_factor: float = -0.53) -> SurfaceMesh:
         """
         Applies non-shrinking smoothing using the Taubin (lambda-mu) algorithm.
         Typically, lambda > 0 and mu < -lambda.
@@ -229,7 +230,7 @@ class MeshProcessing:
         return current_mesh
 
     @staticmethod
-    def loop_subdivision(mesh: TriMesh, iterations: int = 1) -> TriMesh:
+    def loop_subdivision(mesh: SurfaceMesh, iterations: int = 1) -> SurfaceMesh:
         """
         Applies Loop subdivision to refine the mesh and smooth its surface.
         Each triangle is split into four smaller triangles.
@@ -339,7 +340,7 @@ class MeshProcessing:
                 new_faces.append((e01, e12, e20))
                 
     @staticmethod
-    def mesh_offset(mesh: TriMesh, distance: float, create_solid: bool = False) -> TriMesh:
+    def mesh_offset(mesh: SurfaceMesh, distance: float, create_solid: bool = False) -> SurfaceMesh:
         """
         Offsets the mesh surface by a given distance along vertex normals.
         If create_solid is True, it creates a thickened shell with closed walls.
@@ -357,38 +358,48 @@ class MeshProcessing:
             offset_verts.append(ov)
             
         if not create_solid:
-            return TriMesh(offset_verts, mesh.faces)
+            return SurfaceMesh(offset_verts, mesh.faces)
             
         # 3. Create a solid shell (thickening)
         # Combine original and offset vertices
         total_verts = list(mesh.vertices) + offset_verts
         num_v = len(mesh.vertices)
         
-        new_faces = list(mesh.faces) # Original faces
+        new_faces = []
+        # Original faces (preserve orientation)
+        for face in mesh.faces:
+            new_faces.append(list(face))
+            
         # Add offset faces (reversed orientation for outward normals)
         for face in mesh.faces:
-            new_faces.append((face[0] + num_v, face[2] + num_v, face[1] + num_v))
+            # Reverse order and offset indices
+            new_faces.append([idx + num_v for idx in reversed(face)])
             
         # 4. Connect boundaries if the mesh is open
         edge_counts = defaultdict(int)
         for face in mesh.faces:
-            for i in range(3):
-                edge = tuple(sorted((face[i], face[(i+1)%3])))
+            n = len(face)
+            for i in range(n):
+                edge = tuple(sorted((face[i], face[(i+1)%n])))
                 edge_counts[edge] += 1
-                
-        boundary_edges = [e for e, c in edge_counts.items() if c == 1]
         
-        # For each boundary edge (u, v), add two triangles connecting to (u', v')
-        # We need the directed boundary edge to ensure correct orientation
-        directed_boundary = []
+        # Find directed boundary edges
         for face in mesh.faces:
-            for i in range(3):
-                u, v = face[i], face[(i+1)%3]
+            n = len(face)
+            for i in range(n):
+                u, v = face[i], face[(i+1)%n]
                 if edge_counts[tuple(sorted((u, v)))] == 1:
-                    directed_boundary.append((u, v))
+                    # Boundary edge (u, v). 
+                    # Connect to (u', v') where u' = u + num_v
+                    u_off, v_off = u + num_v, v + num_v
+                    # Wall faces: (u, v, v_off) and (u, v_off, u_off)
+                    new_faces.append([u, v, v_off])
+                    new_faces.append([u, v_off, u_off])
+                    
+        return SurfaceMesh(total_verts, new_faces)
                     
     @staticmethod
-    def mesh_clipping(mesh: TriMesh, plane_origin: Tuple[float,float,float], plane_normal: Tuple[float,float,float], cap: bool = True) -> Tuple[TriMesh, TriMesh]:
+    def mesh_clipping(mesh: SurfaceMesh, plane_origin: Tuple[float,float,float], plane_normal: Tuple[float,float,float], cap: bool = True) -> Tuple[SurfaceMesh, SurfaceMesh]:
         """
         Splits the mesh into two parts using a plane.
         Returns a tuple (mesh_above, mesh_below).
@@ -442,13 +453,13 @@ class MeshProcessing:
         # This version partitions whole faces.
         
         from compgeom.mesh.surfmesh.surf_mesh_repair import SurfMeshRepair
-        ma = SurfMeshRepair.remove_isolated_vertices(TriMesh(verts_above, faces_above))
-        mb = SurfMeshRepair.remove_isolated_vertices(TriMesh(verts_below, faces_below))
+        ma = SurfMeshRepair.remove_isolated_vertices(SurfaceMesh(verts_above, faces_above))
+        mb = SurfMeshRepair.remove_isolated_vertices(SurfaceMesh(verts_below, faces_below))
         
         return ma, mb
 
     @staticmethod
-    def catmull_clark(mesh: TriMesh, iterations: int = 1) -> TriMesh:
+    def catmull_clark(mesh: SurfaceMesh, iterations: int = 1) -> SurfaceMesh:
         """
         Applies Catmull-Clark subdivision (Structural skeleton).
         Essential for quad-based high-end character animation.

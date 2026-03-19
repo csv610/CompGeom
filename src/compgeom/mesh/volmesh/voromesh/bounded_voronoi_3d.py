@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from compgeom.kernel import Point3D, Plane
 from compgeom.mesh.volmesh.polyhedral_mesh import PolyhedralMesh
-from compgeom.mesh.volmesh.voronoi_clipping import clip_polyhedron_by_plane
+from compgeom.mesh.volmesh.voromesh.voronoi_clipping import clip_polyhedron_by_plane
 
 class BoundedVoronoi3D:
     """
@@ -116,29 +116,9 @@ class BoundedVoronoi3D:
     def compute(self, points: List[Point3D]) -> PolyhedralMesh:
         """
         Computes the clipped Voronoi cells for each point.
-        Optimized by only clipping with Delaunay neighbors.
         """
         if not points:
             return PolyhedralMesh([], [], seeds=[])
-            
-        # 1. Compute Delaunay to get neighbors
-        from compgeom.mesh.volmesh.voronoi_3d import VoronoiDiagram3D
-        from collections import defaultdict
-        
-        # We need the Delaunay triangulation to know which points are neighbors
-        from compgeom.mesh.volmesh.tetmesh.delaunay_mesh_incremental import IncrementalDelaunayMesher3D
-        mesher = IncrementalDelaunayMesher3D()
-        mesher.triangulate(points)
-        
-        # Build neighbor map (who shares a tet with whom)
-        neighbors = defaultdict(set)
-        for tet in mesher.active_tets:
-            verts = list(tet.vertices)
-            for i in range(len(verts)):
-                for j in range(i + 1, len(verts)):
-                    v_i, v_j = verts[i], verts[j]
-                    neighbors[v_i].add(v_j)
-                    neighbors[v_j].add(v_i)
 
         global_vertices = []
         all_cells = []
@@ -148,9 +128,9 @@ class BoundedVoronoi3D:
             curr_v = list(self.initial_vertices)
             curr_f = list(self.initial_faces)
             
-            # Clip only with Delaunay neighbors
-            # This makes the complexity O(N * average_neighbors) instead of O(N^2)
-            for p_j in neighbors.get(p_i, []):
+            # Clip with all other points (O(N^2))
+            for j, p_j in enumerate(points):
+                if i == j: continue
                 # Bisector plane between p_i and p_j
                 mid = (p_i + p_j) * 0.5
                 normal = p_i - p_j

@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections import deque
 from typing import List, Tuple, Sequence
 
-from ..kernel import Point2D
-from .polygon import Polygon
-from .polygon_decomposer import triangulate_polygon
+from compgeom.kernel import Point2D
+from compgeom.polygon.polygon import Polygon
+from compgeom.polygon.polygon_decomposer import triangulate_polygon
 
 
 def art_gallery_guards(polygon: Polygon | Sequence[Point2D]) -> List[Point2D]:

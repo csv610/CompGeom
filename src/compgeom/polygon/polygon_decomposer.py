@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .polygon_path import segment_inside_polygon
+from compgeom.polygon.polygon_path import segment_inside_polygon
 """Algorithms for decomposing polygons into simpler pieces."""
 
 
@@ -8,11 +8,11 @@ import math
 from collections import Counter
 from typing import List, Tuple, Sequence
 
-from ..kernel import EPSILON, Point2D, contains_point, cross_product, distance
-from ..mesh.mesh import PolygonMesh
-from .exceptions import HoleConnectionError, UnsupportedAlgorithmError
-from .line_segment import proper_segment_intersection
-from .polygon import Polygon
+from compgeom.kernel import EPSILON, Point2D, contains_point, cross_product, distance
+from compgeom.mesh.mesh import PolygonMesh
+from compgeom.polygon.exceptions import HoleConnectionError, UnsupportedAlgorithmError
+from compgeom.polygon.line_segment import proper_segment_intersection
+from compgeom.polygon.polygon import Polygon
 
 
 def is_ear(a: Point2D, b: Point2D, c: Point2D, polygon: Sequence[Point2D]) -> bool:
@@ -445,7 +445,7 @@ def _segment_inside_domain(
     end: Point2D,
     allow_hole_endpoint: Point2D | None = None,
 ) -> bool:
-    from .polygon_utils import segment_inside_boundaries
+    from compgeom.polygon.polygon_utils import segment_inside_boundaries
     return segment_inside_boundaries(
         start,
         end,

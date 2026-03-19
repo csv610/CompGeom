@@ -1,6 +1,6 @@
 # Educational Guide: Computational Geometry Applications (CGApp)
 
-Welcome, students! This guide explores how abstract geometric principles are applied to solve complex problems in engineering, science, and design. Each application below uses the `compgeom` library's core primitives: `Point3D` and `TriangleMesh`.
+Welcome, students! This guide explores how abstract geometric principles are applied to solve complex problems in engineering, science, and design. Each application below uses the `compgeom` library's core primitives: `Point3D` and `TriMesh`.
 
 ---
 
@@ -95,30 +95,30 @@ Welcome, students! This guide explores how abstract geometric principles are app
 ### 13. 5G Network Planning (`telecom_propagation.py`)
 **The Problem**: 5G signals are high-frequency and easily blocked by buildings. Engineers need to find the best placement for small-cell towers to maximize coverage.
 *   **Geometric Principle (Fresnel Zone Analysis)**: Treat the signal as an ellipsoid between the tower and the user. 
-*   **Implementation**: Use **Ray Casting** to check if any triangles in the city mesh (`TriangleMesh`) intersect the "Fresnel Zone" ellipsoid.
+*   **Implementation**: Use **Ray Casting** to check if any triangles in the city mesh (`TriMesh`) intersect the "Fresnel Zone" ellipsoid.
 *   **Metric**: Calculate the **Signal-to-Interference-plus-Noise Ratio (SINR)** by analyzing the "Line-of-Sight" (LoS) percentage across a grid of points.
 
 ### 14. Wildfire Spread Simulation (`wildfire_modeling.py`)
 **The Problem**: Predicting how a fire will climb a mountain is critical for evacuation. Fire moves faster uphill due to pre-heating.
 *   **Geometric Principle (Slope and Aspect Analysis)**: For every face in a terrain mesh, calculate its **Steepest Descent Vector**.
 *   **Implementation**: Use the **Face Normal** $(\vec{n})$ to find the slope angle. A fire's "Rate of Spread" (ROS) is then adjusted using a vector dot product between the wind vector $(\vec{w})$ and the face's uphill vector.
-*   **Metric**: Generate a **Heatmap** on the `TriangleMesh` where color represents the time it takes for the fire front to reach that specific triangle.
+*   **Metric**: Generate a **Heatmap** on the `TriMesh` where color represents the time it takes for the fire front to reach that specific triangle.
 
 ### 15. Acoustic Room Treatment (`acoustic_raytracing.py`)
 **The Problem**: Architects need to place sound-absorbing panels to prevent "echo chambers" in large halls or recording studios.
 *   **Geometric Principle (Specular Reflection)**: When a sound ray hits a wall, it reflects at the same angle: $\vec{r} = \vec{d} - 2(\vec{d} \cdot \vec{n})\vec{n}$.
-*   **Implementation**: Use recursive **Ray Tracing**. For a sound source point, cast rays in all directions. Track each ray as it bounces off the `TriangleMesh` faces. 
+*   **Implementation**: Use recursive **Ray Tracing**. For a sound source point, cast rays in all directions. Track each ray as it bounces off the `TriMesh` faces. 
 *   **Metric**: Calculate **Reverberation Time (RT60)** by measuring how long it takes for the ray energy to decay. Identify "Hot Spots" where many reflected rays converge.
 
 ### 16. Marine Archaeology & Shipwreck Mapping (`bathymetric_reconstruction.py`)
 **The Problem**: Sonar data from shipwrecks is often "holey" and noisy. We need to reconstruct a watertight 3D model from sonar pings.
 *   **Geometric Principle (Poisson Surface Reconstruction)**: Converting a sparse point cloud into a smooth, continuous surface.
-*   **Implementation**: Use the **Point3D** pings to create a **Signed Distance Function (SDF)**. Then, use the **Marching Cubes** algorithm to extract the 0-level isosurface as a new `TriangleMesh`.
+*   **Implementation**: Use the **Point3D** pings to create a **Signed Distance Function (SDF)**. Then, use the **Marching Cubes** algorithm to extract the 0-level isosurface as a new `TriMesh`.
 *   **Metric**: Calculate the **Estimated Displaced Volume** of the wreck to guess the original weight/size of the vessel.
 
 ### 17. Surgical Planning & Robotics (`surgical_planning.py`)
 **The Problem**: In robotic surgery, a drill or needle must reach a target without hitting critical "No-Go" zones like nerves or major blood vessels.
-*   **Geometric Principle (Segment-to-Mesh Distance)**: We treat the surgical instrument as a **Line Segment** and the critical anatomy as a **TriangleMesh**. 
+*   **Geometric Principle (Segment-to-Mesh Distance)**: We treat the surgical instrument as a **Line Segment** and the critical anatomy as a **TriMesh**. 
 *   **Implementation**: For every vertex in the critical mesh, we calculate the shortest distance to the line segment. If the distance falls below a **Safety Margin** (e.g., 2mm), the path is flagged as dangerous.
 *   **Surface Mapping**: For robotic navigation, we project the instrument's tip position onto the bone surface to find the **Closest Normal**, allowing the robot to remain perfectly perpendicular to the surface during drilling.
 
@@ -156,12 +156,12 @@ Welcome, students! This guide explores how abstract geometric principles are app
 ### 24. Indoor WiFi Placement (`wifi_placement_optimizer.py`)
 **The Problem**: WiFi signals are weakened by distance and blocked by physical obstacles like walls. To ensure whole-home coverage, a router must be placed where it has the best "geometric reach" to all rooms.
 *   **Geometric Principle (Signal Attenuation)**: We model signal strength using the **Inverse Square Law** for distance and a constant **Attenuation Factor** for every wall the signal passes through.
-*   **Line-of-Sight (LoS) Sampling**: We use **Ray Casting** to count the number of triangles in the building mesh (`TriangleMesh`) that intersect the path between the router and a target point.
+*   **Line-of-Sight (LoS) Sampling**: We use **Ray Casting** to count the number of triangles in the building mesh (`TriMesh`) that intersect the path between the router and a target point.
 *   **Coverage Optimization**: By sampling a grid of candidate locations and calculating the average signal strength (dBm) across all rooms, we identify the mathematically optimal router position to eliminate "dead zones."
 
 ### 25. Precision Viticulture (`precision_viticulture.py`)
 **The Problem**: Drones are used to monitor vine health in large vineyards. To get high-resolution multi-spectral data, the drone must maintain a perfectly constant altitude above the ground, even on steep hillsides.
-*   **Geometric Principle (Barycentric Interpolation)**: We find the triangle in the terrain mesh (`TriangleMesh`) directly below the drone's 2D position. We then use **Barycentric Coordinates** to interpolate the exact ground elevation ($Z$) at that point.
+*   **Geometric Principle (Barycentric Interpolation)**: We find the triangle in the terrain mesh (`TriMesh`) directly below the drone's 2D position. We then use **Barycentric Coordinates** to interpolate the exact ground elevation ($Z$) at that point.
 *   **Terrain-Following**: By adding the desired survey altitude to the interpolated ground height, we generate a 3D flight path that follows the contours of the land.
 *   **FOV Projection**: We calculate the ground "footprint" of the drone's camera based on its 3D altitude and Field of View (FOV) angle, ensuring total coverage of the crop.
 
@@ -173,7 +173,7 @@ Welcome, students! This guide explores how abstract geometric principles are app
 
 ### 27. Radiation Oncology (`radiation_oncology.py`)
 **The Problem**: In cancer treatment, radiation beams must be aimed at a tumor while avoiding vital organs. Because radiation is absorbed as it travels, doctors must calculate the exact "Tissue Depth" the beam penetrates.
-*   **Geometric Principle (Ray-Mesh Intersection)**: We treat the radiation beam as a **Ray** and the patient's anatomy as multiple **TriangleMeshes**.
+*   **Geometric Principle (Ray-Mesh Intersection)**: We treat the radiation beam as a **Ray** and the patient's anatomy as multiple **TriMeshes**.
 *   **Dose Calculation**: By intersecting the ray with the "Body Skin" mesh, we calculate the distance from the skin to the tumor center.
 *   **Safety Interlock**: We perform an intersection test with "Organs-at-Risk" (OAR) meshes. If the ray hits an OAR mesh before or after the tumor, the treatment angle is flagged as "Dangerous" and must be adjusted.
 

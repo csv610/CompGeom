@@ -4,19 +4,16 @@ from collections import defaultdict
 from typing import List, Optional, Tuple, Union
 
 from compgeom.kernel import Point2D, Point3D
-from compgeom.mesh.mesh_base import Mesh, MeshNode, MeshFace, MeshEdge
+from compgeom.mesh.mesh_base import MeshNode, MeshFace, MeshEdge
+from compgeom.mesh.surfmesh.surface_mesh import SurfaceMesh
 
-class TriMesh(Mesh):
+class TriMesh(SurfaceMesh):
     """A 2D or 3D mesh composed of triangular faces."""
 
     def __init__(self, 
                  nodes: List[Union[MeshNode, Point2D, Point3D]], 
                  faces: List[Union[MeshFace, Tuple[int, ...]]], 
                  edges: Optional[List[MeshEdge]] = None):
-        if nodes and not isinstance(nodes[0], MeshNode):
-            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
-        if faces and not isinstance(faces[0], MeshFace):
-            faces = [MeshFace(i, f) for i, f in enumerate(faces)]
         super().__init__(nodes=nodes, faces=faces, edges=edges)
 
     @classmethod
@@ -59,18 +56,6 @@ class TriMesh(Mesh):
                     tri_faces.append(MeshFace(face_id, (v[0], v[i], v[i+1])))
                     face_id += 1
         return cls(nodes, tri_faces)
-
-    def euler_characteristic(self) -> int:
-        v = len(self.nodes)
-        f = len(self.faces)
-        edges = set()
-        for face in self.faces:
-            v_indices = face.v_indices
-            edges.add(tuple(sorted((v_indices[0], v_indices[1]))))
-            edges.add(tuple(sorted((v_indices[1], v_indices[2]))))
-            edges.add(tuple(sorted((v_indices[2], v_indices[0]))))
-        e = len(edges)
-        return v - e + f
 
     def betti_numbers(self) -> tuple[int, int, int]:
         """
@@ -248,3 +233,35 @@ class TriMesh(Mesh):
             final_faces = [MeshFace(i, v) for i, v in enumerate(final_face_tuples)]
             return TriMesh(new_nodes, final_faces)
         return mesh
+
+    def flip_edge(self, u_idx: int, v_idx: int) -> bool:
+        """
+        Topologically flips the edge (u_idx, v_idx) shared by two triangles.
+        Returns True if the flip was successful, False otherwise.
+        """
+        face_u_v_idx = -1
+        face_v_u_idx = -1
+
+        for i, face in enumerate(self.faces):
+            v = face.v_indices
+            if u_idx in v and v_idx in v:
+                idx_u = v.index(u_idx)
+                if v[(idx_u + 1) % 3] == v_idx:
+                    face_u_v_idx = i
+                elif v[(idx_u + 2) % 3] == v_idx:
+                    face_v_u_idx = i
+
+        if face_u_v_idx == -1 or face_v_u_idx == -1:
+            return False
+
+        f1 = self.faces[face_u_v_idx]
+        f2 = self.faces[face_v_u_idx]
+
+        w = [v for v in f1.v_indices if v != u_idx and v != v_idx][0]
+        x = [v for v in f2.v_indices if v != u_idx and v != v_idx][0]
+
+        # New faces: (u_idx, x, w) and (v_idx, w, x)
+        self.faces[face_u_v_idx] = MeshFace(f1.id, (u_idx, x, w))
+        self.faces[face_v_u_idx] = MeshFace(f2.id, (v_idx, w, x))
+
+        return True

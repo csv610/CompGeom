@@ -1,1 +1,1 @@
-"""Command-line entry points for the TriangleMesh repository."""
+"""Command-line entry points for the TriMesh repository."""

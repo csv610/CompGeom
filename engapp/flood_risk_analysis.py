@@ -5,11 +5,11 @@ import argparse
 from typing import List, Tuple
 
 try:
-    from compgeom.mesh import TriangleMesh
+    from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
 except ImportError:
 
-    class TriangleMesh:
+    class TriMesh:
         def __init__(self, vertices=None, faces=None):
             self.vertices = vertices or []
             self.faces = faces or []
@@ -25,7 +25,7 @@ class FloodRiskAnalysis:
     """Provides algorithms for analyzing flood zones and submerged volumes."""
 
     @staticmethod
-    def identify_submerged_faces(mesh: TriangleMesh, water_level: float) -> List[int]:
+    def identify_submerged_faces(mesh: TriMesh, water_level: float) -> List[int]:
         """
         Identifies triangles in the mesh that are completely or partially submerged.
         Useful for generating hazard maps for urban planners.
@@ -47,7 +47,7 @@ class FloodRiskAnalysis:
         return submerged_indices
 
     @staticmethod
-    def calculate_flood_volume(mesh: TriangleMesh, water_level: float) -> float:
+    def calculate_flood_volume(mesh: TriMesh, water_level: float) -> float:
         """
         Calculates the total volume of water accumulated over the terrain up to water_level.
         V = Sum(Area_i * (WaterLevel - AvgHeight_i)) for all submerged parts.
