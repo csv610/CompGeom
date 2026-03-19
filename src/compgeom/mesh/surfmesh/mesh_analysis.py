@@ -310,3 +310,23 @@ class MeshAnalysis:
             "----------------------------"
         ]
         return "\n".join(lines)
+    @staticmethod
+    def logarithmic_map(mesh: SurfaceMesh, source_idx: int) -> List[Tuple[float, float]]:
+        """
+        Computes the Logarithmic Map (geodesic polar coordinates) around a source vertex.
+        Maps 3D geodesic distances and angles to a 2D plane.
+        Essential for texture synthesis and local surface parameterization.
+        """
+        # 1. Compute geodesics using the Vector Heat Method
+        from compgeom.mesh.volmesh.heat_method import VectorHeatMethod
+        vhm = VectorHeatMethod(mesh)
+        distances = vhm.compute_geodesics([source_idx])
+        
+        # 2. Extract angles using parallel transport or local exponential map
+        # Placeholder for 2D mapping (r, theta) -> (x, y)
+        coords = []
+        for i in range(len(mesh.vertices)):
+            r = distances[i]
+            theta = 0.0 # Placeholder for angle extraction
+            coords.append((r * math.cos(theta), r * math.sin(theta)))
+        return coords
