@@ -15,6 +15,7 @@ from compgeom.mesh.surface.quadmesh.quadmesh import QuadMesh
 from compgeom.mesh.surface.trimesh.trimesh import TriMesh
 from compgeom.mesh.surface.surface_mesh import SurfaceMesh
 from compgeom.mesh.volume.hexmesh.hexmesh import HexMesh
+from compgeom.mesh.volume.hexmesh.conforming_generator import ConformingHexMesher
 from compgeom.mesh.volume.tetmesh.tetmesh import TetMesh
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "SurfaceMesh",
     "TetMesh",
     "HexMesh",
+    "ConformingHexMesher",
 ]

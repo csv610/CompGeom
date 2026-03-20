@@ -14,6 +14,7 @@ from compgeom.mesh.surface.trimesh.delaunay_triangulation import (
 )
 from compgeom.mesh.mesh import (
     HexMesh,
+    ConformingHexMesher,
     Mesh,
     MeshAffineTransform,
     MeshGeometry,
@@ -110,6 +111,7 @@ __all__ = [
     "VLSILayout",
     "build_topology",
     "constrained_delaunay_triangulation",
+    "ConformingHexMesher",
     "Mesh",
     "MeshCell",
     "MeshEdge",
