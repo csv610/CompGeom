@@ -96,16 +96,51 @@ class HalfEdgeMesh:
         """Returns the indices of neighbor vertices in O(Valence)."""
         v = self.vertices[v_idx]
         neighbors = set()
-        start_edge = v.edge
-        curr = start_edge
+        if not v.edge: return neighbors
+        
+        # In a triangle mesh, rotate around the vertex
+        # Starting edge is v -> nb
+        curr = v.edge
+        
+        # Rotate CCW
         while True:
             neighbors.add(curr.next.vertex.idx)
-            if curr.twin:
-                curr = curr.twin.next
-            else:
-                # Boundary reached, need to rotate back the other way if possible
-                # In a simplified version, we just break.
+            if not curr.twin: break
+            curr = curr.twin.next
+            if curr == v.edge: return neighbors # Closed fan
+            
+        # If we broke because of boundary, rotate CW from original start
+        curr = v.edge
+        while True:
+            # To rotate CW: go to the edge that ends at v in the previous triangle
+            # Tri is (v, nb, prev_v). Edge is nb -> v (twin of v -> nb). 
+            # Prev tri edge ending at v is prev_v -> v.
+            # In our tri (v, nb, next_v), next_v -> v is curr.next.next
+            
+            # Actually, just get the start vertex of the edge that ends at v
+            # If curr is v -> nb, then curr.next.next is nb_prev -> v.
+            # Its twin is v -> nb_prev.
+            cw_edge = curr.next.next.twin
+            if not cw_edge:
+                # One more neighbor on the boundary
+                neighbors.add(curr.next.next.vertex.idx)
                 break
-            if curr == start_edge:
-                break
+            curr = cw_edge
+            neighbors.add(curr.next.vertex.idx)
+            if curr == v.edge: break
+            
         return neighbors
+
+    def get_half_edge(self, u_idx: int, v_idx: int) -> Optional[HalfEdge]:
+        """Returns the half-edge from vertex u to vertex v, if it exists."""
+        v = self.vertices[u_idx]
+        curr = v.edge
+        if not curr: return None
+        start = curr
+        while True:
+            if curr.next.vertex.idx == v_idx:
+                return curr
+            if not curr.twin: break
+            curr = curr.twin.next
+            if curr == start: break
+        return None
