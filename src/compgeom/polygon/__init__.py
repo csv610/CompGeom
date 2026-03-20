@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from compgeom.polygon.convex_hull import ConvexHull
+from compgeom.polygon.convex_hull_peeling import convex_hull_peeling
 from compgeom.polygon.polygon import (
     Polygon,
     PolygonProperties,
@@ -95,6 +96,7 @@ __all__ = [
     "cleanup_polygon",
     "compute_visibility_polygon",
     "convex_decompose_polygon",
+    "convex_hull_peeling",
     "ConvexHull",
     "DCEL",
     "DCELFace",
