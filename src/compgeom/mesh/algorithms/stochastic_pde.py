@@ -149,9 +149,9 @@ class WalkOnStars(WalkOnSpheres):
                 offset = np.zeros(3)
                 offset[i] = eps
                 # Value at x + eps
-                v_plus = self.solve_laplace(p_start + offset, boundary_values, num_walks=10)
+                v_plus = self.solve_laplace(p_start + offset, boundary_values, num_walks=100)
                 # Value at x - eps
-                v_minus = self.solve_laplace(p_start - offset, boundary_values, num_walks=10)
+                v_minus = self.solve_laplace(p_start - offset, boundary_values, num_walks=100)
                 grad_walk[i] = (v_plus - v_minus) / (2 * eps)
             total_grad += grad_walk
             

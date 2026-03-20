@@ -98,22 +98,10 @@ def hilbert_key(x: int, y: int, n: int) -> int:
 
 def robust_orientation(a: Point2D, b: Point2D, p: Point2D) -> float:
     """Adaptive exact cross product (orientation) with SOS tie-breaking."""
-    adx, ady = b.x - a.x, b.y - a.y
-    bdx, bdy = p.x - a.x, p.y - a.y
-    
-    det = adx * bdy - ady * bdx
-    # Dynamic error bound (Shewchuk style)
-    bound = 1e-14 * (abs(adx * bdy) + abs(ady * bdx))
-    
-    if abs(det) > bound:
-        return det
-        
-    # Exact arithmetic fallback using standard library fractions
-    exact_det = (fractions.Fraction(b.x) - fractions.Fraction(a.x)) * (fractions.Fraction(p.y) - fractions.Fraction(a.y)) - \
-                (fractions.Fraction(b.y) - fractions.Fraction(a.y)) * (fractions.Fraction(p.x) - fractions.Fraction(a.x))
-    
-    if exact_det != 0:
-        return float(exact_det)
+    from compgeom.kernel.predicates import orient2d
+    res = orient2d(a, b, p)
+    if res != 0:
+        return float(res)
         
     # Consistent tie-break using IDs
     return 1e-15 if (a.id < b.id) else -1e-15
