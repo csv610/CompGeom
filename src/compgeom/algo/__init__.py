@@ -1,6 +1,7 @@
 from .bounding import *
 from .contiguous_art_gallery import ContiguousArtGallery
 from .frechet_tester import FrechetTester
+from .hopper_optimizer import HopperOptimizer, hirsch_fitness, neighborly_fitness
 from .lower_envelop import *
 from .path import *
 from .point_trees import *
