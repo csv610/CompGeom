@@ -39,6 +39,9 @@ from compgeom.mesh.surface.quadmesh.simple_tri2quads import TriangleToQuadConver
 from compgeom.mesh.polygon.voronoi_diagram import VoronoiDiagram
 from compgeom.mesh.volume.voxelmesh.voxelization import MeshVoxelizer
 from compgeom.mesh.volume.tetmesh.delaunay_tetmesh import DelaunayTetMesher, triangulate as triangulate_3d
+from compgeom.mesh.volume.marching_tetrahedra import MarchingTetrahedra
+from compgeom.mesh.algorithms.coacd import CoACD
+from compgeom.mesh.surface.intrinsic_triangulation import IntrinsicTriangulation
 
 from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
 from compgeom.mesh.surface.mesh_processing import MeshProcessing
@@ -74,6 +77,7 @@ __all__ = [
     "BoundingVolumes",
     "ConvexHull3D",
     "CuthillMcKee",
+    "CoACD",
     "DTriangle",
     "DelaunayMesher",
     "DelaunayTetMesher",
@@ -82,7 +86,9 @@ __all__ = [
     "HalfEdgeMesh",
     "HexMesh",
     "IsotropicRemesher",
+    "IntrinsicTriangulation",
     "MarchingCubes",
+    "MarchingTetrahedra",
     "MinkowskiSum",
     "PolygonBooleans",
     "PolygonTriangulation",

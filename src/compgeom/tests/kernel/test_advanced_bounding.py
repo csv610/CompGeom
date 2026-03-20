@@ -14,10 +14,9 @@ def test_largest_empty_circle():
     # Square with a point in the center
     points = [Point2D(0, 0), Point2D(10, 0), Point2D(10, 10), Point2D(0, 10), Point2D(5, 5)]
     center, radius = largest_empty_circle(points)
-    # The Delaunay triangles are (0,0,10,0,5,5), etc.
-    # For (0,0,10,0,5,5), circumcenter is (5,0), radius is 5.
-    assert center.x == pytest.approx(5.0)
+    # The optimal solutions are (5,0), (10,5), (5,10), (0,5) all with radius 5.
     assert radius == pytest.approx(5.0)
+    assert (center.x == pytest.approx(5.0) or center.y == pytest.approx(5.0))
 
 def test_largest_empty_sphere():
     # Cube with a point in the center

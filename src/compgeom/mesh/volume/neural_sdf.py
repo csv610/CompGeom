@@ -74,10 +74,19 @@ class TinyNeuralSDF:
         res = minimize(loss_fn, self.params, method='L-BFGS-B', options={'maxiter': iterations})
         self.params = res.x
 
-    def reconstruct(self, res: int = 32) -> TriMesh:
+    def to_mesh(self, res: int = 32) -> TriMesh:
         """Extracts the isosurface using Marching Cubes."""
         def scalar_field(x, y, z):
-            p = np.array([[x, y, z]])
-            return self.forward(p)[0, 0]
+            pts = np.array([[x, y, z]])
+            return self.forward(pts)[0, 0]
 
         return MarchingCubes.reconstruct(scalar_field, tuple(self.bbox_min), tuple(self.bbox_max), resolution=res, isovalue=0.0)
+
+    def to_mesh_tetra(self, res: int = 32) -> TriMesh:
+        """Extracts the isosurface using Marching Tetrahedra."""
+        from compgeom.mesh.volume.marching_tetrahedra import MarchingTetrahedra
+        def scalar_field(x, y, z):
+            pts = np.array([[x, y, z]])
+            return self.forward(pts)[0, 0]
+
+        return MarchingTetrahedra.from_implicit(scalar_field, tuple(self.bbox_min), tuple(self.bbox_max), resolution=res, isovalue=0.0)
