@@ -41,6 +41,9 @@ from compgeom.mesh.volume.voxelmesh.voxelization import MeshVoxelizer
 from compgeom.mesh.volume.tetmesh.delaunay_tetmesh import DelaunayTetMesher, triangulate as triangulate_3d
 from compgeom.mesh.volume.marching_tetrahedra import MarchingTetrahedra
 from compgeom.mesh.algorithms.coacd import CoACD
+from compgeom.mesh.algorithms.dec import DEC
+from compgeom.mesh.algorithms.discrete_morse import DiscreteMorse
+from compgeom.mesh.algorithms.hodge_theory import HodgeDecomposition
 from compgeom.mesh.surface.intrinsic_triangulation import IntrinsicTriangulation
 from compgeom.mesh.surface.parameterization_lscm import LSCMParameterizer
 from compgeom.mesh.surface.ricci_flow import RicciFlow
@@ -82,14 +85,17 @@ __all__ = [
     "ConvexHull3D",
     "CuthillMcKee",
     "CoACD",
+    "DEC",
     "DTriangle",
     "DelaunayMesher",
     "DelaunayTetMesher",
     "DiscreteConformalEquivalence",
+    "DiscreteMorse",
     "DynamicDelaunay",
     "EdgeMesh",
     "HalfEdgeMesh",
     "HexMesh",
+    "HodgeDecomposition",
     "IsotropicRemesher",
     "IntrinsicTriangulation",
     "LSCMParameterizer",

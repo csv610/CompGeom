@@ -7,6 +7,8 @@ from collections import deque
 from compgeom.mesh.surface.trimesh.trimesh import TriMesh
 from compgeom.mesh.surface.halfedge_mesh import HalfEdgeMesh, Vertex, Face, HalfEdge
 
+from compgeom.mesh.algorithms.dec import DEC
+
 class DiscreteMorse:
     """
     Implements Discrete Morse Theory on a triangle mesh.
@@ -15,6 +17,7 @@ class DiscreteMorse:
     def __init__(self, mesh: TriMesh, vertex_values: np.ndarray):
         self.mesh = mesh
         self.he_mesh = HalfEdgeMesh.from_triangle_mesh(mesh)
+        self.dec = DEC(self.he_mesh)
         self.v_vals = vertex_values
         self.num_v = len(mesh.vertices)
         
@@ -44,58 +47,63 @@ class DiscreteMorse:
                 if vert_key(nb) < v_key:
                     he = self.he_mesh.get_half_edge(v_idx, nb)
                     if he:
-                        edge_id = min(he.idx, he.twin.idx) if he.twin else he.idx
-                        ls_edges.append(edge_id)
+                        ls_edges.append(self.dec.edge_to_idx[he.idx])
             
             ls_faces = []
-            incident_faces = self._get_incident_faces(v_idx)
-            for f_idx in incident_faces:
-                v_indices = self._get_face_vertex_indices(f_idx)
-                if max(vert_key(i) for i in v_indices) == v_key:
+            for f_idx in self._get_incident_faces(v_idx):
+                if max(vert_key(i) for i in self._get_face_vertex_indices(f_idx)) == v_key:
                     ls_faces.append(f_idx)
 
-            # 2. Process the Lower Star (Robins' pairing)
-            E = set(ls_edges)
-            F = set(ls_faces)
+            # 2. Combinatorial Collapse of LS(v)
+            # Cells in this star
+            star_cells = { (0, v_idx) }
+            for e in ls_edges: star_cells.add((1, e))
+            for f in ls_faces: star_cells.add((2, f))
             
-            queue = deque()
-            
-            if not E:
-                self.critical_cells.add((0, v_idx))
-            else:
-                # Pair v with the first edge
-                e_pair = sorted(list(E))[0]
-                self.gradient[(0, v_idx)] = (1, e_pair)
-                self.gradient[(1, e_pair)] = (0, v_idx)
-                paired.add((0, v_idx))
-                paired.add((1, e_pair))
-                E.remove(e_pair)
-                
-                # Maintain a queue of faces that have exactly one unpaired edge in E
-                def update_queue():
-                    for f in list(F):
-                        if (2, f) in paired: continue
-                        unpaired_edges = [e for e in self._get_face_edges(f) if e in E]
-                        if len(unpaired_edges) == 1:
-                            queue.append((f, unpaired_edges[0]))
+            def get_facets(dim, idx):
+                if dim == 1:
+                    he = self.he_mesh.edges[self.dec.primal_edges[idx].idx]
+                    return [(0, he.vertex.idx), (0, he.next.vertex.idx)]
+                if dim == 2:
+                    return [(1, e) for e in self._get_face_edges(idx)]
+                return []
 
-                update_queue()
-                while queue:
-                    f, e = queue.popleft()
-                    if (2, f) in paired or (1, e) not in E: continue
+            # Work on a local copy of cells in this star
+            local_C = star_cells.copy()
+            
+            # Simple greedy collapse: 
+            # Find a cell with exactly one facet in local_C
+            while True:
+                found = False
+                # Try to pair (facet, cell)
+                for cell in list(local_C):
+                    if cell[0] == 0: continue # Vertices have no facets
                     
-                    self.gradient[(2, f)] = (1, e)
-                    self.gradient[(1, e)] = (2, f)
-                    paired.add((2, f))
-                    paired.add((1, e))
-                    E.remove(e)
-                    update_queue()
+                    facets_in_star = [f for f in get_facets(cell[0], cell[1]) if f in local_C]
+                    if len(facets_in_star) == 1:
+                        facet = facets_in_star[0]
+                        # Pair (facet, cell)
+                        self.gradient[facet] = cell
+                        self.gradient[cell] = facet
+                        paired.add(facet)
+                        paired.add(cell)
+                        local_C.remove(facet)
+                        local_C.remove(cell)
+                        found = True
+                        break
+                if not found: break
                 
-                # Remaining are critical
-                for e in E:
-                    if (1, e) not in paired: self.critical_cells.add((1, e))
-                for f in F:
-                    if (2, f) not in paired: self.critical_cells.add((2, f))
+            # Remaining cells in local_C are critical
+            for cell in local_C:
+                self.critical_cells.add(cell)
+
+    def _get_face_he(self, f_idx: int) -> List[HalfEdge]:
+        face = self.he_mesh.faces[f_idx]
+        he = face.edge
+        return [he, he.next, he.next.next]
+
+    def _get_face_edges(self, f_idx: int) -> List[int]:
+        return [self.dec.edge_to_idx[he.idx] for he in self._get_face_he(f_idx)]
 
     def get_critical_points(self) -> Dict[str, List[int]]:
         """Returns critical indices grouped by type."""
@@ -107,45 +115,26 @@ class DiscreteMorse:
         return res
 
     def _get_incident_faces(self, v_idx: int) -> List[int]:
+        """Returns the indices of faces incident to vertex v."""
         v = self.he_mesh.vertices[v_idx]
         faces = set()
         curr = v.edge
         if not curr: return []
+        start = curr
         while True:
             if curr.face: faces.add(curr.face.idx)
             if not curr.twin: break
             curr = curr.twin.next
-            if curr == v.edge: break
+            if curr == start: break
         return list(faces)
-
-    def _get_other_vert(self, edge_id: int, v_idx: int) -> int:
-        he = self.he_mesh.edges[edge_id]
-        return he.next.vertex.idx if he.vertex.idx == v_idx else he.vertex.idx
-
-    def _get_face_edges(self, f_idx: int) -> List[int]:
-        face = self.he_mesh.faces[f_idx]
-        he = face.edge
-        edges = []
-        for _ in range(3):
-            edge_id = min(he.idx, he.twin.idx) if he.twin else he.idx
-            edges.append(edge_id)
-            he = he.next
-        return edges
 
     def _get_face_vertex_indices(self, f_idx: int) -> List[int]:
         """Returns the indices of the three vertices of a triangle face."""
-        face = self.he_mesh.faces[f_idx]
-        he = face.edge
-        v_indices = []
-        for _ in range(3):
-            v_indices.append(he.vertex.idx)
-            he = he.next
-        return v_indices
+        return [he.vertex.idx for he in self._get_face_he(f_idx)]
 
     def trace_ascending_path(self, saddle_edge_id: int) -> List[int]:
         """Traces a gradient path from a saddle upward to a maximum."""
-        # A V-path alternates between gradient pairs and boundary relations.
-        # ... (Implementation of path tracing)
+        # TODO: Implement V-path tracing
         return []
 
     def get_euler_characteristic(self) -> int:

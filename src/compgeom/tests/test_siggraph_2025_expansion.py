@@ -25,7 +25,7 @@ def test_walk_on_stars_gradient(simple_trimesh):
     # Estimate gradient of a linear field u(x,y,z) = x
     # grad u should be (1, 0, 0)
     # We use a point far from the boundary to ensure stability
-    grad = wost.solve_gradient(Point3D(0.1, 0.1, 0.1), lambda p: p.x, num_walks=50)
+    grad = wost.solve_gradient(Point3D(0.1, 0.1, 0.1), lambda p: p.x, num_walks=200)
     assert len(grad) == 3
     # Check if x-component is significantly larger than noise
     assert abs(grad[0]) > abs(grad[1])

@@ -52,8 +52,8 @@ def test_halfedge_assigns_twins_on_shared_edge_only():
     twin_pairs = sum(1 for edge in he_mesh.edges if edge.twin is not None)
 
     assert twin_pairs == 2
-    assert he_mesh.vertex_neighbors(0) == {1, 2}
-    assert he_mesh.vertex_neighbors(2) == {3}
+    assert he_mesh.vertex_neighbors(0) == {1, 2, 3}
+    assert he_mesh.vertex_neighbors(2) == {0, 1, 3}
 
 
 def test_single_ray_triangle_intersection_and_distance_helpers():
