@@ -42,6 +42,10 @@ from compgeom.mesh.volume.tetmesh.delaunay_tetmesh import DelaunayTetMesher, tri
 from compgeom.mesh.volume.marching_tetrahedra import MarchingTetrahedra
 from compgeom.mesh.algorithms.coacd import CoACD
 from compgeom.mesh.surface.intrinsic_triangulation import IntrinsicTriangulation
+from compgeom.mesh.surface.parameterization_lscm import LSCMParameterizer
+from compgeom.mesh.surface.ricci_flow import RicciFlow
+from compgeom.mesh.surface.conformal_equivalence import DiscreteConformalEquivalence
+from compgeom.mesh.surface.quasi_conformal import QuasiConformalMap
 
 from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
 from compgeom.mesh.surface.mesh_processing import MeshProcessing
@@ -81,17 +85,21 @@ __all__ = [
     "DTriangle",
     "DelaunayMesher",
     "DelaunayTetMesher",
+    "DiscreteConformalEquivalence",
     "DynamicDelaunay",
     "EdgeMesh",
     "HalfEdgeMesh",
     "HexMesh",
     "IsotropicRemesher",
     "IntrinsicTriangulation",
+    "LSCMParameterizer",
     "MarchingCubes",
     "MarchingTetrahedra",
     "MinkowskiSum",
     "PolygonBooleans",
     "PolygonTriangulation",
+    "QuasiConformalMap",
+    "RicciFlow",
     "SweepLine",
     "VLSILayout",
     "build_topology",
