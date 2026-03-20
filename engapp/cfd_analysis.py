@@ -24,7 +24,7 @@ class CFDAnalysis:
         Generates layered volumetric elements (represented here as offset surface shells)
         along the boundary of a mesh. Essential for capturing fluid friction in CFD.
         """
-        from compgeom.mesh.surfmesh.mesh_processing import MeshProcessing
+        from compgeom.mesh.surface.mesh_processing import MeshProcessing
 
         current_thickness = thickness
         all_vertices = list(mesh.vertices)
@@ -38,7 +38,7 @@ class CFDAnalysis:
             all_vertices.extend(layer_mesh.vertices)
 
             # For V1.0, we represent layers as a set of nested shells
-            # In a full volmesh implementation, these would be Prisms/Hexes.
+            # In a full volume implementation, these would be Prisms/Hexes.
             offset = (i + 1) * len(mesh.vertices)
             for face in mesh.faces:
                 all_faces.append((face[0] + offset, face[1] + offset, face[2] + offset))

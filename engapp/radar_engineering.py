@@ -59,8 +59,8 @@ class RadarEngineering:
         Essential for shadowing and signal blocking analysis.
         """
         try:
-            from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
-            from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+            from compgeom.mesh.surface.mesh_queries import MeshQueries
+            from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
 
             face_normals = MeshAnalysis.compute_face_normals(mesh)
             ray_intersect = MeshQueries.ray_intersect
@@ -117,7 +117,7 @@ class RadarEngineering:
         Proportional to the projected area facing the incident wave.
         """
         try:
-            from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+            from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
 
             face_normals = MeshAnalysis.compute_face_normals(mesh)
         except ImportError:

@@ -3,7 +3,7 @@ import compgeom.mesh.mesh
 from compgeom.mesh.mesh_base import Mesh, MeshNode, MeshFace, MeshCell
 from compgeom.mesh.mesh_topology import MeshTopology
 from compgeom.mesh.mesh_geometry import MeshGeometry
-from compgeom.mesh.meshalgo.mesh_reordering import MeshReorderer
+from compgeom.mesh.algorithms.mesh_reordering import MeshReorderer
 
 def patch_mesh_classes():
     # Patch MeshFace and MeshCell to be iterable and subscriptable

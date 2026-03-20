@@ -7,7 +7,7 @@ import numpy as np
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 from compgeom.kernel import Point2D, Point3D
-from compgeom.mesh.meshalgo.range_search import RangeSearch
+from compgeom.mesh.algorithms.range_search import RangeSearch
 
 def naive_sphere_search(points, center, radius):
     c = np.array([center.x, center.y, getattr(center, 'z', 0.0)])

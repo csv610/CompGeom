@@ -6,7 +6,7 @@ from typing import List, Tuple
 try:
     from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
-    from compgeom.mesh.surfmesh.mesh_processing import MeshProcessing
+    from compgeom.mesh.surface.mesh_processing import MeshProcessing
 except ImportError:
     TriMesh = object
     Point3D = object

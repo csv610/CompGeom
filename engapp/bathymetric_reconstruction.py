@@ -67,7 +67,7 @@ class BathymetricReconstruction:
         Uses the divergence theorem (sum of signed tetrahedron volumes).
         """
         try:
-            from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+            from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
 
             return MeshAnalysis.total_volume(mesh)
         except ImportError:

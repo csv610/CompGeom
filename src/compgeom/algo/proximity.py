@@ -161,7 +161,7 @@ class LargestEmptyCircle:
             return Point2D(0, 0), 0.0
 
         hull = GrahamScan().generate(points)
-        from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import triangulate
+        from compgeom.mesh.surface.trimesh.delaunay_triangulation import triangulate
         mesh = triangulate(points)
         triangles = [(mesh.vertices[f[0]], mesh.vertices[f[1]], mesh.vertices[f[2]]) for f in mesh.faces]
         

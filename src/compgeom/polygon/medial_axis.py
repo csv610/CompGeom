@@ -7,7 +7,7 @@ from typing import List, Set, Tuple, Sequence, Dict
 
 from compgeom.kernel import Point2D, triangle_circumcenter, length, sub
 from compgeom.polygon.polygon import Polygon
-from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import build_topology, triangulate
+from compgeom.mesh.surface.trimesh.delaunay_triangulation import build_topology, triangulate
 from compgeom.polygon.tolerance import EPSILON
 
 

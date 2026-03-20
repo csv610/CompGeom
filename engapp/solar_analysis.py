@@ -7,8 +7,8 @@ import math
 try:
     from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
-    from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
-    from compgeom.mesh.surfmesh.mesh_queries import MeshQueries
+    from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
+    from compgeom.mesh.surface.mesh_queries import MeshQueries
 except ImportError:
     # Standalone fallbacks for external usage/testing
     class TriMesh:

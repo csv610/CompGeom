@@ -1,5 +1,5 @@
 from compgeom.kernel import Point2D, orientation_sign
-from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import build_topology, is_delaunay, DelaunayMesher
+from compgeom.mesh.surface.trimesh.delaunay_triangulation import build_topology, is_delaunay, DelaunayMesher
 
 
 def test_delaunay_flip_preserves_ccw_direction_for_new_triangles():

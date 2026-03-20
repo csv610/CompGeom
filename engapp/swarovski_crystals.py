@@ -8,9 +8,9 @@ from typing import List
 try:
     from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
-    from compgeom.mesh.surfmesh.convex_hull import ConvexHull3D
-    from compgeom.mesh.surfmesh.mesh_decimation import MeshDecimator
-    from compgeom.mesh.surfmesh.mesh_processing import MeshProcessing
+    from compgeom.mesh.surface.convex_hull import ConvexHull3D
+    from compgeom.mesh.surface.mesh_decimation import MeshDecimator
+    from compgeom.mesh.surface.mesh_processing import MeshProcessing
 except ImportError:
     TriMesh = object
     Point3D = object

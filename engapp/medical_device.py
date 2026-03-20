@@ -33,7 +33,7 @@ class MedicalDeviceGeometry:
         In medical manufacturing (implants), surface finish is critical for osseointegration.
         """
         try:
-            from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+            from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
         except ImportError:
             from unittest.mock import MagicMock
 
@@ -126,7 +126,7 @@ class MedicalDeviceGeometry:
         Ratio of empty space to total volume.
         """
         try:
-            from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+            from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
         except ImportError:
             from unittest.mock import MagicMock
 

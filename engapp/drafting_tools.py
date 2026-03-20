@@ -36,7 +36,7 @@ class DraftingTools:
         Essential for injection molding and casting design.
         """
         try:
-            from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+            from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
         except ImportError:
             from unittest.mock import MagicMock
 
@@ -77,7 +77,7 @@ class DraftingTools:
         Fundamental for technical drafting and hidden line removal.
         """
         try:
-            from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+            from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
         except ImportError:
             from unittest.mock import MagicMock
 

@@ -26,7 +26,7 @@ class AdditiveMfg:
         Identifies faces that require support structures.
         Returns a tuple of (list of face indices, total overhang area).
         """
-        from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+        from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
 
         face_normals = MeshAnalysis.compute_face_normals(mesh)
         faces = mesh.faces()
@@ -64,7 +64,7 @@ class AdditiveMfg:
         """
         Provides a very rough estimate of 3D printing time based on surface area and layers.
         """
-        from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+        from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
 
         bbox = mesh.bounding_box()
         height = bbox[1][2] - bbox[0][2]
@@ -148,7 +148,7 @@ class AdditiveMfg:
         Finds the optimal rotation of the mesh using normalized objective functions.
         Returns (best_quaternion, min_overhang_area, stability_score_0_to_1).
         """
-        from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+        from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
 
         face_normals = MeshAnalysis.compute_face_normals(mesh)
         faces = mesh.faces()
@@ -291,7 +291,7 @@ class AdditiveMfg:
         Identifies faces that belong to thin walls (thickness < min_thickness).
         Uses ray casting inward from each face.
         """
-        from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+        from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
 
         face_normals = MeshAnalysis.compute_face_normals(mesh)
         faces = mesh.faces()

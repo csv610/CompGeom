@@ -8,7 +8,7 @@ from typing import List, Tuple, Union
 
 from compgeom.kernel import Point2D, Point3D
 from compgeom.mesh.mesh import Mesh
-from compgeom.mesh.polymesh.voronoi_diagram import VoronoiDiagram
+from compgeom.mesh.polygon.voronoi_diagram import VoronoiDiagram
 from compgeom.polygon.polygon import Polygon
 
 GeometricObject = Union[Mesh, VoronoiDiagram, Polygon, List[Point2D], List[Point3D]]

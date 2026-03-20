@@ -14,7 +14,7 @@ for path in (ROOT, SRC):
 def test_core_package_imports():
     importlib.import_module("compgeom")
     importlib.import_module("compgeom.mesh")
-    importlib.import_module("compgeom.mesh.surfmesh.surf_mesh_repair")
+    importlib.import_module("compgeom.mesh.surface.surf_mesh_repair")
 
 
 def test_engapp_modules_import_against_compgeom_package():

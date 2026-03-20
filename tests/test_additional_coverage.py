@@ -67,7 +67,7 @@ from compgeom.algo.shapes import (
 from compgeom.graphics.geo_plot import GeomPlot
 from compgeom.graphics.visualization import generate_svg_path, save_png, save_svg
 from compgeom.mesh import CuthillMcKee, MeshColoring, MeshTransfer, PolygonMesh, QuadMesh, TriMesh, VoronoiDiagram
-from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import (
+from compgeom.mesh.surface.trimesh.delaunay_triangulation import (
     DTriangle,
     DelaunayMesher,
     DynamicDelaunay,
@@ -78,9 +78,9 @@ from compgeom.mesh.surfmesh.trimesh.delaunay_triangulation import (
     triangulate,
 )
 from compgeom.mesh.meshio import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler
-from compgeom.mesh.surfmesh.trimesh.mesh_refinement import TriMeshRefiner
-from compgeom.mesh.surfmesh.quadmesh.simple_tri2quads import TriangleToQuadConverter
-from compgeom.mesh.volmesh.voxelmesh.voxelization import MeshVoxelizer
+from compgeom.mesh.surface.trimesh.mesh_refinement import TriMeshRefiner
+from compgeom.mesh.surface.quadmesh.simple_tri2quads import TriangleToQuadConverter
+from compgeom.mesh.volume.voxelmesh.voxelization import MeshVoxelizer
 from compgeom.polygon.circle_packing import pack_circles, optimal_radius, calculate_circle_packing_efficiency, visualize_circle_packing, _is_circle_inside
 class CirclePacker: 
     pack = staticmethod(pack_circles) 

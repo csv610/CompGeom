@@ -1,7 +1,7 @@
 import pytest
 import random
 from compgeom.kernel import Point3D
-from compgeom.mesh.volmesh.tetmesh import DelaunayTetMesher, tetmesher
+from compgeom.mesh.volume.tetmesh import DelaunayTetMesher, tetmesher
 
 def test_single_tetrahedron():
     """Test with 4 points forming a single tetrahedron."""

@@ -8,7 +8,7 @@ from typing import List
 try:
     from compgeom.mesh import TriMesh
     from compgeom.kernel import Point3D
-    from compgeom.mesh.volmesh.marching_cubes import MarchingCubes
+    from compgeom.mesh.volume.marching_cubes import MarchingCubes
 except ImportError:
     TriMesh = object
     Point3D = object
@@ -69,7 +69,7 @@ class MolecularGeometry:
     def molecular_volume(mesh: TriMesh) -> float:
         """Calculates the volume of the molecular surface (SAS or SES)."""
         try:
-            from compgeom.mesh.surfmesh.mesh_analysis import MeshAnalysis
+            from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
         except ImportError as e:
             raise ImportError(
                 "Could not import MeshAnalysis. Please ensure 'compgeom' package is properly installed."
@@ -84,7 +84,7 @@ class MolecularGeometry:
         Uses Mean Curvature to find concave regions.
         """
         try:
-            from compgeom.mesh.surfmesh.curvature import MeshCurvature
+            from compgeom.mesh.surface.curvature import MeshCurvature
         except ImportError as e:
             raise ImportError(
                 "Could not import MeshCurvature. Please ensure 'compgeom' package is properly installed."

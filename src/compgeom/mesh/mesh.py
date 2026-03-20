@@ -9,11 +9,11 @@ from compgeom.mesh.mesh_affine_transform import MeshAffineTransform
 from compgeom.mesh.mesh_geometry import MeshGeometry
 
 mesh_edges = MeshEdge
-from compgeom.mesh.surfmesh.polymesh import PolygonMesh
-from compgeom.mesh.surfmesh.quadmesh import QuadMesh
-from compgeom.mesh.surfmesh.trimesh import TriMesh
-from compgeom.mesh.volmesh.hexmesh import HexMesh
-from compgeom.mesh.volmesh.tetmesh import TetMesh
+from compgeom.mesh.surface.polygon import PolygonMesh
+from compgeom.mesh.surface.quadmesh import QuadMesh
+from compgeom.mesh.surface.trimesh import TriMesh
+from compgeom.mesh.volume.hexmesh import HexMesh
+from compgeom.mesh.volume.tetmesh import TetMesh
 
 __all__ = [
     "Mesh",

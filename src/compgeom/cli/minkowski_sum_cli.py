@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from compgeom.cli._shared import demo_polygon, visualize_with_pyvista
-from compgeom.mesh.polymesh.minkowski import MinkowskiSum
+from compgeom.mesh.polygon.minkowski import MinkowskiSum
 
 
 def main(argv: list[str] | None = None) -> int:

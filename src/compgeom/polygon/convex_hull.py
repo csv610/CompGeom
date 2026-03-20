@@ -45,7 +45,7 @@ class ConvexHull:
             return generator_cls().generate(points)
 
         if isinstance(p0, Point3D):
-            from compgeom.mesh.surfmesh.convex_hull import ConvexHull3D
+            from compgeom.mesh.surface.convex_hull import ConvexHull3D
             return ConvexHull3D.compute(points)
 
         raise TypeError("Points must be a list of Point2D or Point3D objects.")

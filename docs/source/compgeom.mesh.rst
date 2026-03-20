@@ -7,9 +7,9 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   compgeom.mesh.polymesh
-   compgeom.mesh.surfmesh
-   compgeom.mesh.volmesh
+   compgeom.mesh.polygon
+   compgeom.mesh.surface
+   compgeom.mesh.volume
 
 Submodules
 ----------
