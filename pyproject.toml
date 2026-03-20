@@ -23,8 +23,13 @@ viz = [
 geometry = [
     "shapely",
 ]
+neural = [
+    "torch",
+    "jax",
+    "jaxlib",
+]
 all = [
-    "compgeom[viz,geometry]",
+    "compgeom[viz,geometry,neural]",
 ]
 
 [project.scripts]

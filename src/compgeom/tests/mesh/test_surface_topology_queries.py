@@ -62,7 +62,7 @@ def test_single_ray_triangle_intersection_and_distance_helpers():
         [(0, 1, 2)],
     )
 
-    distance = MeshQueries._single_ray_tri_intersect(mesh, 0, (0.2, 0.2, 1.0), (0.0, 0.0, -1.0))
+    distance = MeshQueries._single_ray_face_intersect(mesh, 0, (0.2, 0.2, 1.0), (0.0, 0.0, -1.0))
     distance_sq = MeshQueries._point_triangle_dist_sq(
         (0.2, 0.2, 1.0),
         (0.0, 0.0, 0.0),
@@ -93,7 +93,7 @@ def test_compute_sdf_and_slice_mesh_currently_return_none():
         [(0, 1, 2)],
     )
 
-    assert MeshQueries.compute_sdf(mesh, (0.2, 0.2, 1.0), use_spatial=False) is None
+    assert MeshQueries.compute_sdf(mesh, (0.2, 0.2, 1.0), use_spatial=False) == pytest.approx(1.0)
     assert MeshQueries.slice_mesh(mesh, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0)) is None
 
 

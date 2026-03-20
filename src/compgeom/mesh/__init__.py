@@ -22,8 +22,10 @@ from compgeom.mesh.mesh import (
     MeshFace,
     MeshNode,
     MeshTopology,
+    mesh_neighbors,
     PolygonMesh,
     QuadMesh,
+    SurfaceMesh,
     TetMesh,
     TriMesh
 )
@@ -112,6 +114,7 @@ __all__ = [
     "MeshReorderer",
     "MeshTriangle",
     "MeshTopology",
+    "mesh_neighbors",
     "MeshTransfer",
     "MeshVoxelizer",
     "OBJFileHandler",
@@ -121,6 +124,7 @@ __all__ = [
     "PolygonMesh",
     "PolygonWinding",
     "QuadMesh",
+    "SurfaceMesh",
     "TetMesh",
     "TetMeshQuality",
     "TriMeshRefiner",

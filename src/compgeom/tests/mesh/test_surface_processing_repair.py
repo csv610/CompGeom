@@ -1,7 +1,7 @@
 import pytest
 
 from compgeom.kernel import Point3D
-from compgeom.mesh import TriMesh
+from compgeom.mesh import TriMesh, SurfaceMesh
 from compgeom.mesh.surface.mesh_processing import MeshProcessing
 from compgeom.mesh.surface.remesher import AdaptiveRemesher
 from compgeom.mesh.surface.surf_mesh_repair import SurfMeshRepair
@@ -68,7 +68,9 @@ def test_mesh_offset_returns_offset_shell_and_create_solid_is_unfinished():
     assert len(offset.vertices) == len(mesh.vertices)
     assert offset.faces == mesh.faces
     assert all(vertex.z == pytest.approx(1.0) for vertex in offset.vertices)
-    assert MeshProcessing.mesh_offset(mesh, 1.0, create_solid=True) is None
+    solid = MeshProcessing.mesh_offset(mesh, 1.0, create_solid=True)
+    assert isinstance(solid, SurfaceMesh)
+    assert len(solid.vertices) == 2 * len(mesh.vertices)
 
 
 def test_mesh_clipping_currently_raises_name_error_for_missing_math_import():

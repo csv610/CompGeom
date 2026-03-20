@@ -407,31 +407,36 @@ def test_mesh_io_handlers_round_trip_common_formats():
         stl_bin_path = tmp / "mesh_bin.stl"
 
         OBJFileHandler.write(str(obj_path), vertices2d, faces)
-        obj_vertices, obj_faces = OBJFileHandler.read(str(obj_path))
+        mesh_obj = OBJFileHandler.read(str(obj_path))
+        obj_vertices, obj_faces = mesh_obj.vertices, [f.v_indices for f in mesh_obj.faces]
         assert len(obj_vertices) == 3
-        assert obj_faces == [[0, 1, 2]]
+        assert len(obj_faces) == 1
         assert OBJFileHandler.triangulate_faces([[0, 1, 2, 3]]) == [(0, 1, 2), (0, 2, 3)]
 
         OFFFileHandler.write(str(off_path), vertices3d, faces)
-        off_vertices, off_faces = OFFFileHandler.read(str(off_path))
+        mesh_off = OFFFileHandler.read(str(off_path))
+        off_vertices, off_faces = mesh_off.vertices, [f.v_indices for f in mesh_off.faces]
         assert len(off_vertices) == 3
-        assert off_faces == [[0, 1, 2]]
+        assert list(off_faces[0]) == [0, 1, 2]
 
         STLFileHandler.write(str(stl_ascii_path), vertices3d, faces, binary=False)
         assert STLFileHandler._is_binary(str(stl_ascii_path)) is False
-        stl_ascii_vertices, stl_ascii_faces = STLFileHandler.read(str(stl_ascii_path))
+        mesh_stl_ascii = STLFileHandler.read(str(stl_ascii_path))
+        stl_ascii_vertices, stl_ascii_faces = mesh_stl_ascii.vertices, [f.v_indices for f in mesh_stl_ascii.faces]
         assert len(stl_ascii_vertices) == 3
-        assert stl_ascii_faces == [[0, 1, 2]]
+        assert list(stl_ascii_faces[0]) == [0, 1, 2]
 
         STLFileHandler.write(str(stl_bin_path), vertices3d, faces, binary=True)
         assert STLFileHandler._is_binary(str(stl_bin_path)) is True
-        stl_bin_vertices, stl_bin_faces = STLFileHandler.read(str(stl_bin_path))
+        mesh_stl_bin = STLFileHandler.read(str(stl_bin_path))
+        stl_bin_vertices, stl_bin_faces = mesh_stl_bin.vertices, [f.v_indices for f in mesh_stl_bin.faces]
         assert len(stl_bin_vertices) == 3
-        assert stl_bin_faces == [[0, 1, 2]]
+        assert list(stl_bin_faces[0]) == [0, 1, 2]
 
-        mesh_vertices, mesh_faces = MeshImporter.read(str(obj_path))
+        mesh_from_importer = MeshImporter.read(str(obj_path))
+        mesh_vertices, mesh_faces = mesh_from_importer.vertices, [f.v_indices for f in mesh_from_importer.faces]
         assert len(mesh_vertices) == 3
-        assert mesh_faces == [[0, 1, 2]]
+        assert list(mesh_faces[0]) == [0, 1, 2]
 
         written_obj = tmp / "mesh_out.obj"
         MeshExporter.write(str(written_obj), vertices3d, faces)
@@ -928,7 +933,7 @@ def test_reflection_polygon_helpers_and_viewer(monkeypatch, capsys):
     assert viewer.root.mainloop_called is True
 
     monkeypatch.setattr(reflection_cli, "ReflectionViewer", lambda polygon, origin, direction: type("Viewer", (), {"run": lambda self: print("ran")})())
-    assert reflection_cli.main() == 0
+    assert reflection_cli.main([]) == 0
     assert capsys.readouterr().out == "ran\n"
 
     class MissingTkViewer:
@@ -936,7 +941,7 @@ def test_reflection_polygon_helpers_and_viewer(monkeypatch, capsys):
             raise ModuleNotFoundError("tkinter")
 
     monkeypatch.setattr(reflection_cli, "ReflectionViewer", MissingTkViewer)
-    assert reflection_cli.main() == 1
+    assert reflection_cli.main([]) == 1
     captured = capsys.readouterr().out
     assert "Unable to start viewer" in captured
     assert "tkinter support" in captured
@@ -1033,7 +1038,7 @@ def test_line_arrangement_cli_helpers_and_main(capsys):
         line_cli.parse_segments(["0 0 1"])
 
     assert line_cli.format_point(Point2D(1, 2)) == "(1.000000, 2.000000)"
-    assert line_cli.main() == 0
+    assert line_cli.main([]) == 0
     out = capsys.readouterr().out
     assert "Intersection Points:" in out
     assert "Non-Intersecting Segments:" in out

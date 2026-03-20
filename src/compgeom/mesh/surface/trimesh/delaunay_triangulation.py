@@ -90,7 +90,7 @@ class DelaunayMesher:
         elif algorithm == "edge_flip":
             triangles = triangulate_edgeflip(points, spatial_sort=spatial_sort)
         elif algorithm == "flip":
-            raw_triangles, _, super_triangle_vertices = triangulate_naive(points)
+            raw_triangles, super_triangle_vertices = triangulate_naive(points)
             mesh = build_topology(raw_triangles)
             DelaunayMesher.delaunay_flip(mesh)
             triangles = [

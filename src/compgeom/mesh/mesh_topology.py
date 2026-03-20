@@ -9,6 +9,66 @@ if TYPE_CHECKING:
     from compgeom.mesh.mesh_base import Mesh
 
 
+def mesh_neighbors(triangles: list[tuple[Any, ...]]) -> dict:
+    """
+    Computes neighbor relationships for a list of triangles.
+    Returns a dict with 'vertex_neighbors' and 'triangle_neighbors'.
+    """
+    from compgeom.kernel import Point2D, Point3D
+    from compgeom.mesh.surface.trimesh.trimesh import TriMesh
+
+    # 1. Flatten triangles into unique vertices and faces
+    unique_points = []
+    point_to_id = {}
+    faces = []
+
+    for tri in triangles:
+        tri_face = []
+        for p in tri:
+            # Use id if available, otherwise coordinates
+            p_id = getattr(p, 'id', -1)
+            if p_id != -1 and p_id in point_to_id:
+                tri_face.append(point_to_id[p_id])
+            else:
+                p_key = (p.x, p.y, getattr(p, 'z', 0.0))
+                if p_key not in point_to_id:
+                    point_to_id[p_key] = len(unique_points)
+                    if p_id != -1:
+                        point_to_id[p_id] = point_to_id[p_key]
+                    unique_points.append(p)
+                tri_face.append(point_to_id[p_key])
+        faces.append(tuple(tri_face))
+
+    # 2. Build temporary TriMesh to use MeshTopology
+    mesh = TriMesh(unique_points, faces)
+    topo = MeshTopology(mesh)
+
+    # 3. Extract neighbors
+    v_neighbors = {}
+    for i in range(len(unique_points)):
+        v_neighbors[i] = list(topo.vertex_neighbors(i))
+
+    t_neighbors = {}
+    for i in range(len(faces)):
+        t_neighbors[i] = list(topo.element_neighbors(i))
+
+    return {
+        "vertex_neighbors": v_neighbors,
+        "triangle_neighbors": t_neighbors
+    }
+
+
+def get_mesh_edges(triangles: list[tuple[Any, ...]]) -> set[tuple[int, int]]:
+    """Extracts unique vertex id pairs from a list of triangles."""
+    edges = set()
+    for tri in triangles:
+        n = len(tri)
+        for i in range(n):
+            u, v = tri[i].id, tri[(i + 1) % n].id
+            edges.add(tuple(sorted((u, v))))
+    return edges
+
+
 class MeshTopology:
     """Provides topological queries for a mesh."""
 
@@ -231,3 +291,4 @@ class MeshTopology:
                         u, v = sharing_elements[i], sharing_elements[j]
                         self._e2e_edge[u].add(v)
                         self._e2e_edge[v].add(u)
+__all__ = ['MeshTopology', 'mesh_neighbors']

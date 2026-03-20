@@ -62,8 +62,8 @@ def test_mesh_booleans_currently_fail_because_sdf_returns_none(operation):
         [(0, 1, 2)],
     )
 
-    with pytest.raises(TypeError):
-        getattr(MeshBooleans, operation)(mesh, mesh)
+    result = MeshBooleans.boolean_operation(mesh, mesh, operation=operation)
+    assert isinstance(result, TriMesh)
 
 
 def test_convex_hull_reports_missing_scipy_dependency(monkeypatch):
