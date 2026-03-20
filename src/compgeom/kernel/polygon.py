@@ -72,17 +72,23 @@ class Polygon2D:
         return all(s == signs[0] for s in signs)
 
     def contains_point(self, point: Point2D) -> bool:
-        """Check if a point is inside the polygon using the ray-casting algorithm."""
-        inside = False
+        """Check if a point is inside the polygon using a robust ray-casting algorithm."""
         n = self.num_vertices
-        j = n - 1
-        for i in range(n):
-            pi = self.vertices[i]
-            pj = self.vertices[j]
-            if ((pi.y > point.y) != (pj.y > point.y)) and \
-               (point.x < (pj.x - pi.x) * (point.y - pi.y) / (pj.y - pi.y + 1e-18) + pi.x):
-                inside = not inside
-            j = i
+        inside = False
+        p1 = self.vertices[0]
+        for i in range(n + 1):
+            p2 = self.vertices[i % n]
+            if min(p1.y, p2.y) < point.y <= max(p1.y, p2.y):
+                # The ray crosses the edge's y-span.
+                # Check if the crossing is to the right of the point.
+                if point.x <= max(p1.x, p2.x):
+                    if p1.y != p2.y:
+                        # Calculate the x-intersection of the ray.
+                        x_intersect = (point.y - p1.y) * (p2.x - p1.x) / (p2.y - p1.y) + p1.x
+                    # If edge is vertical or point is left of/on the intersection.
+                    if p1.x == p2.x or point.x <= x_intersect:
+                        inside = not inside
+            p1 = p2
         return inside
 
     def __repr__(self) -> str:

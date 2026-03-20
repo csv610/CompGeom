@@ -114,21 +114,24 @@ def is_convex(
         (2, 3, 7, 6), # back
         (3, 0, 4, 7), # left
     ]
-    
+    center = centroid(*pts)  # Use the geometric center as the reference point
+
     for face in face_definitions:
         f_pts = [pts[i] for i in face]
-        ref_idx = next(i for i in range(8) if i not in face)
-        ref_sign = orientation_sign(f_pts[0], f_pts[1], f_pts[2], pts[ref_idx])
-        if ref_sign == 0:
-            for i in range(8):
-                if i not in face:
-                    ref_sign = orientation_sign(f_pts[0], f_pts[1], f_pts[2], pts[i])
-                    if ref_sign != 0: break
-        if ref_sign == 0: continue
+        
+        # Determine the "inside" direction using the centroid.
+        try:
+            ref_sign = orientation_sign(f_pts[0], f_pts[1], f_pts[2], center)
+            if ref_sign == 0: continue  # Centroid is on the plane, ambiguous. Treat as convex for now.
+        except Exception:
+            continue # Face points are likely collinear, skip.
+
+        # Check all other vertices against this face plane.
         for i in range(8):
             if i not in face:
                 s = orientation_sign(f_pts[0], f_pts[1], f_pts[2], pts[i])
-                if s != 0 and s != ref_sign: return False
+                if s != 0 and s != ref_sign:
+                    return False
     return True
 
 

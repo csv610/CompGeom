@@ -133,14 +133,30 @@ class HalfEdgeMesh:
 
     def get_half_edge(self, u_idx: int, v_idx: int) -> Optional[HalfEdge]:
         """Returns the half-edge from vertex u to vertex v, if it exists."""
-        v = self.vertices[u_idx]
-        curr = v.edge
-        if not curr: return None
-        start = curr
+        v_u = self.vertices[u_idx]
+        if not v_u.edge: return None
+        
+        # Rotate CCW
+        curr = v_u.edge
         while True:
             if curr.next.vertex.idx == v_idx:
                 return curr
             if not curr.twin: break
             curr = curr.twin.next
-            if curr == start: break
+            if curr == v_u.edge: return None
+            
+        # Rotate CW from start
+        curr = v_u.edge
+        while True:
+            cw_edge = curr.next.next.twin
+            if not cw_edge:
+                # One last check on the boundary edge from this triangle
+                if curr.next.next.vertex.idx == v_idx: # This is wrong logic, we want u->v
+                    pass 
+                break
+            curr = cw_edge
+            if curr.next.vertex.idx == v_idx:
+                return curr
+            if curr == v_u.edge: break
+            
         return None

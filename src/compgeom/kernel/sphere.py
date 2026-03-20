@@ -51,14 +51,10 @@ def from_three_points(p1: Point3D, p2: Point3D, p3: Point3D) -> Sphere:
         if d13 >= d12 and d13 >= d23: return from_two_points(p1, p3)
         return from_two_points(p2, p3)
         
-    alpha = (v1v1 * v2v2 - v2v2 * v1v2) / denominator
-    beta = (v2v2 * v1v1 - v1v1 * v1v2) / denominator
+    alpha = (v2v2 * (v1v1 - v1v2)) / denominator
+    beta = (v1v1 * (v2v2 - v1v2)) / denominator
     
-    # Correct formula for circumcenter in plane
-    a = v1v1 * v2v2 - v1v2 * v1v2
-    k1 = v1v1 * (v2v2 - v1v2) / (2.0 * a)
-    k2 = v2v2 * (v1v1 - v1v2) / (2.0 * a)
-    center = p1 + v1 * k1 + v2 * k2
+    center = p1 + v1 * alpha + v2 * beta
     return Sphere(center, distance_3d(center, p1))
 
 

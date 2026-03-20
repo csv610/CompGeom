@@ -60,6 +60,7 @@ from compgeom.mesh.surface.halfedge_mesh import HalfEdgeMesh
 from compgeom.mesh.surface.mesh_quality import MeshQuality
 from compgeom.mesh.surface.curvature import MeshCurvature
 from compgeom.mesh.surface.surface_evaluator import SurfaceEvaluator, SphereEvaluator
+from compgeom.mesh.surface.manifold_repair import ManifoldValidator, ManifoldFixer
 from compgeom.mesh.surface.remesher import IsotropicRemesher, AdaptiveRemesher
 from compgeom.mesh.surface.alpha_shapes import AlphaShape
 from compgeom.mesh.surface.parameterization import MeshParameterization
@@ -101,6 +102,8 @@ __all__ = [
     "IsotropicRemesher",
     "IntrinsicTriangulation",
     "LSCMParameterizer",
+    "ManifoldValidator",
+    "ManifoldFixer",
     "MarchingCubes",
     "MarchingTetrahedra",
     "MinkowskiSum",

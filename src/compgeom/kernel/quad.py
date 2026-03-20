@@ -128,37 +128,64 @@ def is_cyclic(p1: Point2D | Point3D, p2: Point2D | Point3D, p3: Point2D | Point3
 def barycentric_coords(p: Point2D, p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) -> Tuple[float, float]:
     """
     Return the bilinear coordinates (u, v) of point p with respect to quadrilateral (p1, p2, p3, p4).
+    The quad vertices must be in order (e.g. ccw).
     The coordinates (u, v) are in range [0, 1] if p is inside the quad.
     P(u, v) = (1-u)(1-v)p1 + u(1-v)p2 + uvp3 + (1-u)vp4
     """
-    # Using Newton-Raphson to solve for u, v
+    # Handle the degenerate (affine/parallelogram) case where the mapping is linear
+    e = p1 - p2 + p3 - p4
+    if e.x**2 + e.y**2 < 1e-9:  # Check if e is the zero vector
+        A = p2 - p1
+        B = p4 - p1
+        C = p - p1
+        det = A.x * B.y - A.y * B.x
+        if abs(det) < 1e-12:  # Collinear points, cannot solve reliably
+            # Attempt a simple projection as a fallback
+            if (p2 - p1).magnitude > 1e-9:
+                u = (p - p1).dot(p2 - p1) / (p2 - p1).dot(p2 - p1)
+            else:
+                u = 0.0
+            if (p4 - p1).magnitude > 1e-9:
+                v = (p - p1).dot(p4 - p1) / (p4 - p1).dot(p4 - p1)
+            else:
+                v = 0.0
+            return u, v
+
+        u = (C.x * B.y - C.y * B.x) / det
+        v = (A.x * C.y - A.y * C.x) / det
+        return u, v
+
+    # Using Newton-Raphson to solve for u, v in the general case
     u, v = 0.5, 0.5
-    for _ in range(10):
+    for _ in range(20):  # Increased iterations
         # P(u, v)
-        f_uv_x = (1-u)*(1-v)*p1.x + u*(1-v)*p2.x + u*v*p3.x + (1-u)*v*p4.x - p.x
-        f_uv_y = (1-u)*(1-v)*p1.y + u*(1-v)*p2.y + u*v*p3.y + (1-u)*v*p4.y - p.y
-        
+        f_uv_x = (1 - u) * (1 - v) * p1.x + u * (1 - v) * p2.x + u * v * p3.x + (1 - u) * v * p4.x - p.x
+        f_uv_y = (1 - u) * (1 - v) * p1.y + u * (1 - v) * p2.y + u * v * p3.y + (1 - u) * v * p4.y - p.y
+
         # Jacobian entries
         # df/du
-        df_du_x = -(1-v)*p1.x + (1-v)*p2.x + v*p3.x - v*p4.x
-        df_du_y = -(1-v)*p1.y + (1-v)*p2.y + v*p3.y - v*p4.y
+        df_du_x = -(1 - v) * p1.x + (1 - v) * p2.x + v * p3.x - v * p4.x
+        df_du_y = -(1 - v) * p1.y + (1 - v) * p2.y + v * p3.y - v * p4.y
         # df/dv
-        df_dv_x = -(1-u)*p1.x - u*p2.x + u*p3.x + (1-u)*p4.x
-        df_dv_y = -(1-u)*p1.y - u*p2.y + u*p3.y + (1-u)*p4.y
-        
+        df_dv_x = -(1 - u) * p1.x - u * p2.x + u * p3.x + (1 - u) * p4.x
+        df_dv_y = -(1 - u) * p1.y - u * p2.y + u * p3.y + (1 - u) * p4.y
+
         det_j = df_du_x * df_dv_y - df_dv_x * df_du_y
         if abs(det_j) < 1e-12:
+            # Jacobian is singular, solver cannot proceed.
+            # This can happen if the quad is self-intersecting or degenerate.
             break
-            
-        du = (f_uv_y * df_dv_x - f_uv_x * df_dv_y) / det_j
-        dv = (f_uv_x * df_du_y - f_uv_y * df_du_x) / det_j
-        
+
+        inv_det_j = 1.0 / det_j
+        du = (f_uv_y * df_dv_x - f_uv_x * df_dv_y) * inv_det_j
+        dv = (f_uv_x * df_du_y - f_uv_y * df_du_x) * inv_det_j
+
         u += du
         v += dv
-        
+
         if abs(du) < 1e-9 and abs(dv) < 1e-9:
             break
-            
+
     return u, v
 
 

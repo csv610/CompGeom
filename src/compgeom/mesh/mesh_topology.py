@@ -104,7 +104,9 @@ class MeshTopology:
         return self._e2e_edge.get(element_idx, set())
 
     def is_watertight(self) -> bool:
-        """Returns True if the mesh is closed (no boundary edges)."""
+        """Returns True if the mesh is closed (no boundary faces for volume, no boundary edges for surface)."""
+        if self._mesh.cells:
+            return len(self.boundary_faces()) == 0
         return len(self.boundary_edges()) == 0
 
     def is_orientable(self) -> bool:
@@ -118,12 +120,22 @@ class MeshTopology:
         if not faces:
             return True
 
+        # Check for non-manifoldness: more than 2 faces share an edge
         edge_to_faces = defaultdict(list)
         for i, face in enumerate(faces):
             for edge in self._get_element_edges(face):
                 edge_to_faces[tuple(sorted(edge))].append(i)
         
         if any(len(f_indices) > 2 for f_indices in edge_to_faces.values()):
+            return False
+
+        # Check for non-manifoldness: duplicated faces with same orientation
+        edge_to_directed_faces = defaultdict(int)
+        for face in faces:
+            for edge in self._get_element_edges(face):
+                edge_to_directed_faces[edge] += 1
+        
+        if any(count > 1 for count in edge_to_directed_faces.values()):
             return False
 
         face_orientations = {} 
