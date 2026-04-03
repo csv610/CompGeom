@@ -114,13 +114,85 @@ class BFFParameterizer:
         return loop
 
     def _solve_boundary_system(self, boundary_v: List[int], target_kappa: np.ndarray) -> np.ndarray:
-        """Solves for boundary scale factors u that achieve target curvature."""
-        # This is a simplification of the full BFF boundary system.
-        # It maps the Neumann problem to the scale factors.
-        # Real BFF uses a more complex Hilbert transform-like operator.
-        # For now, we use a stable approximation.
+        """
+        Solves for boundary scale factors u that achieve target curvature.
+
+        In Boundary First Flattening, we solve:
+        h = target_kappa - current_kappa (curvature discrepancy)
+        u = G^T * h  (where G is the boundary Green's function)
+
+        For a practical implementation, we use the relationship:
+        u minimizes the Dirichlet energy while achieving the target curvature.
+        """
         n_b = len(boundary_v)
-        return np.zeros(n_b) # Placeholder for actual scale solver
+
+        # Compute current boundary curvature
+        current_kappa = self._compute_boundary_curvature(boundary_v)
+
+        # Curvature discrepancy
+        h = target_kappa - current_kappa
+
+        # Ensure mean zero (compatibility condition)
+        h = h - np.mean(h)
+
+        # Solve for u using the Laplacian restricted to boundary
+        # This is equivalent to finding the potential whose normal derivative
+        # gives the desired curvature change
+
+        # Extract boundary-boundary block of Laplacian
+        L_bb = self.L[boundary_v, :][:, boundary_v].toarray()
+
+        # Add regularization for numerical stability
+        L_reg = L_bb + 1e-10 * np.eye(n_b)
+
+        # The scale factor is approximately the solution to:
+        # L_bb * u ≈ h (with proper weighting)
+        # We solve using least squares with pseudoinverse
+        try:
+            u = np.linalg.lstsq(L_reg, h, rcond=1e-10)[0]
+        except np.linalg.LinAlgError:
+            u = np.zeros(n_b)
+
+        # Normalize to have zero mean (absolute scale doesn't matter)
+        u = u - np.mean(u)
+
+        return u
+
+    def _compute_boundary_curvature(self, boundary_v: List[int]) -> np.ndarray:
+        """Compute the current discrete geodesic curvature at boundary vertices."""
+        n_b = len(boundary_v)
+        V = np.array([[v.x, v.y, v.z] for v in self.mesh.vertices])
+        kappa = np.zeros(n_b)
+
+        for i in range(n_b):
+            prev_idx = boundary_v[(i - 1) % n_b]
+            curr_idx = boundary_v[i]
+            next_idx = boundary_v[(i + 1) % n_b]
+
+            v_prev = V[prev_idx]
+            v_curr = V[curr_idx]
+            v_next = V[next_idx]
+
+            # Edge vectors (pointing toward current vertex)
+            e1 = v_prev - v_curr
+            e2 = v_next - v_curr
+
+            # Normalize
+            len1 = np.linalg.norm(e1)
+            len2 = np.linalg.norm(e2)
+
+            if len1 > 1e-10 and len2 > 1e-10:
+                e1 = e1 / len1
+                e2 = e2 / len2
+
+                # Interior angle at boundary vertex
+                cos_angle = np.clip(np.dot(e1, e2), -1.0, 1.0)
+                angle = np.arccos(cos_angle)
+
+                # Geodesic curvature: π - interior_angle
+                kappa[i] = np.pi - angle
+
+        return kappa
 
     def _extend_to_interior(self, boundary_v: List[int], u_b: np.ndarray) -> np.ndarray:
         """Solves the Dirichlet problem to find interior scale factors."""

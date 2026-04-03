@@ -133,9 +133,85 @@ class DiscreteMorse:
         return [he.vertex.idx for he in self._get_face_he(f_idx)]
 
     def trace_ascending_path(self, saddle_edge_id: int) -> List[int]:
-        """Traces a gradient path from a saddle upward to a maximum."""
-        # TODO: Implement V-path tracing
-        return []
+        """
+        Traces a gradient path (V-path) from a saddle upward to a maximum.
+
+        A V-path follows the discrete gradient: from a critical edge (saddle),
+        we look at all cofacets (faces containing this edge) and follow
+        the direction of increasing function value.
+
+        Returns:
+            List of face indices forming the ascending path from saddle to max.
+        """
+        path = []
+        current_edge = (1, saddle_edge_id)
+
+        # Check if this is actually a critical edge (saddle)
+        if current_edge not in self.critical_cells:
+            return path
+
+        # Find the face paired with this edge via gradient
+        # The edge should be paired with exactly one face
+        paired_face = None
+        for f_idx in self._get_edge_faces(saddle_edge_id):
+            face_key = (2, f_idx)
+            if face_key in self.critical_cells:
+                # This face is critical (a maximum)
+                path.append(f_idx)
+                return path
+            # Check if edge is paired with this face
+            if self.gradient.get(current_edge) == face_key:
+                paired_face = f_idx
+                break
+
+        if paired_face is None:
+            return path
+
+        path.append(paired_face)
+
+        # Continue following the gradient from face to higher edges
+        max_iter = self.num_v  # Safety limit
+        for _ in range(max_iter):
+            face_key = (2, path[-1])
+            if face_key in self.critical_cells:
+                break  # Reached a maximum
+
+            # Find the edge paired with this face that leads upward
+            next_edge = self.gradient.get(face_key)
+            if next_edge is None:
+                break
+
+            edge_idx = next_edge[1]
+            # Find the face cofacet of this edge that continues upward
+            faces = self._get_edge_faces(edge_idx)
+            next_face = None
+            for f_idx in faces:
+                if f_idx == path[-1]:
+                    continue
+                # Check if this face has higher value
+                face_verts = self._get_face_vertex_indices(f_idx)
+                current_verts = self._get_face_vertex_indices(path[-1])
+                face_max = max(self.v_vals[i] for i in face_verts)
+                current_max = max(self.v_vals[i] for i in current_verts)
+                if face_max > current_max:
+                    next_face = f_idx
+                    break
+
+            if next_face is None:
+                break
+            path.append(next_face)
+
+        return path
+
+    def _get_edge_faces(self, edge_idx: int) -> List[int]:
+        """Returns the indices of faces incident to an edge."""
+        he = self.dec.primal_edges[edge_idx]
+        faces = []
+        if he.face:
+            faces.append(he.face.idx)
+        if he.twin and he.twin.face:
+            faces.append(he.twin.face.idx)
+        return faces
 
     def get_euler_characteristic(self) -> int:
         """Computes the Euler characteristic from critical points."""

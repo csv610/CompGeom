@@ -88,27 +88,51 @@ def incircle(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> int:
 def insphere(a: Point3D, b: Point3D, c: Point3D, d: Point3D, e: Point3D) -> int:
     """
     Exact 3D insphere predicate.
-    Assumes a, b, c, d are oriented correctly.
+    Assumes a, b, c, d are oriented correctly (forming a positive tetrahedron).
     Returns:
      1 if e is inside the circumsphere of abcd.
     -1 if e is outside.
      0 if e is on the sphere.
     """
-    # Implementation using 4x4 determinant with squared distances
-    # ... (Omitted for brevity, using decimal-based exact determinant)
     ax, ay, az = Decimal(str(a.x)), Decimal(str(a.y)), Decimal(str(a.z))
     bx, by, bz = Decimal(str(b.x)), Decimal(str(b.y)), Decimal(str(b.z))
     cx, cy, cz = Decimal(str(c.x)), Decimal(str(c.y)), Decimal(str(c.z))
     dx, dy, dz = Decimal(str(d.x)), Decimal(str(d.y)), Decimal(str(d.z))
     ex, ey, ez = Decimal(str(e.x)), Decimal(str(e.y)), Decimal(str(e.z))
-    
+
+    # Compute differences from e
     aex, aey, aez = ax - ex, ay - ey, az - ez
     bex, bey, bez = bx - ex, by - ey, bz - ez
     cex, cey, cez = cx - ex, cy - ey, cz - ez
     dex, dey, dez = dx - ex, dy - ey, dz - ez
-    
-    # 4x4 det equivalent to a 3x3 with lifted coordinates
-    # (Leaving detailed expansion for implementation)
-    return 0 # Placeholder for full exact insphere
+
+    # Compute squared distances from e
+    a2 = aex*aex + aey*aey + aez*aez
+    b2 = bex*bex + bey*bey + bez*bez
+    c2 = cex*cex + cey*cey + cez*cez
+    d2 = dex*dex + dey*dey + dez*dez
+
+    # Compute the 4x4 determinant using cofactor expansion
+    # | aex  aey  aez  a2 |
+    # | bex  bey  bez  b2 |
+    # | cex  cey  cez  c2 |
+    # | dex  dey  dez  d2 |
+
+    # Cofactors for first row
+    def det3(m11, m12, m13, m21, m22, m23, m31, m32, m33):
+        return m11*(m22*m33 - m23*m32) - m12*(m21*m33 - m23*m31) + m13*(m21*m32 - m22*m31)
+
+    c11 = det3(bey, bez, b2, cey, cez, c2, dey, dez, d2)
+    c12 = det3(bex, bez, b2, cex, cez, c2, dex, dez, d2)
+    c13 = det3(bex, bey, b2, cex, cey, c2, dex, dey, d2)
+    c14 = det3(bex, bey, bez, cex, cey, cez, dex, dey, dez)
+
+    det = aex*c11 - aey*c12 + aez*c13 - a2*c14
+
+    if det > 0:
+        return 1
+    if det < 0:
+        return -1
+    return 0
 
 __all__ = ["orient2d", "orient3d", "incircle", "insphere"]

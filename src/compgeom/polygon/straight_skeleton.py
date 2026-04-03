@@ -47,12 +47,86 @@ class StraightSkeleton:
             
             processed.update([i, j])
             
-    def _compute_bisectors(self) -> List[Point2D]:
-        # Implementation of normalized angular bisectors
-        return [] # Placeholder
+    def _compute_bisectors(self) -> List[Tuple[float, float]]:
+        """
+        Compute the inward angular bisector direction for each vertex.
+        Returns list of (dx, dy) normalized direction vectors.
+        """
+        n = len(self.polygon.vertices)
+        bisectors = []
 
-    def _compute_collision_time(self, i, j, bisectors) -> float:
-        return 1.0 # Placeholder
+        for i in range(n):
+            prev_idx = (i - 1) % n
+            next_idx = (i + 1) % n
+            v_prev = self.polygon.vertices[prev_idx]
+            v_curr = self.polygon.vertices[i]
+            v_next = self.polygon.vertices[next_idx]
 
-    def _get_collision_point(self, i, j, bisectors, t) -> Point2D:
-        return Point2D(0, 0) # Placeholder
+            # Edge vectors (inward direction)
+            e1x = v_prev.x - v_curr.x
+            e1y = v_prev.y - v_curr.y
+            e2x = v_next.x - v_curr.x
+            e2y = v_next.y - v_curr.y
+
+            # Normalize edge vectors
+            len1 = math.hypot(e1x, e1y)
+            len2 = math.hypot(e2x, e2y)
+            if len1 == 0 or len2 == 0:
+                bisectors.append((0.0, 0.0))
+                continue
+
+            e1x, e1y = e1x / len1, e1y / len1
+            e2x, e2y = e2x / len2, e2y / len2
+
+            # Angle bisector direction (inward for CCW polygons)
+            # For CCW: rotate edge vectors 90 degrees CCW to get outward normals
+            # Then bisector is sum of inward edge directions
+            bisector_x = -e1x - e2x
+            bisector_y = -e1y - e2y
+
+            # Normalize
+            bisector_len = math.hypot(bisector_x, bisector_y)
+            if bisector_len > 0:
+                bisector_x /= bisector_len
+                bisector_y /= bisector_len
+
+            bisectors.append((bisector_x, bisector_y))
+
+        return bisectors
+
+    def _compute_collision_time(self, i: int, j: int, bisectors: List[Tuple[float, float]]) -> float:
+        """
+        Compute the time when edge (i,j) collapses.
+        Edge collapses when vertices i and j moving along bisectors meet.
+        """
+        if not bisectors or i >= len(bisectors) or j >= len(bisectors):
+            return -1.0
+
+        vi = self.polygon.vertices[i]
+        vj = self.polygon.vertices[j]
+        bi = bisectors[i]
+        bj = bisectors[j]
+
+        # Vertex positions at time t: vi + t*bi, vj + t*bj
+        # Collision when: vi + t*bi = vj + t*bj
+        # => vi - vj = t*(bj - bi)
+        # Solve for t using least squares
+        dx = vi.x - vj.x
+        dy = vi.y - vj.y
+        dbx = bj[0] - bi[0]
+        dby = bj[1] - bi[1]
+
+        denom = dbx * dbx + dby * dby
+        if denom == 0:
+            return -1.0  # Parallel bisectors
+
+        # Project displacement onto bisector difference
+        t = -(dx * dbx + dy * dby) / denom
+
+        return t if t > 0 else -1.0
+
+    def _get_collision_point(self, i: int, j: int, bisectors: List[Tuple[float, float]], t: float) -> Point2D:
+        """Compute the collision point at time t."""
+        vi = self.polygon.vertices[i]
+        bi = bisectors[i]
+        return Point2D(vi.x + t * bi[0], vi.y + t * bi[1])
