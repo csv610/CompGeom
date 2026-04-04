@@ -4,6 +4,7 @@ Computational Geometry Expert Team using Agno Framework.
 This system uses a multi-agent team to provide:
 1. Academic research and literature search (ArXiv, Wikipedia).
 2. Algorithm exploration, complexity analysis, and open-source implementations.
+3. Real-world and novel applications across various industries.
 """
 
 import argparse
@@ -65,25 +66,45 @@ def create_geometry_expert_agent(model_id: str) -> Agent:
         ],
     )
 
+def create_application_agent(model_id: str) -> Agent:
+    """Agent specialized in real-world and novel applications."""
+    return Agent(
+        name="Application Specialist",
+        role="Expert in cross-industry applications of computational geometry",
+        model=Ollama(id=model_id, host=OLLAMA_HOST),
+        tools=[
+            WebSearchTools(backend="auto"),
+            WikipediaTools(all=True),
+        ],
+        instructions=[
+            "Your goal is to describe how geometric algorithms are applied in the real world.",
+            "Identify standard industrial applications (e.g., CAD, GIS, Robotics, Computer Graphics).",
+            "Crucially, identify **Novel and Emerging Applications** (e.g., Bioinformatics, AI/ML architectures, 3D printing, autonomous vehicles).",
+            "Provide concrete examples of how the specific algorithm solves a problem in these domains.",
+        ],
+    )
+
 def create_compgeom_team(model_id: str = "gemma4:latest") -> Team:
     """
     Create a team of agents orchestrated by a lead agent.
     """
     lit_agent = create_literature_agent(model_id)
     geo_agent = create_geometry_expert_agent(model_id)
+    app_agent = create_application_agent(model_id)
     
     return Team(
         name="CompGeom Team",
-        members=[lit_agent, geo_agent],
+        members=[lit_agent, geo_agent, app_agent],
         model=Ollama(id=model_id, host=OLLAMA_HOST),
         description="Computational Geometry Expert Team",
         instructions=[
             "You are the lead coordinator for a Computational Geometry research team.",
             "When a user query is received:",
-            "1. Delegate to the 'Literature Researcher' to find academic background and key papers.",
-            "2. Delegate to the 'Geometry Expert' to find algorithms, complexity, and code implementations.",
-            "3. Synthesize their findings into a single, cohesive, and professionally formatted report.",
-            "Ensure the report has clear sections: Academic Background, Algorithms & Complexity, and Implementations.",
+            "1. Delegate to the 'Literature Researcher' for academic background.",
+            "2. Delegate to the 'Geometry Expert' for algorithms and implementations.",
+            "3. Delegate to the 'Application Specialist' for real-world and novel use cases.",
+            "Synthesize their findings into a single, cohesive, and professionally formatted report.",
+            "Ensure the report has clear sections: Academic Background, Algorithms & Complexity, Implementations, and Real-World & Novel Applications.",
         ],
         markdown=True,
         show_members_responses=True,

@@ -63,7 +63,8 @@ The system utilizes a `Team` of specialized agents:
 
 1.  **Literature Researcher**: Uses ArXiv and Wikipedia tools to find theoretical foundations and key academic citations.
 2.  **Geometry Expert**: Uses Web Search and Wikipedia to identify practical algorithms, complexity (Big O), and high-quality code implementations.
-3.  **Lead Coordinator**: Receives the query, plans the delegation, and synthesizes the final report into a cohesive, structured document.
+3.  **Application Specialist**: Identifies standard industrial use cases (CAD, GIS, Robotics) and **Novel/Emerging Applications** (AI/ML, Bioinformatics, 3D printing).
+4.  **Lead Coordinator**: Receives the query, plans the delegation, and synthesizes the final report into a cohesive, structured document.
 
 ## 🧪 Testing
 
