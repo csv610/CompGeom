@@ -5,10 +5,13 @@ from typing import TYPE_CHECKING, Optional
 
 from compgeom.kernel.point import Point3D
 from compgeom.kernel.math_utils import EPSILON
+from compgeom.kernel.ray import Ray
+
 
 @dataclass(frozen=True, slots=True)
 class Plane:
     """A plane in 3D space defined by the equation ax + by + cz + d = 0."""
+
     normal: Point3D
     d: float
 
@@ -59,13 +62,13 @@ class Plane:
             return -1
         return 0
 
-    def intersect_ray(self, ray: Ray3D) -> Optional[float]:
+    def intersect_ray(self, ray: Ray[Point3D]) -> Optional[float]:
         """Return the parameter t of the intersection between the ray and the plane."""
         dot_nd = self.normal.dot(ray.direction)
         if abs(dot_nd) < EPSILON:
             # Ray is parallel to the plane
             return None
-        
+
         t = -(self.normal.dot(ray.origin) + self.d) / dot_nd
         if t < -EPSILON:
             return None
@@ -80,14 +83,17 @@ class Plane:
         det = direction.length_sq()
         if det < EPSILON:
             return None
-        
+
         # Intersection point: using the formula for intersection of two planes
         # The point is ( (d1*n2 - d2*n1) x (n1 x n2) ) / |n1 x n2|^2
         # where d1, d2 are distances from origin (-Plane.d)
-        point = (other.normal * (-self.d) - self.normal * (-other.d)).cross(direction) / det
+        point = (other.normal * (-self.d) - self.normal * (-other.d)).cross(
+            direction
+        ) / det
         return point, direction / math.sqrt(det)
 
     def __repr__(self) -> str:
         return f"Plane(n={self.normal}, d={self.d})"
+
 
 __all__ = ["Plane"]

@@ -62,7 +62,9 @@ def test_single_ray_triangle_intersection_and_distance_helpers():
         [(0, 1, 2)],
     )
 
-    distance = MeshQueries._single_ray_face_intersect(mesh, 0, (0.2, 0.2, 1.0), (0.0, 0.0, -1.0))
+    distance = MeshQueries._single_ray_face_intersect(
+        mesh, 0, (0.2, 0.2, 1.0), (0.0, 0.0, -1.0)
+    )
     distance_sq = MeshQueries._point_triangle_dist_sq(
         (0.2, 0.2, 1.0),
         (0.0, 0.0, 0.0),
@@ -80,8 +82,12 @@ def test_ray_intersect_matches_between_bruteforce_and_spatial_tree():
         [(0, 1, 2)],
     )
 
-    brute_force = MeshQueries.ray_intersect(mesh, (0.2, 0.2, 1.0), (0.0, 0.0, -1.0), use_spatial=False)
-    spatial = MeshQueries.ray_intersect(mesh, (0.2, 0.2, 1.0), (0.0, 0.0, -1.0), use_spatial=True)
+    brute_force = MeshQueries.ray_intersect(
+        mesh, (0.2, 0.2, 1.0), (0.0, 0.0, -1.0), use_spatial=False
+    )
+    spatial = MeshQueries.ray_intersect(
+        mesh, (0.2, 0.2, 1.0), (0.0, 0.0, -1.0), use_spatial=True
+    )
 
     assert brute_force == [(0, pytest.approx(1.0))]
     assert spatial == brute_force
@@ -93,7 +99,9 @@ def test_compute_sdf_and_slice_mesh_currently_return_none():
         [(0, 1, 2)],
     )
 
-    assert MeshQueries.compute_sdf(mesh, (0.2, 0.2, 1.0), use_spatial=False) == pytest.approx(1.0)
+    assert MeshQueries.compute_sdf(
+        mesh, (0.2, 0.2, 1.0), use_spatial=False
+    ) == pytest.approx(1.0)
     assert MeshQueries.slice_mesh(mesh, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0)) is None
 
 
@@ -118,8 +126,8 @@ def test_generalized_winding_number_currently_raises_name_error():
         [(0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)],
     )
 
-    with pytest.raises(NameError):
-        MeshQueries.generalized_winding_number(mesh, (0.1, 0.1, 0.1))
+    wn = MeshQueries.generalized_winding_number(mesh, (0.1, 0.1, 0.1))
+    assert isinstance(wn, float)
 
 
 def test_aabb_tree_builds_and_reports_sorted_intersections():

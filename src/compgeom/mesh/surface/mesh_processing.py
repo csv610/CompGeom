@@ -1,4 +1,6 @@
 """Mesh processing algorithms: smoothing and hole filling."""
+
+import math
 from collections import defaultdict
 from typing import List, Tuple, Set, TYPE_CHECKING
 
@@ -9,77 +11,82 @@ from compgeom.kernel import Point3D
 if TYPE_CHECKING:
     from compgeom.mesh.mesh_base import Mesh
 
+
 class MeshProcessing:
     """Algorithms that modify the mesh geometry or topology."""
 
     @staticmethod
-    def flip_normals(mesh: 'Mesh'):
+    def flip_normals(mesh: "Mesh"):
         """Flips the normals of all faces in the mesh by reversing their vertex order."""
         from dataclasses import replace
         from compgeom.mesh.mesh_topology import MeshTopology
-        
+
         new_faces = []
         for face in mesh.faces:
             new_v = tuple(reversed(face.v_indices))
             new_faces.append(replace(face, v_indices=new_v))
-        
+
         mesh._faces = new_faces
         mesh._topology = MeshTopology(mesh)
 
     @staticmethod
-    def laplacian_smoothing(mesh: SurfaceMesh, iterations: int = 1, lambda_factor: float = 0.5) -> SurfaceMesh:
+    def laplacian_smoothing(
+        mesh: SurfaceMesh, iterations: int = 1, lambda_factor: float = 0.5
+    ) -> SurfaceMesh:
         """Applies uniform Laplacian smoothing to interior vertices."""
         vertices = mesh.vertices
         faces = mesh.faces
-        
+
         # Build adjacency
         adj = defaultdict(set)
         for face in faces:
             for i in range(3):
-                u, v = face[i], face[(i+1)%3]
+                u, v = face[i], face[(i + 1) % 3]
                 adj[u].add(v)
                 adj[v].add(u)
-                
+
         # Identify boundary vertices to keep them fixed
         edge_counts = defaultdict(int)
         for face in faces:
             for i in range(3):
-                edge = tuple(sorted((face[i], face[(i+1)%3])))
+                edge = tuple(sorted((face[i], face[(i + 1) % 3])))
                 edge_counts[edge] += 1
-                
+
         boundary_vertices = set()
         for edge, count in edge_counts.items():
             if count == 1:
                 boundary_vertices.update(edge)
-                
-        new_vertices = [Point3D(v.x, v.y, getattr(v, 'z', 0.0)) for v in vertices]
-        
+
+        new_vertices = [Point3D(v.x, v.y, getattr(v, "z", 0.0)) for v in vertices]
+
         for _ in range(iterations):
             temp_vertices = []
             for i, v in enumerate(new_vertices):
                 if i in boundary_vertices or not adj[i]:
-                    temp_vertices.append(Point3D(v.x, v.y, getattr(v, 'z', 0.0)))
+                    temp_vertices.append(Point3D(v.x, v.y, getattr(v, "z", 0.0)))
                     continue
-                    
+
                 sum_x = sum_y = sum_z = 0.0
                 neighbors = adj[i]
                 for n in neighbors:
                     nv = new_vertices[n]
                     sum_x += nv.x
                     sum_y += nv.y
-                    sum_z += getattr(nv, 'z', 0.0)
-                    
+                    sum_z += getattr(nv, "z", 0.0)
+
                 n_count = len(neighbors)
                 avg_x = sum_x / n_count
                 avg_y = sum_y / n_count
                 avg_z = sum_z / n_count
-                
+
                 nx = v.x + lambda_factor * (avg_x - v.x)
                 ny = v.y + lambda_factor * (avg_y - v.y)
-                nz = getattr(v, 'z', 0.0) + lambda_factor * (avg_z - getattr(v, 'z', 0.0))
+                nz = getattr(v, "z", 0.0) + lambda_factor * (
+                    avg_z - getattr(v, "z", 0.0)
+                )
                 temp_vertices.append(Point3D(nx, ny, nz))
             new_vertices = temp_vertices
-            
+
         return SurfaceMesh(new_vertices, faces)
 
     @staticmethod
@@ -90,21 +97,21 @@ class MeshProcessing:
         edge_to_directed = {}
         for face in mesh.faces:
             for i in range(3):
-                u, v = face[i], face[(i+1)%3]
+                u, v = face[i], face[(i + 1) % 3]
                 edge = tuple(sorted((u, v)))
                 edge_counts[edge] += 1
                 # Forward edge direction for outward pointing normal assumption
                 edge_to_directed[edge] = (u, v)
-                
+
         boundary_edges = [edge_to_directed[e] for e, c in edge_counts.items() if c == 1]
         if not boundary_edges:
-            return mesh # No holes
-            
+            return mesh  # No holes
+
         # Group into loops
         next_v = {u: v for u, v in boundary_edges}
         visited = set()
         loops = []
-        
+
         for u, _ in boundary_edges:
             if u in visited:
                 continue
@@ -116,14 +123,14 @@ class MeshProcessing:
                 curr = next_v.get(curr)
                 if curr is None:
                     break
-            
+
             # Very basic check for closure
             if next_v.get(loop[-1]) == loop[0]:
                 loops.append(loop)
-                
+
         new_faces = list(mesh.faces)
         vertices = list(mesh.vertices)
-        
+
         # Naive hole filling (fan triangulation from centroid)
         for loop in loops:
             if len(loop) < 3:
@@ -131,27 +138,32 @@ class MeshProcessing:
             if len(loop) == 3:
                 new_faces.append(tuple(loop))
                 continue
-                
+
             # Add centroid
             sum_x = sum_y = sum_z = 0.0
             for idx in loop:
                 v = vertices[idx]
                 sum_x += v.x
                 sum_y += v.y
-                sum_z += getattr(v, 'z', 0.0)
-            
-            centroid = Point3D(sum_x/len(loop), sum_y/len(loop), sum_z/len(loop))
+                sum_z += getattr(v, "z", 0.0)
+
+            centroid = Point3D(sum_x / len(loop), sum_y / len(loop), sum_z / len(loop))
             c_idx = len(vertices)
             vertices.append(centroid)
-            
+
             # Connect loop to centroid
             for i in range(len(loop)):
                 u = loop[i]
-                v = loop[(i+1)%len(loop)]
+                v = loop[(i + 1) % len(loop)]
                 new_faces.append((u, v, c_idx))
-                
+
     @staticmethod
-    def bilateral_smoothing(mesh: SurfaceMesh, iterations: int = 1, sigma_c: float = 1.0, sigma_s: float = 0.1) -> SurfaceMesh:
+    def bilateral_smoothing(
+        mesh: SurfaceMesh,
+        iterations: int = 1,
+        sigma_c: float = 1.0,
+        sigma_s: float = 0.1,
+    ) -> SurfaceMesh:
         """
         Applies feature-preserving bilateral smoothing to the mesh.
         sigma_c: Spatial neighborhood variance (influences how far neighbors affect smoothing)
@@ -159,64 +171,77 @@ class MeshProcessing:
         """
         import math
         from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
-        
+
         vertices = list(mesh.vertices)
         faces = mesh.faces
-        
+
         # Build vertex-to-face and vertex-to-vertex adjacency
         v2f = defaultdict(list)
         adj = defaultdict(set)
         for i, face in enumerate(faces):
             for j in range(3):
-                u, v = face[j], face[(j+1)%3]
+                u, v = face[j], face[(j + 1) % 3]
                 adj[u].add(v)
                 adj[v].add(u)
                 v2f[u].append(i)
                 v2f[v].append(i)
-                v2f[face[(j+2)%3]].append(i)
-                
-        new_vertices = [Point3D(v.x, v.y, getattr(v, 'z', 0.0)) for v in vertices]
-        
+                v2f[face[(j + 2) % 3]].append(i)
+
+        new_vertices = [Point3D(v.x, v.y, getattr(v, "z", 0.0)) for v in vertices]
+
         for _ in range(iterations):
             # Recompute normals at each iteration
             temp_mesh = SurfaceMesh(new_vertices, faces)
             v_normals = MeshAnalysis.compute_vertex_normals(temp_mesh)
-            
+
             temp_verts = []
             for i, p in enumerate(new_vertices):
                 n_i = v_normals[i]
                 sum_w = 0.0
                 sum_delta = 0.0
-                
+
                 for nb in adj[i]:
                     q = new_vertices[nb]
                     # Spatial distance
-                    t = math.sqrt((p.x-q.x)**2 + (p.y-q.y)**2 + (getattr(p, 'z', 0.0)-getattr(q, 'z', 0.0))**2)
+                    t = math.sqrt(
+                        (p.x - q.x) ** 2
+                        + (p.y - q.y) ** 2
+                        + (getattr(p, "z", 0.0) - getattr(q, "z", 0.0)) ** 2
+                    )
                     # Height/normal distance (projection of (p-q) onto normal)
-                    h = (q.x-p.x)*n_i[0] + (q.y-p.y)*n_i[1] + (getattr(q, 'z', 0.0)-getattr(p, 'z', 0.0))*n_i[2]
-                    
-                    wc = math.exp(- (t**2) / (2 * sigma_c**2))
-                    ws = math.exp(- (h**2) / (2 * sigma_s**2))
+                    h = (
+                        (q.x - p.x) * n_i[0]
+                        + (q.y - p.y) * n_i[1]
+                        + (getattr(q, "z", 0.0) - getattr(p, "z", 0.0)) * n_i[2]
+                    )
+
+                    wc = math.exp(-(t**2) / (2 * sigma_c**2))
+                    ws = math.exp(-(h**2) / (2 * sigma_s**2))
                     w = wc * ws
-                    
+
                     sum_w += w
                     sum_delta += w * h
-                    
+
                 if sum_w > 1e-9:
                     delta = sum_delta / sum_w
                     nx = p.x + n_i[0] * delta
                     ny = p.y + n_i[1] * delta
-                    nz = getattr(p, 'z', 0.0) + n_i[2] * delta
+                    nz = getattr(p, "z", 0.0) + n_i[2] * delta
                     temp_verts.append(Point3D(nx, ny, nz))
                 else:
-                    temp_verts.append(Point3D(p.x, p.y, getattr(p, 'z', 0.0)))
-                    
+                    temp_verts.append(Point3D(p.x, p.y, getattr(p, "z", 0.0)))
+
             new_vertices = temp_verts
-            
+
         return SurfaceMesh(new_vertices, faces)
 
     @staticmethod
-    def taubin_smoothing(mesh: SurfaceMesh, iterations: int = 10, lambda_factor: float = 0.5, mu_factor: float = -0.53) -> SurfaceMesh:
+    def taubin_smoothing(
+        mesh: SurfaceMesh,
+        iterations: int = 10,
+        lambda_factor: float = 0.5,
+        mu_factor: float = -0.53,
+    ) -> SurfaceMesh:
         """
         Applies non-shrinking smoothing using the Taubin (lambda-mu) algorithm.
         Typically, lambda > 0 and mu < -lambda.
@@ -224,9 +249,13 @@ class MeshProcessing:
         current_mesh = mesh
         for _ in range(iterations):
             # Step 1: Smoothing (shrinking)
-            current_mesh = MeshProcessing.laplacian_smoothing(current_mesh, iterations=1, lambda_factor=lambda_factor)
+            current_mesh = MeshProcessing.laplacian_smoothing(
+                current_mesh, iterations=1, lambda_factor=lambda_factor
+            )
             # Step 2: Un-smoothing (expanding)
-            current_mesh = MeshProcessing.laplacian_smoothing(current_mesh, iterations=1, lambda_factor=mu_factor)
+            current_mesh = MeshProcessing.laplacian_smoothing(
+                current_mesh, iterations=1, lambda_factor=mu_factor
+            )
         return current_mesh
 
     @staticmethod
@@ -236,30 +265,33 @@ class MeshProcessing:
         Each triangle is split into four smaller triangles.
         """
         import math
+
         current_mesh = mesh
-        
+
         for _ in range(iterations):
             old_verts = current_mesh.vertices
             old_faces = current_mesh.faces
-            
+
             # 1. Collect adjacency info
             edge_to_faces = defaultdict(list)
             v_adj = defaultdict(set)
             for f_idx, face in enumerate(old_faces):
                 for i in range(3):
-                    u, v = sorted((face[i], face[(i+1)%3]))
+                    u, v = sorted((face[i], face[(i + 1) % 3]))
                     edge_to_faces[(u, v)].append(f_idx)
-                    v_adj[face[i]].add(face[(i+1)%3])
-                    v_adj[face[(i+1)%3]].add(face[i])
-            
+                    v_adj[face[i]].add(face[(i + 1) % 3])
+                    v_adj[face[(i + 1) % 3]].add(face[i])
+
             # 2. Compute new vertices for each edge
             edge_new_vert = {}
-            new_verts = [None] * len(old_verts) # Will be populated with updated old verts
-            
+            new_verts = [None] * len(
+                old_verts
+            )  # Will be populated with updated old verts
+
             for (u, v), incident_faces in edge_to_faces.items():
                 p_u = old_verts[u]
                 p_v = old_verts[v]
-                
+
                 if len(incident_faces) == 2:
                     # Interior edge
                     # Find the opposite vertices in the two incident faces
@@ -268,20 +300,21 @@ class MeshProcessing:
                         for idx in old_faces[f_idx]:
                             if idx != u and idx != v:
                                 opp.append(idx)
-                    
+
                     p_c, p_d = old_verts[opp[0]], old_verts[opp[1]]
-                    
-                    nx = (3/8) * (p_u.x + p_v.x) + (1/8) * (p_c.x + p_d.x)
-                    ny = (3/8) * (p_u.y + p_v.y) + (1/8) * (p_c.y + p_d.y)
-                    nz = (3/8) * (getattr(p_u, 'z', 0.0) + getattr(p_v, 'z', 0.0)) + \
-                         (1/8) * (getattr(p_c, 'z', 0.0) + getattr(p_d, 'z', 0.0))
+
+                    nx = (3 / 8) * (p_u.x + p_v.x) + (1 / 8) * (p_c.x + p_d.x)
+                    ny = (3 / 8) * (p_u.y + p_v.y) + (1 / 8) * (p_c.y + p_d.y)
+                    nz = (3 / 8) * (getattr(p_u, "z", 0.0) + getattr(p_v, "z", 0.0)) + (
+                        1 / 8
+                    ) * (getattr(p_c, "z", 0.0) + getattr(p_d, "z", 0.0))
                     edge_new_vert[(u, v)] = len(old_verts) + len(edge_new_vert)
                     new_verts.append(Point3D(nx, ny, nz))
                 else:
                     # Boundary edge
                     nx = 0.5 * (p_u.x + p_v.x)
                     ny = 0.5 * (p_u.y + p_v.y)
-                    nz = 0.5 * (getattr(p_u, 'z', 0.0) + getattr(p_v, 'z', 0.0))
+                    nz = 0.5 * (getattr(p_u, "z", 0.0) + getattr(p_v, "z", 0.0))
                     edge_new_vert[(u, v)] = len(old_verts) + len(edge_new_vert)
                     new_verts.append(Point3D(nx, ny, nz))
 
@@ -289,7 +322,7 @@ class MeshProcessing:
             for i, p in enumerate(old_verts):
                 neighbors = v_adj[i]
                 n = len(neighbors)
-                
+
                 # Check if boundary vertex
                 is_boundary = False
                 boundary_neighbors = []
@@ -298,32 +331,39 @@ class MeshProcessing:
                     if len(edge_to_faces[edge]) == 1:
                         is_boundary = True
                         boundary_neighbors.append(neighbor)
-                
+
                 if is_boundary:
                     # Boundary rule: 3/4 * V + 1/8 * sum(boundary_neighbors)
                     if len(boundary_neighbors) == 2:
-                        nb1, nb2 = old_verts[boundary_neighbors[0]], old_verts[boundary_neighbors[1]]
+                        nb1, nb2 = (
+                            old_verts[boundary_neighbors[0]],
+                            old_verts[boundary_neighbors[1]],
+                        )
                         nx = 0.75 * p.x + 0.125 * (nb1.x + nb2.x)
                         ny = 0.75 * p.y + 0.125 * (nb1.y + nb2.y)
-                        nz = 0.75 * getattr(p, 'z', 0.0) + 0.125 * (getattr(nb1, 'z', 0.0) + getattr(nb2, 'z', 0.0))
+                        nz = 0.75 * getattr(p, "z", 0.0) + 0.125 * (
+                            getattr(nb1, "z", 0.0) + getattr(nb2, "z", 0.0)
+                        )
                         new_verts[i] = Point3D(nx, ny, nz)
                     else:
-                        new_verts[i] = Point3D(p.x, p.y, getattr(p, 'z', 0.0))
+                        new_verts[i] = Point3D(p.x, p.y, getattr(p, "z", 0.0))
                 else:
                     # Interior rule
                     # Beta = 1/n * (5/8 - (3/8 + 1/4*cos(2*pi/n))^2)
-                    beta = (1/n) * (5/8 - (3/8 + 0.25 * math.cos(2 * math.pi / n))**2)
-                    
+                    beta = (1 / n) * (
+                        5 / 8 - (3 / 8 + 0.25 * math.cos(2 * math.pi / n)) ** 2
+                    )
+
                     sum_x = sum_y = sum_z = 0.0
                     for nb_idx in neighbors:
                         nb = old_verts[nb_idx]
                         sum_x += nb.x
                         sum_y += nb.y
-                        sum_z += getattr(nb, 'z', 0.0)
-                    
+                        sum_z += getattr(nb, "z", 0.0)
+
                     nx = (1 - n * beta) * p.x + beta * sum_x
                     ny = (1 - n * beta) * p.y + beta * sum_y
-                    nz = (1 - n * beta) * getattr(p, 'z', 0.0) + beta * sum_z
+                    nz = (1 - n * beta) * getattr(p, "z", 0.0) + beta * sum_z
                     new_verts[i] = Point3D(nx, ny, nz)
 
             # 4. Construct new faces
@@ -333,129 +373,161 @@ class MeshProcessing:
                 e01 = edge_new_vert[tuple(sorted((v0, v1)))]
                 e12 = edge_new_vert[tuple(sorted((v1, v2)))]
                 e20 = edge_new_vert[tuple(sorted((v2, v0)))]
-                
+
                 new_faces.append((v0, e01, e20))
                 new_faces.append((v1, e12, e01))
                 new_faces.append((v2, e20, e12))
                 new_faces.append((e01, e12, e20))
-                
+
     @staticmethod
-    def mesh_offset(mesh: SurfaceMesh, distance: float, create_solid: bool = False) -> SurfaceMesh:
+    def mesh_offset(
+        mesh: SurfaceMesh, distance: float, create_solid: bool = False
+    ) -> SurfaceMesh:
         """
         Offsets the mesh surface by a given distance along vertex normals.
         If create_solid is True, it creates a thickened shell with closed walls.
         """
         from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
-        
+
         # 1. Compute weighted vertex normals
         v_normals = MeshAnalysis.compute_vertex_normals(mesh)
-        
+
         # 2. Create offset vertices
         offset_verts = []
         for i, v in enumerate(mesh.vertices):
             nx, ny, nz = v_normals[i]
-            ov = Point3D(v.x + nx * distance, v.y + ny * distance, getattr(v, 'z', 0.0) + nz * distance)
+            ov = Point3D(
+                v.x + nx * distance,
+                v.y + ny * distance,
+                getattr(v, "z", 0.0) + nz * distance,
+            )
             offset_verts.append(ov)
-            
+
         if not create_solid:
             return SurfaceMesh(offset_verts, mesh.faces)
-            
+
         # 3. Create a solid shell (thickening)
         # Combine original and offset vertices
         total_verts = list(mesh.vertices) + offset_verts
         num_v = len(mesh.vertices)
-        
+
         new_faces = []
         # Original faces (preserve orientation)
         for face in mesh.faces:
             new_faces.append(list(face))
-            
+
         # Add offset faces (reversed orientation for outward normals)
         for face in mesh.faces:
             # Reverse order and offset indices
             new_faces.append([idx + num_v for idx in reversed(face)])
-            
+
         # 4. Connect boundaries if the mesh is open
         edge_counts = defaultdict(int)
         for face in mesh.faces:
             n = len(face)
             for i in range(n):
-                edge = tuple(sorted((face[i], face[(i+1)%n])))
+                edge = tuple(sorted((face[i], face[(i + 1) % n])))
                 edge_counts[edge] += 1
-        
+
         # Find directed boundary edges
         for face in mesh.faces:
             n = len(face)
             for i in range(n):
-                u, v = face[i], face[(i+1)%n]
+                u, v = face[i], face[(i + 1) % n]
                 if edge_counts[tuple(sorted((u, v)))] == 1:
-                    # Boundary edge (u, v). 
+                    # Boundary edge (u, v).
                     # Connect to (u', v') where u' = u + num_v
                     u_off, v_off = u + num_v, v + num_v
                     # Wall faces: (u, v, v_off) and (u, v_off, u_off)
                     new_faces.append([u, v, v_off])
                     new_faces.append([u, v_off, u_off])
-                    
+
         return SurfaceMesh(total_verts, new_faces)
-                    
+
     @staticmethod
-    def mesh_clipping(mesh: SurfaceMesh, plane_origin: Tuple[float,float,float], plane_normal: Tuple[float,float,float], cap: bool = True) -> Tuple[SurfaceMesh, SurfaceMesh]:
+    def mesh_clipping(
+        mesh: SurfaceMesh,
+        plane_origin: Tuple[float, float, float],
+        plane_normal: Tuple[float, float, float],
+        cap: bool = True,
+    ) -> Tuple[SurfaceMesh, SurfaceMesh]:
         """
         Splits the mesh into two parts using a plane.
         Returns a tuple (mesh_above, mesh_below).
         If cap is True, the cut surface is filled with a triangulation.
         """
+
         # Linear interpolation for vertex on edge
         def intersect_edge(p1, p2, d1, d2):
             t = abs(d1) / (abs(d1) + abs(d2))
-            return Point3D(p1.x + t*(p2.x-p1.x), p1.y + t*(p2.y-p1.y), getattr(p1, 'z', 0.0) + t*(getattr(p2, 'z', 0.0)-getattr(p1, 'z', 0.0)))
+            return Point3D(
+                p1.x + t * (p2.x - p1.x),
+                p1.y + t * (p2.y - p1.y),
+                getattr(p1, "z", 0.0)
+                + t * (getattr(p2, "z", 0.0) - getattr(p1, "z", 0.0)),
+            )
 
         nx, ny, nz = plane_normal
-        mag = math.sqrt(nx*nx + ny*ny + nz*nz)
-        nx, ny, nz = nx/mag, ny/mag, nz/mag
-        
+        mag = math.sqrt(nx * nx + ny * ny + nz * nz)
+        nx, ny, nz = nx / mag, ny / mag, nz / mag
+
         def get_dist(p):
-            return (p.x - plane_origin[0]) * nx + (p.y - plane_origin[1]) * ny + (getattr(p, 'z', 0.0) - plane_origin[2]) * nz
+            return (
+                (p.x - plane_origin[0]) * nx
+                + (p.y - plane_origin[1]) * ny
+                + (getattr(p, "z", 0.0) - plane_origin[2]) * nz
+            )
 
         faces_above = []
         faces_below = []
         verts_above = list(mesh.vertices)
         verts_below = list(mesh.vertices)
-        
-        cut_edges = [] # List of (v1, v2) pairs forming the boundary
+
+        cut_edges = []  # List of (v1, v2) pairs forming the boundary
 
         for face in mesh.faces:
             v_idx = face
             pts = [mesh.vertices[i] for i in v_idx]
             dists = [get_dist(p) for p in pts]
-            
+
             # Cases: all above, all below, or mixed
             above = [d > 1e-9 for d in dists]
             below = [d < -1e-9 for d in dists]
-            
+
             if all(above):
                 faces_above.append(face)
             elif all(below):
                 faces_below.append(face)
             else:
                 # Triangle intersects plane. We split it into smaller triangles.
-                # Simplified: skip splitting for V1.0 structure, 
+                # Simplified: skip splitting for V1.0 structure,
                 # just assign to the side of the majority of vertices or the centroid.
                 cx = (pts[0].x + pts[1].x + pts[2].x) / 3.0
                 cy = (pts[0].y + pts[1].y + pts[2].y) / 3.0
-                cz = (getattr(pts[0], 'z', 0.0) + getattr(pts[1], 'z', 0.0) + getattr(pts[2], 'z', 0.0)) / 3.0
-                if (cx - plane_origin[0])*nx + (cy - plane_origin[1])*ny + (cz - plane_origin[2])*nz > 0:
+                cz = (
+                    getattr(pts[0], "z", 0.0)
+                    + getattr(pts[1], "z", 0.0)
+                    + getattr(pts[2], "z", 0.0)
+                ) / 3.0
+                if (cx - plane_origin[0]) * nx + (cy - plane_origin[1]) * ny + (
+                    cz - plane_origin[2]
+                ) * nz > 0:
                     faces_above.append(face)
                 else:
                     faces_below.append(face)
-                    
+
         # For a full clipping, we must compute exact cut vertices and re-triangulate.
         # This version partitions whole faces.
-        
+
         from compgeom.mesh.surface.surf_mesh_repair import SurfMeshRepair
-        ma = SurfMeshRepair.remove_isolated_vertices(SurfaceMesh(verts_above, faces_above))
-        mb = SurfMeshRepair.remove_isolated_vertices(SurfaceMesh(verts_below, faces_below))
-        
+
+        ma = SurfMeshRepair.remove_isolated_vertices(
+            SurfaceMesh(verts_above, faces_above)
+        )
+        mb = SurfMeshRepair.remove_isolated_vertices(
+            SurfaceMesh(verts_below, faces_below)
+        )
+
         return ma, mb
 
     @staticmethod

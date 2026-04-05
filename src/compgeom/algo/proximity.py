@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 from compgeom.kernel import (
     EPSILON,
     Point2D,
+    Point3D,
     cross_product,
     dist_point_to_segment,
     dot_product,
@@ -31,14 +32,16 @@ class ClosestPair:
     """Algorithms for finding the closest pair of points in a set."""
 
     @staticmethod
-    def divide_and_conquer(points: List[Point2D]) -> Tuple[float, Tuple[Optional[Point2D], Optional[Point2D]]]:
+    def divide_and_conquer(
+        points: List[Point2D],
+    ) -> Tuple[float, Tuple[Optional[Point2D], Optional[Point2D]]]:
         """Traditional O(N log N) divide and conquer algorithm."""
         if not points:
             return float("inf"), (None, None)
-        
+
         points_x = sorted(points, key=lambda p: p.x)
         points_y = sorted(points, key=lambda p: p.y)
-        
+
         return ClosestPair._divide_and_conquer_recursive(points_x, points_y)
 
     @staticmethod
@@ -65,8 +68,12 @@ class ClosestPair:
         points_y_left = [p for p in points_y if p in left_set]
         points_y_right = [p for p in points_y if p not in left_set]
 
-        d1, pair1 = ClosestPair._divide_and_conquer_recursive(points_x[:mid], points_y_left)
-        d2, pair2 = ClosestPair._divide_and_conquer_recursive(points_x[mid:], points_y_right)
+        d1, pair1 = ClosestPair._divide_and_conquer_recursive(
+            points_x[:mid], points_y_left
+        )
+        d2, pair2 = ClosestPair._divide_and_conquer_recursive(
+            points_x[mid:], points_y_right
+        )
 
         if d1 < d2:
             best_d, best_pair = d1, pair1
@@ -88,8 +95,7 @@ class ClosestPair:
 
     @staticmethod
     def grid_based_massive(
-        points_iterator: Iterable[Point2D], 
-        sample_size: int = 1000
+        points_iterator: Iterable[Point2D], sample_size: int = 1000
     ) -> Tuple[float, Tuple[Point2D, Point2D]]:
         """
         O(N) randomized grid-based algorithm for massive datasets.
@@ -107,14 +113,14 @@ class ClosestPair:
             raise ValueError("Need at least 2 points.")
 
         best_d, best_pair = ClosestPair.divide_and_conquer(points_list)
-        
+
         grid: Dict[Tuple[int, int], Point2D] = {}
-        
+
         def add_to_grid(p: Point2D, d: float):
             gx, gy = int(p.x / d), int(p.y / d)
             local_best_d = d
             local_pair = None
-            
+
             for dx in [-1, 0, 1]:
                 for dy in [-1, 0, 1]:
                     key = (gx + dx, gy + dy)
@@ -124,10 +130,10 @@ class ClosestPair:
                         if dist < local_best_d:
                             local_best_d = dist
                             local_pair = (p, other)
-            
+
             if local_pair:
                 return local_best_d, local_pair
-            
+
             grid[(gx, gy)] = p
             return d, None
 
@@ -140,7 +146,7 @@ class ClosestPair:
             if new_pair:
                 best_d = new_d
                 best_pair = new_pair
-                
+
         return best_d, best_pair
 
 
@@ -162,35 +168,42 @@ class LargestEmptyCircle:
 
         hull = GrahamScan().generate(points)
         from compgeom.mesh.surface.trimesh.delaunay_triangulation import triangulate
+
         mesh = triangulate(points)
-        triangles = [(mesh.vertices[f[0]], mesh.vertices[f[1]], mesh.vertices[f[2]]) for f in mesh.faces]
-        
+        triangles = [
+            (mesh.vertices[f[0]], mesh.vertices[f[1]], mesh.vertices[f[2]])
+            for f in mesh.faces
+        ]
+
         max_radius = -1.0
         best_center = None
-        
+
         for tri in triangles:
             a, b, c = tri
             center = triangle_circumcenter(a, b, c)
             if center is None:
                 continue
-                
-            if is_point_in_polygon(center, hull): 
-                r = distance(center, a) 
-                if r > max_radius: 
-                    max_radius = r 
-                    best_center = center 
-            else: 
-                for i in range(len(hull)): 
-                    p1, p2 = hull[i], hull[(i + 1) % len(hull)] 
-                    from compgeom.kernel import ray_segment_intersection_2d 
-                    res = ray_segment_intersection_2d(a, math.atan2(center.y - a.y, center.x - a.x), p1, p2) 
-                    if res: 
-                        _, hit = res 
-                        r = distance(hit, a) 
-                        if r > max_radius: 
-                            max_radius = r 
+
+            if is_point_in_polygon(center, hull):
+                r = distance(center, a)
+                if r > max_radius:
+                    max_radius = r
+                    best_center = center
+            else:
+                for i in range(len(hull)):
+                    p1, p2 = hull[i], hull[(i + 1) % len(hull)]
+                    from compgeom.kernel import ray_segment_intersection_2d
+
+                    res = ray_segment_intersection_2d(
+                        a, math.atan2(center.y - a.y, center.x - a.x), p1, p2
+                    )
+                    if res:
+                        _, hit = res
+                        r = distance(hit, a)
+                        if r > max_radius:
+                            max_radius = r
                             best_center = hit
-        
+
         for i in range(len(hull)):
             p1 = hull[i]
             p2 = hull[(i + 1) % len(hull)]
@@ -207,32 +220,50 @@ class LargestEmptyCircle:
         """Generates an SVG visualization of the points and the LEC."""
         all_x = [p.x for p in points] + [center.x - radius, center.x + radius]
         all_y = [p.y for p in points] + [center.y - radius, center.y + radius]
-        
+
         min_x, max_x = min(all_x), max(all_x)
         min_y, max_y = min(all_y), max(all_y)
-        
+
         width, height = 800, 600
         padding = 50
-        
-        def tx(x):
-            return padding + (x - min_x) / (max_x - min_x) * (width - 2 * padding) if max_x > min_x else padding
-        def ty(y):
-            return height - (padding + (y - min_y) / (max_y - min_y) * (height - 2 * padding)) if max_y > min_y else padding
 
-        svg = [f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">']
+        def tx(x):
+            return (
+                padding + (x - min_x) / (max_x - min_x) * (width - 2 * padding)
+                if max_x > min_x
+                else padding
+            )
+
+        def ty(y):
+            return (
+                height
+                - (padding + (y - min_y) / (max_y - min_y) * (height - 2 * padding))
+                if max_y > min_y
+                else padding
+            )
+
+        svg = [
+            f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">'
+        ]
         svg.append('<rect width="100%" height="100%" fill="white" />')
-        
+
         hull = GrahamScan().generate(points)
         hull_str = " ".join(f"{tx(p.x)},{ty(p.y)}" for p in hull)
-        svg.append(f'<polygon points="{hull_str}" fill="none" stroke="#ccc" stroke-dasharray="5,5" />')
-        
+        svg.append(
+            f'<polygon points="{hull_str}" fill="none" stroke="#ccc" stroke-dasharray="5,5" />'
+        )
+
         for p in points:
             svg.append(f'<circle cx="{tx(p.x)}" cy="{ty(p.y)}" r="3" fill="black" />')
-            
-        svg.append(f'<circle cx="{tx(center.x)}" cy="{ty(center.y)}" r="{radius * (width - 2*padding) / (max_x - min_x) if max_x > min_x else 0}" fill="blue" fill-opacity="0.2" stroke="blue" stroke-width="2" />')
-        svg.append(f'<circle cx="{tx(center.x)}" cy="{ty(center.y)}" r="4" fill="red" />')
-        
-        svg.append('</svg>')
+
+        svg.append(
+            f'<circle cx="{tx(center.x)}" cy="{ty(center.y)}" r="{radius * (width - 2 * padding) / (max_x - min_x) if max_x > min_x else 0}" fill="blue" fill-opacity="0.2" stroke="blue" stroke-width="2" />'
+        )
+        svg.append(
+            f'<circle cx="{tx(center.x)}" cy="{ty(center.y)}" r="4" fill="red" />'
+        )
+
+        svg.append("</svg>")
         return "\n".join(svg)
 
 
@@ -282,7 +313,9 @@ def farthest_pair(points: list[Point2D]):
             )
             next_area = abs(
                 cross_product(
-                    hull[index], hull[(index + 1) % len(hull)], hull[(k + 1) % len(hull)]
+                    hull[index],
+                    hull[(index + 1) % len(hull)],
+                    hull[(k + 1) % len(hull)],
                 )
             )
             if next_area > current_area:
@@ -349,11 +382,11 @@ def minkowski_sum(poly1: list[Point2D], poly2: list[Point2D]) -> list[Point2D]:
     while i < n or j < m:
         result.append(Point2D(p1[i % n].x + p2[j % m].x, p1[i % n].y + p2[j % m].y))
         if i < n and j < m:
-            angle1 = (
-                math.atan2(p1[i + 1].y - p1[i].y, p1[i + 1].x - p1[i].x) % (2 * math.pi)
+            angle1 = math.atan2(p1[i + 1].y - p1[i].y, p1[i + 1].x - p1[i].x) % (
+                2 * math.pi
             )
-            angle2 = (
-                math.atan2(p2[j + 1].y - p2[j].y, p2[j + 1].x - p2[j].x) % (2 * math.pi)
+            angle2 = math.atan2(p2[j + 1].y - p2[j].y, p2[j + 1].x - p2[j].x) % (
+                2 * math.pi
             )
             if angle1 < angle2:
                 i += 1
@@ -392,12 +425,17 @@ class LargestEmptySphere:
     """Finds the largest sphere whose center is within the 3D convex hull and encloses no points."""
 
     @staticmethod
-    def find(points: List['Point3D']) -> Tuple['Point3D', float]:
+    def find(points: List["Point3D"]) -> Tuple["Point3D", float]:
         from compgeom.kernel import Point3D, distance_3d
+
         if len(points) < 4:
             if len(points) == 2:
                 p1, p2 = points
-                center = Point3D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0, getattr(p1, 'z', 0.0) + getattr(p2, 'z', 0.0) / 2.0)
+                center = Point3D(
+                    (p1.x + p2.x) / 2.0,
+                    (p1.y + p2.y) / 2.0,
+                    getattr(p1, "z", 0.0) + getattr(p2, "z", 0.0) / 2.0,
+                )
                 return center, distance_3d(p1, p2) / 2.0
             return Point3D(0, 0, 0), 0.0
 
@@ -407,20 +445,20 @@ class LargestEmptySphere:
         except ImportError:
             raise ImportError("LargestEmptySphere requires 'scipy' and 'numpy'.")
 
-        pts_array = np.array([[p.x, p.y, getattr(p, 'z', 0.0)] for p in points])
+        pts_array = np.array([[p.x, p.y, getattr(p, "z", 0.0)] for p in points])
         delaunay = Delaunay(pts_array)
-        
+
         from compgeom.kernel.sphere import from_four_points
-        
+
         max_radius = -1.0
         best_center = None
-        
+
         # 1. Check circumcenters of Delaunay tetrahedra
         for simplex in delaunay.simplices:
             p1, p2, p3, p4 = [points[i] for i in simplex]
             sphere = from_four_points(p1, p2, p3, p4)
             center = sphere.center
-            
+
             # Check if center is inside the convex hull
             if delaunay.find_simplex(np.array([center.x, center.y, center.z])) >= 0:
                 # Use actual radius calculation for safety
@@ -428,39 +466,47 @@ class LargestEmptySphere:
                 if r > max_radius:
                     max_radius = r
                     best_center = center
-        
+
         # 2. Check centers of convex hull faces
         hull = ConvexHull(pts_array)
         for simplex in hull.simplices:
             p1, p2, p3 = [points[i] for i in simplex]
-            center = Point3D((p1.x+p2.x+p3.x)/3.0, (p1.y+p2.y+p3.y)/3.0, (getattr(p1,'z',0)+getattr(p2,'z',0)+getattr(p3,'z',0))/3.0)
-            
+            center = Point3D(
+                (p1.x + p2.x + p3.x) / 3.0,
+                (p1.y + p2.y + p3.y) / 3.0,
+                (getattr(p1, "z", 0) + getattr(p2, "z", 0) + getattr(p3, "z", 0)) / 3.0,
+            )
+
             # Find min distance to any point
             # (Using a simple loop since N usually isn't huge in this context; KDTree could be used for huge N)
             min_d = min(distance_3d(center, p) for p in points)
             if min_d > max_radius:
                 max_radius = min_d
                 best_center = center
-                
+
         # 3. Check midpoints of convex hull edges
         edges = set()
         for simplex in hull.simplices:
             for i in range(3):
-                j = (i+1)%3
+                j = (i + 1) % 3
                 u, v = simplex[i], simplex[j]
-                edges.add((min(u,v), max(u,v)))
-                
+                edges.add((min(u, v), max(u, v)))
+
         for u, v in edges:
             p1, p2 = points[u], points[v]
-            mid = Point3D((p1.x+p2.x)/2.0, (p1.y+p2.y)/2.0, (getattr(p1,'z',0)+getattr(p2,'z',0))/2.0)
+            mid = Point3D(
+                (p1.x + p2.x) / 2.0,
+                (p1.y + p2.y) / 2.0,
+                (getattr(p1, "z", 0) + getattr(p2, "z", 0)) / 2.0,
+            )
             min_d = min(distance_3d(mid, p) for p in points)
             if min_d > max_radius:
                 max_radius = min_d
                 best_center = mid
 
         if best_center is None:
-             return Point3D(0,0,0), 0.0
-             
+            return Point3D(0, 0, 0), 0.0
+
         return best_center, max_radius
 
 
@@ -468,31 +514,48 @@ class LargestEmptyOrientedBox:
     """Approximates the largest empty oriented box within a 3D convex hull."""
 
     @staticmethod
-    def find(points: List['Point3D']) -> dict:
+    def find(points: List["Point3D"]) -> dict:
         import numpy as np
         from scipy.spatial import ConvexHull, Delaunay
         from compgeom.kernel import Point3D
 
         if len(points) < 4:
-            return {"volume": 0.0, "center": Point3D(0,0,0), "width": 0.0, "height": 0.0, "depth": 0.0, "axes": ((1,0,0),(0,1,0),(0,0,1)), "corners": []}
+            return {
+                "volume": 0.0,
+                "center": Point3D(0, 0, 0),
+                "width": 0.0,
+                "height": 0.0,
+                "depth": 0.0,
+                "axes": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+                "corners": [],
+            }
 
-        pts_array = np.array([[p.x, p.y, getattr(p, 'z', 0.0)] for p in points])
+        pts_array = np.array([[p.x, p.y, getattr(p, "z", 0.0)] for p in points])
         try:
             hull = ConvexHull(pts_array)
             delaunay = Delaunay(pts_array)
         except Exception:
-            return {"volume": 0.0, "center": Point3D(0,0,0), "width": 0.0, "height": 0.0, "depth": 0.0, "axes": ((1,0,0),(0,1,0),(0,0,1)), "corners": []}
+            return {
+                "volume": 0.0,
+                "center": Point3D(0, 0, 0),
+                "width": 0.0,
+                "height": 0.0,
+                "depth": 0.0,
+                "axes": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+                "corners": [],
+            }
 
         seeds = []
-        
+
         # 1. Largest Empty Sphere center
         try:
             from compgeom.algo.proximity import LargestEmptySphere
+
             les_center, _ = LargestEmptySphere.find(points)
             seeds.append(np.array([les_center.x, les_center.y, les_center.z]))
         except ImportError:
             pass
-            
+
         # 2. Top Delaunay tetrahedra
         vols = []
         centroids = []
@@ -501,7 +564,7 @@ class LargestEmptyOrientedBox:
             vol = abs(np.linalg.det(np.vstack((pts.T, np.ones(4))))) / 6.0
             vols.append(vol)
             centroids.append(np.mean(pts, axis=0))
-            
+
         top_indices = np.argsort(vols)[-10:]
         for idx in top_indices:
             c = centroids[idx]
@@ -510,24 +573,24 @@ class LargestEmptyOrientedBox:
 
         orientations = []
         orientations.append(np.eye(3))
-        
+
         centroid = np.mean(pts_array, axis=0)
         cov = np.cov((pts_array - centroid).T)
         eigenvalues, eigenvectors = np.linalg.eigh(cov)
         idx = eigenvalues.argsort()[::-1]
         pca_axes = eigenvectors[:, idx].T
         orientations.append(pca_axes)
-        
+
         face_areas = []
         for simplex in hull.simplices:
             p1, p2, p3 = pts_array[simplex]
-            area = np.linalg.norm(np.cross(p2-p1, p3-p1)) * 0.5
+            area = np.linalg.norm(np.cross(p2 - p1, p3 - p1)) * 0.5
             face_areas.append(area)
-        
+
         top_faces = np.argsort(face_areas)[-3:]
         for idx in top_faces:
             p1, p2, p3 = pts_array[hull.simplices[idx]]
-            n = np.array(np.cross(p2-p1, p3-p1), dtype=float)
+            n = np.array(np.cross(p2 - p1, p3 - p1), dtype=float)
             norm_n = np.linalg.norm(n)
             if norm_n > 1e-9:
                 n = n / norm_n
@@ -539,101 +602,155 @@ class LargestEmptyOrientedBox:
                     orientations.append(np.vstack((t1, t2, n)))
 
         def expand_box(points_loc, hull_eq_loc, order, initial_R):
-            bounds = [-initial_R, initial_R, -initial_R, initial_R, -initial_R, initial_R]
+            bounds = [
+                -initial_R,
+                initial_R,
+                -initial_R,
+                initial_R,
+                -initial_R,
+                initial_R,
+            ]
             eps = 1e-7
             for d in order:
                 if d == "+x":
-                    p_lim = float('inf')
+                    p_lim = float("inf")
                     for p in points_loc:
-                        if p[0] > bounds[1] + eps and bounds[2]-eps <= p[1] <= bounds[3]+eps and bounds[4]-eps <= p[2] <= bounds[5]+eps:
-                            if p[0] < p_lim: p_lim = p[0]
-                    h_lim = float('inf')
+                        if (
+                            p[0] > bounds[1] + eps
+                            and bounds[2] - eps <= p[1] <= bounds[3] + eps
+                            and bounds[4] - eps <= p[2] <= bounds[5] + eps
+                        ):
+                            if p[0] < p_lim:
+                                p_lim = p[0]
+                    h_lim = float("inf")
                     for eq in hull_eq_loc:
                         A, B, C, D = eq
                         if A > eps:
                             for y in [bounds[2], bounds[3]]:
                                 for z in [bounds[4], bounds[5]]:
-                                    val = (-D - B*y - C*z) / A
-                                    if val < h_lim: h_lim = val
+                                    val = (-D - B * y - C * z) / A
+                                    if val < h_lim:
+                                        h_lim = val
                     bounds[1] = min(p_lim, h_lim) - eps
 
                 elif d == "-x":
-                    p_lim = -float('inf')
+                    p_lim = -float("inf")
                     for p in points_loc:
-                        if p[0] < bounds[0] - eps and bounds[2]-eps <= p[1] <= bounds[3]+eps and bounds[4]-eps <= p[2] <= bounds[5]+eps:
-                            if p[0] > p_lim: p_lim = p[0]
-                    h_lim = -float('inf')
+                        if (
+                            p[0] < bounds[0] - eps
+                            and bounds[2] - eps <= p[1] <= bounds[3] + eps
+                            and bounds[4] - eps <= p[2] <= bounds[5] + eps
+                        ):
+                            if p[0] > p_lim:
+                                p_lim = p[0]
+                    h_lim = -float("inf")
                     for eq in hull_eq_loc:
                         A, B, C, D = eq
                         if A < -eps:
                             for y in [bounds[2], bounds[3]]:
                                 for z in [bounds[4], bounds[5]]:
-                                    val = (-D - B*y - C*z) / A
-                                    if val > h_lim: h_lim = val
+                                    val = (-D - B * y - C * z) / A
+                                    if val > h_lim:
+                                        h_lim = val
                     bounds[0] = max(p_lim, h_lim) + eps
 
                 elif d == "+y":
-                    p_lim = float('inf')
+                    p_lim = float("inf")
                     for p in points_loc:
-                        if p[1] > bounds[3] + eps and bounds[0]-eps <= p[0] <= bounds[1]+eps and bounds[4]-eps <= p[2] <= bounds[5]+eps:
-                            if p[1] < p_lim: p_lim = p[1]
-                    h_lim = float('inf')
+                        if (
+                            p[1] > bounds[3] + eps
+                            and bounds[0] - eps <= p[0] <= bounds[1] + eps
+                            and bounds[4] - eps <= p[2] <= bounds[5] + eps
+                        ):
+                            if p[1] < p_lim:
+                                p_lim = p[1]
+                    h_lim = float("inf")
                     for eq in hull_eq_loc:
                         A, B, C, D = eq
                         if B > eps:
                             for x in [bounds[0], bounds[1]]:
                                 for z in [bounds[4], bounds[5]]:
-                                    val = (-D - A*x - C*z) / B
-                                    if val < h_lim: h_lim = val
+                                    val = (-D - A * x - C * z) / B
+                                    if val < h_lim:
+                                        h_lim = val
                     bounds[3] = min(p_lim, h_lim) - eps
 
                 elif d == "-y":
-                    p_lim = -float('inf')
+                    p_lim = -float("inf")
                     for p in points_loc:
-                        if p[1] < bounds[2] - eps and bounds[0]-eps <= p[0] <= bounds[1]+eps and bounds[4]-eps <= p[2] <= bounds[5]+eps:
-                            if p[1] > p_lim: p_lim = p[1]
-                    h_lim = -float('inf')
+                        if (
+                            p[1] < bounds[2] - eps
+                            and bounds[0] - eps <= p[0] <= bounds[1] + eps
+                            and bounds[4] - eps <= p[2] <= bounds[5] + eps
+                        ):
+                            if p[1] > p_lim:
+                                p_lim = p[1]
+                    h_lim = -float("inf")
                     for eq in hull_eq_loc:
                         A, B, C, D = eq
                         if B < -eps:
                             for x in [bounds[0], bounds[1]]:
                                 for z in [bounds[4], bounds[5]]:
-                                    val = (-D - A*x - C*z) / B
-                                    if val > h_lim: h_lim = val
+                                    val = (-D - A * x - C * z) / B
+                                    if val > h_lim:
+                                        h_lim = val
                     bounds[2] = max(p_lim, h_lim) + eps
 
                 elif d == "+z":
-                    p_lim = float('inf')
+                    p_lim = float("inf")
                     for p in points_loc:
-                        if p[2] > bounds[5] + eps and bounds[0]-eps <= p[0] <= bounds[1]+eps and bounds[2]-eps <= p[1] <= bounds[3]+eps:
-                            if p[2] < p_lim: p_lim = p[2]
-                    h_lim = float('inf')
+                        if (
+                            p[2] > bounds[5] + eps
+                            and bounds[0] - eps <= p[0] <= bounds[1] + eps
+                            and bounds[2] - eps <= p[1] <= bounds[3] + eps
+                        ):
+                            if p[2] < p_lim:
+                                p_lim = p[2]
+                    h_lim = float("inf")
                     for eq in hull_eq_loc:
                         A, B, C, D = eq
                         if C > eps:
                             for x in [bounds[0], bounds[1]]:
                                 for y in [bounds[2], bounds[3]]:
-                                    val = (-D - A*x - B*y) / C
-                                    if val < h_lim: h_lim = val
+                                    val = (-D - A * x - B * y) / C
+                                    if val < h_lim:
+                                        h_lim = val
                     bounds[5] = min(p_lim, h_lim) - eps
 
                 elif d == "-z":
-                    p_lim = -float('inf')
+                    p_lim = -float("inf")
                     for p in points_loc:
-                        if p[2] < bounds[4] - eps and bounds[0]-eps <= p[0] <= bounds[1]+eps and bounds[2]-eps <= p[1] <= bounds[3]+eps:
-                            if p[2] > p_lim: p_lim = p[2]
-                    h_lim = -float('inf')
+                        if (
+                            p[2] < bounds[4] - eps
+                            and bounds[0] - eps <= p[0] <= bounds[1] + eps
+                            and bounds[2] - eps <= p[1] <= bounds[3] + eps
+                        ):
+                            if p[2] > p_lim:
+                                p_lim = p[2]
+                    h_lim = -float("inf")
                     for eq in hull_eq_loc:
                         A, B, C, D = eq
                         if C < -eps:
                             for x in [bounds[0], bounds[1]]:
                                 for y in [bounds[2], bounds[3]]:
-                                    val = (-D - A*x - B*y) / C
-                                    if val > h_lim: h_lim = val
+                                    val = (-D - A * x - B * y) / C
+                                    if val > h_lim:
+                                        h_lim = val
                     bounds[4] = max(p_lim, h_lim) + eps
 
-            bounds = [min(0, bounds[0]), max(0, bounds[1]), min(0, bounds[2]), max(0, bounds[3]), min(0, bounds[4]), max(0, bounds[5])]
-            vol = (bounds[1] - bounds[0]) * (bounds[3] - bounds[2]) * (bounds[5] - bounds[4])
+            bounds = [
+                min(0, bounds[0]),
+                max(0, bounds[1]),
+                min(0, bounds[2]),
+                max(0, bounds[3]),
+                min(0, bounds[4]),
+                max(0, bounds[5]),
+            ]
+            vol = (
+                (bounds[1] - bounds[0])
+                * (bounds[3] - bounds[2])
+                * (bounds[5] - bounds[4])
+            )
             return bounds, vol
 
         best_vol = -1.0
@@ -645,24 +762,27 @@ class LargestEmptyOrientedBox:
             ["+z", "-z", "+x", "-x", "+y", "-y"],
             ["-x", "+x", "-y", "+y", "-z", "+z"],
             ["-y", "+y", "-z", "+z", "-x", "+x"],
-            ["-z", "+z", "-x", "+x", "-y", "+y"]
+            ["-z", "+z", "-x", "+x", "-y", "+y"],
         ]
 
         for C in seeds:
-            r_nearest = float('inf')
+            r_nearest = float("inf")
             for p in pts_array:
                 d = np.linalg.norm(p - C)
-                if d > 1e-9 and d < r_nearest: r_nearest = d
+                if d > 1e-9 and d < r_nearest:
+                    r_nearest = d
             for eq in hull.equations:
                 d = -(np.dot(eq[:3], C) + eq[3]) / np.linalg.norm(eq[:3])
-                if d > 1e-9 and d < r_nearest: r_nearest = d
-            
-            if r_nearest == float('inf'): r_nearest = 0.0
+                if d > 1e-9 and d < r_nearest:
+                    r_nearest = d
+
+            if r_nearest == float("inf"):
+                r_nearest = 0.0
             initial_R = (r_nearest / np.sqrt(3.0)) * 0.98
 
             for U in orientations:
                 P_loc = (pts_array - C) @ U.T
-                
+
                 hull_eq_loc = []
                 for eq in hull.equations:
                     Ng = eq[:3]
@@ -672,7 +792,7 @@ class LargestEmptyOrientedBox:
                     Cl = np.dot(Ng, U[2])
                     Dl = np.dot(Ng, C) + Dg
                     hull_eq_loc.append([Al, Bl, Cl, Dl])
-                
+
                 for order in orders:
                     bounds, vol = expand_box(P_loc, hull_eq_loc, order, initial_R)
                     if vol > best_vol:
@@ -680,35 +800,47 @@ class LargestEmptyOrientedBox:
                         best_box = (C, U, bounds)
 
         if not best_box:
-             return {"volume": 0.0, "center": Point3D(0,0,0), "width": 0.0, "height": 0.0, "depth": 0.0, "axes": ((1,0,0),(0,1,0),(0,0,1)), "corners": []}
+            return {
+                "volume": 0.0,
+                "center": Point3D(0, 0, 0),
+                "width": 0.0,
+                "height": 0.0,
+                "depth": 0.0,
+                "axes": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+                "corners": [],
+            }
 
         C, U, bounds = best_box
         cx_loc = (bounds[0] + bounds[1]) / 2.0
         cy_loc = (bounds[2] + bounds[3]) / 2.0
         cz_loc = (bounds[4] + bounds[5]) / 2.0
-        
+
         w = bounds[1] - bounds[0]
         h = bounds[3] - bounds[2]
         d = bounds[5] - bounds[4]
-        
+
         center_global = C + cx_loc * U[0] + cy_loc * U[1] + cz_loc * U[2]
         center = Point3D(center_global[0], center_global[1], center_global[2])
-        
+
         corners = []
-        for dx in [-w/2, w/2]:
-            for dy in [-h/2, h/2]:
-                for dz in [-d/2, d/2]:
-                    cg = center_global + dx*U[0] + dy*U[1] + dz*U[2]
+        for dx in [-w / 2, w / 2]:
+            for dy in [-h / 2, h / 2]:
+                for dz in [-d / 2, d / 2]:
+                    cg = center_global + dx * U[0] + dy * U[1] + dz * U[2]
                     corners.append(Point3D(cg[0], cg[1], cg[2]))
-                    
+
         return {
             "center": center,
             "width": w,
             "height": h,
             "depth": d,
             "volume": best_vol,
-            "axes": (tuple(float(x) for x in U[0]), tuple(float(x) for x in U[1]), tuple(float(x) for x in U[2])),
-            "corners": corners
+            "axes": (
+                tuple(float(x) for x in U[0]),
+                tuple(float(x) for x in U[1]),
+                tuple(float(x) for x in U[2]),
+            ),
+            "corners": corners,
         }
 
 
@@ -716,29 +848,40 @@ class LargestEmptyOrientedEllipsoid:
     """Finds a large volume oriented ellipsoid that is empty of points and inside the 3D convex hull."""
 
     @staticmethod
-    def find(points: List['Point3D']) -> dict:
+    def find(points: List["Point3D"]) -> dict:
         import numpy as np
         from scipy.spatial import ConvexHull, Delaunay
         from compgeom.kernel import Point3D
 
         if len(points) < 4:
-            return {"volume": 0.0, "center": Point3D(0,0,0), "radii": (0,0,0), "axes": ((1,0,0),(0,1,0),(0,0,1))}
+            return {
+                "volume": 0.0,
+                "center": Point3D(0, 0, 0),
+                "radii": (0, 0, 0),
+                "axes": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+            }
 
-        pts_array = np.array([[p.x, p.y, getattr(p, 'z', 0.0)] for p in points])
+        pts_array = np.array([[p.x, p.y, getattr(p, "z", 0.0)] for p in points])
         try:
             hull = ConvexHull(pts_array)
             delaunay = Delaunay(pts_array)
         except Exception:
-            return {"volume": 0.0, "center": Point3D(0,0,0), "radii": (0,0,0), "axes": ((1,0,0),(0,1,0),(0,0,1))}
+            return {
+                "volume": 0.0,
+                "center": Point3D(0, 0, 0),
+                "radii": (0, 0, 0),
+                "axes": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+            }
 
         seeds = []
         try:
             from compgeom.algo.proximity import LargestEmptySphere
+
             les_center, les_r = LargestEmptySphere.find(points)
             seeds.append((np.array([les_center.x, les_center.y, les_center.z]), les_r))
         except Exception:
             pass
-            
+
         # Add top Delaunay centroids as seeds
         for simplex in delaunay.simplices:
             pts = pts_array[simplex]
@@ -748,24 +891,25 @@ class LargestEmptyOrientedEllipsoid:
                 min_d = np.min(np.linalg.norm(pts_array - c, axis=1))
                 for eq in hull.equations:
                     d_hull = abs(np.dot(eq[:3], c) + eq[3]) / np.linalg.norm(eq[:3])
-                    if d_hull < min_d: min_d = d_hull
+                    if d_hull < min_d:
+                        min_d = d_hull
                 seeds.append((c, min_d))
-        
+
         seeds = sorted(seeds, key=lambda x: x[1], reverse=True)[:5]
 
         orientations = [np.eye(3)]
         centroid = np.mean(pts_array, axis=0)
         cov = np.cov((pts_array - centroid).T)
         _, eigenvectors = np.linalg.eigh(cov)
-        orientations.append(eigenvectors.T) # PCA axes
-        
-        for simplex in hull.simplices[:3]: # Add a few face-aligned axes
+        orientations.append(eigenvectors.T)  # PCA axes
+
+        for simplex in hull.simplices[:3]:  # Add a few face-aligned axes
             p1, p2, p3 = pts_array[simplex]
-            n = np.array(np.cross(p2-p1, p3-p1), dtype=float)
+            n = np.array(np.cross(p2 - p1, p3 - p1), dtype=float)
             n_norm = np.linalg.norm(n)
             if n_norm > 1e-9:
                 n /= n_norm
-                t1 = (p2-p1) / np.linalg.norm(p2-p1)
+                t1 = (p2 - p1) / np.linalg.norm(p2 - p1)
                 t2 = np.cross(n, t1)
                 orientations.append(np.vstack((t1, t2, n)))
 
@@ -783,38 +927,46 @@ class LargestEmptyOrientedEllipsoid:
 
             # Start with a small sphere
             abc = np.array([initial_r, initial_r, initial_r], dtype=float) * 0.95
-            
-            for _ in range(10): # Iterations of coordinate descent
+
+            for _ in range(10):  # Iterations of coordinate descent
                 for i in range(3):
                     # Maximize abc[i]
                     other_idx = [j for j in range(3) if j != i]
-                    
-                    max_val_sq = float('inf')
-                    
+
+                    max_val_sq = float("inf")
+
                     # Point constraints: (x/a)^2 + (y/b)^2 + (z/c)^2 >= 1
                     # (val/abc[i])^2 >= 1 - sum((other_val/abc[other])^2)
                     for p in P_loc:
-                        sum_others = (p[other_idx[0]]/abc[other_idx[0]])**2 + (p[other_idx[1]]/abc[other_idx[1]])**2
+                        sum_others = (p[other_idx[0]] / abc[other_idx[0]]) ** 2 + (
+                            p[other_idx[1]] / abc[other_idx[1]]
+                        ) ** 2
                         if sum_others < 1.0:
-                            limit_sq = (p[i]**2) / (1.0 - sum_others)
-                            if limit_sq < max_val_sq: max_val_sq = limit_sq
-                    
+                            limit_sq = (p[i] ** 2) / (1.0 - sum_others)
+                            if limit_sq < max_val_sq:
+                                max_val_sq = limit_sq
+
                     # Plane constraints: sum((Coeff[j] * abc[j])^2) <= D^2
                     for eq in hull_eq_loc:
                         Ai = eq[i]
-                        SumOthers = (eq[other_idx[0]]*abc[other_idx[0]])**2 + (eq[other_idx[1]]*abc[other_idx[1]])**2
-                        D_sq = eq[3]**2
+                        SumOthers = (eq[other_idx[0]] * abc[other_idx[0]]) ** 2 + (
+                            eq[other_idx[1]] * abc[other_idx[1]]
+                        ) ** 2
+                        D_sq = eq[3] ** 2
                         if Ai**2 > 1e-12:
                             if D_sq > SumOthers:
                                 limit_sq = (D_sq - SumOthers) / (Ai**2)
-                                if limit_sq < max_val_sq: max_val_sq = limit_sq
+                                if limit_sq < max_val_sq:
+                                    max_val_sq = limit_sq
                             else:
-                                max_val_sq = 0.0 # Already intersecting
-                    
-                    if max_val_sq <= 0: abc[i] = 1e-6
-                    else: abc[i] = np.sqrt(max_val_sq) * 0.999 # Small buffer
-            
-            vol = (4/3) * np.pi * abc[0] * abc[1] * abc[2]
+                                max_val_sq = 0.0  # Already intersecting
+
+                    if max_val_sq <= 0:
+                        abc[i] = 1e-6
+                    else:
+                        abc[i] = np.sqrt(max_val_sq) * 0.999  # Small buffer
+
+            vol = (4 / 3) * np.pi * abc[0] * abc[1] * abc[2]
             return abc, vol
 
         best_vol = -1.0
@@ -828,43 +980,68 @@ class LargestEmptyOrientedEllipsoid:
                     best_res = (C, U, abc)
 
         if not best_res:
-            return {"volume": 0.0, "center": Point3D(0,0,0), "radii": (0,0,0), "axes": ((1,0,0),(0,1,0),(0,0,1))}
+            return {
+                "volume": 0.0,
+                "center": Point3D(0, 0, 0),
+                "radii": (0, 0, 0),
+                "axes": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+            }
 
         C, U, abc = best_res
         return {
             "center": Point3D(C[0], C[1], C[2]),
             "radii": tuple(float(x) for x in abc),
-            "axes": (tuple(float(x) for x in U[0]), tuple(float(x) for x in U[1]), tuple(float(x) for x in U[2])),
-            "volume": best_vol
+            "axes": (
+                tuple(float(x) for x in U[0]),
+                tuple(float(x) for x in U[1]),
+                tuple(float(x) for x in U[2]),
+            ),
+            "volume": best_vol,
         }
+
 
 class LargestEmptyOrientedRectangle:
     """Finds a large volume oriented rectangle that is empty of points and inside the 2D convex hull."""
 
     @staticmethod
-    def find(points: List['Point2D']) -> dict:
+    def find(points: List["Point2D"]) -> dict:
         import numpy as np
         from scipy.spatial import ConvexHull, Delaunay
         from compgeom.kernel import Point2D, distance
 
         if len(points) < 3:
-            return {"area": 0.0, "center": Point2D(0,0), "width": 0.0, "height": 0.0, "angle": 0.0, "corners": []}
+            return {
+                "area": 0.0,
+                "center": Point2D(0, 0),
+                "width": 0.0,
+                "height": 0.0,
+                "angle": 0.0,
+                "corners": [],
+            }
 
         pts_array = np.array([[p.x, p.y] for p in points])
         try:
             hull = ConvexHull(pts_array)
             delaunay = Delaunay(pts_array)
         except Exception:
-            return {"area": 0.0, "center": Point2D(0,0), "width": 0.0, "height": 0.0, "angle": 0.0, "corners": []}
+            return {
+                "area": 0.0,
+                "center": Point2D(0, 0),
+                "width": 0.0,
+                "height": 0.0,
+                "angle": 0.0,
+                "corners": [],
+            }
 
         seeds = []
         try:
             from compgeom.algo.proximity import LargestEmptyCircle
+
             lec_center, lec_r = LargestEmptyCircle.find(points)
             seeds.append((np.array([lec_center.x, lec_center.y]), lec_r))
         except Exception:
             pass
-            
+
         for simplex in delaunay.simplices:
             pts = pts_array[simplex]
             c = np.mean(pts, axis=0)
@@ -872,9 +1049,10 @@ class LargestEmptyOrientedRectangle:
                 min_d = np.min(np.linalg.norm(pts_array - c, axis=1))
                 for eq in hull.equations:
                     d_hull = abs(np.dot(eq[:2], c) + eq[2]) / np.linalg.norm(eq[:2])
-                    if d_hull < min_d: min_d = d_hull
+                    if d_hull < min_d:
+                        min_d = d_hull
                 seeds.append((c, min_d))
-        
+
         seeds = sorted(seeds, key=lambda x: x[1], reverse=True)[:10]
 
         orientations = [np.eye(2)]
@@ -883,7 +1061,7 @@ class LargestEmptyOrientedRectangle:
         eigenvalues, eigenvectors = np.linalg.eigh(cov)
         idx = eigenvalues.argsort()[::-1]
         orientations.append(eigenvectors[:, idx].T)
-        
+
         for simplex in hull.simplices:
             p1, p2 = pts_array[simplex]
             v = p2 - p1
@@ -904,65 +1082,90 @@ class LargestEmptyOrientedRectangle:
 
             side = (initial_r / np.sqrt(2.0)) * 0.95
             bounds = [-side, side, -side, side]
-            
-            orders = [["+x","-x","+y","-y"], ["+y","-y","+x","-x"], ["-x","+x","-y","+y"], ["-y","+y","-x","+x"]]
+
+            orders = [
+                ["+x", "-x", "+y", "-y"],
+                ["+y", "-y", "+x", "-x"],
+                ["-x", "+x", "-y", "+y"],
+                ["-y", "+y", "-x", "+x"],
+            ]
             best_local_area = -1.0
             best_local_bounds = bounds
-            
+
             eps = 1e-7
             for order in orders:
                 cur_bounds = list(bounds)
                 for d in order:
                     if d == "+x":
-                        p_lim = float('inf')
+                        p_lim = float("inf")
                         for p in P_loc:
-                            if p[0] > cur_bounds[1] + eps and cur_bounds[2]-eps <= p[1] <= cur_bounds[3]+eps:
-                                if p[0] < p_lim: p_lim = p[0]
-                        h_lim = float('inf')
+                            if (
+                                p[0] > cur_bounds[1] + eps
+                                and cur_bounds[2] - eps <= p[1] <= cur_bounds[3] + eps
+                            ):
+                                if p[0] < p_lim:
+                                    p_lim = p[0]
+                        h_lim = float("inf")
                         for eq in hull_eq_loc:
                             if eq[0] > eps:
                                 for y in [cur_bounds[2], cur_bounds[3]]:
-                                    val = (-eq[2] - eq[1]*y) / eq[0]
-                                    if val < h_lim: h_lim = val
+                                    val = (-eq[2] - eq[1] * y) / eq[0]
+                                    if val < h_lim:
+                                        h_lim = val
                         cur_bounds[1] = min(p_lim, h_lim) - eps
                     elif d == "-x":
-                        p_lim = -float('inf')
+                        p_lim = -float("inf")
                         for p in P_loc:
-                            if p[0] < cur_bounds[0] - eps and cur_bounds[2]-eps <= p[1] <= cur_bounds[3]+eps:
-                                if p[0] > p_lim: p_lim = p[0]
-                        h_lim = -float('inf')
+                            if (
+                                p[0] < cur_bounds[0] - eps
+                                and cur_bounds[2] - eps <= p[1] <= cur_bounds[3] + eps
+                            ):
+                                if p[0] > p_lim:
+                                    p_lim = p[0]
+                        h_lim = -float("inf")
                         for eq in hull_eq_loc:
                             if eq[0] < -eps:
                                 for y in [cur_bounds[2], cur_bounds[3]]:
-                                    val = (-eq[2] - eq[1]*y) / eq[0]
-                                    if val > h_lim: h_lim = val
+                                    val = (-eq[2] - eq[1] * y) / eq[0]
+                                    if val > h_lim:
+                                        h_lim = val
                         cur_bounds[0] = max(p_lim, h_lim) + eps
                     elif d == "+y":
-                        p_lim = float('inf')
+                        p_lim = float("inf")
                         for p in P_loc:
-                            if p[1] > cur_bounds[3] + eps and cur_bounds[0]-eps <= p[0] <= cur_bounds[1]+eps:
-                                if p[1] < p_lim: p_lim = p[1]
-                        h_lim = float('inf')
+                            if (
+                                p[1] > cur_bounds[3] + eps
+                                and cur_bounds[0] - eps <= p[0] <= cur_bounds[1] + eps
+                            ):
+                                if p[1] < p_lim:
+                                    p_lim = p[1]
+                        h_lim = float("inf")
                         for eq in hull_eq_loc:
                             if eq[1] > eps:
                                 for x in [cur_bounds[0], cur_bounds[1]]:
-                                    val = (-eq[2] - eq[0]*x) / eq[1]
-                                    if val < h_lim: h_lim = val
+                                    val = (-eq[2] - eq[0] * x) / eq[1]
+                                    if val < h_lim:
+                                        h_lim = val
                         cur_bounds[3] = min(p_lim, h_lim) - eps
                     elif d == "-y":
-                        p_lim = -float('inf')
+                        p_lim = -float("inf")
                         for p in P_loc:
-                            if p[1] < cur_bounds[2] - eps and cur_bounds[0]-eps <= p[0] <= cur_bounds[1]+eps:
-                                if p[1] > p_lim: p_lim = p[1]
-                        h_lim = -float('inf')
+                            if (
+                                p[1] < cur_bounds[2] - eps
+                                and cur_bounds[0] - eps <= p[0] <= cur_bounds[1] + eps
+                            ):
+                                if p[1] > p_lim:
+                                    p_lim = p[1]
+                        h_lim = -float("inf")
                         for eq in hull_eq_loc:
                             if eq[1] < -eps:
                                 for x in [cur_bounds[0], cur_bounds[1]]:
-                                    val = (-eq[2] - eq[0]*x) / eq[1]
-                                    if val > h_lim: h_lim = val
+                                    val = (-eq[2] - eq[0] * x) / eq[1]
+                                    if val > h_lim:
+                                        h_lim = val
                         cur_bounds[2] = max(p_lim, h_lim) + eps
-                
-                area = (cur_bounds[1]-cur_bounds[0]) * (cur_bounds[3]-cur_bounds[2])
+
+                area = (cur_bounds[1] - cur_bounds[0]) * (cur_bounds[3] - cur_bounds[2])
                 if area > best_local_area:
                     best_local_area = area
                     best_local_bounds = cur_bounds
@@ -979,43 +1182,70 @@ class LargestEmptyOrientedRectangle:
                     best_res = (C, U, bounds)
 
         if not best_res:
-            return {"area": 0.0, "center": Point2D(0,0), "width": 0.0, "height": 0.0, "angle": 0.0, "corners": []}
+            return {
+                "area": 0.0,
+                "center": Point2D(0, 0),
+                "width": 0.0,
+                "height": 0.0,
+                "angle": 0.0,
+                "corners": [],
+            }
 
         C, U, bounds = best_res
-        cx_loc, cy_loc = (bounds[0]+bounds[1])/2.0, (bounds[2]+bounds[3])/2.0
+        cx_loc, cy_loc = (bounds[0] + bounds[1]) / 2.0, (bounds[2] + bounds[3]) / 2.0
         c_global = C + cx_loc * U[0] + cy_loc * U[1]
-        w, h = bounds[1]-bounds[0], bounds[3]-bounds[2]
+        w, h = bounds[1] - bounds[0], bounds[3] - bounds[2]
         angle = np.arctan2(U[0][1], U[0][0])
-        corners = [Point2D(p[0], p[1]) for p in [c_global + dx*U[0] + dy*U[1] for dx, dy in [(-w/2,-h/2),(w/2,-h/2),(w/2,h/2),(-w/2,h/2)]]]
-        return {"center": Point2D(c_global[0], c_global[1]), "width": w, "height": h, "area": best_area, "angle": float(angle), "corners": corners}
+        corners = [
+            Point2D(p[0], p[1])
+            for p in [
+                c_global + dx * U[0] + dy * U[1]
+                for dx, dy in [
+                    (-w / 2, -h / 2),
+                    (w / 2, -h / 2),
+                    (w / 2, h / 2),
+                    (-w / 2, h / 2),
+                ]
+            ]
+        ]
+        return {
+            "center": Point2D(c_global[0], c_global[1]),
+            "width": w,
+            "height": h,
+            "area": best_area,
+            "angle": float(angle),
+            "corners": corners,
+        }
+
 
 class LargestEmptyOrientedEllipse:
     """Finds a large volume oriented ellipse that is empty of points and inside the 2D convex hull."""
 
     @staticmethod
-    def find(points: List['Point2D']) -> dict:
+    def find(points: List["Point2D"]) -> dict:
         import numpy as np
         from scipy.spatial import ConvexHull, Delaunay
         from compgeom.kernel import Point2D
 
         if len(points) < 3:
-            return {"area": 0.0, "center": Point2D(0,0), "radii": (0,0), "angle": 0.0}
+            return {"area": 0.0, "center": Point2D(0, 0), "radii": (0, 0), "angle": 0.0}
 
         pts_array = np.array([[p.x, p.y] for p in points])
         try:
             hull = ConvexHull(pts_array)
             delaunay = Delaunay(pts_array)
         except Exception:
-            return {"area": 0.0, "center": Point2D(0,0), "radii": (0,0), "angle": 0.0}
+            return {"area": 0.0, "center": Point2D(0, 0), "radii": (0, 0), "angle": 0.0}
 
         seeds = []
         try:
             from compgeom.algo.proximity import LargestEmptyCircle
+
             lec_center, lec_r = LargestEmptyCircle.find(points)
             seeds.append((np.array([lec_center.x, lec_center.y]), lec_r))
         except Exception:
             pass
-            
+
         for simplex in delaunay.simplices:
             pts = pts_array[simplex]
             c = np.mean(pts, axis=0)
@@ -1023,9 +1253,10 @@ class LargestEmptyOrientedEllipse:
                 min_d = np.min(np.linalg.norm(pts_array - c, axis=1))
                 for eq in hull.equations:
                     d_hull = abs(np.dot(eq[:2], c) + eq[2]) / np.linalg.norm(eq[:2])
-                    if d_hull < min_d: min_d = d_hull
+                    if d_hull < min_d:
+                        min_d = d_hull
                 seeds.append((c, min_d))
-        
+
         seeds = sorted(seeds, key=lambda x: x[1], reverse=True)[:5]
 
         orientations = [np.eye(2)]
@@ -1034,7 +1265,7 @@ class LargestEmptyOrientedEllipse:
         eigenvalues, eigenvectors = np.linalg.eigh(cov)
         idx = eigenvalues.argsort()[::-1]
         orientations.append(eigenvectors[:, idx].T)
-        
+
         for simplex in hull.simplices[:5]:
             p1, p2 = pts_array[simplex]
             v = p2 - p1
@@ -1054,32 +1285,36 @@ class LargestEmptyOrientedEllipse:
                 hull_eq_loc.append([Al, Bl, Dl])
 
             ab = np.array([initial_r, initial_r], dtype=float) * 0.95
-            
+
             for _ in range(10):
                 for i in range(2):
                     other_idx = 1 - i
-                    max_val_sq = float('inf')
-                    
+                    max_val_sq = float("inf")
+
                     for p in P_loc:
-                        other_term = (p[other_idx]/ab[other_idx])**2
+                        other_term = (p[other_idx] / ab[other_idx]) ** 2
                         if other_term < 1.0:
-                            limit_sq = (p[i]**2) / (1.0 - other_term)
-                            if limit_sq < max_val_sq: max_val_sq = limit_sq
-                    
+                            limit_sq = (p[i] ** 2) / (1.0 - other_term)
+                            if limit_sq < max_val_sq:
+                                max_val_sq = limit_sq
+
                     for eq in hull_eq_loc:
                         Ai = eq[i]
-                        OtherTerm = (eq[other_idx]*ab[other_idx])**2
-                        D_sq = eq[2]**2
+                        OtherTerm = (eq[other_idx] * ab[other_idx]) ** 2
+                        D_sq = eq[2] ** 2
                         if Ai**2 > 1e-12:
                             if D_sq > OtherTerm:
                                 limit_sq = (D_sq - OtherTerm) / (Ai**2)
-                                if limit_sq < max_val_sq: max_val_sq = limit_sq
+                                if limit_sq < max_val_sq:
+                                    max_val_sq = limit_sq
                             else:
                                 max_val_sq = 0.0
-                    
-                    if max_val_sq <= 0: ab[i] = 1e-6
-                    else: ab[i] = np.sqrt(max_val_sq) * 0.999
-            
+
+                    if max_val_sq <= 0:
+                        ab[i] = 1e-6
+                    else:
+                        ab[i] = np.sqrt(max_val_sq) * 0.999
+
             area = np.pi * ab[0] * ab[1]
             return ab, area
 
@@ -1094,7 +1329,7 @@ class LargestEmptyOrientedEllipse:
                     best_res = (C, U, ab)
 
         if not best_res:
-            return {"area": 0.0, "center": Point2D(0,0), "radii": (0,0), "angle": 0.0}
+            return {"area": 0.0, "center": Point2D(0, 0), "radii": (0, 0), "angle": 0.0}
 
         C, U, ab = best_res
         angle = np.arctan2(U[0][1], U[0][0])
@@ -1103,5 +1338,5 @@ class LargestEmptyOrientedEllipse:
             "radii": (float(ab[0]), float(ab[1])),
             "angle": float(angle),
             "area": best_area,
-            "axes": (tuple(float(x) for x in U[0]), tuple(float(x) for x in U[1]))
+            "axes": (tuple(float(x) for x in U[0]), tuple(float(x) for x in U[1])),
         }

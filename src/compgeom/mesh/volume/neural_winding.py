@@ -9,37 +9,47 @@ from typing import List, Tuple, Optional, Callable
 
 from compgeom.kernel import Point3D
 from compgeom.mesh.surface.mesh_queries import MeshQueries
+from compgeom.mesh.surface.trimesh.trimesh import TriMesh
+
 
 class NeuralWindingLifter:
     """
     Implements the "Lifting the Winding Number" technique.
-    Resolves sharp features and non-watertight discontinuities in neural fields 
+    Resolves sharp features and non-watertight discontinuities in neural fields
     by "lifting" the generalized winding number into the neural optimization loop.
     """
+
     def __init__(self, neural_sdf: Callable[[np.ndarray], np.ndarray]):
         """
         neural_sdf: An implicit neural function (N, 3) -> (N, 1).
         """
         self.neural_sdf = neural_sdf
 
-    def evaluate_lifted(self, points: np.ndarray, reference_mesh: Optional[TriMesh] = None) -> np.ndarray:
+    def evaluate_lifted(
+        self, points: np.ndarray, reference_mesh: Optional[TriMesh] = None
+    ) -> np.ndarray:
         """
         Evaluates the neural SDF with 'lifted' winding number awareness.
         This provides much sharper results on geometric discontinuities.
         """
         # 1. Compute baseline neural SDF values
         s_base = self.neural_sdf(points)
-        
-        # 2. If a reference mesh (e.g., training proxy) is provided, 
+
+        # 2. If a reference mesh (e.g., training proxy) is provided,
         # apply the 'lifting' term based on the Generalized Winding Number (GWN).
         if reference_mesh:
-            gwn = np.array([MeshQueries.generalized_winding_number(reference_mesh, tuple(p)) for p in points])
+            gwn = np.array(
+                [
+                    MeshQueries.generalized_winding_number(reference_mesh, tuple(p))
+                    for p in points
+                ]
+            )
             # The 'lifted' value corrects the neural SDF based on the topological truth of GWN.
             # GWN ~1 interior, GWN ~0 exterior.
             # Lifting formula: s_lifted = sign(gwn - 0.5) * |s_base|
             s_lifted = np.sign(gwn - 0.5) * np.abs(s_base.flatten())
             return s_lifted.reshape(-1, 1)
-            
+
         return s_base
 
     def compute_gradient(self, point: np.ndarray) -> np.ndarray:

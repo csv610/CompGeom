@@ -37,8 +37,16 @@ def test_laplacian_smoothing_moves_only_the_interior_vertex():
 
     smoothed = MeshProcessing.laplacian_smoothing(mesh, iterations=1, lambda_factor=0.5)
 
-    assert (smoothed.vertices[0].x, smoothed.vertices[0].y, smoothed.vertices[0].z) == (0, 0, 0)
-    assert (smoothed.vertices[4].x, smoothed.vertices[4].y, smoothed.vertices[4].z) == pytest.approx((1.0, 1.0, 0.5))
+    assert (smoothed.vertices[0].x, smoothed.vertices[0].y, smoothed.vertices[0].z) == (
+        0,
+        0,
+        0,
+    )
+    assert (
+        smoothed.vertices[4].x,
+        smoothed.vertices[4].y,
+        smoothed.vertices[4].z,
+    ) == pytest.approx((1.0, 1.0, 0.5))
 
 
 def test_fill_holes_currently_returns_none():
@@ -74,8 +82,8 @@ def test_mesh_offset_returns_offset_shell_and_create_solid_is_unfinished():
 
 
 def test_mesh_clipping_currently_raises_name_error_for_missing_math_import():
-    with pytest.raises(NameError):
-        MeshProcessing.mesh_clipping(make_pyramid_patch(), (0, 0, 0.5), (0, 0, 1))
+    result = MeshProcessing.mesh_clipping(make_pyramid_patch(), (0, 0, 0.5), (0, 0, 1))
+    assert result is not None
 
 
 def test_catmull_clark_returns_input_mesh():
@@ -149,7 +157,9 @@ def test_repair_non_manifold_and_isolated_vertex_helpers():
     )
 
     assert SurfMeshRepair.remove_non_manifold_faces(non_manifold_faces).faces == []
-    assert SurfMeshRepair.remove_non_manifold_vertices(non_manifold_vertex).faces == [(0, 1, 2)]
+    assert SurfMeshRepair.remove_non_manifold_vertices(non_manifold_vertex).faces == [
+        (0, 1, 2)
+    ]
     assert len(SurfMeshRepair.remove_isolated_vertices(isolated).vertices) == 3
 
 
@@ -191,7 +201,9 @@ def test_repair_self_intersection_component_filtering_and_pipeline():
     )
 
     assert SurfMeshRepair.remove_self_intersections(crossing).faces == [(0, 1, 2)]
-    assert SurfMeshRepair.remove_small_components(components, min_fraction=0.8).faces == [
+    assert SurfMeshRepair.remove_small_components(
+        components, min_fraction=0.8
+    ).faces == [
         (0, 1, 2),
         (1, 3, 2),
         (1, 4, 3),
