@@ -18,7 +18,7 @@ def test_poisson_disk_sampler():
             dist = math.sqrt(sum((points[i][k] - points[j][k])**2 for k in range(2)))
             if dist < r - 1e-9: # small epsilon for float precision
                 print(f"FAILED: Points {i} and {j} are too close: {dist} < {r}")
-                return False
+                assert False, f"Points {i} and {j} are too close: {dist} < {r}"
     
     print("Distance constraint verified.")
     
@@ -29,10 +29,9 @@ def test_poisson_disk_sampler():
     
     if len(points_3d) > 0:
         print("Test PASSED.")
-        return True
     else:
         print("Test FAILED: No points generated.")
-        return False
+        assert False, "No points generated."
 
 if __name__ == "__main__":
     test_poisson_disk_sampler()

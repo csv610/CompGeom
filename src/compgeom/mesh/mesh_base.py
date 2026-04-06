@@ -7,12 +7,12 @@ from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 from compgeom.kernel import Point2D, Point3D
-from compgeom.mesh.mesh_topology import MeshTopology
 
 
 @dataclass(frozen=True)
 class MeshNode:
     """A node in the mesh, representing a single point in space."""
+
     id: int
     point: Union[Point2D, Point3D]
     attributes: Dict = field(default_factory=dict)
@@ -21,6 +21,7 @@ class MeshNode:
 @dataclass(frozen=True)
 class MeshEdge:
     """An edge in the mesh, connecting two nodes."""
+
     id: int
     v_indices: Tuple[int, int]
     attributes: Dict = field(default_factory=dict)
@@ -28,12 +29,13 @@ class MeshEdge:
     def __post_init__(self):
         # Ensure v_indices is a sorted tuple for undirected consistency
         if self.v_indices[0] > self.v_indices[1]:
-            object.__setattr__(self, 'v_indices', (self.v_indices[1], self.v_indices[0]))
+            object.__setattr__(self, "v_indices", (self.v_indices[1], self.v_indices[0]))
 
 
 @dataclass(frozen=True)
 class MeshFace:
     """A face in the mesh, defined by a sequence of vertex indices."""
+
     id: int
     v_indices: Tuple[int, ...]
     attributes: Dict = field(default_factory=dict)
@@ -47,10 +49,18 @@ class MeshFace:
     def __getitem__(self, index):
         return self.v_indices[index]
 
+    def __eq__(self, other):
+        if isinstance(other, tuple):
+            return self.v_indices == other
+        if isinstance(other, MeshFace):
+            return self.id == other.id and self.v_indices == other.v_indices and self.attributes == other.attributes
+        return False
+
 
 @dataclass(frozen=True)
 class MeshCell:
     """A volumetric cell in the mesh (e.g., tetrahedron, hexahedron)."""
+
     id: int
     v_indices: Tuple[int, ...]
     attributes: Dict = field(default_factory=dict)
@@ -68,19 +78,41 @@ class MeshCell:
 class Mesh(ABC):
     """Abstract base class for all mesh types."""
 
-    def __init__(self, 
-                 nodes: Optional[List[Union[MeshNode, Point2D, Point3D]]] = None, 
-                 edges: Optional[List[MeshEdge]] = None, 
-                 faces: Optional[List[MeshFace]] = None, 
-                 cells: Optional[List[MeshCell]] = None):
-        if nodes and not isinstance(nodes[0], MeshNode):
-            nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
-        elif nodes is None:
+    def __init__(
+        self,
+        nodes: Optional[List[Union[MeshNode, Point2D, Point3D]]] = None,
+        edges: Optional[List[MeshEdge]] = None,
+        faces: Optional[List[MeshFace]] = None,
+        cells: Optional[List[MeshCell]] = None,
+    ):
+        if nodes:
+            if not isinstance(nodes[0], MeshNode):
+                nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
+        else:
             nodes = []
+            
+        if edges:
+            if not isinstance(edges[0], MeshEdge):
+                edges = [MeshEdge(i, tuple(e)) for i, e in enumerate(edges)]
+        else:
+            edges = []
+
+        if faces:
+            if not isinstance(faces[0], MeshFace):
+                faces = [MeshFace(i, tuple(f)) for i, f in enumerate(faces)]
+        else:
+            faces = []
+
+        if cells:
+            if not isinstance(cells[0], MeshCell):
+                cells = [MeshCell(i, tuple(c)) for i, c in enumerate(cells)]
+        else:
+            cells = []
+
         self._nodes = nodes
-        self._edges = edges or []
-        self._faces = faces or []
-        self._cells = cells or []
+        self._edges = edges
+        self._faces = faces
+        self._cells = cells
 
     @property
     def nodes(self) -> List[MeshNode]:
@@ -109,10 +141,11 @@ class Mesh(ABC):
 
     def to_file(self, filename: str, **kwargs):
         """Exports the mesh to a file.
-        
+
         Args:
             filename: Path to the output file (detects format from extension).
             **kwargs: Format-specific options (e.g., binary=True).
         """
         from compgeom.mesh.meshio import MeshExporter
+
         MeshExporter.write(filename, self, **kwargs)

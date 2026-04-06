@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 import argparse
 import math
+import sys
 
 from compgeom import EPSILON, Point2D, cross_product, is_on_segment, length, sub
+from compgeom.cli._shared import read_nonempty_stdin_lines
+
 
 def point_key(point: Point2D) -> tuple[int, int]:
     return (round(point.x / EPSILON), round(point.y / EPSILON))
@@ -29,8 +34,7 @@ def segment_parameter(point: Point2D, start: Point2D, end: Point2D) -> float:
 
 def signed_polygon_area(polygon: list[Point2D]) -> float:
     return 0.5 * sum(
-        polygon[i].x * polygon[(i + 1) % len(polygon)].y
-        - polygon[(i + 1) % len(polygon)].x * polygon[i].y
+        polygon[i].x * polygon[(i + 1) % len(polygon)].y - polygon[(i + 1) % len(polygon)].x * polygon[i].y
         for i in range(len(polygon))
     )
 
@@ -40,9 +44,7 @@ def canonical_segment(segment: tuple[Point2D, Point2D]) -> tuple[Point2D, Point2
     return (start, end) if point_key(start) <= point_key(end) else (end, start)
 
 
-def segment_intersection_points(
-    seg1: tuple[Point2D, Point2D], seg2: tuple[Point2D, Point2D]
-) -> list[Point2D]:
+def segment_intersection_points(seg1: tuple[Point2D, Point2D], seg2: tuple[Point2D, Point2D]) -> list[Point2D]:
     a, b = seg1
     c, d = seg2
     ab = sub(b, a)
@@ -174,7 +176,7 @@ def trace_faces(vertices, ordered_neighbors) -> list[list[Point2D]]:
 
 
 def analyze_arrangement(
-    segments: list[tuple[Point2D, Point2D]]
+    segments: list[tuple[Point2D, Point2D]],
 ) -> tuple[list[Point2D], list[tuple[Point2D, Point2D]], list[list[Point2D]]]:
     intersection_points = find_intersection_points(segments)
     split = split_segments(segments)
@@ -206,15 +208,32 @@ def format_point(point: Point2D) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Analyze a demo line arrangement.")
-    parser.add_argument("--demo", action="store_true", help="Use the built-in rectangle arrangement.")
+    parser = argparse.ArgumentParser(description="Analyze a line arrangement provided via stdin.")
     args = parser.parse_args(argv)
-    segments = [
-        (Point2D(0.0, 0.0), Point2D(1.0, 0.0)),
-        (Point2D(1.0, 0.0), Point2D(1.0, 1.0)),
-        (Point2D(1.0, 1.0), Point2D(0.0, 1.0)),
-        (Point2D(0.0, 1.0), Point2D(0.0, 0.0)),
-    ]
+
+    if argv is not None and len(argv) > 0:
+        lines = argv
+    else:
+        try:
+            lines = read_nonempty_stdin_lines()
+        except EOFError:
+            lines = []
+        except OSError:
+            lines = []
+
+    if not lines:
+        # Default segments for demo/testing if no input
+        lines = ["0 0 1 1", "0 1 1 0"]
+
+    try:
+        segments = parse_segments(lines)
+    except ValueError as e:
+        print(f"Error parsing segments: {e}")
+        return 1
+
+    if not segments:
+        print("Error: No valid segments found in input.")
+        return 1
 
     intersection_points, split, polygons = analyze_arrangement(segments)
 
