@@ -125,11 +125,7 @@ class MeshQueries:
         vc = d1 * d4 - d3 * d2
         if vc <= 0 and d1 >= 0 and d3 <= 0:
             v = d1 / (d1 - d3)
-            return (
-                (ap[0] - v * ab[0]) ** 2
-                + (ap[1] - v * ab[1]) ** 2
-                + (ap[2] - v * ab[2]) ** 2
-            )
+            return (ap[0] - v * ab[0]) ** 2 + (ap[1] - v * ab[1]) ** 2 + (ap[2] - v * ab[2]) ** 2
 
         cp = (p[0] - c[0], p[1] - c[1], p[2] - c[2])
         d5 = ab[0] * cp[0] + ab[1] * cp[1] + ab[2] * cp[2]
@@ -140,21 +136,13 @@ class MeshQueries:
         vb = d5 * d2 - d1 * d6
         if vb <= 0 and d2 >= 0 and d6 <= 0:
             w = d2 / (d2 - d6)
-            return (
-                (ap[0] - w * ac[0]) ** 2
-                + (ap[1] - w * ac[1]) ** 2
-                + (ap[2] - w * ac[2]) ** 2
-            )
+            return (ap[0] - w * ac[0]) ** 2 + (ap[1] - w * ac[1]) ** 2 + (ap[2] - w * ac[2]) ** 2
 
         va = d3 * d6 - d5 * d4
         if va <= 0 and (d4 - d3) >= 0 and (d5 - d6) >= 0:
             w = (d4 - d3) / ((d4 - d3) + (d5 - d6))
             edge = (c[0] - b[0], c[1] - b[1], c[2] - b[2])
-            return (
-                (bp[0] - w * edge[0]) ** 2
-                + (bp[1] - w * edge[1]) ** 2
-                + (bp[2] - w * edge[2]) ** 2
-            )
+            return (bp[0] - w * edge[0]) ** 2 + (bp[1] - w * edge[1]) ** 2 + (bp[2] - w * edge[2]) ** 2
 
         denom = 1.0 / (va + vb + vc)
         v = vb * denom
@@ -166,9 +154,7 @@ class MeshQueries:
         )
 
     @staticmethod
-    def compute_sdf(
-        mesh: SurfaceMesh, point: Tuple[float, float, float], use_spatial: bool = True
-    ) -> float:
+    def compute_sdf(mesh: SurfaceMesh, point: Tuple[float, float, float], use_spatial: bool = True) -> float:
         """
         Computes the Signed Distance Function (SDF) from a point to the mesh.
         Using exact point-triangle distance.
@@ -242,9 +228,7 @@ class MeshQueries:
                     p_u, p_v = pts[u], pts[v]
                     ix = p_u.x + t * (p_v.x - p_u.x)
                     iy = p_u.y + t * (p_v.y - p_u.y)
-                    iz = getattr(p_u, "z", 0.0) + t * (
-                        getattr(p_v, "z", 0.0) - getattr(p_u, "z", 0.0)
-                    )
+                    iz = getattr(p_u, "z", 0.0) + t * (getattr(p_v, "z", 0.0) - getattr(p_u, "z", 0.0))
                     intersect_pts.append(Point3D(ix, iy, iz))
                 elif abs(d_u) < 1e-9:
                     # Vertex is on the plane
@@ -255,9 +239,7 @@ class MeshQueries:
             unique_pts = []
             for p in intersect_pts:
                 if not any(
-                    math.sqrt((p.x - up.x) ** 2 + (p.y - up.y) ** 2 + (p.z - up.z) ** 2)
-                    < 1e-8
-                    for up in unique_pts
+                    math.sqrt((p.x - up.x) ** 2 + (p.y - up.y) ** 2 + (p.z - up.z) ** 2) < 1e-8 for up in unique_pts
                 ):
                     unique_pts.append(p)
 
@@ -265,15 +247,13 @@ class MeshQueries:
                 segments.append((unique_pts[0], unique_pts[1]))
 
     @staticmethod
-    def mesh_intersection(
-        mesh_a: SurfaceMesh, mesh_b: SurfaceMesh
-    ) -> List[Tuple[int, int]]:
+    def mesh_intersection(mesh_a: SurfaceMesh, mesh_b: SurfaceMesh) -> List[Tuple[int, int]]:
         """
         Detects intersections between two meshes.
         Returns a list of (face_idx_a, face_idx_b) pairs that intersect.
         """
         from compgeom.mesh.surface.spatial_acceleration import AABBTree
-        from compgeom.mesh.surface.surf_mesh_repair import SurfMeshRepair
+        from compgeom.mesh.surface.repair.manifold import _tri_tri_intersect
 
         tree_a = AABBTree(mesh_a)
         tree_b = AABBTree(mesh_b)
@@ -301,7 +281,7 @@ class MeshQueries:
                     for fb_idx in node_b.faces:
                         pts_a = [mesh_a.vertices[i] for i in mesh_a.faces[fa_idx]]
                         pts_b = [mesh_b.vertices[i] for i in mesh_b.faces[fb_idx]]
-                        if SurfMeshRepair._tri_tri_intersect(pts_a, pts_b):
+                        if _tri_tri_intersect(pts_a, pts_b):
                             results.append((fa_idx, fb_idx))
             elif node_a.is_leaf():
                 intersect_nodes(node_a, node_b.left)
@@ -319,9 +299,7 @@ class MeshQueries:
         return results
 
     @staticmethod
-    def extract_intersection_lines(
-        mesh_a: SurfaceMesh, mesh_b: SurfaceMesh
-    ) -> List[Tuple[Point3D, Point3D]]:
+    def extract_intersection_lines(mesh_a: SurfaceMesh, mesh_b: SurfaceMesh) -> List[Tuple[Point3D, Point3D]]:
         """
         Extracts the exact polylines representing the intersection path between two meshes.
         Essential for CAD and tool-path generation.
@@ -330,9 +308,7 @@ class MeshQueries:
         pass  # Implementation logic here
 
     @staticmethod
-    def generalized_winding_number(
-        mesh: SurfaceMesh, point: Tuple[float, float, float]
-    ) -> float:
+    def generalized_winding_number(mesh: SurfaceMesh, point: Tuple[float, float, float]) -> float:
         """
         Calculates the Generalized Winding Number of a point with respect to the mesh.
         Robust for meshes with holes or self-intersections.
@@ -342,33 +318,47 @@ class MeshQueries:
         px, py, pz = point
 
         for face in mesh.faces:
-            v0, v1, v2 = [mesh.vertices[idx] for idx in face.v_indices]
-            a = (v0.x - px, v0.y - py, getattr(v0, "z", 0.0) - pz)
-            b = (v1.x - px, v1.y - py, getattr(v1, "z", 0.0) - pz)
-            c = (v2.x - px, v2.y - py, getattr(v2, "z", 0.0) - pz)
+            v_indices = face.v_indices
+            # Handle general polygon by triangulating with a fan
+            v0_node = mesh.vertices[v_indices[0]]
+            v0 = (v0_node.x - px, v0_node.y - py, getattr(v0_node, "z", 0.0) - pz)
+            
+            for i in range(1, len(v_indices) - 1):
+                v1_node = mesh.vertices[v_indices[i]]
+                v2_node = mesh.vertices[v_indices[i+1]]
+                
+                a = v0
+                b = (v1_node.x - px, v1_node.y - py, getattr(v1_node, "z", 0.0) - pz)
+                c = (v2_node.x - px, v2_node.y - py, getattr(v2_node, "z", 0.0) - pz)
 
-            ma, mb, mc = (
-                math.sqrt(sum(x * x for x in a)),
-                math.sqrt(sum(x * x for x in b)),
-                math.sqrt(sum(x * x for x in c)),
-            )
+                ma, mb, mc = (
+                    math.sqrt(sum(x * x for x in a)),
+                    math.sqrt(sum(x * x for x in b)),
+                    math.sqrt(sum(x * x for x in c)),
+                )
 
-            # Determinant
-            det = (
-                a[0] * (b[1] * c[2] - b[2] * c[1])
-                - a[1] * (b[0] * c[2] - b[2] * c[0])
-                + a[2] * (b[0] * c[1] - b[1] * c[0])
-            )
+                # Determinant (a . (b x c))
+                det = (
+                    a[0] * (b[1] * c[2] - b[2] * c[1])
+                    - a[1] * (b[0] * c[2] - b[2] * c[0])
+                    + a[2] * (b[0] * c[1] - b[1] * c[0])
+                )
+                
+                # Dot products
+                al_b = a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
+                al_c = a[0]*c[0] + a[1]*c[1] + a[2]*c[2]
+                bl_c = b[0]*c[0] + b[1]*c[1] + b[2]*c[2]
 
-            omega = 2.0 * math.atan2(det, ma * mb * mc)
-            wn += omega
+                # Correct formula for solid angle subtended by triangle
+                # See Oosterom and Strackee (1983)
+                denom = ma * mb * mc + al_b * mc + al_c * mb + bl_c * ma
+                omega = 2.0 * math.atan2(det, denom)
+                wn += omega
 
         return wn / (4.0 * math.pi)
 
     @staticmethod
-    def poisson_disk_sampling(
-        mesh: SurfaceMesh, min_dist: float, k_attempts: int = 30
-    ) -> List[Point3D]:
+    def poisson_disk_sampling(mesh: SurfaceMesh, min_dist: float, k_attempts: int = 30) -> List[Point3D]:
         """
         Generates a uniform distribution of points on the mesh surface.
         Points are separated by at least min_dist.
@@ -378,5 +368,4 @@ class MeshQueries:
         # 1. Generate candidate points on random faces
         # 2. Accept only if dist > min_dist from all previous points
         samples = []
-        # Uses AABB Tree for distance checks if available
         return samples
