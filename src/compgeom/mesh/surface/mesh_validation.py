@@ -3,7 +3,6 @@ from collections import defaultdict
 from typing import List, Tuple, Dict, Set
 
 from compgeom.mesh.surface.trimesh.trimesh import TriMesh
-from compgeom.mesh.surface.surf_mesh_repair import SurfMeshRepair
 from compgeom.mesh.mesh_topology import MeshTopology
 
 class MeshValidation:

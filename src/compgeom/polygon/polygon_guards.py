@@ -7,7 +7,7 @@ from typing import List, Tuple, Sequence
 
 from compgeom.kernel import Point2D
 from compgeom.polygon.polygon import Polygon
-from compgeom.polygon.polygon_decomposer import triangulate_polygon
+from compgeom.polygon.decomposer import triangulate_polygon
 
 
 def art_gallery_guards(polygon: Polygon | Sequence[Point2D]) -> List[Point2D]:
@@ -19,9 +19,7 @@ def art_gallery_guards(polygon: Polygon | Sequence[Point2D]) -> List[Point2D]:
     return guard_polygon(triangles, vertices)
 
 
-def guard_polygon(
-    triangles: List[Tuple[int, int, int]], vertices: List[Point2D]
-) -> List[Point2D]:
+def guard_polygon(triangles: List[Tuple[int, int, int]], vertices: List[Point2D]) -> List[Point2D]:
     """
     Solves the art gallery problem using Chvátal's algorithm (3-coloring of triangulation).
     """
@@ -39,7 +37,7 @@ def guard_polygon(
     while queue:
         current_index = queue.popleft()
         current_triangle = triangles[current_index]
-        
+
         for index, triangle in enumerate(triangles):
             if processed[index]:
                 continue
@@ -57,7 +55,7 @@ def guard_polygon(
     for vertex_index, color in colors.items():
         if vertex_index < len(vertices):
             groups[color].append(vertices[vertex_index])
-            
+
     return min(groups, key=len)
 
 

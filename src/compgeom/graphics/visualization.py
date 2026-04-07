@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+import subprocess
+import tempfile
 from typing import List, Tuple
 
 
@@ -64,9 +67,6 @@ def save_svg(svg_content: str, filename: str):
 
 def save_png(svg_content: str, filename: str):
     """Save SVG content as a PNG file using system tools (rsvg-convert or convert)."""
-    import subprocess
-    import tempfile
-    import os
 
     with tempfile.NamedTemporaryFile(suffix=".svg", delete=False) as tmp:
         tmp.write(svg_content.encode("utf-8"))
@@ -89,8 +89,8 @@ def save_png(svg_content: str, filename: str):
 
         raise RuntimeError("Neither 'rsvg-convert' nor 'convert' (ImageMagick) found to generate PNG.")
     finally:
-        if os.path.exists(tmp_name):
-            os.remove(tmp_name)
+        if Path(tmp_name).exists():
+            Path(tmp_name).unlink(missing_ok=True)
 
 
 __all__ = ["generate_svg_path", "save_png", "save_svg"]

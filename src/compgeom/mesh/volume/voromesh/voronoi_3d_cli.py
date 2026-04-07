@@ -2,10 +2,10 @@ from __future__ import annotations
 import argparse
 import random
 import sys
-import os
+from pathlib import Path
 
 # Ensure local imports work if run as a script
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+sys.path.append(str(Path(__file__).resolve().parents[4]))
 
 from compgeom.kernel import Point3D
 from compgeom.mesh.volume.voronoi_3d import VoronoiDiagram3D

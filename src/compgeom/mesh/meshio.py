@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 import struct
 from typing import List, Tuple, Union, Optional
 
@@ -19,7 +19,7 @@ class OBJFileHandler:
         vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
 
-        if not os.path.exists(filename):
+        if not Path(filename).exists():
             raise FileNotFoundError(f"File not found: {filename}")
 
         with open(filename, "r") as f:
@@ -162,7 +162,7 @@ class STLFileHandler:
 
     @staticmethod
     def _is_binary(filename: str) -> bool:
-        file_size = os.path.getsize(filename)
+        file_size = Path(filename).stat().st_size
         if file_size < 84: return False
         with open(filename, "rb") as f:
             f.seek(80)
@@ -448,7 +448,7 @@ class MeshImporter:
     @classmethod
     def read(cls, filename: str) -> Mesh:
         """Detects format from extension and reads the file."""
-        ext = os.path.splitext(filename)[1].lower()
+        ext = Path(filename).suffix.lower()
         if ext not in cls._handlers:
             raise ValueError(f"Unsupported file format: {ext}")
         return cls._handlers[ext].read(filename)
@@ -498,7 +498,7 @@ class MeshExporter:
             faces: An optional list of faces (required if mesh_or_vertices is a list).
             **kwargs: Format-specific options.
         """
-        ext = os.path.splitext(filename)[1].lower()
+        ext = Path(filename).suffix.lower()
         if ext not in cls._handlers:
             raise ValueError(f"Unsupported file format: {ext}")
         cls._handlers[ext].write(filename, mesh_or_vertices, faces, **kwargs)

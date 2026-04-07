@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import math
+import numpy as np
 from abc import ABC, abstractmethod
+from scipy.spatial import ConvexHull as ScipyHull
 
 from compgeom.kernel import EPSILON, Point2D, Point3D, cross_product
 from compgeom.kernel import distance
+from compgeom.polygon.polygon import Polygon
+from compgeom.mesh.surface.convex_hull import ConvexHull3D
 
 
 class ConvexHull:
@@ -45,7 +49,6 @@ class ConvexHull:
             return generator_cls().generate(points)
 
         if isinstance(p0, Point3D):
-            from compgeom.mesh.surface.convex_hull import ConvexHull3D
             return ConvexHull3D.compute(points)
 
         raise TypeError("Points must be a list of Point2D or Point3D objects.")
@@ -79,8 +82,6 @@ class ConvexHullGenerator(ABC):
             if cross_product(hull[i - 1], hull[i], hull[(i + 1) % len(hull)]) <= EPSILON:
                 return False
 
-        from compgeom.polygon.polygon import Polygon
-
         hull_polygon = Polygon(hull)
         for point in unique_points:
             if not hull_polygon.contains_point(point):
@@ -95,13 +96,10 @@ class ScipyConvexHull2D(ConvexHullGenerator):
             return points
 
         try:
-            import numpy as np
-            from scipy.spatial import ConvexHull as ScipyHull
-            
             pts_array = np.array([[p.x, p.y] for p in points])
             hull = ScipyHull(pts_array)
             return [points[idx] for idx in hull.vertices]
-        except ImportError:
+        except (ImportError, NameError):
             # Fallback to MonotoneChain if scipy/numpy is not available
             return MonotoneChain().generate(points)
 

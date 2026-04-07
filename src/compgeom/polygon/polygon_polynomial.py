@@ -5,9 +5,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, List, Tuple
 
-if TYPE_CHECKING:
-    from compgeom.polygon.polygon import Polygon
-
+from compgeom.polygon.polygon import Polygon
 from compgeom.kernel import Point2D
 
 

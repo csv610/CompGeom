@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, List, Set, Dict, Tuple, Sequence
 from collections import defaultdict
 
-if TYPE_CHECKING:
-    from compgeom.polygon.polygon import Polygon
+from compgeom.polygon.polygon import Polygon
 
 from compgeom.kernel import Point2D, cross_product, distance
 from compgeom.polygon.tolerance import EPSILON, is_zero, are_close
@@ -43,7 +43,6 @@ def resolve_self_intersections(polygon: Polygon | Sequence[Point2D]) -> list[Poi
     Resolves self-intersections in a polygon by splitting segments at intersection
     points and returning a simple boundary.
     """
-    from compgeom.polygon.polygon import Polygon
     poly_obj = polygon if isinstance(polygon, Polygon) else Polygon(polygon)
     vertices = list(poly_obj.vertices)
     n = len(vertices)
@@ -113,7 +112,6 @@ def resolve_self_intersections(polygon: Polygon | Sequence[Point2D]) -> list[Poi
             break
             
         def get_angle(p: Point2D, center: Point2D, reference: Point2D) -> float:
-            import math
             v1 = (reference.x - center.x, reference.y - center.y)
             v2 = (p.x - center.x, p.y - center.y)
             a1 = math.atan2(v1[1], v1[0])

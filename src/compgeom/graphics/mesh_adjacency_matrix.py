@@ -7,8 +7,8 @@ import struct
 import zlib
 from typing import List, TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from compgeom.mesh.mesh import Mesh
+from compgeom.index.rtree import RTree, BoundingBox
+from compgeom.mesh.mesh import Mesh, TriMesh
 
 
 def get_node_node_adjacency(mesh: Mesh) -> List[List[int]]:
@@ -100,7 +100,6 @@ def get_spatial_adjacency(mesh: Mesh, eps: float = 1e-5) -> List[List[int]]:
 
     A_ij = 1 if distance between node i and node j is less than eps.
     """
-    from compgeom.index.rtree import RTree, BoundingBox
 
     num_nodes = len(mesh.vertices)
     adj = [[0] * num_nodes for _ in range(num_nodes)]
@@ -142,9 +141,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.filename:
-        # Import here to avoid circular dependency or unnecessary loading
-        from compgeom.mesh.mesh import TriMesh
-
         mesh = TriMesh.from_file(args.filename)
         visualize_adjacencies(mesh, args.prefix)
         print(f"Adjacency matrix images for '{args.filename}' generated.")

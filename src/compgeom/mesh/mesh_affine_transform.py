@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import replace
 from typing import TYPE_CHECKING, List, Union
 
 from compgeom.kernel import Point2D, Point3D
-
-if TYPE_CHECKING:
-    from compgeom.mesh.mesh_base import Mesh, MeshNode
+from compgeom.mesh.mesh_base import Mesh, MeshNode
+from compgeom.mesh.mesh_topology import MeshTopology
+from compgeom.mesh.mesh_geometry import MeshGeometry
 
 
 class MeshAffineTransform:
@@ -17,7 +18,6 @@ class MeshAffineTransform:
     @staticmethod
     def translate(mesh: Mesh, dx: float, dy: float, dz: float = 0.0):
         """Translates all nodes in the mesh by (dx, dy, dz)."""
-        from compgeom.mesh.mesh_topology import MeshTopology
         
         new_nodes: List[MeshNode] = []
         for node in mesh.nodes:
@@ -35,7 +35,6 @@ class MeshAffineTransform:
     @staticmethod
     def scale(mesh: Mesh, sx: float, sy: float, sz: float = 1.0):
         """Scales all nodes in the mesh by (sx, sy, sz)."""
-        from compgeom.mesh.mesh_topology import MeshTopology
         
         new_nodes = []
         for node in mesh.nodes:
@@ -51,8 +50,6 @@ class MeshAffineTransform:
     @staticmethod
     def rotate(mesh: Mesh, angle_deg: float, axis: str = 'z'):
         """Rotates the mesh around an axis ('x', 'y', or 'z') by given degrees."""
-        import math
-        from compgeom.mesh.mesh_topology import MeshTopology
         
         rad = math.radians(angle_deg)
         cos_a = math.cos(rad)
@@ -87,7 +84,6 @@ class MeshAffineTransform:
     @staticmethod
     def normalize(mesh: Mesh):
         """Centers the mesh at the origin and scales it to fit within a unit cube [-1, 1]."""
-        from compgeom.mesh.mesh_geometry import MeshGeometry
         bbox = MeshGeometry.bounding_box(mesh)
         if not bbox: return
         

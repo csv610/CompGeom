@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import math
 from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from compgeom.kernel import Point2D
+from compgeom.kernel.point import Point2D
 
 EPSILON: float = 1e-9
 

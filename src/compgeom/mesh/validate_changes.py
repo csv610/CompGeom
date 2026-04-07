@@ -1,5 +1,5 @@
 
-import os
+from pathlib import Path
 from compgeom.kernel import Point2D, Point3D
 from compgeom.mesh import TriMesh, MeshNode, MeshFace, MeshCell, TetMesh, MeshTopology
 
@@ -57,18 +57,18 @@ v 1 0 0
 v 0 1 0
 f 1 2 3
 """
-    with open("test.obj", "w") as f:
-        f.write(obj_content)
+    obj_file = Path("test.obj")
+    obj_file.write_text(obj_content)
     
     try:
-        mesh = TriMesh.from_file("test.obj")
+        mesh = TriMesh.from_file(str(obj_file))
         print(f"Nodes from file: {len(mesh.nodes)}")
         print(f"Faces from file: {len(mesh.faces)}")
         assert len(mesh.nodes) == 3
         assert len(mesh.faces) == 1
     finally:
-        if os.path.exists("test.obj"):
-            os.remove("test.obj")
+        if obj_file.exists():
+            obj_file.unlink()
 
 if __name__ == "__main__":
     try:

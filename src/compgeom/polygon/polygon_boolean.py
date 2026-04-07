@@ -6,7 +6,7 @@ import math
 from collections import defaultdict
 from typing import List, Optional, Tuple
 
-from compgeom.kernel import Point2D, is_on_segment, cross_product
+from compgeom.kernel import Point2D, is_on_segment, cross_product, dist_point_to_segment
 from compgeom.polygon.polygon import Polygon
 from compgeom.polygon.tolerance import are_close, is_zero, EPSILON
 
@@ -70,20 +70,22 @@ def _apply_boolean_op(poly_a: Polygon, poly_b: Polygon, op: str) -> List[Polygon
     kept_edges = []
 
     # Convert edges_b to a set of keys for O(1) matching
-    def to_key(p): return (round(p.x, 10), round(p.y, 10))
+    def to_key(p):
+        return (round(p.x, 10), round(p.y, 10))
+
     edges_b_set = set((to_key(e1), to_key(e2)) for e1, e2 in edges_b)
     edges_b_rev_set = set((to_key(e2), to_key(e1)) for e1, e2 in edges_b)
 
     # We can optimize by pre-calculating segment status
     for p1, p2 in edges_a:
-        status = _classify_segment(p1, p2, poly_b_ccw)
+        status = _classify_segment_midpoint(p1, p2, poly_b_ccw)
         edge_key = (to_key(p1), to_key(p2))
-        
+
         if op == "union":
             if status == "outside":
                 kept_edges.append((p1, p2))
             elif status == "on_boundary":
-                # For union, keep only one if they have same direction. 
+                # For union, keep only one if they have same direction.
                 # If they have opposite direction, both are internal, so drop.
                 if edge_key in edges_b_set:
                     kept_edges.append((p1, p2))
@@ -100,7 +102,7 @@ def _apply_boolean_op(poly_a: Polygon, poly_b: Polygon, op: str) -> List[Polygon
             elif status == "on_boundary":
                 # If opposite direction, it stays on boundary. If same direction, it's internal.
                 if edge_key in edges_b_rev_set:
-                     kept_edges.append((p1, p2))
+                    kept_edges.append((p1, p2))
         elif op == "xor":
             if status == "outside":
                 kept_edges.append((p1, p2))
@@ -112,9 +114,9 @@ def _apply_boolean_op(poly_a: Polygon, poly_b: Polygon, op: str) -> List[Polygon
     edges_a_rev_set = set((to_key(e2), to_key(e1)) for e1, e2 in edges_a)
 
     for p1, p2 in edges_b:
-        status = _classify_segment(p1, p2, poly_a_ccw)
+        status = _classify_segment_midpoint(p1, p2, poly_a_ccw)
         edge_key = (to_key(p1), to_key(p2))
-        
+
         if op == "union":
             if status == "outside":
                 kept_edges.append((p1, p2))
@@ -144,10 +146,12 @@ def _apply_boolean_op(poly_a: Polygon, poly_b: Polygon, op: str) -> List[Polygon
     return results
 
 
-def _subdivide_all_edges(poly_a: Tuple[Point2D, ...], poly_b: Tuple[Point2D, ...]) -> Tuple[List[Tuple[Point2D, Point2D]], List[Tuple[Point2D, Point2D]]]:
+def _subdivide_all_edges(
+    poly_a: Tuple[Point2D, ...], poly_b: Tuple[Point2D, ...]
+) -> Tuple[List[Tuple[Point2D, Point2D]], List[Tuple[Point2D, Point2D]]]:
     """Split edges of both polygons at all points where they intersect."""
     n, m = len(poly_a), len(poly_b)
-    
+
     # Track points to be added to each edge
     points_on_a = [set([poly_a[i], poly_a[(i + 1) % n]]) for i in range(n)]
     points_on_b = [set([poly_b[j], poly_b[(j + 1) % m]]) for j in range(m)]
@@ -156,32 +160,36 @@ def _subdivide_all_edges(poly_a: Tuple[Point2D, ...], poly_b: Tuple[Point2D, ...
         p1, p2 = poly_a[i], poly_a[(i + 1) % n]
         for j in range(m):
             q1, q2 = poly_b[j], poly_b[(j + 1) % m]
-            
+
             # Check for intersection
             intersect = _intersect_segments(p1, p2, q1, q2)
             if intersect:
                 points_on_a[i].add(intersect)
                 points_on_b[j].add(intersect)
-            
+
             # Check for endpoints of B on A
-            if is_on_segment(q1, p1, p2): points_on_a[i].add(q1)
-            if is_on_segment(q2, p1, p2): points_on_a[i].add(q2)
-            
+            if is_on_segment(q1, p1, p2):
+                points_on_a[i].add(q1)
+            if is_on_segment(q2, p1, p2):
+                points_on_a[i].add(q2)
+
             # Check for endpoints of A on B
-            if is_on_segment(p1, q1, q2): points_on_b[j].add(p1)
-            if is_on_segment(p2, q1, q2): points_on_b[j].add(p2)
+            if is_on_segment(p1, q1, q2):
+                points_on_b[j].add(p1)
+            if is_on_segment(p2, q1, q2):
+                points_on_b[j].add(p2)
 
     def build_edges(poly, points_on_edges):
         subdivided = []
         for i in range(len(poly)):
             start_pt = poly[i]
             # Sort points by distance from start_pt
-            pts = sorted(list(points_on_edges[i]), key=lambda p: (p.x - start_pt.x)**2 + (p.y - start_pt.y)**2)
+            pts = sorted(list(points_on_edges[i]), key=lambda p: (p.x - start_pt.x) ** 2 + (p.y - start_pt.y) ** 2)
             for k in range(len(pts) - 1):
-                # Manual comparison since we want to avoid same_point import if possible, 
+                # Manual comparison since we want to avoid same_point import if possible,
                 # but it's needed for robustness.
-                if not are_close(pts[k], pts[k+1], EPSILON):
-                    subdivided.append((pts[k], pts[k+1]))
+                if not are_close(pts[k], pts[k + 1], EPSILON):
+                    subdivided.append((pts[k], pts[k + 1]))
         return subdivided
 
     return build_edges(poly_a, points_on_a), build_edges(poly_b, points_on_b)
@@ -206,19 +214,21 @@ def _intersect_segments(p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) -> O
     return None
 
 
-def _classify_segment(p1: Point2D, p2: Point2D, poly: Polygon) -> str:
+def _classify_segment_midpoint(p1: Point2D, p2: Point2D, poly: Polygon) -> str:
     """Classify a segment as 'inside', 'outside', or 'on_boundary' of a polygon."""
     mid = Point2D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
-    
+
     # Check boundary first as it's more specific
-    from compgeom.kernel import dist_point_to_segment
-    if any(dist_point_to_segment(mid, poly.vertices[i], poly.vertices[(i+1)%len(poly)]) < 1e-5 for i in range(len(poly))):
+    if any(
+        dist_point_to_segment(mid, poly.vertices[i], poly.vertices[(i + 1) % len(poly)]) < 1e-5
+        for i in range(len(poly))
+    ):
         return "on_boundary"
-    
+
     # contains_point handles the 'inside' case
     if poly.contains_point(mid):
         return "inside"
-    
+
     return "outside"
 
 
@@ -229,8 +239,9 @@ def _reconstruct_polygons(edges: List[Tuple[Point2D, Point2D]]) -> List[Polygon]
 
     # Map each start point to its possible end points
     # Using a small rounding to handle floating point jitter in dictionary keys
-    def to_key(p): return (round(p.x, 10), round(p.y, 10))
-    
+    def to_key(p):
+        return (round(p.x, 10), round(p.y, 10))
+
     graph = defaultdict(list)
     for p1, p2 in edges:
         graph[to_key(p1)].append(p2)
@@ -246,14 +257,14 @@ def _reconstruct_polygons(edges: List[Tuple[Point2D, Point2D]]) -> List[Polygon]
         current_poly = [start_edge_p1]
         curr = start_edge_p2
         used_edges.add(edge_id)
-        
+
         # Safety limit to prevent infinite loops
         limit = len(edges) + 1
         while limit > 0:
             current_poly.append(curr)
             if are_close(curr, start_edge_p1, EPSILON):
                 break
-                
+
             neighbors = graph.get(to_key(curr), [])
             next_node = None
             for n in neighbors:
@@ -262,16 +273,16 @@ def _reconstruct_polygons(edges: List[Tuple[Point2D, Point2D]]) -> List[Polygon]
                     next_node = n
                     used_edges.add(next_edge_id)
                     break
-            
+
             if next_node is None:
                 break
             curr = next_node
             limit -= 1
-        
+
         if len(current_poly) >= 3 and are_close(current_poly[0], current_poly[-1], EPSILON):
             # Remove the last point as it's the same as the first
             poly = Polygon(current_poly[:-1]).cleanup()
-            if poly.area > 1e-4: # Filter out degenerate slivers
+            if poly.area > 1e-4:  # Filter out degenerate slivers
                 polygons.append(poly)
 
     return polygons

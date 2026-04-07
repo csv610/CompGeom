@@ -9,7 +9,8 @@ from compgeom.polygon.polygon import (
     PolygonProperties,
     Triangle,
 )
-from compgeom.polygon.polygon_decomposer import (
+from compgeom.polygon.decomposer import (
+    is_ear,
     triangulate_polygon,
     triangulate_polygon_with_holes,
     convex_decompose_polygon,
@@ -18,6 +19,7 @@ from compgeom.polygon.polygon_decomposer import (
     trapezoidal_decompose_polygon,
     decompose_polygon,
     verify_polygon_decomposition,
+    mesh_from_point_faces,
 )
 from compgeom.polygon.polygon_similarity import get_polygon_signature, polygons_are_similar
 from compgeom.polygon.polygon_matching import reorder_to_match
@@ -122,9 +124,11 @@ __all__ = [
     "get_polygon_signature",
     "get_reflex_vertices",
     "guard_polygon",
+    "is_ear",
     "is_point_in_polygon",
     "is_polygon_convex",
     "mean_curvature_flow_polygon",
+    "mesh_from_point_faces",
     "monotone_decompose_polygon",
     "optimal_radius",
     "pack_circles",

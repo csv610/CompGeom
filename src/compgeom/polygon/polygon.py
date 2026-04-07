@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import random
 from dataclasses import dataclass
 from typing import List, Sequence, TypeVar, Tuple, Union
 
@@ -15,14 +16,22 @@ from compgeom.kernel import (
     distance,
 )
 from compgeom.polygon.tolerance import EPSILON, is_zero, are_close, is_negative
-def triangulate_polygon_with_holes(*args, **kwargs): 
-    from compgeom.polygon.polygon_decomposer import triangulate_polygon_with_holes as func 
-    return func(*args, **kwargs) 
-def get_convex_diameter(*args, **kwargs): 
-    from compgeom.polygon.polygon_metrics import get_convex_diameter as func 
+
+
+def triangulate_polygon_with_holes(*args, **kwargs):
+    from compgeom.polygon.decomposer import triangulate_polygon_with_holes as func
+
     return func(*args, **kwargs)
 
+
+def get_convex_diameter(*args, **kwargs):
+    from compgeom.polygon.polygon_metrics import get_convex_diameter as func
+
+    return func(*args, **kwargs)
+
+
 PolygonT = TypeVar("PolygonT", bound="Polygon")
+
 
 @dataclass(frozen=True, slots=True)
 class PolygonProperties:
@@ -34,6 +43,7 @@ class PolygonProperties:
         yield self.area
         yield self.centroid
         yield self.orientation
+
 
 @dataclass(frozen=True, slots=True)
 class Polygon:
@@ -104,7 +114,7 @@ class Polygon:
         """Rotate a polygon by a given angle (in radians) around a center point."""
         if not self.vertices:
             return self
-        
+
         if center is None:
             center = self.properties().centroid
 
@@ -184,7 +194,11 @@ class Polygon:
             return True
 
         turn_directions = [
-            cross_product(self.vertices[i], self.vertices[(i + 1) % len(self.vertices)], self.vertices[(i + 2) % len(self.vertices)])
+            cross_product(
+                self.vertices[i],
+                self.vertices[(i + 1) % len(self.vertices)],
+                self.vertices[(i + 2) % len(self.vertices)],
+            )
             for i in range(len(self.vertices))
         ]
         non_zero_turns = [turn > 0 for turn in turn_directions if not is_zero(turn, tol=EPSILON)]
@@ -224,10 +238,13 @@ class Polygon:
                     break
 
             d1 = (self.vertices[i].x - self.vertices[k].x) ** 2 + (self.vertices[i].y - self.vertices[k].y) ** 2
-            d2 = (self.vertices[(i + 1) % n].x - self.vertices[k].x) ** 2 + (self.vertices[(i + 1) % n].y - self.vertices[k].y) ** 2
+            d2 = (self.vertices[(i + 1) % n].x - self.vertices[k].x) ** 2 + (
+                self.vertices[(i + 1) % n].y - self.vertices[k].y
+            ) ** 2
             max_d_sq = max(max_d_sq, d1, d2)
 
         return math.sqrt(max_d_sq)
+
 
 @dataclass(frozen=True, slots=True)
 class Triangle:
@@ -236,7 +253,6 @@ class Triangle:
     c: Union[Point2D, Point3D]
 
     def sample_points(self, n_points: int = 100) -> list[Union[Point2D, Point3D]]:
-        import random
         is_3d = isinstance(self.a, Point3D) or isinstance(self.b, Point3D) or isinstance(self.c, Point3D)
 
         samples: list[Union[Point2D, Point3D]] = []
@@ -269,6 +285,8 @@ __all__ = [
 ]
 
 
-def generate_points_in_triangle(a: Point2D | Point3D, b: Point2D | Point3D, c: Point2D | Point3D, n_points: int = 100) -> list[Point2D | Point3D]:
+def generate_points_in_triangle(
+    a: Point2D | Point3D, b: Point2D | Point3D, c: Point2D | Point3D, n_points: int = 100
+) -> list[Point2D | Point3D]:
     """Generates random points within a triangle."""
     return Triangle(a, b, c).sample_points(n_points)

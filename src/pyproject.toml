@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compgeom"
+version = "0.1.0"
+description = "A comprehensive library for computational geometry and mesh processing."
+readme = "compgeom/Algorithms.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Chaman Singh Verma"}
+]
+dependencies = [
+    "numpy>=1.20.0",
+    "scipy>=1.7.0",
+    "matplotlib>=3.4.0",
+    "torch>=1.10.0",
+    "shapely>=1.8.0",
+    "pyvista>=0.32.0",
+    "pyopenvdb>=0.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C90", # mccabe
+    "B",   # flake8-bugbear
+]
+ignore = []
+
+[tool.mypy]
+python_version = "3.8"
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["compgeom"]
+python_files = "test_*.py"

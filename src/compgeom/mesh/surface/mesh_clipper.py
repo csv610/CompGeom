@@ -117,8 +117,8 @@ class MeshClipper:
             # We must triangulate these loops and add to both meshes.
             pass # Simplified for now: just return the clipped shells
 
-        from compgeom.mesh.surface.surf_mesh_repair import SurfMeshRepair
-        ma = SurfMeshRepair.remove_isolated_vertices(SurfaceMesh(new_verts, faces_above))
-        mb = SurfMeshRepair.remove_isolated_vertices(SurfaceMesh(new_verts, faces_below))
+        from compgeom.mesh.surface.repair import remove_isolated_vertices
+        ma = remove_isolated_vertices(SurfaceMesh(new_verts, faces_above))
+        mb = remove_isolated_vertices(SurfaceMesh(new_verts, faces_below))
         
         return ma, mb

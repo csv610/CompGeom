@@ -74,10 +74,10 @@ class MeshBooleans:
         # and re-triangulating the intersecting faces. This version approximates it
         # by keeping or dropping whole faces (works well for dense meshes or voxel-like structures).
         
-        from compgeom.mesh.surface.surf_mesh_repair import SurfMeshRepair
+        from compgeom.mesh.surface.repair import remove_isolated_vertices
         combined = TriMesh(vertices, faces)
         # Clean up isolated vertices left over from dropped faces
-        return SurfMeshRepair.remove_isolated_vertices(combined)
+        return remove_isolated_vertices(combined)
 
     @staticmethod
     def union(mesh_a: TriMesh, mesh_b: TriMesh) -> TriMesh:

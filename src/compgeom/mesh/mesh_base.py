@@ -90,7 +90,7 @@ class Mesh(ABC):
                 nodes = [MeshNode(i, p) for i, p in enumerate(nodes)]
         else:
             nodes = []
-            
+
         if edges:
             if not isinstance(edges[0], MeshEdge):
                 edges = [MeshEdge(i, tuple(e)) for i, e in enumerate(edges)]
@@ -119,25 +119,197 @@ class Mesh(ABC):
         """Returns the list of nodes in the mesh."""
         return self._nodes
 
+    @nodes.setter
+    def nodes(self, value: List[Union[MeshNode, Point2D, Point3D]]):
+        """Sets nodes and re-indexes them."""
+        if value:
+            if not isinstance(value[0], MeshNode):
+                value = [MeshNode(i, p) for i, p in enumerate(value)]
+        self._nodes = value
+
     @property
     def edges(self) -> List[MeshEdge]:
         """Returns the list of edges in the mesh."""
         return self._edges
+
+    @edges.setter
+    def edges(self, value: List[Union[MeshEdge, Tuple[int, ...]]]):
+        """Sets edges."""
+        if value:
+            if not isinstance(value[0], MeshEdge):
+                value = [MeshEdge(i, tuple(e)) for i, e in enumerate(value)]
+        self._edges = value
 
     @property
     def faces(self) -> List[MeshFace]:
         """Returns the list of faces in the mesh."""
         return self._faces
 
+    @faces.setter
+    def faces(self, value: List[Union[MeshFace, Tuple[int, ...]]]):
+        """Sets faces and auto-extracts edges if this is a surface mesh."""
+        if value:
+            if not isinstance(value[0], MeshFace):
+                value = [MeshFace(i, tuple(f)) for i, f in enumerate(value)]
+        self._faces = value
+        if self._cells:
+            from compgeom.mesh.mesh_topology import MeshTopology
+
+            self._faces = MeshTopology.extract_faces(self._cells)
+            self._edges = MeshTopology.extract_edges(self._faces)
+        elif self._faces:
+            from compgeom.mesh.mesh_topology import MeshTopology
+
+            self._edges = MeshTopology.extract_edges(self._faces)
+
     @property
     def cells(self) -> List[MeshCell]:
         """Returns the list of cells in the mesh."""
         return self._cells
 
+    @cells.setter
+    def cells(self, value: List[Union[MeshCell, Tuple[int, ...]]]):
+        """Sets cells and auto-extracts faces and edges."""
+        if value:
+            if not isinstance(value[0], MeshCell):
+                value = [MeshCell(i, tuple(c)) for i, c in enumerate(value)]
+
+        added_cells = []
+        removed_cell_ids = set()
+
+        if self._cells and value:
+            old_ids = {c.id for c in self._cells}
+            new_ids = {c.id for c in value}
+            removed_cell_ids = old_ids - new_ids
+            added_ids = new_ids - old_ids
+            added_cells = [c for c in value if c.id in added_ids]
+
+        self._cells = value
+
+        if self._cells:
+            self._recompute_topology_from_cells(removed_cell_ids, added_cells)
+
+    def add_faces(self, faces: List[Union[MeshFace, Tuple[int, ...]]]):
+        """Adds faces and updates edges."""
+        from compgeom.mesh.mesh_topology import MeshTopology
+
+        new_faces = []
+        for f in faces:
+            if isinstance(f, MeshFace):
+                new_faces.append(f)
+            else:
+                new_faces.append(MeshFace(len(self._faces) + len(new_faces), tuple(f)))
+
+        self._faces.extend(new_faces)
+
+        if self._cells:
+            self._faces = MeshTopology.extract_faces(self._cells)
+            self._edges = MeshTopology.extract_edges(self._faces)
+        else:
+            new_edges = MeshTopology.extract_edges(self._faces)
+            existing_keys = {e.v_indices for e in self._edges}
+            for edge in new_edges:
+                if edge.v_indices not in existing_keys:
+                    self._edges.append(MeshEdge(len(self._edges), edge.v_indices))
+
+    def remove_faces(self, face_ids: Set[int]):
+        """Removes faces by ID and cleans up unused edges."""
+        if not face_ids:
+            return
+
+        self._faces = [f for f in self._faces if f.id not in face_ids]
+
+        if self._cells:
+            from compgeom.mesh.mesh_topology import MeshTopology
+
+            self._faces = MeshTopology.extract_faces(self._cells)
+            self._edges = MeshTopology.extract_edges(self._faces)
+        else:
+            used_edges = set()
+            for face in self._faces:
+                v = face.v_indices
+                for i in range(len(v)):
+                    a, b = v[i], v[(i + 1) % len(v)]
+                    used_edges.add((min(a, b), max(a, b)))
+            self._edges = [e for e in self._edges if e.v_indices in used_edges]
+
+    def add_cells(self, cells: List[Union[MeshCell, Tuple[int, ...]]]):
+        """Adds cells and updates faces and edges."""
+        new_cells = []
+        for c in cells:
+            if isinstance(c, MeshCell):
+                new_cells.append(c)
+            else:
+                new_cells.append(MeshCell(len(self._cells) + len(new_cells), tuple(c)))
+
+        self._cells.extend(new_cells)
+
+        from compgeom.mesh.mesh_topology import MeshTopology
+
+        self._faces = MeshTopology.extract_faces(self._cells)
+        self._edges = MeshTopology.extract_edges(self._faces)
+
+    def remove_cells(self, cell_ids: Set[int]):
+        """Removes cells by ID and cleans up unused faces and edges."""
+        if not cell_ids:
+            return
+
+        self._cells = [c for c in self._cells if c.id not in cell_ids]
+
+        from compgeom.mesh.mesh_topology import MeshTopology
+
+        self._faces = MeshTopology.extract_faces(self._cells)
+        self._edges = MeshTopology.extract_edges(self._faces)
+
+    def _recompute_topology_from_cells(self, removed_cell_ids: Set[int], added_cells: List[MeshCell]):
+        """Recomputes faces and edges from cells after changes."""
+        from compgeom.mesh.mesh_topology import MeshTopology
+
+        self._faces = MeshTopology.extract_faces(self._cells)
+        self._edges = MeshTopology.extract_edges(self._faces)
+
     @property
     def vertices(self) -> List[Union[Point2D, Point3D]]:
         """Returns the list of points of the nodes."""
         return [node.point for node in self._nodes]
+
+    def num_nodes(self) -> int:
+        """Returns the number of nodes in the mesh."""
+        return len(self._nodes)
+
+    def num_edges(self) -> int:
+        """Returns the number of edges in the mesh."""
+        return len(self._edges)
+
+    def num_faces(self) -> int:
+        """Returns the number of faces in the mesh."""
+        return len(self._faces)
+
+    def num_cells(self) -> int:
+        """Returns the number of cells in the mesh."""
+        return len(self._cells)
+
+    def extract_topology(self) -> tuple:
+        """Extracts topology based on mesh type.
+
+        For surface mesh (has faces, no cells): extracts edges from faces.
+        For volume mesh (has cells): extracts faces and edges from cells.
+
+        Returns:
+            Tuple of (edges, faces) lists.
+        """
+        from compgeom.mesh.mesh_topology import MeshTopology
+
+        if self._cells:
+            faces = MeshTopology.extract_faces(self._cells)
+            edges = MeshTopology.extract_edges(faces)
+            self._faces = faces
+            self._edges = edges
+        elif self._faces:
+            edges = MeshTopology.extract_edges(self._faces)
+            self._edges = edges
+
+        return self._edges, self._faces
 
     def to_file(self, filename: str, **kwargs):
         """Exports the mesh to a file.

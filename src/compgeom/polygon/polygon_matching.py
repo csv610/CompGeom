@@ -7,9 +7,6 @@ from typing import TYPE_CHECKING, Sequence
 
 from compgeom.polygon.exceptions import PolygonError
 
-if TYPE_CHECKING:
-    from compgeom.polygon.polygon import Polygon
-
 from compgeom.kernel import Point2D
 from compgeom.polygon.polygon import Polygon
 from compgeom.polygon.polygon_similarity import get_polygon_signature

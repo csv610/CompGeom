@@ -1,9 +1,9 @@
 """Test script for Riemannian patch identification on Platonic solids."""
 import sys
-import os
+from pathlib import Path
 
 # Add the src directory to the path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 from compgeom.mesh.surface.platonic_solids import PlatonicSolid
 from compgeom.mesh.surface.riemannian_patches import identify_riemannian_patches

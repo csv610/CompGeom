@@ -8,12 +8,20 @@ import random
 from compgeom.kernel import EPSILON, Point2D
 from compgeom.kernel import rotate_2d, unrotate_2d
 from compgeom.polygon.convex_hull import GrahamScan
-from compgeom.algo.proximity import welzl, LargestEmptyCircle
+from compgeom.algo.proximity import (
+    welzl,
+    find_largest_empty_circle,
+    find_largest_empty_sphere,
+    find_largest_empty_oriented_box,
+    find_largest_empty_oriented_ellipsoid,
+    find_largest_empty_oriented_rectangle,
+    find_largest_empty_oriented_ellipse,
+)
 
 
 def largest_empty_circle(points):
     """Finds the largest empty circle whose center is within the convex hull."""
-    return LargestEmptyCircle.find(list(points))
+    return find_largest_empty_circle(list(points))
 
 
 def minimum_enclosing_circle(points):
@@ -109,31 +117,26 @@ def minimum_bounding_box(points):
 
 def largest_empty_sphere(points):
     """Finds the largest empty sphere whose center is within the 3D convex hull."""
-    from compgeom.algo.proximity import LargestEmptySphere
-    return LargestEmptySphere.find(list(points))
+    return find_largest_empty_sphere(list(points))
 
 
 def largest_empty_oriented_box(points):
     """Finds the largest empty oriented box within a 3D convex hull."""
-    from compgeom.algo.proximity import LargestEmptyOrientedBox
-    return LargestEmptyOrientedBox.find(list(points))
+    return find_largest_empty_oriented_box(list(points))
 
 
 def largest_empty_oriented_ellipsoid(points):
     """Finds the largest empty oriented ellipsoid within a 3D convex hull."""
-    from compgeom.algo.proximity import LargestEmptyOrientedEllipsoid
-    return LargestEmptyOrientedEllipsoid.find(list(points))
+    return find_largest_empty_oriented_ellipsoid(list(points))
 
 
 def largest_empty_oriented_rectangle(points):
     """Finds the largest empty oriented rectangle within a 2D convex hull."""
-    from compgeom.algo.proximity import LargestEmptyOrientedRectangle
-    return LargestEmptyOrientedRectangle.find(list(points))
+    return find_largest_empty_oriented_rectangle(list(points))
 
 
 def largest_empty_oriented_ellipse(points):
     """Finds the largest empty oriented ellipse within a 2D convex hull."""
-    from compgeom.algo.proximity import LargestEmptyOrientedEllipse
-    return LargestEmptyOrientedEllipse.find(list(points))
+    return find_largest_empty_oriented_ellipse(list(points))
 
 __all__ = ["largest_empty_oriented_ellipse", "largest_empty_oriented_rectangle", "largest_empty_oriented_ellipsoid", "largest_empty_oriented_box", "largest_empty_sphere", "largest_empty_circle", "minimum_bounding_box", "minimum_enclosing_circle"]

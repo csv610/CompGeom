@@ -1,10 +1,8 @@
 import sys
-import os
+from pathlib import Path
 
 # Add the src directory to path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-src_dir = os.path.abspath(os.path.join(current_dir, "../../../../"))
-sys.path.insert(0, src_dir)
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
 # Extreme mocking to bypass broken project imports
 import types

@@ -5,9 +5,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Sequence
 
-if TYPE_CHECKING:
-    from compgeom.polygon.polygon import Polygon
-
+from compgeom.polygon.polygon import Polygon
 from compgeom.kernel import distance
 from compgeom.polygon.tolerance import is_zero, EPSILON
 
@@ -60,7 +58,6 @@ def polygons_are_similar(
     Checks if two polygons are similar.
     Similarity is invariant under translation, rotation, scaling, and reflection.
     """
-    from compgeom.polygon.polygon import Polygon
 
     if auto_clean:
         poly1 = poly1.cleanup()

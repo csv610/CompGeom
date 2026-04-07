@@ -1,8 +1,9 @@
 """Domain-specific exceptions for polygon operations."""
 
 from __future__ import annotations
+from compgeom.exceptions import CompGeomError
 
-class PolygonError(Exception):
+class PolygonError(CompGeomError):
     """Base class for exceptions in the polygon module."""
     pass
 

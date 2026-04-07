@@ -52,7 +52,8 @@ from compgeom.mesh.surface.conformal_equivalence import DiscreteConformalEquival
 from compgeom.mesh.surface.quasi_conformal import QuasiConformalMap
 
 from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
-from compgeom.mesh.surface.mesh_processing import MeshProcessing
+from compgeom.mesh.surface.processing import *
+from compgeom.mesh.surface.repair import *
 from compgeom.mesh.surface.mesh_queries import MeshQueries
 from compgeom.mesh.surface.spatial_acceleration import AABBTree
 from compgeom.mesh.surface.mesh_decimation import MeshDecimator
@@ -84,7 +85,9 @@ __all__ = [
     "AABBTree",
     "AlphaShape",
     "AdaptiveRemesher",
+    "bilateral_smoothing",
     "BoundingVolumes",
+    "catmull_clark",
     "ConvexHull3D",
     "CuthillMcKee",
     "CoACD",
@@ -96,22 +99,40 @@ __all__ = [
     "DiscreteMorse",
     "DynamicDelaunay",
     "EdgeMesh",
+    "fill_holes",
+    "fix_normals",
+    "flip_normals",
     "HalfEdgeMesh",
     "HexMesh",
     "HodgeDecomposition",
     "IsotropicRemesher",
     "IntrinsicTriangulation",
+    "laplacian_smoothing",
+    "loop_subdivision",
     "LSCMParameterizer",
     "ManifoldValidator",
     "ManifoldFixer",
     "MarchingCubes",
     "MarchingTetrahedra",
+    "mesh_clipping",
+    "mesh_offset",
     "MinkowskiSum",
+    "orient_normals_outward",
     "PolygonBooleans",
     "PolygonTriangulation",
     "QuasiConformalMap",
+    "repair",
+    "remove_degenerate_faces",
+    "remove_duplicate_faces",
+    "remove_duplicate_points",
+    "remove_isolated_vertices",
+    "remove_non_manifold_faces",
+    "remove_non_manifold_vertices",
+    "remove_self_intersections",
+    "remove_small_components",
     "RicciFlow",
     "SweepLine",
+    "taubin_smoothing",
     "VLSILayout",
     "build_topology",
     "constrained_delaunay_triangulation",
@@ -135,7 +156,6 @@ __all__ = [
     "to_file",
     "MeshImporter",
     "MeshExporter",
-    "MeshProcessing",
     "MeshQueries",
     "MeshReorderer",
     "MeshTriangle",
