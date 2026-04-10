@@ -167,6 +167,12 @@ class Mesh(ABC):
         """Returns the list of cells in the mesh."""
         return self._cells
 
+    @property
+    def topology(self):
+        """Returns a MeshTopology object for this mesh."""
+        from compgeom.mesh.mesh_topology import MeshTopology
+        return MeshTopology(self)
+
     @cells.setter
     def cells(self, value: List[Union[MeshCell, Tuple[int, ...]]]):
         """Sets cells and auto-extracts faces and edges."""
@@ -289,6 +295,34 @@ class Mesh(ABC):
         """Returns the number of cells in the mesh."""
         return len(self._cells)
 
+    @property
+    def centroid(self) -> Union[Point2D, Point3D]:
+        """Returns the geometric centroid of the mesh nodes."""
+        if not self._nodes:
+            return Point2D(0, 0)
+        points = self.vertices
+        avg_x = sum(p.x for p in points) / len(points)
+        avg_y = sum(p.y for p in points) / len(points)
+        if isinstance(points[0], Point3D):
+            avg_z = sum(p.z for p in points) / len(points)
+            return Point3D(avg_x, avg_y, avg_z)
+        return Point2D(avg_x, avg_y)
+
+    def bounding_box(self) -> Tuple[Tuple[float, ...], Tuple[float, ...]]:
+        """Returns the axis-aligned bounding box ((min_coords), (max_coords))."""
+        if not self._nodes:
+            return (0, 0), (0, 0)
+        points = self.vertices
+        min_x = min(p.x for p in points)
+        max_x = max(p.x for p in points)
+        min_y = min(p.y for p in points)
+        max_y = max(p.y for p in points)
+        if isinstance(points[0], Point3D):
+            min_z = min(p.z for p in points)
+            max_z = max(p.z for p in points)
+            return (min_x, min_y, min_z), (max_x, max_y, max_z)
+        return (min_x, min_y), (max_x, max_y)
+
     def extract_topology(self) -> tuple:
         """Extracts topology based on mesh type.
 
@@ -321,3 +355,41 @@ class Mesh(ABC):
         from compgeom.mesh.meshio import MeshExporter
 
         MeshExporter.write(filename, self, **kwargs)
+
+    def reorder_nodes(self, new_order: List[int]):
+        """Reorders the mesh nodes according to the given index list."""
+        if len(new_order) != len(self._nodes):
+            raise ValueError("New order must have the same length as current nodes")
+
+        # 1. Reorder nodes
+        old_nodes = {node.id: node for node in self._nodes}
+        reordered_nodes = []
+        old_to_new = {}
+        for i, old_idx in enumerate(new_order):
+            old_node = self._nodes[old_idx]
+            reordered_nodes.append(replace(old_node, id=i))
+            old_to_new[old_idx] = i
+        self._nodes = reordered_nodes
+
+        # 2. Update faces
+        new_faces = []
+        for face in self._faces:
+            new_v = tuple(old_to_new[v_idx] for v_idx in face.v_indices)
+            new_faces.append(replace(face, v_indices=new_v))
+        self._faces = new_faces
+
+        # 3. Update cells
+        if self._cells:
+            new_cells = []
+            for cell in self._cells:
+                new_v = tuple(old_to_new[v_idx] for v_idx in cell.v_indices)
+                new_cells.append(replace(cell, v_indices=new_v))
+            self._cells = new_cells
+
+        # 4. Update edges
+        if self._edges:
+            new_edges = []
+            for edge in self._edges:
+                new_v = (old_to_new[edge.v_indices[0]], old_to_new[edge.v_indices[1]])
+                new_edges.append(replace(edge, v_indices=new_v))
+            self._edges = new_edges

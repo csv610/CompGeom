@@ -274,7 +274,7 @@ def test_mesh_coloring_reordering_and_voronoi_diagram_helpers():
     diagram = VoronoiDiagram()
     empty_mesh = diagram.compute([])
     assert empty_mesh.vertices == []
-    assert empty_mesh.elements == []
+    assert empty_mesh.faces == []
 
     circle_boundary = VoronoiDiagram.get_circle_boundary(
         radius=2.0, center=(1.0, -1.0), n_segments=8
@@ -288,7 +288,7 @@ def test_mesh_coloring_reordering_and_voronoi_diagram_helpers():
     )
     assert len(diagram.cells) == 2
     assert result.vertices
-    assert result.elements
+    assert result.faces
 
 
 def test_proximity_helpers_cover_intersections_pairs_and_minkowski_sum():
@@ -692,7 +692,7 @@ def test_mesh_core_helpers_cover_topology_and_even_element_repairs():
 
     triangle_mesh.reorder_nodes([2, 1, 0, 3])
     assert triangle_mesh.vertices[0] == Point2D(1, 1)
-    assert set(triangle_mesh.elements) == {(2, 1, 0), (2, 0, 3)}
+    assert set(tuple(f.v_indices) for f in triangle_mesh.faces) == {(2, 1, 0), (2, 0, 3)}
 
 
 def test_mesh_and_triangle_utilities_cover_standalone_helpers():
@@ -1019,7 +1019,7 @@ def test_voronoi_square_compute_and_triangle_to_quad_edge_reuse():
     assert len(diagram.boundary) == 4
     assert len(diagram.cells) == 3
     assert len(mesh.vertices) >= 3
-    assert len(mesh.elements) == 3
+    assert len(mesh.faces) == 3
     for _, cell in diagram.cells:
         assert cell
         for vertex in cell:

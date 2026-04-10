@@ -103,7 +103,7 @@ class GeomPlot:
         size = kwargs.get("size", 5)
 
         if isinstance(obj, Mesh):
-            for face in obj.elements:
+            for face in obj.faces:
                 pts = [
                     GeomPlot._to_canvas(obj.vertices[v_idx].x, obj.vertices[v_idx].y, scale, off_x, off_y, height)
                     for v_idx in face
@@ -203,7 +203,7 @@ class GeomPlot:
         def draw_object(obj: GeometricObject) -> None:
             if isinstance(obj, Mesh):
                 line_color = parse_color(kwargs.get("edge_color", "black"))
-                for face in obj.elements:
+                for face in obj.faces:
                     for i in range(len(face)):
                         draw_line(obj.vertices[face[i]], obj.vertices[face[(i + 1) % len(face)]], line_color)
                 return
