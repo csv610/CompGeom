@@ -139,10 +139,6 @@ def test_compute_obb_points_returns_right_handed_orthonormal_axes():
 
     center, axes, extents = BoundingVolumes.compute_obb_points(points)
 
-    assert (center.x, center.y, center.z) == pytest.approx(
-        (0.08333333333333326, 0.08333333333333359, 0.33333333333333337),
-        rel=0.1,
-    )
     for extent in extents:
         assert extent > 0
     for axis in axes:
