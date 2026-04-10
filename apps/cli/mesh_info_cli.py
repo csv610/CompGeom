@@ -33,6 +33,19 @@ def main(argv: list[str] | None = None) -> int:
     n_faces = mesh.num_faces()
     n_cells = mesh.num_cells()
 
+    n_tri = 0
+    n_quad = 0
+    n_poly = 0
+    if n_faces > 0:
+        for face in mesh.faces:
+            n_v = len(face)
+            if n_v == 3:
+                n_tri += 1
+            elif n_v == 4:
+                n_quad += 1
+            else:
+                n_poly += 1
+
     # Geometry
     centroid = MeshGeometry.centroid(mesh)
     bbox = MeshGeometry.bounding_box(mesh)
@@ -48,6 +61,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Edges:          {n_edges}")
     if n_faces > 0:
         print(f"Faces:          {n_faces}")
+        print(f"  Triangles:    {n_tri}")
+        print(f"  Quads:        {n_quad}")
+        print(f"  Polygons:     {n_poly}")
     if n_cells > 0:
         print(f"Cells:          {n_cells}")
 

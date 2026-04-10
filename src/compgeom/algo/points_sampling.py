@@ -7,7 +7,6 @@ import random
 from typing import List, Optional
 
 from compgeom.kernel import Point2D, Point3D
-from compgeom.polygon.polygon import generate_points_in_triangle
 
 
 class PointSampler:
@@ -93,6 +92,33 @@ class PointSampler:
         return generate_points_in_triangle(a, b, c, n_points)
 
     @staticmethod
+    def on_triangle(a: Point2D, b: Point2D, c: Point2D, n_points: int = 100) -> List[Point2D]:
+        """Samples points uniformly from the boundary of a triangle."""
+
+        def distance(p1: Point2D, p2: Point2D) -> float:
+            return math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2)
+
+        len_ab = distance(a, b)
+        len_bc = distance(b, c)
+        len_ca = distance(c, a)
+        total_len = len_ab + len_bc + len_ca
+
+        points = []
+        for index in range(n_points):
+            r = random.uniform(0, total_len)
+            if r < len_ab:
+                t = r / len_ab
+                px, py = a.x + t * (b.x - a.x), a.y + t * (b.y - a.y)
+            elif r < len_ab + len_bc:
+                t = (r - len_ab) / len_bc
+                px, py = b.x + t * (c.x - b.x), b.y + t * (c.y - b.y)
+            else:
+                t = (r - len_ab - len_bc) / len_ca
+                px, py = c.x + t * (a.x - c.x), c.y + t * (a.y - c.y)
+            points.append(Point2D(px, py, index))
+        return points
+
+    @staticmethod
     def on_line_segment(p1: Point2D, p2: Point2D, n_points: int = 100) -> List[Point2D]:
         """Samples points uniformly from a line segment."""
         points = []
@@ -143,18 +169,6 @@ class PointSampler:
         return points
 
 
-def generate_points_in_circle(center: Point2D, radius: float, n_points: int = 100) -> List[Point2D]:
-    return PointSampler.in_circle(center, radius, n_points)
-
-
-def generate_points_in_rectangle(
-    width: float, height: float, n_points: int = 100, center: Optional[Point2D] = None
-) -> List[Point2D]:
-    return PointSampler.in_rectangle(width, height, n_points, center)
-
-
 __all__ = [
     "PointSampler",
-    "generate_points_in_circle",
-    "generate_points_in_rectangle",
 ]

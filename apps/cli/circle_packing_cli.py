@@ -10,7 +10,7 @@ from compgeom import (
     save_png,
     save_svg,
 )
-from _shared import read_input_lines, parse_points, demo_polygon
+from _shared import read_input_lines, parse_points
 
 
 def read_polygon(args) -> list[Point2D] | None:
@@ -44,10 +44,10 @@ def read_polygon(args) -> list[Point2D] | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Pack circles into a closed polygon.")
     parser.add_argument("input", nargs="?", help="Path to input file (optional, reads from stdin if omitted).")
-    parser.add_argument("--obj", help="Path to input OBJ file defining the polygon")
-    parser.add_argument("--poly", nargs="+", help="Polygon vertices as x1 y1 x2 y2 ...")
+    parser.add_argument("-f", "--obj", help="Path to input OBJ file defining the polygon")
+    parser.add_argument("-p", "--poly", nargs="+", help="Polygon vertices as x1 y1 x2 y2 ...")
     parser.add_argument(
-        "--radius", type=float, default=0.5, help="Radius of circles to pack"
+        "-r", "--radius", type=float, default=0.5, help="Radius of circles to pack"
     )
     parser.add_argument(
         "--output",
