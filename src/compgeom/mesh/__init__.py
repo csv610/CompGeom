@@ -54,6 +54,13 @@ from compgeom.mesh.algorithms.coacd import CoACD
 from compgeom.mesh.algorithms.dec import DEC
 from compgeom.mesh.algorithms.discrete_morse import DiscreteMorse
 from compgeom.mesh.algorithms.hodge_theory import HodgeDecomposition
+from compgeom.mesh.algorithms.matroid import (
+    Matroid,
+    GraphicMatroid,
+    MeshGraphicMatroid,
+    TransversalMatroid,
+    create_graphic_matroid,
+)
 from compgeom.mesh.surface.trimesh.intrinsic_triangulation import IntrinsicTriangulation
 from compgeom.mesh.surface.trimesh.non_obtuse_triangulation import NonObtuseTriangulator
 from compgeom.mesh.surface.trimesh.binary_image_triangulation import BinaryImageTriangulation
@@ -61,6 +68,50 @@ from compgeom.mesh.surface.parameterization_lscm import LSCMParameterizer
 from compgeom.mesh.surface.ricci_flow import RicciFlow
 from compgeom.mesh.surface.conformal_equivalence import DiscreteConformalEquivalence
 from compgeom.mesh.surface.quasi_conformal import QuasiConformalMap
+from compgeom.mesh.surface.arap import ARAPMapper, as_rigid_as_possible
+from compgeom.mesh.surface.circle_packing import CirclePacking, ThurstonCirclePacking, discrete_circle_packing
+from compgeom.mesh.surface.tutte_embedding import (
+    TutteEmbedding,
+    CotangentLaplacian,
+    tutte_embedding,
+    cotangent_laplacian,
+)
+from compgeom.mesh.surface.conformal_deformation import (
+    ConformalDeformation,
+    HarmonicConformalDeformation,
+    conformal_deform,
+    conformal_deform_rots,
+)
+from compgeom.mesh.surface.abf_plus_plus import ABFPlusPlus, ABFParameterization, abf_plus_plus
+from compgeom.mesh.surface.yamabe_flow import DiscreteYamabeFlow, YamabeFlowParameterization, yamabe_flow
+from compgeom.mesh.surface.conformal_registration import (
+    ConformalShapeRegistration,
+    FunctionalMap,
+    ConformalMorph,
+    register_conformal_shapes,
+    conformal_morph,
+)
+from compgeom.mesh.surface.mean_value_coordinates import (
+    MeanValueCoordinates,
+    MeanValueEmbedding,
+    MeanValueLaplacian,
+    mean_value_coordinates,
+)
+from compgeom.mesh.surface.levi_civita_connection import (
+    LeviCivitaConnection,
+    SpinConnection,
+    parallel_transport,
+)
+from compgeom.mesh.surface.non_euclidean import (
+    SphericalConformalMap,
+    PoincareDiskEmbedding,
+    stereographic_forward,
+    stereographic_inverse,
+    poincare_disk_embedding,
+    hyperbolic_distance,
+    hemisphere_embedding,
+    poincare_disk_map,
+)
 
 from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
 from compgeom.mesh.surface.processing import *
@@ -118,6 +169,9 @@ __all__ = [
     "HalfEdgeMesh",
     "HexMesh",
     "HodgeDecomposition",
+    "GraphicMatroid",
+    "MeshGraphicMatroid",
+    "create_graphic_matroid",
     "IsotropicRemesher",
     "IntrinsicTriangulation",
     "laplacian_smoothing",
@@ -135,6 +189,44 @@ __all__ = [
     "PolygonBooleans",
     "PolygonTriangulation",
     "QuasiConformalMap",
+    "ARAPMapper",
+    "as_rigid_as_possible",
+    "CirclePacking",
+    "ThurstonCirclePacking",
+    "discrete_circle_packing",
+    "CotangentLaplacian",
+    "TutteEmbedding",
+    "tutte_embedding",
+    "cotangent_laplacian",
+    "ConformalDeformation",
+    "HarmonicConformalDeformation",
+    "conformal_deform",
+    "conformal_deform_rots",
+    "ABFPlusPlus",
+    "ABFParameterization",
+    "abf_plus_plus",
+    "DiscreteYamabeFlow",
+    "yamabe_flow",
+    "ConformalShapeRegistration",
+    "FunctionalMap",
+    "ConformalMorph",
+    "register_conformal_shapes",
+    "conformal_morph",
+    "MeanValueCoordinates",
+    "MeanValueEmbedding",
+    "MeanValueLaplacian",
+    "mean_value_coordinates",
+    "LeviCivitaConnection",
+    "SpinConnection",
+    "parallel_transport",
+    "SphericalConformalMap",
+    "PoincareDiskEmbedding",
+    "stereographic_forward",
+    "stereographic_inverse",
+    "poincare_disk_embedding",
+    "hyperbolic_distance",
+    "hemisphere_embedding",
+    "poincare_disk_map",
     "repair",
     "remove_degenerate_faces",
     "remove_duplicate_faces",
