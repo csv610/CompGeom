@@ -43,15 +43,20 @@ A Python library and command-line suite for geometric modeling, mesh processing,
    - Mesh Loading (STL, OFF, OBJ Support via `MeshImporter`)
 8. **Mesh Refinement & Reordering**
    - Triangle Mesh Refinement (Linear & Uniform)
+   - **Non-Obtuse Triangulation (Steiner Point Insertion)**
+   - **Angle-Bounded Remeshing (Edge Flip/Split/Collapse)**
    - Bandwidth Reduction (Reverse Cuthill-McKee)
    - Nodal Renumbering (`reorder_nodes`)
-9. **Mesh Optimization**
+9. **Mesh Optimization & Analysis**
    - Mesh Smoothing (Laplacian, Taubin)
    - Mesh Coloring (Vertex & Element)
    - Triangle-to-Quad Conversion
    - **Mesh Topology Transfer (Harmonic Mapping)**
+   - **Spectral Geometry (HKS, WKS, Diffusion Distance)**
+   - **Stochastic PDE Solvers (Walk on Spheres/Stars)**
 10. **Volumetric Modeling**
     - Mesh Voxelization (Native & OpenVDB)
+    - **Filtered Tetrahedral Meshing (Generalized Winding Number)**
     - Mesh I/O (STL, OFF, OBJ Support)
 
 ### Part IV: Spatial Algorithms & Visualization
@@ -251,6 +256,34 @@ results = tree.query(BoundingBox.from_point(11.0, 11.0, padding=1.0))
 from compgeom.graphics.mesh_adjacency_matrix import compute_adjacency_matrix
 # Utilizing the R-tree to compute spatial adjacency
 matrix = compute_adjacency_matrix(mesh)
+```
+
+### 12. Constrained Delaunay Triangulation (CDT)
+**Objective:** Triangulate a domain with specific boundary edges and holes.
+
+```python
+from compgeom.mesh import constrained_delaunay_triangulation
+from compgeom import Point2D
+
+outer = [Point2D(0,0), Point2D(5,0), Point2D(5,5), Point2D(0,5)]
+holes = [[Point2D(2,2), Point2D(3,2), Point2D(3,3), Point2D(2,3)]]
+
+triangles, edges = constrained_delaunay_triangulation(outer, holes)
+```
+
+### 13. Diffusion Distance & Embedding
+**Objective:** Compute intrinsic distances on a manifold using spectral analysis.
+
+```python
+from compgeom.mesh import TriMesh
+from compgeom.mesh.volume.spectral_geometry import SpectralGeometry
+
+mesh = TriMesh.from_file("manifold.obj")
+# Compute diffusion distance between vertex 0 and 100 at time t=1.0
+dist = SpectralGeometry.compute_diffusion_distance(mesh, 0, 100, t=1.0)
+
+# Get 10-dimensional diffusion embedding
+embedding = SpectralGeometry.compute_diffusion_embedding(mesh, t=1.0, k=10)
 ```
 
 ---

@@ -89,3 +89,16 @@ K-Geodesics
 Node Degree Calculation
 Lower Envelopes
 Proximity Queries
+Constrained Delaunay Triangulation (CDT)
+Diffusion Distance & Embedding
+Walk on Spheres (WoS)
+Walk on Stars (WoSt)
+Non-Obtuse Triangulation (Steiner Points)
+Angle-Bounded Remeshing
+Winding-Filtered Tetrahedral Meshing
+Generalized Winding Number (GWN)
+Neural Dual Contouring
+Neural Winding Lifters
+Lipschitz SDF
+Shape Space SpectralNet
+Odeco Frame Fields

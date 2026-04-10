@@ -205,3 +205,21 @@ This document outlines the testing strategies, degenerate cases, and common fail
 ### (1) Testing Methods
 - **Sequence Validity:** Davenport-Schinzel sequences must not contain alternating subsequences of length $s+2$.
 - **Smoothing Convergence:** Mean curvature flow should eventually shrink a non-self-intersecting polygon to a convex shape.
+
+---
+
+## 16. Spectral Geometry & PDE Solvers
+
+**Algorithms:** HKS, WKS, Diffusion Distance, Walk on Spheres (WoS), Walk on Stars (WoSt).
+
+### (1) Testing Methods
+- **Distance Symmetry:** `DiffusionDistance(i, j) == DiffusionDistance(j, i)`.
+- **Identity Property:** `DiffusionDistance(i, i)` should be effectively 0.
+- **Monte Carlo Variance:** For WoS/WoSt, use large enough `num_walks` and verify results fall within expected statistical confidence intervals.
+- **Linear Recovery:** WoSt gradient estimation should perfectly recover the gradient of a linear function (within statistical noise).
+- **Eigenvalue Ordering:** Verify that eigenvalues are non-negative and non-decreasing.
+
+### (2) Common Failures
+- **Singular Laplacians:** Closed meshes or meshes with disconnected components causing numerical instability in eigenvalue solvers.
+- **High Variance:** Stochastic solvers returning inconsistent results due to low sample counts.
+- **Boundary Precision:** WoS "leaking" through boundaries if epsilon is too large relative to local feature size.

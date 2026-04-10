@@ -17,6 +17,8 @@ This directory contains detailed documentation for the algorithms implemented in
 - [Incremental Delaunay Triangulation](incremental_delaunay.md) - Stateful Delaunay construction.
 - [Dynamic Delaunay](dynamic_delaunay.md) - Maintaining Delaunay with point insertion/deletion.
 - [Delaunay Flips](delaunay_flips.md) - Local edge flipping to restore Delaunay property.
+- [Constrained Delaunay](constrained_delaunay.md) - Triangulation respecting domain boundaries and holes.
+- [Non-Obtuse Triangulation](non_obtuse_triangulation.md) - Steiner point insertion for angle bounds.
 - [Voronoi Diagram](voronoi_diagram.md) - Dual of the Delaunay triangulation.
 - [Kinetic Voronoi](kinetic_voronoi.md) - Voronoi diagrams for moving points.
 
@@ -51,7 +53,9 @@ This directory contains detailed documentation for the algorithms implemented in
 - [BFF Parameterization](bff_parameterization.md) - Boundary First Flattening for conformal mapping.
 - [Harmonic Mapping](harmonic_mapping.md) - Topology transfer and parameterization.
 - [Functional Maps](functional_maps.md) - Spectral shape matching.
+- [Diffusion Distance](diffusion_distance.md) - Intrinsic spectral distance on manifolds.
 - [Mean Curvature Flow](mean_curvature_flow.md) - Surface smoothing via diffusion.
+- [Angle-Bounded Remeshing](angle_bounded_remesher.md) - Iterative edge operations for quality bounds.
 - [Affine Heat Flow](affine_heat_flow.md) - Invariant polygon smoothing.
 - [Geodesic Distance](geodesic_distance.md) - Shortest paths on continuous surfaces.
 - [Medial Axis Transform](medial_axis.md) - Shape skeletonization using Voronoi.
@@ -69,6 +73,7 @@ This directory contains detailed documentation for the algorithms implemented in
 - [Bézier Surface](bezier_surface.md) - Tensor product surface evaluation.
 - [NURBS Surface](nurbs_surface.md) - Rational B-spline surface evaluation.
 - [Mesh Voxelization](mesh_voxelization.md) - Volume conversion from surface meshes.
+- [Winding-Filtered Tet Meshing](winding_filtered_tet_meshing.md) - Robust volume meshing for "triangle soup".
 - [Mesh Refinement](mesh_refinement.md) - Subdivision and adaptive splitting.
 - [CoACD](coacd.md) - Approximate convex decomposition for collision shapes.
 - [Triangle to Quad](triangle_to_quad.md) - Converting triangle meshes to quad-dominant ones.
@@ -111,8 +116,10 @@ This directory contains detailed documentation for the algorithms implemented in
 - [Fast Marching Method](fast_marching_method.md) - Solving Eikonal equations for distance maps.
 - [Distance Map](distance_map.md) - Euclidean distance transforms on grids.
 - [Dijkstra's Algorithm](dijkstra.md) - Shortest paths on discrete graphs.
-- [Stochastic PDE](stochastic_pde.md) - Random fields and noise on meshes.
+- [Stochastic PDE](stochastic_pde.md) - Walk on Spheres/Stars solvers for meshless PDE.
+- [Shape Space Spectra](shape_space_spectra.md) - Learning spectral descriptors for shape analysis.
 - [Wave Kernel Signature](wave_kernel.md) - Spectral geometric descriptors.
+- [Odeco Frame Fields](odeco_frame_fields.md) - 3D anisotropic frame field design.
 - [K-Geodesics](k_geodesics.md) - Intrinsic K-means clustering on surfaces.
 - [Segment Intersection](segment_intersection.md) - Bentley-Ottmann sweep-line algorithm.
 - [Point Simplification](voxel_grid_decimation.md) - Reducing point cloud density.
