@@ -57,3 +57,4 @@ warn_unused_configs = true
 
 [tool.pytest.ini_options]
 filterwarnings = ["error", "default"]
+timeout = 30

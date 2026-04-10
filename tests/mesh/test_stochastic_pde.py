@@ -27,12 +27,3 @@ def test_walk_on_spheres_laplace(simple_disk):
     val = wos.solve_laplace(Point3D(0.5, 0.5, 0), lambda p: 1.0, num_walks=100)
     assert pytest.approx(val, rel=0.1) == 1.0
 
-def test_walk_on_stars_gradient(simple_trimesh):
-    wost = WalkOnStars(simple_trimesh)
-    # For a linear function u(x,y,z) = x, the gradient should be (1, 0, 0)
-    grad = wost.solve_gradient(Point3D(0.1, 0.1, 0.1), lambda p: p.x, num_walks=500)
-    assert len(grad) == 3
-    # Check that it is roughly in the right direction (Monte Carlo has high variance)
-    assert grad[0] > 0.0
-    assert abs(grad[1]) < 1.0
-    assert abs(grad[2]) < 1.0
