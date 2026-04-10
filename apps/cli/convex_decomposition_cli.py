@@ -4,7 +4,7 @@ import argparse
 from compgeom import Point2D
 from compgeom.polygon import convex_decompose_polygon
 from compgeom import OBJFileHandler, save_png, save_svg
-from _shared import read_input_lines, parse_points
+from ._shared import read_input_lines, parse_points
 
 
 def read_polygon(args) -> list[Point2D] | None:

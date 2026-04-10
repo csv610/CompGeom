@@ -36,6 +36,7 @@ def triangulate_polygon(
     diagonals: list[tuple[int, int]] = []
 
     while len(working_indices) > 3:
+        clipped_in_pass = False
         for offset, current in enumerate(working_indices):
             prev_index = working_indices[offset - 1]
             next_index = working_indices[(offset + 1) % len(working_indices)]
@@ -58,10 +59,14 @@ def triangulate_polygon(
                 }
             ):
                 diagonals.append(tuple(sorted((prev_index, next_index))))
+            
             working_indices.pop(offset)
             working_polygon.pop(offset)
+            clipped_in_pass = True
             break
-        else:
+        
+        if not clipped_in_pass:
+            # Could not find any more ears; polygon might be self-intersecting or degenerate
             break
 
     if len(working_indices) == 3:

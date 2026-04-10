@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import math
 from compgeom import SpaceFillingCurves
-from _shared import handle_walk_output
+from ._shared import handle_walk_output
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="2D Morton (Z-Order) Curve Walk.")

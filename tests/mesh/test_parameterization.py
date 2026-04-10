@@ -4,6 +4,19 @@ import math
 from compgeom.kernel import Point3D, Point2D
 from compgeom.mesh.surface.trimesh.trimesh import TriMesh
 from compgeom.mesh.surface.parameterization import MeshParameterization
+from compgeom.mesh.surface.parameterization_bff import BFFParameterizer
+
+@pytest.fixture
+def simple_disk():
+    # A single square patch triangulated (2 triangles)
+    verts = [Point3D(0,0,0), Point3D(1,0,0), Point3D(1,1,0), Point3D(0,1,0)]
+    faces = [(0, 1, 2), (0, 2, 3)]
+    return TriMesh(verts, faces)
+
+def test_bff_initialization(simple_disk):
+    bff = BFFParameterizer(simple_disk)
+    assert bff.num_v == 4
+    assert bff.L is not None
 
 def test_harmonic_map_quad():
     # Simple open surface: a quad split into two triangles

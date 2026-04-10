@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from compgeom import Point2D
 from compgeom.polygon.polygon_visibility import visible_boundary_segments
-from _shared import read_input_lines, parse_points
+from ._shared import read_input_lines, parse_points
 
 
 def format_point(point: Point2D) -> str:

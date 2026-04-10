@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict, Optional
 from compgeom.mesh.surface.trimesh.trimesh import TriMesh
 from compgeom.mesh.surface.halfedge_mesh import HalfEdgeMesh, HalfEdge
 
-class TriWildRemesher:
+class AngleBoundedRemesher:
     """
     Robust remeshing that aims to keep angles within specified bounds.
     """

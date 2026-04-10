@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from compgeom import approximate_medial_axis
-from _shared import read_input_lines, parse_points, format_point
+from ._shared import read_input_lines, parse_points, format_point
 
 
 def main(argv: list[str] | None = None) -> int:

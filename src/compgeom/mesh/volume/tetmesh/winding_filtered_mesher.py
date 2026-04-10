@@ -12,7 +12,7 @@ from compgeom.kernel import Point3D
 from compgeom.mesh.volume.tetmesh.tetmesh import TetMesh
 from compgeom.mesh.volume.tetmesh.delaunay_tetmesh import DelaunayTetMesher
 
-class RobustTetMesher:
+class WindingFilteredTetMesher:
     """
     Robustly tetrahedralizes a triangle mesh, even if it has self-intersections or holes.
     Uses a filtered tetrahedralization approach.

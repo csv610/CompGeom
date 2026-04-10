@@ -7,6 +7,7 @@ import random
 from typing import List, Optional
 
 from compgeom.kernel import Point2D, Point3D
+from compgeom.polygon.polygon import generate_points_in_triangle
 
 
 class PointSampler:
@@ -171,4 +172,18 @@ class PointSampler:
 
 __all__ = [
     "PointSampler",
+    "generate_points_in_circle",
+    "generate_points_in_rectangle",
 ]
+
+
+def generate_points_in_circle(center: Point2D, radius: float, n_points: int = 100) -> List[Point2D]:
+    """Uniformly samples points within a circle."""
+    return PointSampler.in_circle(center, radius, n_points)
+
+
+def generate_points_in_rectangle(
+    width: float, height: float, n_points: int = 100, center: Optional[Point2D] = None
+) -> List[Point2D]:
+    """Uniformly samples points within a rectangle."""
+    return PointSampler.in_rectangle(width, height, n_points, center)

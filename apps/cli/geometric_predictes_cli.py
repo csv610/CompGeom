@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from _shared import read_input_lines, parse_points
+from ._shared import read_input_lines, parse_points
 from compgeom import Point2D, contains_point, in_circle, orientation_sign
 
 

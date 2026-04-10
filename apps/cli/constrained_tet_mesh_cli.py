@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import numpy as np
 from compgeom.mesh import meshio, OBJFileHandler
-from compgeom.mesh.volume.tetmesh.robust_mesher import RobustTetMesher
+from compgeom.mesh.volume.tetmesh.winding_filtered_mesher import WindingFilteredTetMesher
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate a constrained tetrahedral mesh from a surface mesh.")
@@ -20,12 +20,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error reading input file: {e}")
         return 1
         
-    # RobustTetMesher expects numpy arrays
+    # WindingFilteredTetMesher expects numpy arrays
     vertices = np.array([[v.x, v.y, getattr(v, 'z', 0.0)] for v in mesh.vertices])
     faces = np.array([f.v_indices for f in mesh.faces])
     
     print(f"Generating tetrahedral mesh (refinement={args.refine})...")
-    mesher = RobustTetMesher(vertices, faces)
+    mesher = WindingFilteredTetMesher(vertices, faces)
     tet_mesh = mesher.mesh(refinement_factor=args.refine)
     
     print(f"Tetrahedralization complete: {len(tet_mesh.vertices)} vertices, {len(tet_mesh.cells)} tetrahedra.")

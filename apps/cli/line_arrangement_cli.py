@@ -5,7 +5,7 @@ import math
 import sys
 
 from compgeom import EPSILON, Point2D, cross_product, is_on_segment, length, sub
-from _shared import read_input_lines
+from ._shared import read_input_lines
 
 
 def point_key(point: Point2D) -> tuple[int, int]:

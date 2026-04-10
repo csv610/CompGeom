@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from compgeom import Point2D
-from _shared import read_input_lines
+from ._shared import read_input_lines
 from compgeom.algo.path import shortest_path
 
 

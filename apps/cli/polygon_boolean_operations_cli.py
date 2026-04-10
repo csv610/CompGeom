@@ -3,11 +3,10 @@ from __future__ import annotations
 import argparse
 import sys
 
-sys.path.insert(0, "/Users/csv610/Projects/CompGeom/CompGeom/apps/cli")
 from compgeom import EPSILON, Point2D, length, sub
 from compgeom.polygon import is_point_in_polygon
-from _shared import read_input_lines, parse_points
-from line_arrangement_cli import analyze_arrangement
+from ._shared import read_input_lines, parse_points
+from .line_arrangement_cli import analyze_arrangement
 
 
 def signed_area(polygon):
@@ -370,7 +369,7 @@ def format_point(point):
 
 
 def parse_polygon(lines, unused_arg=0):
-    from _shared import parse_points
+    from ._shared import parse_points
     from compgeom.polygon import Polygon
 
     if lines and len(lines) > 0:

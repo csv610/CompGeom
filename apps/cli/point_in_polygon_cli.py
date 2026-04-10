@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from compgeom import Point2D
-from _shared import read_input_lines, parse_points, visualize_with_pyvista
+from ._shared import read_input_lines, parse_points, visualize_with_pyvista
 from compgeom.polygon.polygon_metrics import is_point_in_polygon
 
 

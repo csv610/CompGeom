@@ -1125,7 +1125,10 @@ def test_line_arrangement_cli_helpers_and_main(capsys):
         line_cli.parse_segments(["0 0 1"])
 
     assert line_cli.format_point(Point2D(1, 2)) == "(1.000000, 2.000000)"
-    assert line_cli.main([]) == 0
+    from unittest.mock import patch
+    import io
+    with patch("sys.stdin", io.StringIO("0 0 1 1\n0 1 1 0\n")):
+        assert line_cli.main([]) == 0
     out = capsys.readouterr().out
     assert "Intersection Points:" in out
     assert "Non-Intersecting Segments:" in out

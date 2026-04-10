@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from _shared import read_input_lines, parse_points
+from ._shared import read_input_lines, parse_points
 from compgeom.algo.points_sampling import PointSampler
 
 

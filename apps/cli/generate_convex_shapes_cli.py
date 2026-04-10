@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from compgeom.polygon import generate_convex_polygon
-from _shared import visualize_with_pyvista
+from ._shared import visualize_with_pyvista
 
 
 def main(argv: list[str] | None = None) -> int:

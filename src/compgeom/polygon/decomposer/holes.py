@@ -13,18 +13,20 @@ def triangulate_polygon_with_holes(
 ) -> tuple[list[tuple[Point2D, Point2D, Point2D]], list[Point2D]]:
     """Triangulates a polygonal domain with holes."""
     holes = holes or []
-    merged_polygon = Polygon(outer_boundary).ensure_ccw()
+    # Create the merged polygon with bridges
+    merged_polygon_list = list(Polygon(outer_boundary).ensure_ccw().as_list())
     for hole in holes:
-        merged_polygon = Polygon(
-            _splice_hole(merged_polygon.as_list(), Polygon(hole).ensure_cw().as_list())
-        )
+        merged_polygon_list = _splice_hole(merged_polygon_list, Polygon(hole).ensure_cw().as_list())
 
-    triangle_indices, _, merged_vertices = triangulate_polygon(merged_polygon.as_list())
+    # Triangulate this merged polygon
+    triangle_indices, _, _ = triangulate_polygon(merged_polygon_list)
     triangles = [
-        tuple(merged_vertices[index] for index in triangle)
+        tuple(merged_polygon_list[index] for index in triangle)
         for triangle in triangle_indices
     ]
-    return triangles, merged_vertices
+    # We return the merged_polygon_list because it's the sequence of vertices 
+    # forming the boundary (with bridges) of the triangulated domain.
+    return triangles, merged_polygon_list
 
 
 def _splice_hole(outer: list[Point2D], hole: list[Point2D]) -> list[Point2D]:

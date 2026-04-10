@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from _shared import read_input_lines, parse_point_fields
+from ._shared import read_input_lines, parse_point_fields
 from compgeom.mesh import DelaunayMesher, build_topology
 
 

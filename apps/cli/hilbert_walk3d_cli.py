@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import math
 from compgeom import SpaceFillingCurves
-from _shared import handle_walk3d_output
+from ._shared import handle_walk3d_output
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="3D Hilbert Curve Walk.")

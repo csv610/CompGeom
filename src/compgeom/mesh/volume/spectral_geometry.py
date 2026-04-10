@@ -91,3 +91,23 @@ class SpectralGeometry:
         # Normalize HKS for scale invariance
         hks /= np.sum(hks, axis=1, keepdims=True)
         return hks
+
+    @staticmethod
+    def compute_diffusion_embedding(mesh: SurfaceMesh, t: float, k: int = 100) -> np.ndarray:
+        """
+        Computes the diffusion embedding at time t.
+        The Euclidean distance in this embedding space is the diffusion distance.
+        Returns array of shape (num_vertices, k).
+        """
+        evals, evecs = SpectralGeometry.compute_eigenstructures(mesh, k=k)
+        # Coordinates: exp(-lambda_j * t) * phi_j(x)
+        embedding = evecs * np.exp(-evals * t)
+        return embedding
+
+    @staticmethod
+    def compute_diffusion_distance(mesh: SurfaceMesh, i: int, j: int, t: float, k: int = 100) -> float:
+        """
+        Computes the diffusion distance between vertex i and vertex j at time t.
+        """
+        emb = SpectralGeometry.compute_diffusion_embedding(mesh, t, k)
+        return float(np.linalg.norm(emb[i] - emb[j]))

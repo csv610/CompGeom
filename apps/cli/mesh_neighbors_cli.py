@@ -4,7 +4,7 @@ import argparse
 
 from compgeom import Point2D
 from compgeom import mesh_neighbors
-from _shared import read_input_lines, parse_point_fields
+from ._shared import read_input_lines, parse_point_fields
 
 
 def parse_mesh_query(lines: list[str]) -> tuple[list[tuple[Point2D, Point2D, Point2D]], int | None, int | None]:

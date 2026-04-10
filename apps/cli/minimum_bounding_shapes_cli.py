@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from compgeom import minimum_bounding_box, minimum_enclosing_circle
-from _shared import read_input_lines, parse_points, format_point
+from ._shared import read_input_lines, parse_points, format_point
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -10,7 +10,7 @@ from compgeom import (
     save_png,
     save_svg,
 )
-from _shared import read_input_lines, parse_points
+from ._shared import read_input_lines, parse_points
 
 
 def read_polygon(args) -> list[Point2D] | None:

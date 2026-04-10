@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from compgeom import Point2D, dist_point_to_segment, is_point_in_polygon
-from _shared import read_input_lines, parse_points
+from ._shared import read_input_lines, parse_points
 
 
 def _polygon_distance(polygon_a: list[Point2D], polygon_b: list[Point2D]) -> float:

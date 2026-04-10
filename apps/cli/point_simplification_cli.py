@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import time
 from compgeom import PointSimplifier
-from _shared import read_input_lines, parse_points
+from ._shared import read_input_lines, parse_points
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Simplify a point set (decimation).")

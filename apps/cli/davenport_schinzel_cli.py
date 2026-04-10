@@ -4,7 +4,7 @@ import argparse
 from compgeom import Point2D
 from compgeom import DavenportSchinzel
 from compgeom import save_svg, save_png
-from _shared import read_input_lines, parse_points
+from ._shared import read_input_lines, parse_points
 
 def parse_segments(lines: list[str]) -> list[tuple[Point2D, Point2D]]:
     segments = []

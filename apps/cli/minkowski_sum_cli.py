@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from _shared import read_input_lines, parse_points, visualize_with_pyvista
+from ._shared import read_input_lines, parse_points, visualize_with_pyvista
 from compgeom.mesh.polygon.minkowski import MinkowskiSum
 
 

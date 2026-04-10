@@ -112,6 +112,21 @@ def parse_points(lines: list[str]) -> list[Point2D]:
     return points
 
 
+def parse_input(lines: list[str]) -> tuple[Point2D, Point2D, list[Point2D]]:
+    """Parses origin, direction, and polygon from a list of lines."""
+    if len(lines) < 3:
+        raise ValueError("Need at least 3 lines: origin, direction, polygon")
+    origin = _parse_point(lines[0], "origin")
+    direction = _normalize(_parse_point(lines[1], "direction"))
+    polygon = parse_points(lines[2:])
+    
+    from compgeom.polygon import is_point_in_polygon
+    if not is_point_in_polygon(origin, polygon):
+        raise ValueError("Origin must be inside or on the boundary of the polygon")
+        
+    return origin, direction, polygon
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Simulate ray reflections in a polygon."
