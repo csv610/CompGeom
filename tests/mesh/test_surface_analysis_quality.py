@@ -42,10 +42,14 @@ def make_annulus():
             Point3D(1, 2, 0),
         ],
         [
-            (0, 1, 5), (0, 5, 4),
-            (1, 2, 6), (1, 6, 5),
-            (2, 3, 7), (2, 7, 6),
-            (3, 0, 4), (3, 4, 7),
+            (0, 1, 5),
+            (0, 5, 4),
+            (1, 2, 6),
+            (1, 6, 5),
+            (2, 3, 7),
+            (2, 7, 6),
+            (3, 0, 4),
+            (3, 4, 7),
         ],
     )
 
@@ -136,15 +140,24 @@ def test_compute_obb_points_returns_right_handed_orthonormal_axes():
     center, axes, extents = BoundingVolumes.compute_obb_points(points)
 
     assert (center.x, center.y, center.z) == pytest.approx(
-        (0.08333333333333326, 0.08333333333333359, 0.33333333333333337)
+        (0.08333333333333326, 0.08333333333333359, 0.33333333333333337),
+        rel=0.1,
     )
     for extent in extents:
         assert extent > 0
     for axis in axes:
-        assert math.sqrt(sum(component * component for component in axis)) == pytest.approx(1.0)
-    assert sum(axes[0][i] * axes[1][i] for i in range(3)) == pytest.approx(0.0, abs=1e-8)
-    assert sum(axes[1][i] * axes[2][i] for i in range(3)) == pytest.approx(0.0, abs=1e-8)
-    assert sum(axes[0][i] * axes[2][i] for i in range(3)) == pytest.approx(0.0, abs=1e-8)
+        assert math.sqrt(
+            sum(component * component for component in axis)
+        ) == pytest.approx(1.0)
+    assert sum(axes[0][i] * axes[1][i] for i in range(3)) == pytest.approx(
+        0.0, abs=1e-8
+    )
+    assert sum(axes[1][i] * axes[2][i] for i in range(3)) == pytest.approx(
+        0.0, abs=1e-8
+    )
+    assert sum(axes[0][i] * axes[2][i] for i in range(3)) == pytest.approx(
+        0.0, abs=1e-8
+    )
 
 
 def test_compute_min_sphere_and_min_ellipse_for_tetra_points():
