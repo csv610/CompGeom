@@ -98,7 +98,7 @@ class WalkOnSpheres:
         return total_val / num_walks
 
     def _find_closest_point(self, x: np.ndarray) -> Point3D:
-        """Finds the closest point on the mesh to x."""
+        """Finds the closest point on the mesh boundary to x."""
         # Simple implementation: find closest triangle and then closest point on it.
         # This is a bit slow but robust for the Walk on Spheres logic.
         min_dist_sq = float('inf')
@@ -108,16 +108,19 @@ class WalkOnSpheres:
         for face in self.mesh.faces:
             v_idx = face.v_indices
             v0 = self.mesh.vertices[v_idx[0]]
-            p0 = (v0.x, v0.y, v0.z)
+            v1 = self.mesh.vertices[v_idx[1]]
+            v2 = self.mesh.vertices[v_idx[2]]
             
-            # Find closest point on triangle (p0, p1, p2) to (px, py, pz)
-            # For brevity, we take the centroid or vertex as a rough hit point if epsilon is small.
-            # In production, we'd use exact point-triangle projection.
-            d_sq = sum((x[i] - p0[i])**2 for i in range(3))
-            if d_sq < min_dist_sq:
-                min_dist_sq = d_sq
-                closest_p = v0
-                
+            # Simple approximation: use the average of vertices if we are close to the face.
+            # In a real implementation, we would project x onto the triangle.
+            # Here we just take the closest vertex as a placeholder but we can do better
+            # by checking all 3 vertices.
+            for v in [v0, v1, v2]:
+                d_sq = (px - v.x)**2 + (py - v.y)**2 + (pz - v.z)**2
+                if d_sq < min_dist_sq:
+                    min_dist_sq = d_sq
+                    closest_p = v
+                    
         return closest_p
 
 class WalkOnStars(WalkOnSpheres):
@@ -133,29 +136,25 @@ class WalkOnStars(WalkOnSpheres):
         Estimates the gradient grad u(x) using the Boundary Integral Equation (BIE).
         Based on Yu et al., "Robust Derivative Estimation with Walk on Stars", 2025.
         """
-        total_grad = np.zeros(3)
         if isinstance(point, Point3D):
             p_start = np.array([point.x, point.y, point.z])
         else:
             p_start = np.array(point)
         
-        for _ in range(num_walks):
-            # To estimate gradient, we perform a walk that contributes to the BIE.
-            # For simplicity, we use the 'Finite Difference' Monte Carlo proxy 
-            # which is common in practical WoSt implementations.
-            eps = self.epsilon * 10
-            grad_walk = np.zeros(3)
-            for i in range(3):
-                offset = np.zeros(3)
-                offset[i] = eps
-                # Value at x + eps
-                v_plus = self.solve_laplace(p_start + offset, boundary_values, num_walks=100)
-                # Value at x - eps
-                v_minus = self.solve_laplace(p_start - offset, boundary_values, num_walks=100)
-                grad_walk[i] = (v_plus - v_minus) / (2 * eps)
-            total_grad += grad_walk
+        # To estimate gradient, we use the 'Finite Difference' Monte Carlo proxy.
+        # We call solve_laplace with the requested num_walks for each direction.
+        eps = self.epsilon * 10
+        grad = np.zeros(3)
+        for i in range(3):
+            offset = np.zeros(3)
+            offset[i] = eps
+            # Value at x + eps
+            v_plus = self.solve_laplace(p_start + offset, boundary_values, num_walks=num_walks)
+            # Value at x - eps
+            v_minus = self.solve_laplace(p_start - offset, boundary_values, num_walks=num_walks)
+            grad[i] = (v_plus - v_minus) / (2 * eps)
             
-        return total_grad / num_walks
+        return grad
 
     def _get_star_radius(self, x: np.ndarray) -> float:
         """Computes the radius of the largest star-shaped region centered at x."""
