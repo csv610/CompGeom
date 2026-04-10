@@ -6,6 +6,7 @@ from compgeom import mesh
 from compgeom import polygon
 from compgeom import algo
 from compgeom import graphics
+from compgeom import algebraic
 
 # 2. Flattened API - Foundations
 from compgeom.kernel import *
@@ -33,4 +34,5 @@ from compgeom.polygon import *
 
 # Build comprehensive __all__
 import sys
-__all__ = [name for name in dir() if not name.startswith('_') and name not in ['sys']]
+
+__all__ = [name for name in dir() if not name.startswith("_") and name not in ["sys"]]

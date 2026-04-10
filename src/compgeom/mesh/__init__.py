@@ -28,11 +28,20 @@ from compgeom.mesh.mesh import (
     QuadMesh,
     SurfaceMesh,
     TetMesh,
-    TriMesh
+    TriMesh,
 )
 from compgeom.mesh.edge_mesh import EdgeMesh
 from compgeom.mesh.algorithms.mesh_coloring import MeshColoring
-from compgeom.mesh.meshio import MeshImporter, MeshExporter, OBJFileHandler, OFFFileHandler, STLFileHandler, PLYFileHandler, from_file, to_file
+from compgeom.mesh.meshio import (
+    MeshImporter,
+    MeshExporter,
+    OBJFileHandler,
+    OFFFileHandler,
+    STLFileHandler,
+    PLYFileHandler,
+    from_file,
+    to_file,
+)
 from compgeom.mesh.surface.trimesh.mesh_refinement import TriMeshRefiner
 from compgeom.mesh.algorithms.mesh_reordering import CuthillMcKee, MeshReorderer
 from compgeom.mesh.algorithms.mesh_transfer import MeshTransfer
@@ -82,6 +91,7 @@ from compgeom.mesh.volume.volume_quality import TetMeshQuality
 from compgeom.mesh.surface.mesh_booleans import MeshBooleans
 
 from compgeom.mesh.polygon.polygon_booleans import PolygonBooleans
+
 
 __all__ = [
     "AABBTree",
