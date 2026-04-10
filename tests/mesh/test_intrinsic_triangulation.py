@@ -2,7 +2,7 @@
 import pytest
 import math
 from compgeom.mesh.surface.trimesh.trimesh import TriMesh
-from compgeom.mesh.surface.intrinsic_triangulation import IntrinsicTriangulation
+from compgeom.mesh.surface.trimesh.intrinsic_triangulation import IntrinsicTriangulation
 from compgeom.kernel import Point3D
 
 def test_intrinsic_delaunay_flat_rectangle():

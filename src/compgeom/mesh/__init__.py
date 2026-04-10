@@ -45,7 +45,9 @@ from compgeom.mesh.algorithms.coacd import CoACD
 from compgeom.mesh.algorithms.dec import DEC
 from compgeom.mesh.algorithms.discrete_morse import DiscreteMorse
 from compgeom.mesh.algorithms.hodge_theory import HodgeDecomposition
-from compgeom.mesh.surface.intrinsic_triangulation import IntrinsicTriangulation
+from compgeom.mesh.surface.trimesh.intrinsic_triangulation import IntrinsicTriangulation
+from compgeom.mesh.surface.trimesh.non_obtuse_triangulation import NonObtuseTriangulator
+from compgeom.mesh.surface.trimesh.binary_image_triangulation import BinaryImageTriangulation
 from compgeom.mesh.surface.parameterization_lscm import LSCMParameterizer
 from compgeom.mesh.surface.ricci_flow import RicciFlow
 from compgeom.mesh.surface.conformal_equivalence import DiscreteConformalEquivalence
@@ -86,6 +88,7 @@ __all__ = [
     "AlphaShape",
     "AdaptiveRemesher",
     "bilateral_smoothing",
+    "BinaryImageTriangulation",
     "BoundingVolumes",
     "catmull_clark",
     "ConvexHull3D",
@@ -117,6 +120,7 @@ __all__ = [
     "mesh_clipping",
     "mesh_offset",
     "MinkowskiSum",
+    "NonObtuseTriangulator",
     "orient_normals_outward",
     "PolygonBooleans",
     "PolygonTriangulation",

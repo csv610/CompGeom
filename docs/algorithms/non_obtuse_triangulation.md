@@ -18,7 +18,7 @@ In `CompGeom`, the `NonObtuseTriangulator` uses an iterative Steiner point inser
 ## Usage
 
 ```python
-from compgeom.mesh.surface.non_obtuse_triangulation import NonObtuseTriangulator
+from compgeom.mesh.surface.trimesh.non_obtuse_triangulation import NonObtuseTriangulator
 from compgeom import Point2D
 
 pts = [Point2D(0, 0), Point2D(10, 0), Point2D(5, 0.1)] # Very obtuse triangle

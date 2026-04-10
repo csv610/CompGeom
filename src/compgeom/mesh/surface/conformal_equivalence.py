@@ -10,7 +10,7 @@ from typing import List, Tuple, Optional
 from scipy.optimize import minimize
 
 from compgeom.mesh.surface.trimesh.trimesh import TriMesh
-from compgeom.mesh.surface.intrinsic_triangulation import IntrinsicTriangulation
+from compgeom.mesh.surface.trimesh.intrinsic_triangulation import IntrinsicTriangulation
 
 class DiscreteConformalEquivalence:
     """

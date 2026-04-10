@@ -3,7 +3,7 @@
 import pytest
 from compgeom.kernel import Point2D, Point3D
 from compgeom.mesh.surface.trimesh.trimesh import TriMesh
-from compgeom.mesh.surface.non_obtuse_triangulation import NonObtuseTriangulator
+from compgeom.mesh.surface.trimesh.non_obtuse_triangulation import NonObtuseTriangulator
 from compgeom.mesh.surface.angle_bounded_remesher import AngleBoundedRemesher
 
 @pytest.fixture
