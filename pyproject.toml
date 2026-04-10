@@ -13,6 +13,7 @@ dependencies = [
     # Core scientific computing
     "numpy",
     "scipy",
+    "opencv-python",
 ]
 
 [project.optional-dependencies]
