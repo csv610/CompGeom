@@ -114,7 +114,14 @@ from compgeom.mesh.surface.non_euclidean import (
 )
 
 from compgeom.mesh.surface.mesh_analysis import MeshAnalysis
-from compgeom.mesh.surface.processing import *
+from compgeom.mesh.surface.subdivision import *
+from compgeom.mesh.surface.smoothing import *
+from compgeom.mesh.surface.geometry import *
+from compgeom.mesh.surface.mesh_processing import MeshProcessing
+
+fill_holes = MeshProcessing.fill_holes
+fix_normals = MeshProcessing.fix_normals
+flip_normals = MeshProcessing.flip_normals
 from compgeom.mesh.surface.repair import *
 from compgeom.mesh.surface.mesh_queries import MeshQueries
 from compgeom.mesh.surface.spatial_acceleration import AABBTree
@@ -152,6 +159,7 @@ __all__ = [
     "BinaryImageTriangulation",
     "BoundingVolumes",
     "catmull_clark",
+    "doo_sabin",
     "ConvexHull3D",
     "CuthillMcKee",
     "CoACD",
@@ -176,6 +184,11 @@ __all__ = [
     "IntrinsicTriangulation",
     "laplacian_smoothing",
     "loop_subdivision",
+    "sqrt3_subdivision",
+    "butterfly_subdivision",
+    "modified_butterfly_subdivision",
+    "kobbelt_subdivision",
+    "midedge_subdivision",
     "LSCMParameterizer",
     "ManifoldValidator",
     "ManifoldFixer",

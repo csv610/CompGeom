@@ -6,7 +6,8 @@ from typing import List, Tuple, Set, Dict
 
 from compgeom.mesh.surface.trimesh.trimesh import TriMesh
 from compgeom.kernel import Point3D
-from compgeom.mesh.surface.processing import laplacian_smoothing
+from compgeom.mesh.surface.mesh_processing import MeshProcessing
+from compgeom.mesh.surface.curvature import MeshCurvature
 
 
 class IsotropicRemesher:
@@ -23,8 +24,7 @@ class AdaptiveRemesher:
         Adapts triangle density to surface curvature.
         Sharp areas get min_edge, flat areas get max_edge.
         """
-        from compgeom.mesh.surface.curvature import MeshCurvature
-        from compgeom.mesh.surface.processing import laplacian_smoothing
+        from compgeom.mesh.surface.smoothing import laplacian_smoothing
 
         current_mesh = mesh
         for _ in range(iterations):
@@ -50,7 +50,7 @@ class AdaptiveRemesher:
             current_mesh = AdaptiveRemesher._adaptive_collapse(current_mesh, sizing_field)
 
             # 4. Tangential Relaxation
-            current_mesh = laplacian_smoothing(current_mesh, iterations=1)
+            current_mesh = MeshProcessing.laplacian_smoothing(current_mesh, iterations=1)
 
         return current_mesh
 
