@@ -6,14 +6,17 @@ from collections import deque
 from typing import List, Tuple, Sequence
 
 from compgeom.kernel import Point2D
+from compgeom.mesh.edge_mesh import EdgeMesh
 from compgeom.polygon.polygon import Polygon
 from compgeom.polygon.decomposer import triangulate_polygon
 
 
-def art_gallery_guards(polygon: Polygon | Sequence[Point2D]) -> List[Point2D]:
+def art_gallery_guards(polygon: Polygon | Sequence[Point2D] | EdgeMesh) -> List[Point2D]:
     """
     Solves the art gallery problem for a simple polygon.
     """
+    if isinstance(polygon, EdgeMesh):
+        polygon = [Point2D(node.point.x, node.point.y) for node in polygon.nodes]
     poly_list = polygon.as_list() if isinstance(polygon, Polygon) else list(polygon)
     triangles, _, vertices = triangulate_polygon(poly_list)
     return guard_polygon(triangles, vertices)

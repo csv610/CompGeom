@@ -14,10 +14,10 @@ class PointSampler:
     """Class for sampling points from different geometric domains."""
 
     @staticmethod
-    def in_circle(center: Point2D, radius: float, n_points: int = 100) -> List[Point2D]:
+    def in_circle(count: int, radius: float, center: Point2D) -> List[Point2D]:
         """Samples points uniformly from the interior of a circle."""
         points = []
-        for index in range(n_points):
+        for index in range(count):
             angle = random.uniform(0.0, 2.0 * math.pi)
             distance = radius * math.sqrt(random.random())
             points.append(
@@ -130,9 +130,7 @@ class PointSampler:
         return points
 
     @staticmethod
-    def in_cube(
-        side_length: float, n_points: int = 100, center: Optional[Point3D] = None
-    ) -> List[Point3D]:
+    def in_cube(side_length: float, n_points: int = 100, center: Optional[Point3D] = None) -> List[Point3D]:
         """Samples points uniformly from the interior of a cube."""
         center = center or Point3D(0.0, 0.0, 0.0)
         half_side = side_length / 2.0

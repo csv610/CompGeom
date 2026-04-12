@@ -2,27 +2,29 @@ from __future__ import annotations
 
 import argparse
 
-from compgeom import closest_pair
-from ._shared import read_input_lines, parse_points
+from compgeom.algo.proximity import closest_pair
+from compgeom.mesh.meshio import MeshImporter
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Find the closest pair in a point set.")
-    parser.add_argument("input", nargs="?", help="Path to input file (optional, reads from stdin if omitted).")
+    parser = argparse.ArgumentParser(
+        description="Find the closest pair in a point set."
+    )
+    parser.add_argument("input", help="Path to input mesh file")
     args = parser.parse_args(argv)
 
-    lines = read_input_lines(args.input)
-    if not lines:
-        # Provide demo points for regression tests if no input
-        lines = ["0 0", "1 1", "0 0.000001"]
-
-    points = parse_points(lines)
-    if not points:
-        print("Error: Could not parse points from input.")
+    try:
+        mesh = MeshImporter.read(args.input)
+    except Exception as e:
+        print(f"Error reading file: {e}")
         return 1
 
-    dist, (p1, p2) = closest_pair(points)
-    print(f"Closest Pair: {p1} and {p2}\nDistance:     {dist:.6f}")
+    if not mesh.vertices:
+        print("Error: No points in mesh.")
+        return 1
+
+    (p1, p2), dist = closest_pair(mesh)
+    print(f"Closest Pair: {p1} and {p2}\n Distance:     {dist:.6f}")
     return 0
 
 

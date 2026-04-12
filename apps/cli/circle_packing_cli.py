@@ -1,99 +1,43 @@
 from __future__ import annotations
 
 import argparse
-from compgeom import (
-    Point2D,
-    pack_circles,
-    calculate_circle_packing_efficiency,
-    visualize_circle_packing,
-    OBJFileHandler,
-    save_png,
-    save_svg,
-)
-from ._shared import read_input_lines, parse_points
-
-
-def read_polygon(args) -> list[Point2D] | None:
-    if args.obj:
-        print(f"Reading polygon from {args.obj}...")
-        try:
-            mesh = OBJFileHandler.read(args.obj)
-            return [Point2D(v.x, v.y) for v in mesh.vertices]
-        except Exception as e:
-            print(f"Error reading file: {e}")
-            return None
-
-    if args.poly:
-        try:
-            raw = [float(x) for x in args.poly]
-            if len(raw) % 2 != 0:
-                print("Error: Polygon needs pairs of coordinates (x1 y1).")
-                return None
-            return [Point2D(raw[i], raw[i + 1]) for i in range(0, len(raw), 2)]
-        except ValueError:
-            print("Error: Coordinates must be numeric.")
-            return None
-
-    lines = read_input_lines(args.input)
-    if lines:
-        return parse_points(lines)
-
-    return None
+import json
+from compgeom import pack_circles
+from compgeom.mesh.meshio import MeshImporter
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Pack circles into a closed polygon.")
-    parser.add_argument("input", nargs="?", help="Path to input file (optional, reads from stdin if omitted).")
-    parser.add_argument("-f", "--obj", help="Path to input OBJ file defining the polygon")
-    parser.add_argument("-p", "--poly", nargs="+", help="Polygon vertices as x1 y1 x2 y2 ...")
+    parser.add_argument("input", help="Path to input mesh file")
     parser.add_argument(
         "-r", "--radius", type=float, default=0.5, help="Radius of circles to pack"
     )
     parser.add_argument(
+        "-o",
         "--output",
-        default="circle_packing.png",
-        help="Output visualization file (.svg or .png)",
+        default="circle_packing.json",
+        help="Output JSON file",
     )
 
     args = parser.parse_args(argv)
 
-    polygon = read_polygon(args)
-    if not polygon:
-        print(
-            "Error: No polygon provided. Use --input, --poly, or pipe vertices to stdin."
-        )
+    try:
+        mesh = MeshImporter.read(args.input)
+    except Exception as e:
+        print(f"Error reading file: {e}")
         return 1
 
-    print(
-        f"Packing circles of radius {args.radius} into polygon with {len(polygon)} vertices..."
-    )
+    result = pack_circles(mesh, args.radius)
 
-    centers = pack_circles(polygon, args.radius)
-    efficiency = calculate_circle_packing_efficiency(polygon, centers, args.radius)
+    output = {
+        "centers": [{"x": c.x, "y": c.y} for c in result.centers],
+        "efficiency": result.efficiency,
+        "radius": result.radius,
+    }
 
-    print(f"\nResults:")
-    print(f"  Circles Packed:     {len(centers)}")
-    print(f"  Packing Efficiency: {efficiency:.2f}%")
-
-    print("\nCircle Centers (First 10):")
-    for i, c in enumerate(centers[:10]):
-        print(f"  {i + 1:2}: ({c.x:.4f}, {c.y:.4f})")
-    if len(centers) > 10:
-        print(f"  ... and {len(centers) - 10} more.")
-
-    svg = visualize_circle_packing(polygon, centers, args.radius)
-
-    if args.output.lower().endswith(".png"):
-        try:
-            save_png(svg, args.output)
-            print(f"\nSaved visualization to {args.output}")
-        except Exception as e:
-            print(f"\nWarning: Could not save PNG ({e}). Saving as SVG.")
-            out_svg = args.output.rsplit(".", 1)[0] + ".svg"
-            save_svg(svg, out_svg)
-    else:
-        save_svg(svg, args.output)
-        print(f"\nSaved visualization to {args.output}")
+    with open(args.output, "w") as f:
+        json.dump(output, f, indent=2)
+    print(f"Saved results to {args.output}")
 
     return 0
 

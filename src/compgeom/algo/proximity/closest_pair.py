@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
-from compgeom.kernel import Point2D, distance
+from compgeom.kernel import Point2D, Point3D, distance, distance_3d
+
+PointList = List[Union[Point2D, Point3D]]
 
 __all__ = [
     "closest_pair_divide_and_conquer",
@@ -12,28 +14,33 @@ __all__ = [
 
 
 def closest_pair_divide_and_conquer(
-    points: List[Point2D],
-) -> Tuple[float, Tuple[Optional[Point2D], Optional[Point2D]]]:
-    """Traditional O(N log N) divide and conquer algorithm."""
+    points: PointList,
+) -> Tuple[float, Tuple[Optional[Any], Optional[Any]]]:
+    """Traditional O(N log N) divide and conquer algorithm for 2D or 3D points."""
     if not points:
         return float("inf"), (None, None)
+
+    is_3d = points and isinstance(points[0], Point3D)
+    dist_fn: Callable[[Any, Any], float] = distance_3d if is_3d else distance
 
     points_x = sorted(points, key=lambda p: p.x)
     points_y = sorted(points, key=lambda p: p.y)
 
-    return _closest_pair_divide_and_conquer_recursive(points_x, points_y)
+    return _closest_pair_recursive(points_x, points_y, dist_fn)
 
 
-def _closest_pair_divide_and_conquer_recursive(
-    points_x: List[Point2D], points_y: List[Point2D]
-) -> Tuple[float, Tuple[Optional[Point2D], Optional[Point2D]]]:
+def _closest_pair_recursive(
+    points_x: PointList,
+    points_y: PointList,
+    dist_fn: Callable[[Any, Any], float],
+) -> Tuple[float, Tuple[Optional[Any], Optional[Any]]]:
     n = len(points_x)
     if n <= 3:
         min_dist = float("inf")
         pair = (None, None)
         for i in range(n):
             for j in range(i + 1, n):
-                d = distance(points_x[i], points_x[j])
+                d = dist_fn(points_x[i], points_x[j])
                 if d < min_dist:
                     min_dist = d
                     pair = (points_x[i], points_x[j])
@@ -42,15 +49,12 @@ def _closest_pair_divide_and_conquer_recursive(
     mid = n // 2
     mid_point = points_x[mid]
 
-    # Better way to split points_y in O(n):
     left_set = set(points_x[:mid])
     points_y_left = [p for p in points_y if p in left_set]
     points_y_right = [p for p in points_y if p not in left_set]
 
-    d1, pair1 = _closest_pair_divide_and_conquer_recursive(points_x[:mid], points_y_left)
-    d2, pair2 = _closest_pair_divide_and_conquer_recursive(
-        points_x[mid:], points_y_right
-    )
+    d1, pair1 = _closest_pair_recursive(points_x[:mid], points_y_left, dist_fn)
+    d2, pair2 = _closest_pair_recursive(points_x[mid:], points_y_right, dist_fn)
 
     if d1 < d2:
         best_d, best_pair = d1, pair1
@@ -63,7 +67,7 @@ def _closest_pair_divide_and_conquer_recursive(
         for j in range(i + 1, len(strip)):
             if strip[j].y - strip[i].y >= best_d:
                 break
-            d = distance(strip[i], strip[j])
+            d = dist_fn(strip[i], strip[j])
             if d < best_d:
                 best_d = d
                 best_pair = (strip[i], strip[j])
@@ -127,6 +131,13 @@ def closest_pair_grid_based(
     return best_d, best_pair
 
 
-def closest_pair(points: List[Point2D]):
+def closest_pair(points: List[Point2D] | Mesh) -> tuple[tuple[Point2D, Point2D], float]:
     """Wrapper for closest_pair_divide_and_conquer."""
-    return closest_pair_divide_and_conquer(points)
+    from compgeom.kernel import Point2D
+    from compgeom.mesh.edge_mesh import EdgeMesh
+    from compgeom.mesh.mesh import Mesh
+
+    if isinstance(points, (Mesh, EdgeMesh)):
+        points = [node.point for node in points.nodes]
+    dist, pair = closest_pair_divide_and_conquer(points)
+    return pair, dist
