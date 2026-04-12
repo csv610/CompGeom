@@ -6,8 +6,7 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple, TYPE_CHECKING, Any
 
 from compgeom.kernel import Point2D, Point3D
-from compgeom.mesh.surface.trimesh.trimesh import TriMesh
-from compgeom.mesh.mesh_base import Mesh
+from compgeom.mesh.mesh_base import Mesh, MeshFace, MeshEdge
 
 if TYPE_CHECKING:
     from compgeom.mesh.mesh_base import Mesh
@@ -18,6 +17,7 @@ def mesh_neighbors(triangles: list[tuple[Any, ...]]) -> dict:
     Computes neighbor relationships for a list of triangles.
     Returns a dict with 'vertex_neighbors' and 'triangle_neighbors'.
     """
+    from compgeom.mesh.surface.trimesh.trimesh import TriMesh
 
     # 1. Flatten triangles into unique vertices and faces
     unique_points = []
@@ -63,7 +63,7 @@ def get_mesh_edges(triangles: list[tuple[Any, ...]]) -> set[tuple[int, int]]:
     for tri in triangles:
         n = len(tri)
         for i in range(n):
-            u, v = tri[i].id, tri[(i + 1) % n].id
+            u, v = getattr(tri[i], "id", i), getattr(tri[(i + 1) % n], "id", (i + 1) % n)
             edges.add(tuple(sorted((u, v))))
     return edges
 
@@ -80,14 +80,7 @@ class MeshTopology:
 
     @staticmethod
     def extract_edges(faces: List[MeshFace]) -> List[MeshEdge]:
-        """Extracts unique edges from faces.
-
-        Args:
-            faces: List of MeshFace objects (from surface mesh or extracted from cells).
-
-        Returns:
-            List of unique MeshEdge objects.
-        """
+        """Extracts unique edges from faces."""
         from compgeom.mesh.mesh_base import MeshEdge
 
         edge_set: Set[Tuple[int, int]] = set()
@@ -107,16 +100,7 @@ class MeshTopology:
 
     @staticmethod
     def extract_faces(cells: List) -> List[MeshFace]:
-        """Extracts unique faces from cells (for volume mesh).
-
-        Assumes cells are tetrahedra (4 nodes) or hexahedra (8 nodes).
-
-        Args:
-            cells: List of cell objects with v_indices attribute.
-
-        Returns:
-            List of unique MeshFace objects.
-        """
+        """Extracts unique faces from cells (for volume mesh)."""
         from compgeom.mesh.mesh_base import MeshFace
 
         face_set: Set[Tuple[int, ...]] = set()
@@ -160,7 +144,7 @@ class MeshTopology:
         return self._v2v.get(vertex_idx, set())
 
     def vertex_elements(self, vertex_idx: int) -> Set[int]:
-        """Returns the set of element indices (faces/cells) sharing the given vertex."""
+        """Returns the set of element indices sharing the given vertex."""
         if self._v2e is None:
             self._build_v2e()
         return self._v2e.get(vertex_idx, set())
@@ -178,87 +162,10 @@ class MeshTopology:
         return self._e2e_edge.get(element_idx, set())
 
     def is_watertight(self) -> bool:
-        """Returns True if the mesh is closed (no boundary faces for volume, no boundary edges for surface)."""
+        """Returns True if the mesh is closed."""
         if self._mesh.cells:
             return len(self.boundary_faces()) == 0
         return len(self.boundary_edges()) == 0
-
-    def is_orientable(self) -> bool:
-        """
-        Checks if the surface mesh is orientable.
-        """
-        if self._mesh.cells:
-            return True
-
-        faces = [f.v_indices for f in self._mesh.faces]
-        if not faces:
-            return True
-
-        # Check for non-manifoldness: more than 2 faces share an edge
-        edge_to_faces = defaultdict(list)
-        for i, face in enumerate(faces):
-            for edge in self._get_element_edges(face):
-                edge_to_faces[tuple(sorted(edge))].append(i)
-
-        if any(len(f_indices) > 2 for f_indices in edge_to_faces.values()):
-            return False
-
-        # Check for non-manifoldness: duplicated faces with same orientation
-        edge_to_directed_faces = defaultdict(int)
-        for face in faces:
-            for edge in self._get_element_edges(face):
-                edge_to_directed_faces[edge] += 1
-
-        if any(count > 1 for count in edge_to_directed_faces.values()):
-            return False
-
-        face_orientations = {}
-        unvisited = set(range(len(faces)))
-
-        while unvisited:
-            start_face = next(iter(unvisited))
-            queue = [start_face]
-            face_orientations[start_face] = 1
-            unvisited.remove(start_face)
-
-            while queue:
-                curr_idx = queue.pop(0)
-                curr_orient = face_orientations[curr_idx]
-                curr_face = faces[curr_idx]
-
-                curr_edges = self._get_element_edges(curr_face)
-                if curr_orient == -1:
-                    curr_edges = [(v, u) for u, v in reversed(curr_edges)]
-
-                for u, v in curr_edges:
-                    sorted_edge = tuple(sorted((u, v)))
-                    neighbor_indices = edge_to_faces[sorted_edge]
-
-                    for neighbor_idx in neighbor_indices:
-                        if neighbor_idx == curr_idx:
-                            continue
-
-                        neighbor_face = faces[neighbor_idx]
-                        neighbor_edges = self._get_element_edges(neighbor_face)
-
-                        # In the neighbor, we need the edge to be (v, u)
-                        if (v, u) in neighbor_edges:
-                            required_orient = 1
-                        elif (u, v) in neighbor_edges:
-                            required_orient = -1
-                        else:
-                            continue
-
-                        if neighbor_idx in face_orientations:
-                            if face_orientations[neighbor_idx] != required_orient:
-                                return False
-                        else:
-                            face_orientations[neighbor_idx] = required_orient
-                            queue.append(neighbor_idx)
-                            if neighbor_idx in unvisited:
-                                unvisited.remove(neighbor_idx)
-
-        return True
 
     def get_edges(self) -> Set[Tuple[int, int]]:
         """Extracts unique sorted edges from the mesh topology."""
@@ -284,60 +191,81 @@ class MeshTopology:
 
         return [edge for edge, count in edge_count.items() if count == 1]
 
+    def boundary_loops(self) -> List[List[int]]:
+        """Extracts boundary loops from the mesh."""
+        b_edges = self.boundary_edges()
+        if not b_edges:
+            return []
+
+        adj = defaultdict(list)
+        for u, v in b_edges:
+            adj[u].append(v)
+            adj[v].append(u)
+
+        loops = []
+        visited = set()
+        for start_node in list(adj.keys()):
+            if start_node in visited:
+                continue
+
+            loop = []
+            curr = start_node
+            prev = -1
+            while curr is not None and curr not in visited:
+                visited.add(curr)
+                loop.append(curr)
+                next_nodes = adj[curr]
+                next_node = None
+                for n in next_nodes:
+                    if n != prev:
+                        next_node = n
+                        break
+                prev = curr
+                curr = next_node
+                if curr == start_node:
+                    break
+            if loop:
+                loops.append(loop)
+        return loops
+
     def _get_element_edges(self, v_indices: Tuple[int, ...]) -> List[Tuple[int, int]]:
         """Internal helper to decompose an element into its constituent edges."""
         n = len(v_indices)
-        if self._mesh.cells and n == 4:  # Tetrahedron: 6 edges
+        if self._mesh.cells and n == 4:
             v = v_indices
             return [(v[0], v[1]), (v[0], v[2]), (v[0], v[3]), (v[1], v[2]), (v[1], v[3]), (v[2], v[3])]
-        elif self._mesh.cells and n == 8:  # Hexahedron: 12 edges
+        elif self._mesh.cells and n == 8:
             v = v_indices
             return [
-                (v[0], v[1]),
-                (v[1], v[2]),
-                (v[2], v[3]),
-                (v[3], v[0]),  # Bottom
-                (v[4], v[5]),
-                (v[5], v[6]),
-                (v[6], v[7]),
-                (v[7], v[4]),  # Top
-                (v[0], v[4]),
-                (v[1], v[5]),
-                (v[2], v[6]),
-                (v[3], v[7]),  # Verticals
+                (v[0], v[1]), (v[1], v[2]), (v[2], v[3]), (v[3], v[0]),
+                (v[4], v[5]), (v[5], v[6]), (v[6], v[7]), (v[7], v[4]),
+                (v[0], v[4]), (v[1], v[5]), (v[2], v[6]), (v[3], v[7]),
             ]
-        # Default for polygons
         return [(v_indices[i], v_indices[(i + 1) % n]) for i in range(n)]
 
     def boundary_faces(self) -> List[Tuple[int, ...]]:
-        """Returns a list of faces (as vertex index tuples) that belong to only one cell."""
+        """Returns boundary faces."""
         if not self._mesh.cells:
             return []
-
         face_count = defaultdict(int)
         for cell in self._mesh.cells:
             for face in self._get_cell_faces(cell):
                 canonical_face = tuple(sorted(face))
                 face_count[canonical_face] += 1
-
         return [face for face, count in face_count.items() if count == 1]
 
     def _get_cell_faces(self, cell: Any) -> List[Tuple[int, ...]]:
-        """Internal helper to decompose a cell into its constituent faces."""
         v = cell.v_indices
         n = len(v)
-        if n == 4:  # Tetrahedron
+        if n == 4:
             return [(v[0], v[1], v[2]), (v[0], v[1], v[3]), (v[0], v[2], v[3]), (v[1], v[2], v[3])]
-        elif n == 8:  # Hexahedron (standard VTK/finite element ordering)
+        elif n == 8:
             return [
-                (v[0], v[3], v[2], v[1]),
-                (v[4], v[5], v[6], v[7]),  # Bottom, Top
-                (v[0], v[1], v[5], v[4]),
-                (v[1], v[2], v[6], v[5]),  # Front, Right
-                (v[2], v[3], v[7], v[6]),
-                (v[3], v[0], v[4], v[7]),  # Back, Left
+                (v[0], v[3], v[2], v[1]), (v[4], v[5], v[6], v[7]),
+                (v[0], v[1], v[5], v[4]), (v[1], v[2], v[6], v[5]),
+                (v[2], v[3], v[7], v[6]), (v[3], v[0], v[4], v[7]),
             ]
-        return [v]  # Fallback for unknown or polygon-like cells
+        return [v]
 
     def _build_v2v(self):
         self._v2v = defaultdict(set)
@@ -359,10 +287,8 @@ class MeshTopology:
                 self._v2e[v_idx].add(i)
 
     def _build_e2e(self):
-        """Builds adjacency based on shared vertices (at least one)."""
         if self._v2e is None:
             self._build_v2e()
-
         self._e2e = defaultdict(set)
         elements = (
             [c.v_indices for c in self._mesh.cells] if self._mesh.cells else [f.v_indices for f in self._mesh.faces]
@@ -374,9 +300,7 @@ class MeshTopology:
                         self._e2e[i].add(neighbor_idx)
 
     def _build_e2e_edge(self):
-        """Builds adjacency based on shared edges (at least two vertices)."""
         self._e2e_edge = defaultdict(set)
-
         edge_map = defaultdict(list)
         elements = (
             [c.v_indices for c in self._mesh.cells] if self._mesh.cells else [f.v_indices for f in self._mesh.faces]
@@ -385,7 +309,6 @@ class MeshTopology:
             for edge in self._get_element_edges(element):
                 sorted_edge = tuple(sorted(edge))
                 edge_map[sorted_edge].append(i)
-
         for sharing_elements in edge_map.values():
             if len(sharing_elements) > 1:
                 for i in range(len(sharing_elements)):

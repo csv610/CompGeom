@@ -65,7 +65,13 @@ class OBJFileHandler:
         return triangles
 
     @staticmethod
-    def write(filename: str, mesh_or_vertices: Union[Mesh, List], faces: Optional[List] = None, **kwargs):
+    def write(
+        filename: str,
+        mesh_or_vertices: Union[Mesh, List],
+        faces: Optional[List] = None,
+        edges: Optional[List] = None,
+        **kwargs,
+    ):
         """Writes a Mesh object or vertices/faces to an OBJ file."""
         if isinstance(mesh_or_vertices, Mesh):
             vertices = mesh_or_vertices.vertices
@@ -74,10 +80,11 @@ class OBJFileHandler:
                 if mesh_or_vertices.cells
                 else [f.v_indices for f in mesh_or_vertices.faces]
             )
+            edges = [e.v_indices for e in mesh_or_vertices.edges] if mesh_or_vertices.edges else None
         else:
             vertices = mesh_or_vertices
-            if faces is None:
-                raise ValueError("faces must be provided if mesh is not a Mesh object")
+            if faces is None and edges is None:
+                raise ValueError("faces or edges must be provided if mesh is not a Mesh object")
 
         with open(filename, "w") as f:
             f.write("# Exported by CompGeom\n")
@@ -87,9 +94,15 @@ class OBJFileHandler:
                 else:
                     f.write(f"v {v.x:.6f} {v.y:.6f} 0.000000\n")
 
-            for face in faces:
-                f_str = " ".join(str(idx + 1) for idx in face)
-                f.write(f"f {f_str}\n")
+            if edges is not None:
+                for edge in edges:
+                    f_str = " ".join(str(idx + 1) for idx in edge)
+                    f.write(f"l {f_str}\n")
+
+            if faces is not None:
+                for face in faces:
+                    f_str = " ".join(str(idx + 1) for idx in face)
+                    f.write(f"f {f_str}\n")
 
 
 class OFFFileHandler:
@@ -100,6 +113,7 @@ class OFFFileHandler:
         """Reads an OFF file and returns a Mesh object."""
         vertices: List[Union[Point2D, Point3D]] = []
         faces: List[List[int]] = []
+        edges: List[List[int]] = []
 
         with open(filename, "r") as f:
             lines = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
@@ -115,7 +129,7 @@ class OFFFileHandler:
                 header_line = lines[0][3:].strip()
                 start_idx = 1
 
-            nv, nf, _ = map(int, header_line.split())
+            nv, nf, ne = map(int, header_line.split())
 
             for i in range(nv):
                 coords = list(map(float, lines[start_idx + i].split()))
@@ -128,10 +142,22 @@ class OFFFileHandler:
                 parts = list(map(int, lines[start_idx + nv + i].split()))
                 faces.append(parts[1:])
 
-        return PolygonMesh(vertices, [tuple(f) for f in faces])
+            for i in range(ne):
+                parts = list(map(int, lines[start_idx + nv + nf + i].split()))
+                edges.append(parts[1:])
+
+        mesh = PolygonMesh(vertices, [tuple(f) for f in faces])
+        mesh.edges = [tuple(e) for e in edges] if edges else []
+        return mesh
 
     @staticmethod
-    def write(filename: str, mesh_or_vertices: Union[Mesh, List], faces: Optional[List] = None, **kwargs):
+    def write(
+        filename: str,
+        mesh_or_vertices: Union[Mesh, List],
+        faces: Optional[List] = None,
+        edges: Optional[List] = None,
+        **kwargs,
+    ):
         """Writes a Mesh object or vertices/faces to an OFF file."""
         if isinstance(mesh_or_vertices, Mesh):
             vertices = mesh_or_vertices.vertices
@@ -140,19 +166,27 @@ class OFFFileHandler:
                 if mesh_or_vertices.cells
                 else [f.v_indices for f in mesh_or_vertices.faces]
             )
+            edges = [e.v_indices for e in mesh_or_vertices.edges] if mesh_or_vertices.edges else None
         else:
             vertices = mesh_or_vertices
-            if faces is None:
-                raise ValueError("faces must be provided if mesh is not a Mesh object")
+            if faces is None and edges is None:
+                raise ValueError("faces or edges must be provided if mesh is not a Mesh object")
+
+        num_faces = len(faces) if faces else 0
+        num_edges = len(edges) if edges else 0
 
         with open(filename, "w") as f:
             f.write("OFF\n")
-            f.write(f"{len(vertices)} {len(faces)} 0\n")
+            f.write(f"{len(vertices)} {num_faces} {num_edges}\n")
             for v in vertices:
                 z = getattr(v, "z", 0.0)
                 f.write(f"{v.x:.6f} {v.y:.6f} {z:.6f}\n")
-            for face in faces:
-                f.write(f"{len(face)} " + " ".join(map(str, face)) + "\n")
+            if faces:
+                for face in faces:
+                    f.write(f"{len(face)} " + " ".join(map(str, face)) + "\n")
+            if edges:
+                for edge in edges:
+                    f.write(f"2 " + " ".join(map(str, edge)) + "\n")
 
 
 class STLFileHandler:
@@ -227,7 +261,12 @@ class STLFileHandler:
 
     @staticmethod
     def write(
-        filename: str, mesh_or_vertices: Union[Mesh, List], faces: Optional[List] = None, binary: bool = True, **kwargs
+        filename: str,
+        mesh_or_vertices: Union[Mesh, List],
+        faces: Optional[List] = None,
+        edges: Optional[List] = None,
+        binary: bool = True,
+        **kwargs,
     ):
         """Writes a Mesh object or vertices/faces to STL format (binary by default)."""
         if isinstance(mesh_or_vertices, Mesh):
@@ -242,13 +281,18 @@ class STLFileHandler:
             if faces is None:
                 raise ValueError("faces must be provided if mesh is not a Mesh object")
 
-        # STL only supports triangles
+        if faces is None:
+            if edges is not None:
+                faces = edges
+
+        if faces is None:
+            raise ValueError("faces must be provided")
+
         tri_faces = []
         for face in faces:
             if len(face) == 3:
                 tri_faces.append(face)
             elif len(face) > 3:
-                # Fan triangulation
                 for i in range(1, len(face) - 1):
                     tri_faces.append((face[0], face[i], face[i + 1]))
 
@@ -406,7 +450,12 @@ class PLYFileHandler:
 
     @staticmethod
     def write(
-        filename: str, mesh_or_vertices: Union[Mesh, List], faces: Optional[List] = None, binary: bool = False, **kwargs
+        filename: str,
+        mesh_or_vertices: Union[Mesh, List],
+        faces: Optional[List] = None,
+        edges: Optional[List] = None,
+        binary: bool = False,
+        **kwargs,
     ):
         """Writes a Mesh object or vertices/faces to a PLY file (ASCII by default).
 
@@ -414,6 +463,7 @@ class PLYFileHandler:
             filename: Path to the PLY file.
             mesh_or_vertices: A Mesh object or a list of vertices.
             faces: An optional list of faces (required if mesh_or_vertices is a list).
+            edges: An optional list of edges (for 1D elements).
             binary: Whether to write binary or ASCII PLY.
             **kwargs: Unused.
         """
@@ -424,10 +474,15 @@ class PLYFileHandler:
                 if mesh_or_vertices.cells
                 else [f.v_indices for f in mesh_or_vertices.faces]
             )
+            edges = [e.v_indices for e in mesh_or_vertices.edges] if mesh_or_vertices.edges else None
         else:
             vertices = mesh_or_vertices
-            if faces is None:
-                raise ValueError("faces must be provided if mesh is not a Mesh object")
+            if faces is None and edges is None:
+                raise ValueError("faces or edges must be provided if mesh is not a Mesh object")
+
+        if faces is None:
+            if edges is not None:
+                faces = edges
 
         if binary:
             PLYFileHandler._write_binary(filename, vertices, faces)
@@ -534,19 +589,35 @@ class MeshExporter:
         self.write(filename, self._mesh, **kwargs)
 
     @classmethod
-    def write(cls, filename: str, mesh_or_vertices: Union[Mesh, List], faces: Optional[List] = None, **kwargs):
+    def write(
+        cls,
+        filename: str,
+        mesh_or_vertices: Union[Mesh, List],
+        faces: Optional[List] = None,
+        edges: Optional[List] = None,
+        **kwargs,
+    ):
         """Detects format from extension and writes the file.
 
         Args:
             filename: Path to the output file.
-            mesh_or_vertices: A Mesh object or a list of vertices.
+            mesh_or_vertices: A Mesh object, a Polygon, or a list of vertices.
             faces: An optional list of faces (required if mesh_or_vertices is a list).
+            edges: An optional list of edges (for 1D elements).
             **kwargs: Format-specific options.
         """
+        if not isinstance(mesh_or_vertices, (Mesh, list, tuple)) and hasattr(mesh_or_vertices, "vertices"):
+            # Assume it's a Polygon-like object
+            vertices = list(mesh_or_vertices.vertices)
+            faces = [list(range(len(vertices)))]
+            mesh_or_vertices = vertices
+
         ext = Path(filename).suffix.lower()
         if ext not in cls._handlers:
             raise ValueError(f"Unsupported file format: {ext}")
-        cls._handlers[ext].write(filename, mesh_or_vertices, faces, **kwargs)
+        cls._handlers[ext].write(filename, mesh_or_vertices, faces, edges, **kwargs)
+
+    write_mesh = write
 
 
 __all__ = [
@@ -566,6 +637,12 @@ def from_file(filename: str) -> Mesh:
     return MeshImporter.read(filename)
 
 
-def to_file(filename: str, mesh_or_vertices: Union[Mesh, List], faces: Optional[List] = None, **kwargs) -> None:
+def to_file(
+    filename: str,
+    mesh_or_vertices: Union[Mesh, List],
+    faces: Optional[List] = None,
+    edges: Optional[List] = None,
+    **kwargs,
+) -> None:
     """Writes a mesh to a file using the MeshExporter."""
-    MeshExporter.write(filename, mesh_or_vertices, faces, **kwargs)
+    MeshExporter.write(filename, mesh_or_vertices, faces, edges, **kwargs)

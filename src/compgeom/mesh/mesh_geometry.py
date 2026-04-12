@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Tuple, Union, List
 
 from compgeom.kernel import Point2D, Point3D
@@ -95,11 +96,7 @@ class MeshGeometry:
 
     @staticmethod
     def volume(mesh: Mesh) -> float:
-        """Calculates the volume of the mesh.
-
-        For SurfaceMesh, it uses the signed volume of tetrahedra (assumes closed manifold).
-        For TetMesh/HexMesh, it sums the volumes of individual cells.
-        """
+        """Calculates the volume of the mesh."""
         vertices = mesh.vertices
         if not vertices or not isinstance(vertices[0], Point3D):
             return 0.0
@@ -124,9 +121,61 @@ class MeshGeometry:
             for face in mesh.faces:
                 if len(face) < 3:
                     continue
-                # Triangulate and add signed volume of tetrahedron (origin, v1, v2, v3)
                 for i in range(1, len(face) - 1):
                     v1, v2, v3 = vertices[face[0]], vertices[face[i]], vertices[face[i + 1]]
                     total_volume += tet_volume(v1, v2, v3, origin)
 
         return abs(total_volume)
+
+    @staticmethod
+    def face_normals(mesh: Mesh) -> List[Point3D]:
+        """Calculates normalized normals for each face in the mesh using Newell's method."""
+        vertices = mesh.vertices
+        normals = []
+        for face in mesh.faces:
+            if len(face) < 3:
+                normals.append(Point3D(0, 0, 0))
+                continue
+
+            nx = ny = nz = 0.0
+            for i in range(len(face)):
+                p1 = vertices[face[i]]
+                p2 = vertices[face[(i + 1) % len(face)]]
+
+                z1 = getattr(p1, "z", 0.0)
+                z2 = getattr(p2, "z", 0.0)
+
+                nx += (p1.y - p2.y) * (z1 + z2)
+                ny += (z1 - z2) * (p1.x + p2.x)
+                nz += (p1.x - p2.x) * (p1.y + p2.y)
+
+            length = math.sqrt(nx * nx + ny * ny + nz * nz)
+            if length > 1e-12:
+                normals.append(Point3D(nx / length, ny / length, nz / length))
+            else:
+                normals.append(Point3D(0, 0, 0))
+        return normals
+
+    @staticmethod
+    def vertex_normals(mesh: Mesh) -> List[Point3D]:
+        """Calculates normalized normals for each vertex by averaging adjacent face normals."""
+        vertices = mesh.vertices
+        num_v = len(vertices)
+        v_normals = [Point3D(0, 0, 0) for _ in range(num_v)]
+
+        f_normals = MeshGeometry.face_normals(mesh)
+
+        for f_idx, face in enumerate(mesh.faces):
+            fn = f_normals[f_idx]
+            if fn.length_sq() < 1e-12:
+                continue
+            for v_idx in face:
+                v_normals[v_idx] = v_normals[v_idx] + fn
+
+        for i in range(num_v):
+            length = v_normals[i].length()
+            if length > 1e-12:
+                v_normals[i] = v_normals[i] / length
+            else:
+                v_normals[i] = Point3D(0, 0, 1)
+        return v_normals

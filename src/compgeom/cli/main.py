@@ -4,7 +4,6 @@ import argparse
 import importlib
 import pkgutil
 import sys
-import os
 from collections.abc import Iterable
 
 import compgeom.cli
@@ -12,45 +11,24 @@ import compgeom.cli
 
 def _discover_commands() -> dict[str, str]:
     commands: dict[str, str] = {}
-    base_dir = os.path.dirname(__file__) or "."
-    
-    # Discover in current directory
-    for _, module_name, is_pkg in pkgutil.iter_modules([base_dir]):
-        if is_pkg or module_name in {"__init__", "_shared", "main"}:
+    for _, module_name, _ in pkgutil.iter_modules(compgeom.cli.__path__):
+        if module_name in {"__init__", "_shared", "main"}:
             continue
-        command_name = module_name[:-4] if module_name.endswith("_cli") else module_name
-        commands[command_name] = module_name
-        commands[module_name] = module_name
 
-    # Discover in subdirectories
-    subdirs = ["mesh", "polygon", "generators", "algo", "curves", "indexing"]
-    for subdir in subdirs:
-        subdir_path = os.path.join(base_dir, subdir)
-        if not os.path.isdir(subdir_path):
-            continue
-        for _, module_name, is_pkg in pkgutil.iter_modules([subdir_path]):
-            if is_pkg or module_name in {"__init__", "_shared"}:
-                continue
-            full_module_name = f"{subdir}.{module_name}"
-            command_name = module_name[:-4] if module_name.endswith("_cli") else module_name
-            commands[command_name] = full_module_name
-            commands[module_name] = full_module_name
-            
+        command_name = module_name[:-4] if module_name.endswith("_cli") else module_name
+        aliases = {command_name, module_name, f"{command_name}.py"}
+        for alias in aliases:
+            commands[alias] = module_name
     return commands
 
 
 def _command_names(commands: dict[str, str]) -> list[str]:
-    names = set()
-    for full_module_name in commands.values():
-        if "." in full_module_name:
-            # It's in a subdirectory
-            _, module_name = full_module_name.split(".")
-        else:
-            module_name = full_module_name
-            
+    names: list[str] = []
+    for alias, module_name in commands.items():
         canonical_name = module_name[:-4] if module_name.endswith("_cli") else module_name
-        names.add(canonical_name)
-    return sorted(list(names))
+        if alias == canonical_name:
+            names.append(alias)
+    return sorted(names)
 
 
 def _build_parser(command_names: Iterable[str]) -> argparse.ArgumentParser:
@@ -82,15 +60,7 @@ def main(argv: list[str] | None = None) -> int:
             f"Unknown command: {args.command}\nAvailable commands: {', '.join(command_names)}\n",
         )
 
-    # Ensure current directory is in path for imports
-    if "." not in sys.path:
-        sys.path.insert(0, ".")
-
-    try:
-        module = importlib.import_module(module_name)
-    except ImportError as e:
-        parser.exit(1, f"Failed to import command module {module_name}: {e}\n")
-
+    module = importlib.import_module(f"compgeom.cli.{module_name}")
     if not hasattr(module, "main"):
         parser.exit(1, f"Command module {module_name} does not define main().\n")
 

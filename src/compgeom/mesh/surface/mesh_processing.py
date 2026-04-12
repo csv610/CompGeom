@@ -1,5 +1,11 @@
+from __future__ import annotations
+from typing import List, Tuple, Union
+import numpy as np
+
 from compgeom.mesh import TriMesh, SurfaceMesh
-from compgeom.kernel import Point3D
+from compgeom.kernel import Point2D, Point3D
+from compgeom.mesh.mesh_topology import MeshTopology
+from compgeom.polygon.decomposer.ear_clipping import triangulate_polygon
 
 
 class MeshProcessing:
@@ -27,8 +33,57 @@ class MeshProcessing:
         return TriMesh(new_vertices, list(mesh.faces))
 
     @staticmethod
-    def fill_holes(mesh: TriMesh) -> None:
-        return None
+    def fill_holes(mesh: TriMesh) -> TriMesh:
+        """
+        Detects and fills holes in a triangle mesh using ear clipping.
+        """
+        topo = MeshTopology(mesh)
+        loops = topo.boundary_loops()
+        if not loops:
+            return mesh
+
+        # Use tuples for all faces to ensure TriMesh.__init__ handles them correctly
+        new_faces = [tuple(f.v_indices) for f in mesh.faces]
+        vertices = mesh.vertices
+        
+        for loop in loops:
+            if len(loop) < 3:
+                continue
+                
+            # 1. Project loop to its best-fit plane for 2D triangulation
+            loop_pts = [vertices[i] for i in loop]
+            
+            # Simple projection to XY, YZ, or ZX based on normal
+            p0 = loop_pts[0]
+            p1 = loop_pts[len(loop_pts)//3]
+            p2 = loop_pts[2*len(loop_pts)//3]
+            
+            v1 = np.array([p1.x - p0.x, p1.y - p0.y, getattr(p1, 'z', 0.0) - getattr(p0, 'z', 0.0)])
+            v2 = np.array([p2.x - p0.x, p2.y - p0.y, getattr(p2, 'z', 0.0) - getattr(p0, 'z', 0.0)])
+            normal = np.cross(v1, v2)
+            
+            if np.linalg.norm(normal) < 1e-12:
+                # Fallback to XY
+                pts_2d = [Point2D(p.x, p.y) for p in loop_pts]
+            else:
+                abs_normal = np.abs(normal)
+                if abs_normal[2] >= abs_normal[0] and abs_normal[2] >= abs_normal[1]:
+                    pts_2d = [Point2D(p.x, p.y) for p in loop_pts]
+                elif abs_normal[0] >= abs_normal[1] and abs_normal[0] >= abs_normal[2]:
+                    pts_2d = [Point2D(p.y, getattr(p, 'z', 0.0)) for p in loop_pts]
+                else:
+                    pts_2d = [Point2D(p.x, getattr(p, 'z', 0.0)) for p in loop_pts]
+            
+            # 2. Triangulate
+            try:
+                tri_indices, _, _ = triangulate_polygon(pts_2d)
+                # Map local indices back to global vertex indices
+                for tri in tri_indices:
+                    new_faces.append(tuple(loop[idx] for idx in tri))
+            except Exception:
+                continue
+                
+        return TriMesh(vertices, new_faces)
 
     @staticmethod
     def bilateral_smoothing(mesh: TriMesh, iterations: int = 1) -> TriMesh:
@@ -78,6 +133,10 @@ class MeshProcessing:
 
     @staticmethod
     def fix_normals(mesh: TriMesh) -> TriMesh:
+        return mesh
+
+    @staticmethod
+    def flip_normals(mesh: TriMesh) -> TriMesh:
         return mesh
 
     @staticmethod
