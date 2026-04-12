@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Dict, List, Optional, Set, Tuple, TYPE_CHECKING, Any
 
 from compgeom.kernel import Point2D, Point3D
@@ -266,6 +266,101 @@ class MeshTopology:
                 (v[2], v[3], v[7], v[6]), (v[3], v[0], v[4], v[7]),
             ]
         return [v]
+
+    def euler_characteristic(self) -> int:
+        """Computes the Euler characteristic (V - E + F)."""
+        v = len(self._mesh.vertices)
+        e = len(self.get_edges())
+        f = len(self._mesh.faces)
+        return v - e + f
+
+    def genus(self) -> float:
+        """Computes the genus of the surface."""
+        chi = self.euler_characteristic()
+        b = len(self.boundary_loops())
+        # For orientable surface: chi = 2 - 2g - b => 2g = 2 - chi - b
+        return (2 - chi - b) / 2.0
+
+    def is_orientable(self) -> bool:
+        """Checks if the mesh is orientable."""
+        if not self._mesh.faces:
+            return True
+            
+        # BFS to check for consistent orientation
+        edge_to_face = defaultdict(list)
+        for i, face in enumerate(self._mesh.faces):
+            v = face.v_indices
+            for j in range(len(v)):
+                edge = tuple(sorted((v[j], v[(j + 1) % len(v)])))
+                edge_to_face[edge].append(i)
+                
+        visited = [False] * len(self._mesh.faces)
+        face_orientation = [1] * len(self._mesh.faces) # 1 for original, -1 for flipped
+        
+        for start_face in range(len(self._mesh.faces)):
+            if visited[start_face]:
+                continue
+                
+            queue = deque([start_face])
+            visited[start_face] = True
+            
+            while queue:
+                curr_idx = queue.popleft()
+                curr_face = self._mesh.faces[curr_idx].v_indices
+                curr_orient = face_orientation[curr_idx]
+                
+                for j in range(len(curr_face)):
+                    u, v = curr_face[j], curr_face[(j + 1) % len(curr_face)]
+                    edge = tuple(sorted((u, v)))
+                    
+                    for neighbor_idx in edge_to_face[edge]:
+                        if neighbor_idx == curr_idx:
+                            continue
+                            
+                        neighbor_face = self._mesh.faces[neighbor_idx].v_indices
+                        # Find the edge in neighbor_face
+                        for k in range(len(neighbor_face)):
+                            nu, nv = neighbor_face[k], neighbor_face[(k + 1) % len(neighbor_face)]
+                            if (nu == u and nv == v) or (nu == v and nv == u):
+                                # Consistent orientation means edges are traversed in opposite directions
+                                # If we travel u->v in curr, we should travel v->u in neighbor
+                                expected_nv = u if nu == v else v # this is always true if they match
+                                
+                                # If u->v in curr, then nu must be v and nv must be u for consistent orientation
+                                is_reversed = (nu == v and nv == u)
+                                
+                                if not visited[neighbor_idx]:
+                                    visited[neighbor_idx] = True
+                                    face_orientation[neighbor_idx] = curr_orient if is_reversed else -curr_orient
+                                    queue.append(neighbor_idx)
+                                else:
+                                    # Already visited, check if orientation is consistent
+                                    actual_orient = face_orientation[neighbor_idx]
+                                    required_orient = curr_orient if is_reversed else -curr_orient
+                                    if actual_orient != required_orient:
+                                        return False
+        return True
+
+    def is_oriented(self) -> bool:
+        """Checks if the mesh is consistently oriented."""
+        if not self._mesh.faces:
+            return True
+            
+        edge_usage = defaultdict(int)
+        for face in self._mesh.faces:
+            v = face.v_indices
+            for j in range(len(v)):
+                edge = (v[j], v[(j + 1) % len(v)])
+                edge_usage[edge] += 1
+                
+        for edge, count in edge_usage.items():
+            rev_edge = (edge[1], edge[0])
+            if count > 1: # Self-intersecting orientation?
+                return False
+            # For manifold mesh, each edge (u,v) should have at most one face using it
+            # and its reverse (v,u) should be used by the neighbor face.
+            # If (u,v) is used twice, it's definitely not consistently oriented.
+        return True
 
     def _build_v2v(self):
         self._v2v = defaultdict(set)

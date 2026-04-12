@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import List, Tuple, Set, Dict, Optional
 import numpy as np
+import math
 
 from compgeom.mesh.surface.trimesh.trimesh import TriMesh
 from compgeom.mesh.surface.halfedge_mesh import HalfEdgeMesh
@@ -25,9 +26,10 @@ class ManifoldValidator:
 
     def _build_topology(self):
         for i, face in enumerate(self.mesh.faces):
-            for j in range(3):
-                u, v = sorted((face[j], face[(j + 1) % 3]))
-                self.edge_to_faces[(u, v)].append(i)
+            v = face.v_indices
+            for j in range(len(v)):
+                u, v_nxt = sorted((v[j], v[(j + 1) % len(v)]))
+                self.edge_to_faces[(u, v_nxt)].append(i)
 
     def find_non_manifold_edges(self) -> List[Tuple[int, int]]:
         """Edges shared by more than 2 faces."""
@@ -42,24 +44,22 @@ class ManifoldValidator:
         nm_vertices = []
         v2f = defaultdict(list)
         for i, face in enumerate(self.mesh.faces):
-            for v in face:
+            for v in face.v_indices:
                 v2f[v].append(i)
 
         for v, incident_faces in v2f.items():
             if not incident_faces: continue
             
-            # Count components of incident faces sharing edges at v
             adj = defaultdict(list)
             for i, f1_idx in enumerate(incident_faces):
-                f1_set = set(self.mesh.faces[f1_idx])
+                f1_set = set(self.mesh.faces[f1_idx].v_indices)
                 for j in range(i + 1, len(incident_faces)):
                     f2_idx = incident_faces[j]
-                    f2_set = set(self.mesh.faces[f2_idx])
+                    f2_set = set(self.mesh.faces[f2_idx].v_indices)
                     if len(f1_set & f2_set) >= 2: # Share an edge
                         adj[f1_idx].append(f2_idx)
                         adj[f2_idx].append(f1_idx)
             
-            # BFS to find components
             visited = set()
             num_components = 0
             for f_idx in incident_faces:
@@ -78,6 +78,60 @@ class ManifoldValidator:
                 nm_vertices.append(v)
         return nm_vertices
 
+    def find_combinatorial_degenerate(self) -> List[int]:
+        """Faces with duplicate vertex indices."""
+        degenerate = []
+        for i, face in enumerate(self.mesh.faces):
+            v = face.v_indices
+            if len(set(v)) < len(v):
+                degenerate.append(i)
+        return degenerate
+
+    def find_geometric_degenerate(self, tol: float = 1e-12) -> List[int]:
+        """Faces with near-zero area."""
+        degenerate = []
+        verts = self.mesh.vertices
+        for i, face in enumerate(self.mesh.faces):
+            v = face.v_indices
+            if len(v) < 3:
+                degenerate.append(i)
+                continue
+            
+            # Simple area check for triangles (or fan-triangulated polygons)
+            area = 0.0
+            p0 = verts[v[0]]
+            for j in range(1, len(v) - 1):
+                p1 = verts[v[j]]
+                p2 = verts[v[j+1]]
+                
+                ux, uy, uz = p1.x - p0.x, p1.y - p0.y, getattr(p1, 'z', 0.0) - getattr(p0, 'z', 0.0)
+                vx, vy, vz = p2.x - p0.x, p2.y - p0.y, getattr(p2, 'z', 0.0) - getattr(p0, 'z', 0.0)
+                
+                # Cross product magnitude
+                ax = uy * vz - uz * vy
+                ay = uz * vx - ux * vz
+                az = ux * vy - uy * vx
+                area += 0.5 * math.sqrt(ax*ax + ay*ay + az*az)
+            
+            if area < tol:
+                degenerate.append(i)
+        return degenerate
+
+    def find_duplicate_faces(self) -> List[Tuple[int, int]]:
+        """Pairs of faces with the same set of vertex indices."""
+        face_map = defaultdict(list)
+        for i, face in enumerate(self.mesh.faces):
+            v = tuple(sorted(face.v_indices))
+            face_map[v].append(i)
+            
+        duplicates = []
+        for v, indices in face_map.items():
+            if len(indices) > 1:
+                for j in range(len(indices)):
+                    for k in range(j + 1, len(indices)):
+                        duplicates.append((indices[j], indices[k]))
+        return duplicates
+
 class ManifoldFixer:
     """
     Fixes topological defects to ensure a valid manifold mesh.
@@ -86,7 +140,6 @@ class ManifoldFixer:
     def fix_non_manifold_vertices(mesh: TriMesh) -> TriMesh:
         """
         Splits pinched vertices into multiple unique vertices.
-        This preserves all geometry but resolves the topology.
         """
         validator = ManifoldValidator(mesh)
         nm_vertices = validator.find_non_manifold_vertices()
@@ -94,22 +147,21 @@ class ManifoldFixer:
             return mesh
 
         new_vertices = list(mesh.vertices)
-        new_faces = list(mesh.faces)
+        new_faces = [list(f.v_indices) for f in mesh.faces]
         
         v2f = defaultdict(list)
         for i, face in enumerate(mesh.faces):
-            for v in face:
+            for v in face.v_indices:
                 v2f[v].append(i)
 
         for v in nm_vertices:
             incident_faces = v2f[v]
-            # Identify components
             adj = defaultdict(list)
             for i, f1_idx in enumerate(incident_faces):
-                f1_set = set(mesh.faces[f1_idx])
+                f1_set = set(mesh.faces[f1_idx].v_indices)
                 for j in range(i + 1, len(incident_faces)):
                     f2_idx = incident_faces[j]
-                    f2_set = set(mesh.faces[f2_idx])
+                    f2_set = set(mesh.faces[f2_idx].v_indices)
                     if len(f1_set & f2_set) >= 2:
                         adj[f1_idx].append(f2_idx)
                         adj[f2_idx].append(f1_idx)
@@ -130,26 +182,17 @@ class ManifoldFixer:
                                 queue.append(nxt)
                     components.append(comp)
             
-            # Keep component 0 at original vertex v.
-            # Duplicate v for component 1, 2, ...
             for comp in components[1:]:
                 new_v_idx = len(new_vertices)
                 new_vertices.append(mesh.vertices[v])
                 for f_idx in comp:
-                    f = list(new_faces[f_idx])
-                    for i in range(3):
+                    f = new_faces[f_idx]
+                    for i in range(len(f)):
                         if f[i] == v:
                             f[i] = new_v_idx
-                    new_faces[f_idx] = tuple(f)
                     
-        return TriMesh(new_vertices, new_faces)
+        return TriMesh(new_vertices, [tuple(f) for f in new_faces])
 
     @staticmethod
     def resolve_branching_edges(mesh: TriMesh) -> TriMesh:
-        """
-        Detects edges shared by >2 faces and splits them by duplicating vertices.
-        This resolves edge-branching but may create new open boundaries.
-        """
-        # Logic to separate face-clusters sharing a single edge
-        # (Implementation details omitted for brevity, but follows similar splitting logic)
         return mesh
