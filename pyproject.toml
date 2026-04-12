@@ -14,18 +14,19 @@ dependencies = [
     "numpy",
     "scipy",
     "opencv-python",
+    "torch",
+    "pyvista",
+    "meshio",
 ]
 
 [project.optional-dependencies]
 viz = [
     "matplotlib",
-    "pyvista",
 ]
 geometry = [
     "shapely",
 ]
 neural = [
-    "torch",
     "jax",
     "jaxlib",
 ]

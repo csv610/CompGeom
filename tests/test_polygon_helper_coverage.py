@@ -228,6 +228,8 @@ def test_polygon_utils_helpers_cover_orientation_rotation_and_cleanup():
 
 
 def test_polygon_factory_and_wrapper_helpers_generate_expected_shapes():
+    from compgeom.mesh.surface.polygon import PolygonMesh
+
     convex_points = random_convex_points(8, (0, 10), (0, 10))
     simple_points = simple_polygon_points(7, (0, 10), (0, 10))
     convex_polygon = random_convex_polygon(8, (0, 10), (0, 10))
@@ -235,10 +237,10 @@ def test_polygon_factory_and_wrapper_helpers_generate_expected_shapes():
 
     assert len(convex_points) >= 3
     assert len(simple_points) == 7
-    assert isinstance(convex_polygon, Polygon)
-    assert isinstance(simple_poly, Polygon)
-    assert len(generate_random_convex_polygon(8, (0, 10), (0, 10))) >= 3
-    assert len(generate_simple_polygon(7, (0, 10), (0, 10))) == 7
+    assert isinstance(convex_polygon, PolygonMesh)
+    assert isinstance(simple_poly, PolygonMesh)
+    assert len(generate_random_convex_polygon(8, (0, 10), (0, 10)).vertices) >= 3
+    assert len(generate_simple_polygon(7, (0, 10), (0, 10)).vertices) == 7
 
 
 def test_polygon_wrapper_helpers_cover_rotation_triangle_sampling_and_ears():
@@ -389,7 +391,9 @@ def test_polygon_decomposer_private_helpers_cover_remaining_paths():
     assert triangles_with_holes
     assert len(merged_vertices) > len(outer)
 
-    partitions, hm_vertices = _hertel_mehlhorn(concave)
+    result = _hertel_mehlhorn(concave)
+    partitions = [list(f.v_indices) for f in result.faces]
+    hm_vertices = [node.point for node in result.nodes]
     assert partitions
     assert hm_vertices == ordered
 

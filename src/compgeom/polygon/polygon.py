@@ -15,6 +15,7 @@ from compgeom.kernel import (
     signed_area_twice,
     distance,
 )
+from compgeom.mesh.surface.polygon import PolygonMesh
 from compgeom.polygon.tolerance import EPSILON, is_zero, are_close, is_negative
 
 

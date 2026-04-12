@@ -140,4 +140,4 @@ def closest_pair(points: List[Point2D] | Mesh) -> tuple[tuple[Point2D, Point2D],
     if isinstance(points, (Mesh, EdgeMesh)):
         points = [node.point for node in points.nodes]
     dist, pair = closest_pair_divide_and_conquer(points)
-    return pair, dist
+    return dist, pair

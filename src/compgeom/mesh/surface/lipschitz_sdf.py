@@ -3,19 +3,15 @@
 Coiffier and Bethune, "1-Lipschitz Neural Distance Fields", 2024.
 """
 
-from __future__ import annotations
+import torch
+import torch.nn as nn
+import torch.nn.utils.parametrizations as parametrizations
+
 import numpy as np
 from typing import List, Tuple, Optional
 
-try:
-    import torch
-    import torch.nn as nn
-    import torch.nn.utils.parametrizations as parametrizations
-except ImportError:
-    torch = None
-    nn = None
 
-class LipschitzSDF(nn.Module if nn else object):
+class LipschitzSDF(nn.Module):
     """
     Neural network constrained to be 1-Lipschitz.
     This ensures that the output is a valid distance field.

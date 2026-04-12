@@ -7,6 +7,7 @@ import random
 from typing import List, Tuple, TypeVar, Union
 
 from compgeom.kernel import Point2D, Point3D
+from compgeom.mesh.surface.polygon import PolygonMesh
 from compgeom.polygon.convex_hull import MonotoneChain
 from compgeom.polygon.polygon import Polygon
 
@@ -17,34 +18,47 @@ def generate_convex_polygon(
     n_points: int = 10,
     x_range: Tuple[float, float] = (0, 100),
     y_range: Tuple[float, float] = (0, 100),
-) -> Polygon:
-    """Generates a random convex polygon with n_points."""
-    points = [
-        Point2D(random.uniform(*x_range), random.uniform(*y_range), index)
-        for index in range(n_points)
-    ]
-    return Polygon(MonotoneChain().generate(points))
+    sampling: str = "circle",
+) -> PolygonMesh:
+    """Generates a random convex polygon with n_points.
+
+    sampling: 'random' for uniform random points, 'circle' for points on circumcircle
+    Returns a PolygonMesh with 1 face (the polygon boundary).
+    """
+    from compgeom.polygon.decomposer.utils import mesh_from_point_faces
+
+    if sampling == "circle":
+        cx = (x_range[0] + x_range[1]) / 2
+        cy = (y_range[0] + y_range[1]) / 2
+        radius = min(x_range[1] - x_range[0], y_range[1] - y_range[0]) / 2
+        angles = sorted([random.uniform(0, 2 * math.pi) for _ in range(n_points)])
+        points = [
+            Point2D(cx + radius * math.cos(a), cy + radius * math.sin(a), index) for index, a in enumerate(angles)
+        ]
+    else:
+        points = [Point2D(random.uniform(*x_range), random.uniform(*y_range), index) for index in range(n_points)]
+    polygon = Polygon(MonotoneChain().generate(points))
+    return mesh_from_point_faces([list(polygon)])
 
 
 def generate_concave_polygon(
     n_points: int = 20,
     x_range: Tuple[float, float] = (0, 100),
     y_range: Tuple[float, float] = (0, 100),
-) -> Polygon:
+) -> PolygonMesh:
     """
     Generates a random simple (potentially concave) polygon.
     Uses radial sorting with coordinate perturbation to ensure simplicity.
+    Returns a PolygonMesh with 1 face (the polygon boundary).
     """
-    points = [
-        Point2D(random.uniform(*x_range), random.uniform(*y_range), index)
-        for index in range(n_points)
-    ]
+    from compgeom.polygon.decomposer.utils import mesh_from_point_faces
+
+    points = [Point2D(random.uniform(*x_range), random.uniform(*y_range), index) for index in range(n_points)]
     center_x = sum(point.x for point in points) / n_points
     center_y = sum(point.y for point in points) / n_points
-    ordered = sorted(
-        points, key=lambda point: math.atan2(point.y - center_y, point.x - center_x)
-    )
-    return Polygon([Point2D(point.x, point.y, index) for index, point in enumerate(ordered)])
+    ordered = sorted(points, key=lambda point: math.atan2(point.y - center_y, point.x - center_x))
+    polygon = Polygon([Point2D(point.x, point.y, index) for index, point in enumerate(ordered)])
+    return mesh_from_point_faces([list(polygon)])
 
 
 def generate_star_shaped_polygon(
@@ -143,9 +157,7 @@ def generate_dragon_curve(
             return [a]
 
         # Midpoint rotated by 90 degrees
-        pm = Point2D(
-            (a.x + b.x) / 2 - sign * (b.y - a.y) / 2, (a.y + b.y) / 2 + sign * (b.x - a.x) / 2
-        )
+        pm = Point2D((a.x + b.x) / 2 - sign * (b.y - a.y) / 2, (a.y + b.y) / 2 + sign * (b.x - a.x) / 2)
 
         return recurse(a, pm, d - 1, 1) + recurse(pm, b, d - 1, -1)
 

@@ -151,7 +151,7 @@ def mean_curvature_flow_polygon(
         polygon_data = list(polygon)
 
     if n_points is None:
-        n_points = max(100, len(polygon_data))
+        n_points = n_points or len(polygon_data)
     
     current_n_points = n_points
     current = resample_polygon(polygon_data, current_n_points)

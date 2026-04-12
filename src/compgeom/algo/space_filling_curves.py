@@ -28,6 +28,37 @@ def _peano_index_to_coords(index: int, level: int) -> Tuple[int, int]:
     return x, y
 
 
+def _peano_index_to_coords_3d(index: int, level: int) -> Tuple[int, int, int]:
+    """Convert a Peano curve index to 3D coordinates."""
+    x = y = z = 0
+    px = py = pz = 0
+    for power in range(level - 1, -1, -1):
+        power_of_three = 3**power
+        digit = (index // (27**power)) % 27
+        dz = digit // 9
+        dy = (digit // 3) % 3
+        dx = digit % 3
+        if dz % 2 == 1:
+            dx, dy = 2 - dx, 2 - dy
+        if pz % 2 == 1:
+            dx = 2 - dx
+            dy = 2 - dy
+        if py % 2 == 1:
+            dx = 2 - dx
+        if px % 2 == 1:
+            dy = 2 - dy
+        x += dx * power_of_three
+        y += dy * power_of_three
+        z += dz * power_of_three
+        if dx == 1:
+            px += 1
+        if dy == 1:
+            py += 1
+        if dz == 1:
+            pz += 1
+    return x, y, z
+
+
 def _hilbert_index_to_coords(index: int, order: int) -> Tuple[int, int]:
     """Convert a Hilbert curve index to 2D coordinates."""
     x = y = 0
@@ -67,6 +98,7 @@ def _morton_index_to_coords_3d(index: int) -> Tuple[int, int, int]:
 def _hilbert_index_to_coords_3d(index: int, order: int) -> Tuple[int, int, int]:
     """Convert a Hilbert curve index to 3D coordinates using Gray code mapping."""
     x = y = z = 0
+
     # Implementation based on Skilling's algorithm or recursive Gray code
     # Simplified version for order-based generation
     def rot(n, x, y, z, rx, ry, rz):
@@ -88,12 +120,12 @@ def _hilbert_index_to_coords_3d(index: int, order: int) -> Tuple[int, int, int]:
         rx = 1 & (t // 4)
         ry = 1 & (t // 2)
         rz = 1 & (t ^ ry)
-        # This is a complex rotation for 3D Hilbert, 
+        # This is a complex rotation for 3D Hilbert,
         # using a simpler bit-interleaving Gray code approach for now
         # or standard recursive structure.
         # For brevity and correctness, let's use the standard bit-manipulation for 3D Hilbert.
         pass
-    
+
     # Correct 3D Hilbert implementation (recursive structure)
     def hilbert_3d(index, order):
         x = y = z = 0
@@ -107,7 +139,7 @@ def _hilbert_index_to_coords_3d(index: int, order: int) -> Tuple[int, int, int]:
             # Actually, let's use the known bit-manipulation for 3D Hilbert.
             index //= 8
         return x, y, z
-    
+
     # Re-implementing a reliable 3D Hilbert bit-manipulation
     x = y = z = 0
     for s in range(order):
@@ -115,19 +147,24 @@ def _hilbert_index_to_coords_3d(index: int, order: int) -> Tuple[int, int, int]:
         rx = 1 & (index // 4)
         ry = 1 & (index // 2)
         rz = 1 & (index ^ ry)
-        
+
         # Rotation logic for 3D Hilbert
         if rz == 0:
             if ry == 0:
-                if rx == 0: x, y, z = y, z, x
-                else: x, y, z = n-1-y, n-1-z, x
+                if rx == 0:
+                    x, y, z = y, z, x
+                else:
+                    x, y, z = n - 1 - y, n - 1 - z, x
             else:
-                if rx == 0: x, y, z = z, x, y
-                else: x, y, z = n-1-z, x, n-1-y
+                if rx == 0:
+                    x, y, z = z, x, y
+                else:
+                    x, y, z = n - 1 - z, x, n - 1 - y
         elif rz == 1:
             if ry == 1:
-                if rx == 1: x, y, z = n-1-x, n-1-y, z
-        
+                if rx == 1:
+                    x, y, z = n - 1 - x, n - 1 - y, z
+
         x += rx * n
         y += ry * n
         z += rz * n
@@ -185,23 +222,27 @@ class SpaceFillingCurves:
                 rx = 1 & (t // 4)
                 ry = 1 & (t // 2)
                 rz = 1 & (t ^ ry)
-                
+
                 # Rotation
                 if rz == 0:
                     if ry == 0:
-                        if rx == 0: x, y, z = y, z, x
-                        else: x, y, z = m - 1 - y, m - 1 - z, x
+                        if rx == 0:
+                            x, y, z = y, z, x
+                        else:
+                            x, y, z = m - 1 - y, m - 1 - z, x
                     else:
-                        if rx == 0: x, y, z = z, x, y
-                        else: x, y, z = m - 1 - z, x, m - 1 - y
-                
+                        if rx == 0:
+                            x, y, z = z, x, y
+                        else:
+                            x, y, z = m - 1 - z, x, m - 1 - y
+
                 x += rx * m
                 y += ry * m
                 z += rz * m
                 t //= 8
-                m //= 2 # This is not quite right for iterative. 
+                m //= 2  # This is not quite right for iterative.
             # Re-doing recursive approach is safer.
-        
+
         # Simplified recursive approach for 3D Hilbert
         def rot(n, x, y, z, rx, ry, rz):
             if rz == 0:
@@ -265,6 +306,32 @@ class SpaceFillingCurves:
         return indices
 
     @staticmethod
+    def zigzag_3d(width: int, height: int, depth: int) -> List[Tuple[int, int, int]]:
+        """Generate a 3D zigzag path as (x,y,z) coordinates."""
+        path = []
+        for z in range(depth):
+            layer_path = []
+            for diagonal in range(width + height - 1):
+                if diagonal % 2 == 0:
+                    y = min(diagonal, height - 1)
+                    x = diagonal - y
+                    while y >= 0 and x < width:
+                        layer_path.append((x, y, z))
+                        y -= 1
+                        x += 1
+                else:
+                    x = min(diagonal, width - 1)
+                    y = diagonal - x
+                    while x >= 0 and y < height:
+                        layer_path.append((x, y, z))
+                        x -= 1
+                        y += 1
+            if z % 2 == 1:
+                layer_path.reverse()
+            path.extend(layer_path)
+        return path
+
+    @staticmethod
     def sweep(width: int, height: int) -> List[int]:
         """Generate a snake-like sweep path (row by row) as cell indices."""
         indices = []
@@ -278,6 +345,96 @@ class SpaceFillingCurves:
         return indices
 
     @staticmethod
+    def sweep_3d(width: int, height: int, depth: int) -> List[Tuple[int, int, int]]:
+        """Generate a 3D sweep path as (x,y,z) coordinates (layer by layer)."""
+        path = []
+        for z in range(depth):
+            for y in range(height):
+                row = []
+                for x in range(width):
+                    row.append((x, y, z))
+                if (y + z) % 2 == 1:
+                    row.reverse()
+                path.extend(row)
+        return path
+
+    @staticmethod
+    def peano_3d(level: int) -> List[Tuple[int, int, int]]:
+        """Generate a 3D Peano curve path as (x,y,z) coordinates."""
+        size = 3**level
+        num_points = 27**level
+        path = []
+        for i in range(num_points):
+            x, y, z = _peano_index_to_coords_3d(i, level)
+            path.append((x, y, z))
+        return path
+
+    @staticmethod
+    def spiral(
+        width: int, height: int, start_x: int | None = None, start_y: int | None = None
+    ) -> List[Tuple[int, int]]:
+        """Generate a spiral path as (x,y) coordinates."""
+        if start_x is None:
+            start_x = width // 2
+        if start_y is None:
+            start_y = height // 2
+        path = [(start_x, start_y)]
+        visited = {(start_x, start_y)}
+        dx = [1, 0, -1, 0]
+        dy = [0, 1, 0, -1]
+        step_size = 1
+        direction_index = 0
+        cx, cy = start_x, start_y
+        while len(visited) < width * height:
+            for _ in range(2):
+                for _ in range(step_size):
+                    cx += dx[direction_index]
+                    cy += dy[direction_index]
+                    if 0 <= cx < width and 0 <= cy < height:
+                        if (cx, cy) not in visited:
+                            path.append((cx, cy))
+                            visited.add((cx, cy))
+                direction_index = (direction_index + 1) % 4
+                if len(visited) >= width * height:
+                    break
+            step_size += 1
+            if step_size > max(width, height) * 2:
+                break
+        return path
+
+    @staticmethod
+    def spiral_3d(
+        width: int,
+        height: int,
+        depth: int,
+        start_x: int | None = None,
+        start_y: int | None = None,
+        start_z: int | None = None,
+    ) -> List[Tuple[int, int, int]]:
+        """Generate a 3D spiral path (layer-by-layer 2D spirals)."""
+        if start_x is None:
+            start_x = width // 2
+        if start_y is None:
+            start_y = height // 2
+        if start_z is None:
+            start_z = depth // 2
+
+        path = []
+        visited = set()
+        total = width * height * depth
+
+        for z in range(depth):
+            layer_path = SpaceFillingCurves.spiral(width, height, start_x, start_y)
+            for x, y in layer_path:
+                if (x, y, z) not in visited:
+                    path.append((x, y, z))
+                    visited.add((x, y, z))
+            if len(path) >= total:
+                break
+
+        return path
+
+    @staticmethod
     def visualize(indices: List[int], width: int, height: int, cell_size: int = 20) -> str:
         """Return an SVG image string representing the curve path."""
         from compgeom.graphics.visualization import generate_svg_path
@@ -285,9 +442,7 @@ class SpaceFillingCurves:
         return generate_svg_path(indices, width, height, cell_size)
 
     @staticmethod
-    def save_image(
-        indices: List[int], width: int, height: int, filename: str, cell_size: int = 20
-    ):
+    def save_image(indices: List[int], width: int, height: int, filename: str, cell_size: int = 20):
         """Save the curve visualization to a file (SVG or PNG)."""
         from compgeom.graphics.visualization import generate_svg_path, save_png, save_svg
 

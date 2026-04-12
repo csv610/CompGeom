@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Union
 
 from compgeom.kernel import Point2D, dist_point_to_segment
 from compgeom.mesh.edge_mesh import EdgeMesh
@@ -66,11 +66,11 @@ def pack_circles(polygon: List[Point2D] | EdgeMesh | Mesh, radius: float) -> Cir
         y += dy
         row += 1
 
-    efficiency = _compute_efficiency(polygon, centers, radius)
+    efficiency = calculate_circle_packing_efficiency(polygon, centers, radius)
     return CirclePackingResult(centers=centers, efficiency=efficiency, radius=radius)
 
 
-def _compute_efficiency(polygon: List[Point2D], centers: List[Point2D], radius: float) -> float:
+def calculate_circle_packing_efficiency(polygon: List[Point2D], centers: List[Point2D], radius: float) -> float:
     if not centers:
         return 0.0
     area, _, _ = get_polygon_properties(polygon)
@@ -145,13 +145,18 @@ def _is_circle_inside(center: Point2D, radius: float, polygon: List[Point2D]) ->
 
 def visualize_circle_packing(
     polygon: List[Point2D],
-    centers: List[Point2D],
+    centers: Union[List[Point2D], CirclePackingResult],
     radius: float,
     width: int = 800,
     height: int = 600,
     padding: int = 40,
 ) -> str:
     """Returns an SVG string showing the polygon and packed circles."""
+    if isinstance(centers, CirclePackingResult):
+        centers_list = centers.centers
+    else:
+        centers_list = centers
+
     min_x = min(p.x for p in polygon)
     max_x = max(p.x for p in polygon)
     min_y = min(p.y for p in polygon)
@@ -177,7 +182,7 @@ def visualize_circle_packing(
 
     # Draw circles
     r_scaled = radius * scale
-    for c in centers:
+    for c in centers_list:
         svg.append(
             f'<circle cx="{tx(c.x)}" cy="{ty(c.y)}" r="{r_scaled}" fill="red" fill-opacity="0.4" stroke="darkred" stroke-width="1" />'
         )
@@ -186,4 +191,4 @@ def visualize_circle_packing(
     return "\n".join(svg)
 
 
-__all__ = ["pack_circles", "optimal_radius", "CirclePackingResult"]
+__all__ = ["pack_circles", "optimal_radius", "calculate_circle_packing_efficiency", "visualize_circle_packing", "CirclePackingResult"]

@@ -56,7 +56,7 @@ class ConformalShapeRegistration:
 
         Uses Laplace-Beltrami eigenfunctions as shape signature.
         """
-        from compgeom.mesh.volume.spectral_geometry import SpectralGeometry
+        from compgeom.mesh.surface.spectral_geometry import SpectralGeometry
 
         try:
             spec = SpectralGeometry(mesh)

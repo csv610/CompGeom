@@ -43,29 +43,30 @@ A Python library and command-line suite for geometric modeling, mesh processing,
    - Mesh Loading (STL, OFF, OBJ Support via `MeshImporter`)
 8. **Mesh Refinement & Reordering**
    - Triangle Mesh Refinement (Linear & Uniform)
-   - **Non-Obtuse Triangulation (Steiner Point Insertion)**
-   - **Angle-Bounded Remeshing (Edge Flip/Split/Collapse)**
+   - Non-Obtuse Triangulation (Steiner Point Insertion)
+   - Angle-Bounded Remeshing (Edge Flip/Split/Collapse)
    - Bandwidth Reduction (Reverse Cuthill-McKee)
    - Nodal Renumbering (`reorder_nodes`)
 9. **Mesh Optimization & Analysis**
    - Mesh Smoothing (Laplacian, Taubin)
    - Mesh Coloring (Vertex & Element)
    - Triangle-to-Quad Conversion
-   - **Mesh Topology Transfer (Harmonic Mapping)**
-   - **Spectral Geometry (HKS, WKS, Diffusion Distance)**
-   - **Stochastic PDE Solvers (Walk on Spheres/Stars)**
+   - Mesh Topology Transfer (Harmonic Mapping)
+   - Spectral Geometry (HKS, WKS, Diffusion Distance)
+   - Stochastic PDE Solvers (Walk on Spheres/Stars)
 10. **Volumetric Modeling**
     - Mesh Voxelization (Native & OpenVDB)
-    - **Filtered Tetrahedral Meshing (Generalized Winding Number)**
+    - Filtered Tetrahedral Meshing (Generalized Winding Number)
     - Mesh I/O (STL, OFF, OBJ Support)
 
 ### Part IV: Spatial Algorithms & Visualization
 11. **Combinatorial Sequences**
     - Davenport-Schinzel Sequences (Lower Envelopes)
 12. **Point Cloud Operations**
-    - Point Sampling (Circle, Rectangle, Triangle, Cube, Sphere)
-    - Protected Point Simplification (Voxel Grid Decimation)
-    - Closest/Farthest Pair Analysis
+     - Point Generation (Halton, Sobol, Hammersley, Latin Hypercube, Random, Poisson Disk)
+     - Point Sampling (Circle, Rectangle, Triangle, Cube, Sphere)
+     - Protected Point Simplification (Voxel Grid Decimation)
+     - Closest/Farthest Pair Analysis
 13. **Grid & Path Generation**
     - Space-Filling Curves (Hilbert, Peano, Morton, ZigZag, Sweep)
     - Random Walks (2D, 3D, Self-Avoiding)

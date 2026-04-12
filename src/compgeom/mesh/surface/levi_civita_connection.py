@@ -72,7 +72,7 @@ class LeviCivitaConnection:
         Returns:
             Transported vector at target
         """
-        from compgeom.mesh.volume.heat_method import VectorHeatMethod
+        from compgeom.mesh.surface.heat_method import VectorHeatMethod
 
         heat = VectorHeatMethod(self.mesh)
         geodesic = heat.compute_geodesics([source_vertex])

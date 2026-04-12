@@ -21,7 +21,6 @@ from compgeom.algo.proximity import *
 from compgeom.algo.random_walker import *
 from compgeom.algo.rectangle_packing import *
 from compgeom.algo.shapes import *
-from compgeom.algo.space_filling_curves import *
 
 # 4. Flattened API - Graphics
 from compgeom.graphics.visualization import *

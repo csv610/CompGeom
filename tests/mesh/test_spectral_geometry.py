@@ -7,7 +7,7 @@ from compgeom.mesh.surface.trimesh.trimesh import TriMesh
 from compgeom.mesh.algorithms.wave_kernel import WaveKernelSignature
 from compgeom.mesh.algorithms.functional_maps import FunctionalMap
 from compgeom.mesh.algorithms.shape_space_spectra import ShapeSpaceSpectralNet
-from compgeom.mesh.volume.spectral_geometry import SpectralGeometry
+from compgeom.mesh.surface.spectral_geometry import SpectralGeometry
 
 @pytest.fixture
 def simple_mesh():
@@ -32,15 +32,12 @@ def test_functional_maps(simple_mesh):
     assert len(corr) == 4
 
 def test_shape_space_spectra_init():
-    try:
-        import torch
-        net = ShapeSpaceSpectralNet(num_eigen=5)
-        x = torch.randn(10, 3)
-        theta = torch.randn(10, 8)
-        phi = net(x, theta)
-        assert phi.shape == (10, 5)
-    except ImportError:
-        pytest.skip("Torch not found")
+    import torch
+    net = ShapeSpaceSpectralNet(num_eigen=5)
+    x = torch.randn(10, 3)
+    theta = torch.randn(10, 8)
+    phi = net(x, theta)
+    assert phi.shape == (10, 5)
 
 def test_diffusion_distance(simple_mesh):
     # Diffusion distance should be 0 between same vertex

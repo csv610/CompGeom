@@ -4,7 +4,7 @@ from scipy import sparse
 from scipy.sparse.linalg import spsolve
 from typing import List, Tuple, Optional
 from compgeom.mesh.surface.surface_mesh import SurfaceMesh
-from compgeom.mesh.volume.spectral_geometry import SpectralGeometry
+from compgeom.mesh.surface.spectral_geometry import SpectralGeometry
 
 class VectorHeatMethod:
     """

@@ -14,10 +14,10 @@ class PointSampler:
     """Class for sampling points from different geometric domains."""
 
     @staticmethod
-    def in_circle(count: int, radius: float, center: Point2D) -> List[Point2D]:
+    def in_circle(center: Point2D, radius: float, n_points: int = 100) -> List[Point2D]:
         """Samples points uniformly from the interior of a circle."""
         points = []
-        for index in range(count):
+        for index in range(n_points):
             angle = random.uniform(0.0, 2.0 * math.pi)
             distance = radius * math.sqrt(random.random())
             points.append(

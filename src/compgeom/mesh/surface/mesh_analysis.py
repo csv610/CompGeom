@@ -318,7 +318,7 @@ class MeshAnalysis:
         Essential for texture synthesis and local surface parameterization.
         """
         # 1. Compute geodesics using the Vector Heat Method
-        from compgeom.mesh.volume.heat_method import VectorHeatMethod
+        from compgeom.mesh.surface.heat_method import VectorHeatMethod
         vhm = VectorHeatMethod(mesh)
         distances = vhm.compute_geodesics([source_idx])
         

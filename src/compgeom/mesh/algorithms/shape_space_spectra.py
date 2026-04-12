@@ -4,18 +4,14 @@ Differentiable eigenanalysis for continuously parameterized shape families.
 Chang et al., "Shape Space Spectra", 2025.
 """
 
-from __future__ import annotations
+import torch
+import torch.nn as nn
+
 import numpy as np
 from typing import List, Tuple, Optional, Callable
 
-try:
-    import torch
-    import torch.nn as nn
-except ImportError:
-    torch = None
-    nn = None
 
-class ShapeSpaceSpectralNet(nn.Module if nn else object):
+class ShapeSpaceSpectralNet(nn.Module):
     """
     Learns eigenfunctions as a neural field phi(x; theta) across a shape space.
     The network takes (spatial coordinates x, shape parameters theta).

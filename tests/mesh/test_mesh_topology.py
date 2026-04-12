@@ -74,9 +74,10 @@ def test_orientable():
     m1 = TriMesh(v, [(0, 1, 2)])
     assert MeshTopology(m1).is_orientable() is True
 
-    # Non-orientable: edge (0,1) shared by 2 faces with same orientation
+    # Orientable but not oriented: edge (0,1) shared by 2 faces with same orientation
     m2 = TriMesh(v, [(0, 1, 2), (0, 1, 2)])
-    assert MeshTopology(m2).is_orientable() is False
+    assert MeshTopology(m2).is_orientable() is True
+    assert MeshTopology(m2).is_oriented() is False
 
 
 def test_volume_topology():

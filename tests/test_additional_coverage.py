@@ -72,6 +72,9 @@ from compgeom.algo.shapes import (
 from compgeom.graphics.geo_plot import GeomPlot
 from compgeom.graphics.visualization import generate_svg_path, save_png, save_svg
 from compgeom.mesh import (
+    OBJFileHandler,
+    OFFFileHandler,
+    STLFileHandler,
     CuthillMcKee,
     MeshColoring,
     MeshTransfer,
@@ -90,12 +93,12 @@ from compgeom.mesh.surface.trimesh.delaunay_triangulation import (
     is_delaunay,
     triangulate,
 )
-from compgeom.mesh.meshio import (
-    MeshImporter,
-    MeshExporter,
+from compgeom.mesh import (
     OBJFileHandler,
     OFFFileHandler,
     STLFileHandler,
+    from_file,
+    to_file,
 )
 from compgeom.mesh.surface.trimesh.mesh_refinement import TriMeshRefiner
 from compgeom.mesh.surface.quadmesh.simple_tri2quads import TriangleToQuadConverter
@@ -535,7 +538,7 @@ def test_mesh_io_handlers_round_trip_common_formats():
         assert len(stl_bin_vertices) == 3
         assert list(stl_bin_faces[0]) == [0, 1, 2]
 
-        mesh_from_importer = MeshImporter.read(str(obj_path))
+        mesh_from_importer = from_file(str(obj_path))
         mesh_vertices, mesh_faces = (
             mesh_from_importer.vertices,
             [f.v_indices for f in mesh_from_importer.faces],
@@ -544,7 +547,7 @@ def test_mesh_io_handlers_round_trip_common_formats():
         assert list(mesh_faces[0]) == [0, 1, 2]
 
         written_obj = tmp / "mesh_out.obj"
-        MeshExporter.write(str(written_obj), vertices3d, faces)
+        to_file(str(written_obj), vertices3d, faces)
         assert written_obj.exists()
 
 
@@ -625,8 +628,8 @@ def test_shape_objects_expose_expected_geometry():
 def test_circle_packer_handles_empty_and_packs_rectangle_domain():
     polygon = [Point2D(0, 0), Point2D(4, 0), Point2D(4, 4), Point2D(0, 4)]
 
-    assert CirclePacker.pack([], 1.0) == []
-    assert CirclePacker.pack(polygon, 0.0) == []
+    assert CirclePacker.pack([], 1.0).centers == []
+    assert CirclePacker.pack(polygon, 0.0).centers == []
     assert CirclePacker.optimal_radius([], 3) == 0.0
 
     centers = CirclePacker.pack(polygon, 0.5)
@@ -635,7 +638,7 @@ def test_circle_packer_handles_empty_and_packs_rectangle_domain():
 
     assert centers
     assert all(
-        CirclePacker._is_circle_inside(center, 0.5, polygon) for center in centers
+        CirclePacker._is_circle_inside(center, 0.5, polygon) for center in centers.centers
     )
     assert efficiency > 0
     assert svg.startswith('<svg width="200" height="200"')
@@ -692,7 +695,10 @@ def test_mesh_core_helpers_cover_topology_and_even_element_repairs():
 
     triangle_mesh.reorder_nodes([2, 1, 0, 3])
     assert triangle_mesh.vertices[0] == Point2D(1, 1)
-    assert set(tuple(f.v_indices) for f in triangle_mesh.faces) == {(2, 1, 0), (2, 0, 3)}
+    assert set(tuple(f.v_indices) for f in triangle_mesh.faces) == {
+        (2, 1, 0),
+        (2, 0, 3),
+    }
 
 
 def test_mesh_and_triangle_utilities_cover_standalone_helpers():
@@ -905,7 +911,9 @@ def test_mesh_voxelizer_native_and_fallback_paths(monkeypatch):
         called["native"] = True
         return {(0, 0, 0)}
 
-    monkeypatch.setattr(MeshVoxelizer, "voxelize_openvdb", staticmethod(fake_openvdb))
+    monkeypatch.setattr(
+        MeshVoxelizer, "voxelize_openvdb_to_coords", staticmethod(fake_openvdb)
+    )
     monkeypatch.setattr(MeshVoxelizer, "voxelize_native", staticmethod(fake_native))
     result = MeshVoxelizer.voxelize(mesh, voxel_size=1.0, fill_interior=True)
     assert called["native"] is True
@@ -1008,7 +1016,6 @@ def test_polygon_boolean_helper_functions_cover_remaining_branches():
     assert parsed[0] == Point2D(0, 0)
     assert len(parsed) == 4
     assert boolean_format_point(Point2D(1, 2)) == "(1.000000, 2.000000)"
-
 
 
 def test_voronoi_square_compute_and_triangle_to_quad_edge_reuse():
@@ -1127,6 +1134,7 @@ def test_line_arrangement_cli_helpers_and_main(capsys):
     assert line_cli.format_point(Point2D(1, 2)) == "(1.000000, 2.000000)"
     from unittest.mock import patch
     import io
+
     with patch("sys.stdin", io.StringIO("0 0 1 1\n0 1 1 0\n")):
         assert line_cli.main([]) == 0
     out = capsys.readouterr().out
@@ -1227,6 +1235,6 @@ def test_circle_packer_covers_edge_cases_and_efficiency():
     )
 
     assert radius > 0
-    assert len(centers) >= 4
+    assert len(centers.centers) >= 4
     assert svg.startswith('<svg width="100" height="80"')
-    assert svg.count("<circle") == len(centers)
+    assert svg.count("<circle") == len(centers.centers)

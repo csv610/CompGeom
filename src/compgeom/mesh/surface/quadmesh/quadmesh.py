@@ -73,9 +73,9 @@ class QuadMesh(SurfaceMesh):
     @classmethod
     def from_file(cls, filename: str) -> QuadMesh:
         """Creates a QuadMesh from a file (OBJ, OFF, STL)."""
-        from compgeom.mesh.surface.meshio import MeshImporter
+        from compgeom.mesh import from_file as read_mesh
 
-        mesh = MeshImporter.read(filename)
+        mesh = read_mesh(filename)
         return cls(mesh.nodes, mesh.faces)
 
     def extract_chord(self, start_quad_idx: int, edge_index: int) -> List[int]:

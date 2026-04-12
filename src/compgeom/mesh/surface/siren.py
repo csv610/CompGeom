@@ -4,18 +4,14 @@ Sitzmann et al., "Implicit Neural Representations with Periodic Activation Funct
 Used widely in SIGGRAPH geometry research (2020-2025).
 """
 
-from __future__ import annotations
+import torch
+import torch.nn as nn
+
 import numpy as np
 from typing import List, Tuple, Optional
 
-try:
-    import torch
-    import torch.nn as nn
-except ImportError:
-    torch = None
-    nn = None
 
-class SineLayer(nn.Module if nn else object):
+class SineLayer(nn.Module):
     """Linear layer with sine activation and specialized SIREN initialization."""
     def __init__(self, in_features, out_features, bias=True, is_first=False, omega_0=30):
         super().__init__()

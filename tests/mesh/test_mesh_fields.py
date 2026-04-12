@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 from compgeom.kernel import Point3D
-from compgeom.mesh.volume.odeco_frame_field import OdecoFrameField
+from compgeom.mesh.surface.odeco_frame_field import OdecoFrameField
 from compgeom.mesh.volume.tetmesh.tetmesh import TetMesh
 
 @pytest.fixture

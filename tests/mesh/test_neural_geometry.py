@@ -2,9 +2,9 @@
 
 import pytest
 import numpy as np
-from compgeom.mesh.volume.neural_reconstruction import NeuralDualContourer
-from compgeom.mesh.volume.neural_winding import NeuralWindingLifter
-from compgeom.mesh.volume.lipschitz_sdf import LipschitzSDF
+from compgeom.mesh.surface.neural_reconstruction import NeuralDualContourer
+from compgeom.mesh.surface.neural_winding import NeuralWindingLifter
+from compgeom.mesh.surface.lipschitz_sdf import LipschitzSDF
 
 def test_neural_dual_contouring():
     # Mock SDF function for a sphere radius 0.5
@@ -26,11 +26,8 @@ def test_neural_winding_lifter():
     assert res.shape == (1, 1)
 
 def test_lipschitz_sdf():
-    try:
-        import torch
-        sdf = LipschitzSDF()
-        inp = torch.randn(1, 3)
-        out = sdf(inp)
-        assert out.shape == (1, 1)
-    except ImportError:
-        pytest.skip("Torch not found")
+    import torch
+    sdf = LipschitzSDF()
+    inp = torch.randn(1, 3)
+    out = sdf(inp)
+    assert out.shape == (1, 1)

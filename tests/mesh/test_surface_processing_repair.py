@@ -49,8 +49,8 @@ def test_laplacian_smoothing_moves_only_the_interior_vertex():
     ) == pytest.approx((1.0, 1.0, 0.5))
 
 
-def test_fill_holes_currently_returns_none():
-    assert MeshProcessing.fill_holes(make_open_patch()) is None
+def test_fill_holes():
+    assert MeshProcessing.fill_holes(make_open_patch()) is not None
 
 
 def test_bilateral_and_taubin_smoothing_preserve_basic_mesh_structure():
