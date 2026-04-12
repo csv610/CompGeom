@@ -3,30 +3,26 @@ from __future__ import annotations
 import argparse
 
 from compgeom.polygon import convex_decompose_polygon
-from ._shared import read_input_lines, parse_points
+from compgeom.mesh.meshio import MeshImporter, MeshExporter
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Partition a polygon into convex pieces."
     )
-    parser.add_argument("input", nargs="?", help="Path to input file (optional, reads from stdin if omitted).")
+    parser.add_argument("input", help="Path to input mesh file")
+    parser.add_argument("output", help="Path to output mesh file")
     args = parser.parse_args(argv)
 
-    lines = read_input_lines(args.input)
-    if not lines:
-        print("Error: No input points provided.")
-        return 1
-    points = parse_points(lines)
-    if not points:
-        print("Error: Could not parse points from input.")
+    try:
+        mesh = MeshImporter.read(args.input)
+    except Exception as e:
+        print(f"Error reading file: {e}")
         return 1
 
-    mesh = convex_decompose_polygon(points)
-    pieces = [[mesh.vertices[idx] for idx in face] for face in mesh.faces]
-    print(f"Polygon partitioned into {len(pieces)} convex pieces.")
-    for index, partition in enumerate(pieces):
-        print(f"Partition {index}: {[v.id for v in partition]}")
+    result = convex_decompose_polygon(mesh.vertices)
+    MeshExporter.write(args.output, result)
+    print(f"Polygon partitioned into {len(result.faces)} convex pieces.")
     return 0
 
 

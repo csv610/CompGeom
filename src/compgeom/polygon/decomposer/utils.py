@@ -32,13 +32,11 @@ def mesh_from_point_faces(
 
 def convex_decompose_polygon(
     polygon_input: list[Point2D],
-) -> tuple[list[list[int]], list[Point2D]]:
+) -> PolygonMesh:
     """Decomposes a simple polygon into convex parts."""
     from .ear_clipping import triangulate_polygon
 
-    triangles, diagonals, polygon = triangulate_polygon(
-        polygon_input, collect_diagonals=True
-    )
+    triangles, diagonals, polygon = triangulate_polygon(polygon_input, collect_diagonals=True)
     partitions = [list(triangle) for triangle in triangles]
 
     def _is_convex(face_indices, vertex_index):
@@ -50,17 +48,12 @@ def convex_decompose_polygon(
 
         prev_idx = face_indices[(idx - 1) % n]
         next_idx = face_indices[(idx + 1) % n]
-        return (
-            cross_product(polygon[prev_idx], polygon[vertex_index], polygon[next_idx])
-            >= -EPSILON
-        )
+        return cross_product(polygon[prev_idx], polygon[vertex_index], polygon[next_idx]) >= -EPSILON
 
     for diagonal in diagonals:
         u, v = diagonal
         shared_partitions = [
-            partition_index
-            for partition_index, partition in enumerate(partitions)
-            if u in partition and v in partition
+            partition_index for partition_index, partition in enumerate(partitions) if u in partition and v in partition
         ]
         if len(shared_partitions) != 2:
             continue
@@ -73,12 +66,10 @@ def convex_decompose_polygon(
             partitions.pop(min(first, second))
             partitions.append(merged_indices)
 
-    return partitions, polygon
+    return PolygonMesh(polygon, [tuple(p) for p in partitions])
 
 
-def decompose_polygon(
-    polygon: list[Point2D], algorithm: str = "triangulate"
-) -> PolygonMesh:
+def decompose_polygon(polygon: list[Point2D], algorithm: str = "triangulate") -> PolygonMesh:
     """Decomposes a simple polygon into simpler pieces using various algorithms."""
     from .ear_clipping import triangulate_polygon
     from .monotone import monotone_decompose_polygon
@@ -86,23 +77,14 @@ def decompose_polygon(
     from .visibility import visibility_decompose_polygon
 
     algo_map = {
-        "triangulate": lambda p: PolygonMesh(
-            triangulate_polygon(p)[2], [tuple(f) for f in triangulate_polygon(p)[0]]
-        ),
-        "ear": lambda p: PolygonMesh(
-            triangulate_polygon(p)[2], [tuple(f) for f in triangulate_polygon(p)[0]]
-        ),
-        "convex": lambda p: PolygonMesh(
-            convex_decompose_polygon(p)[1],
-            [tuple(f) for f in convex_decompose_polygon(p)[0]],
-        ),
+        "triangulate": lambda p: PolygonMesh(triangulate_polygon(p)[2], [tuple(f) for f in triangulate_polygon(p)[0]]),
+        "ear": lambda p: PolygonMesh(triangulate_polygon(p)[2], [tuple(f) for f in triangulate_polygon(p)[0]]),
+        "convex": lambda p: convex_decompose_polygon(p),
         "monotone": lambda p: PolygonMesh(
             monotone_decompose_polygon(p)[1],
             [tuple(f) for f in monotone_decompose_polygon(p)[0]],
         ),
-        "trapezoidal": lambda p: mesh_from_point_faces(
-            trapezoidal_decompose_polygon(p)
-        ),
+        "trapezoidal": lambda p: mesh_from_point_faces(trapezoidal_decompose_polygon(p)),
         "visibility": lambda p: PolygonMesh(
             visibility_decompose_polygon(p)[1],
             [tuple(f) for f in visibility_decompose_polygon(p)[0]],
@@ -198,17 +180,13 @@ def verify_polygon_decomposition(polygon: list[Point2D], mesh: PolygonMesh) -> b
                     return False
 
             centroid_i = poly_i.properties().centroid
-            if poly_j.contains_point(centroid_i) and not poly_j.point_on_boundary(
-                centroid_i
-            ):
+            if poly_j.contains_point(centroid_i) and not poly_j.point_on_boundary(centroid_i):
                 return False
 
     return True
 
 
-def _share_triangle_edge(
-    left: list[tuple[int, int, int]], right: list[tuple[int, int, int]]
-) -> bool:
+def _share_triangle_edge(left: list[tuple[int, int, int]], right: list[tuple[int, int, int]]) -> bool:
     return any(len(set(a).intersection(b)) == 2 for a in left for b in right)
 
 
