@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 from compgeom.mesh.mesh_base import Mesh, MeshNode, MeshEdge, MeshFace, MeshCell
 from compgeom.mesh.mesh_topology import MeshTopology, mesh_neighbors, get_mesh_edges
+from compgeom.mesh.mesh_info import MeshInformation
 from compgeom.mesh.mesh_affine_transform import MeshAffineTransform
 from compgeom.mesh.mesh_geometry import MeshGeometry
 
@@ -27,6 +28,7 @@ __all__ = [
     "mesh_edges",
     "MeshTopology",
     "mesh_neighbors",
+    "MeshInformation",
     "MeshAffineTransform",
     "MeshGeometry",
     "TriMesh",

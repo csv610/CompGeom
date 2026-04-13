@@ -15,6 +15,8 @@ Fast Marching Method
 Dijkstra's Algorithm
 Mesh Boundary Detection
 Manifold Verification
+Parallelized Mesh Analysis
+
 Mesh Orientability
 Hodge Star Computation
 Exterior Derivative
@@ -60,6 +62,10 @@ Random Walk
 Rectangle Packing
 Rotating Calipers
 Segment Intersection
+Möller–Trumbore (Ray-Triangle) Intersection
+Möller (Triangle-Triangle) Intersection
+PANG2 (Robust Coplanar Triangle Intersection)
+
 Self-Avoiding Walk
 Triangle to Quad Conversion
 Voronoi Diagrams

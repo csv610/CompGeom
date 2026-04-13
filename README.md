@@ -39,6 +39,7 @@ A Python library and command-line suite for geometric modeling, mesh processing,
    - Mesh Types (Triangle, Quad, Tet, Hex)
    - Mesh Topology & Adjacency Queries (`MeshTopology`)
    - Mesh Queries (`num_nodes`, `num_edges`, `num_faces`, `num_cells`)
+   - **`MeshInformation`**: High-level, parallelized mesh analysis (Topology, Geometry, Manifoldness)
    - Topology Extraction (`extract_edges`, `extract_faces`)
    - Mesh Loading (STL, OFF, OBJ Support via `MeshImporter`)
 8. **Mesh Refinement & Reordering**
@@ -48,6 +49,7 @@ A Python library and command-line suite for geometric modeling, mesh processing,
    - Bandwidth Reduction (Reverse Cuthill-McKee)
    - Nodal Renumbering (`reorder_nodes`)
 9. **Mesh Optimization & Analysis**
+   - Parallelized Mesh Analysis (Topology, Geometry, Manifoldness)
    - Mesh Smoothing (Laplacian, Taubin)
    - Mesh Coloring (Vertex & Element)
    - Triangle-to-Quad Conversion
