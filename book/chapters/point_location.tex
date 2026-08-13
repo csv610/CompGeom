@@ -1,44 +1,748 @@
 \chapter{Point Location}
 \label{ch:point_location}
 
-% Stub: outline only; content to be written.
-
 \section{The Planar Point-Location Problem}
 \label{sec:pointloc_problem}
+
+The \textbf{point-location problem}\index{point location} is: given a
+planar subdivision (a partition of the plane into disjoint faces bounded by
+edges) and a query point, find the face containing the query point. Point
+location is the workhorse query of computational geometry: locating a
+click in a map, a street address in a census tract, a site in a Voronoi
+diagram, or a point in a triangulated terrain are all instances. Formally,
+the subdivision is a straight-line planar graph whose edges and vertices
+partition the plane into faces; a query returns the face, the edge, or the
+vertex that contains the point, with the convention that points on a
+boundary are resolved by a consistent rule.
+
+The difficulty of point location is entirely a matter of the data
+structure built on the subdivision. A naive scan over faces takes $O(n)$
+time per query; the goal is to answer each query in $O(\log n)$ time with
+$O(n)$ storage after $O(n \log n)$ (or $O(n)$) preprocessing. This chapter
+develops the classical solutions in increasing order of sophistication:
+slab decomposition (Section~\ref{sec:pointloc_slabs}), trapezoidal maps
+with randomized incremental construction (Sections~\ref{sec:pointloc_trapezoidal}
+--\ref{sec:pointloc_search_dags}), Kirkpatrick's hierarchy
+(Section~\ref{sec:pointloc_kirkpatrick}), and the walking methods used for
+triangulations (Section~\ref{sec:pointloc_triangulations}). Dynamic and
+practical aspects follow in Sections~\ref{sec:pointloc_dynamic}--\ref{sec:pointloc_practical}.
+
+The simplest special case is point location in a convex polygon, which is
+two binary searches (Section~\ref{sec:pointloc_problem}); the general case
+requires the full machinery of this chapter. Point location is dual in
+spirit to the range searching of Chapter~\ref{ch:range_searching}: there
+the points were fixed and the ranges varied, here the subdivision is fixed
+and the query points vary.
 
 \section{Subdivision Representations}
 \label{sec:pointloc_subdivisions}
 
+A planar subdivision must be stored in a representation that supports the
+two operations a point-location structure needs: enumerating the edges
+around a face, and testing adjacency between faces. The standard
+representation is the \textbf{half-edge (doubly connected edge list,
+DCEL)}\index{half-edge}: each undirected edge is stored as two directed
+\emph{half-edges} with opposite directions, each owning its incident face
+and the previous/next half-edge around that face. The DCEL supports $O(1)$
+queries of ``which face is left of this half-edge?'' and traversal around a
+face, which the incremental and hierarchical point-location algorithms of
+this chapter require.
+
+Representations differ in what they are designed for:
+\begin{itemize}
+  \item the \textbf{DCEL} is the reference representation for general
+    planar subdivisions and the trapezoidal-map construction of
+    Section~\ref{sec:pointloc_trapezoidal};
+  \item a \textbf{triangulation} stored as a triangle list or as an
+    index-based neighbor structure supports the walking methods of
+    Section~\ref{sec:pointloc_triangulations};
+  \item the \textbf{arrangement} representation of Chapter~\ref{ch:envelopes}
+    stores subdivisions of the plane by line segments and supports the same
+    location queries.
+\end{itemize}
+The choice of representation affects robustness: an inconsistent DCEL
+(cracked edges, duplicate vertices) breaks location queries, which is why
+the half-edge machinery of Chapter~\ref{ch:half_edge} and the mesh
+validity checks of Chapter~\ref{ch:mesh_analysis} matter in practice.
+
+\index{DCEL}\index{doubly connected edge list}
+
 \section{Slab Decomposition}
 \label{sec:pointloc_slabs}
+
+\subsection{1. Overview}
+
+The first point-location structure, due to Dobkin and Lipton, decomposes
+the plane into vertical \textbf{slabs}\index{slab decomposition} by
+extending every vertex upward and downward to infinity. Within a slab, the
+subdivision edges crossing it appear as non-crossing vertical order; a query
+then reduces to two binary searches: one on the slab's $x$-coordinate and
+one on the vertical order of the edges inside the slab.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Slab]\label{def:pointloc_slab}
+  Given a planar subdivision with vertices sorted by $x$-coordinate, a
+  \textbf{slab} is the open vertical strip between two consecutive vertex
+  $x$-coordinates. The edges of the subdivision crossing a slab are
+  pairwise non-crossing and therefore have a total vertical order.
+\end{definition}
+
+\subsection{3. Theory}
+
+Within a slab the answer is determined by the vertical order: a query point
+$(x_q, y_q)$ falls between two consecutive edges (or below the lowest or
+above the highest), and the face is read off from the interval. Since the
+edge order differs from slab to slab, each slab stores its own sorted list.
+The two binary searches locate the slab ($O(\log n)$) and the interval
+($O(\log n)$), giving $O(\log n)$ query time.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Point Location by Slab Decomposition}
+\label{alg:pointloc_slabs}
+\begin{algorithmic}[1]
+\Require Subdivision with slabs $S_1,\dots,S_{m}$ (each with sorted edge order), query point $q$.
+\Ensure The face of the subdivision containing $q$.
+\Function{SlabLocate}{$q$}
+  \State $i \gets \text{binarySearch}(\text{vertex } x\text{-coordinates}, q_x)$
+  \State $j \gets \text{binarySearch}(S_i.\text{edges sorted by } y\text{-order}, q_y)$
+  \State \Return the face stored for interval $j$ of slab $S_i$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Vertex order}: vertices with equal $x$ must be ordered
+  consistently so the slab boundaries are well defined; this is a
+  degeneracy issue of the kind treated in
+  Section~\ref{sec:segint_degenerate}.
+\item \textbf{Representation}: each slab stores, per interval, a pointer to
+  the incident face; storing only the edges and reconstructing the face from
+  the DCEL halves the storage.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Storage}: $O(n^2)$: there are $O(n)$ slabs and each slab can
+  hold $O(n)$ edges.
+\item \textbf{Preprocessing}: $O(n^2)$ by sorting each slab's edges.
+\item \textbf{Query}: $O(\log n)$.
+\end{itemize}
+The quadratic storage is the reason slab decomposition is of historical
+interest only; the trapezoidal-map structure of
+Section~\ref{sec:pointloc_trapezoidal} achieves $O(n)$ space by merging the
+slab lists.
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Small subdivisions}: for a few hundred edges the quadratic
+  storage is acceptable and the structure is trivially robust.
+\item \textbf{Teaching}: the structure introduces the vertical-decomposition
+  idea that the trapezoidal map refines.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Points on edges and vertices}: the query must consistently
+  return the edge/vertex or the incident face; pick one convention and test
+  it.
+\item \textbf{Vertical edges}: an edge with constant $x$ lies on a slab
+  boundary; it must be assigned to exactly one of the two adjacent slabs.
+\end{itemize}
+
+\subsection{9. References}
+
+Slab decomposition is presented in the early literature and textbook
+treatments of point location \cite{preparata1985,berg2008}; its quadratic
+space is the motivation for the linear-space structures that follow.
 
 \section{Trapezoidal Maps}
 \label{sec:pointloc_trapezoidal}
 
+\subsection{1. Overview}
+
+The \textbf{trapezoidal map}\index{trapezoidal map} (vertical
+decomposition) refines a planar subdivision into \emph{trapezoids}: from
+each vertex and each segment endpoint, a vertical extension is drawn upward
+and downward until it hits a segment of the subdivision. The resulting
+trapezoids have at most two vertical sides and two (possibly missing)
+non-vertical sides, and every face of the original subdivision is a union
+of trapezoids. The map has $O(n)$ trapezoids, and point location in it is
+the basis of the randomized incremental algorithm of
+Section~\ref{sec:pointloc_randomized}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Trapezoid]\label{def:pointloc_trapezoid}
+  A \textbf{trapezoid} of a trapezoidal map is a cell whose top and bottom
+  boundaries are (possibly degenerate) segments of the input and whose left
+  and right boundaries are vertical extensions from vertices or segment
+  endpoints.
+\end{definition}
+
+\begin{definition}[Vertical Decomposition]\label{def:pointloc_vd}
+  The \textbf{vertical decomposition} of a set of segments is the
+  partition of the plane induced by drawing, from each vertex, the maximal
+  vertical segment that stays inside the complement of the segment set.
+\end{definition}
+
+\subsection{3. Theory}
+
+The key property of the trapezoidal map is its size: with $n$ segments in
+general position, the map has at most $6n + 3$ trapezoids. This linear
+bound follows because each segment endpoint creates at most two new
+trapezoids (its top and bottom extensions enter and leave existing
+trapezoids). Since each trapezoid is adjacent to its vertical-side
+neighbors, the map is a planar subdivision of the plane, and locating a
+point in the original subdivision is equivalent to locating it in the
+trapezoidal map.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Build the Trapezoidal Map of a Segment Set}
+\label{alg:pointloc_trapezoidal}
+\begin{algorithmic}[1]
+\Require $n$ line segments in general position.
+\Ensure The trapezoidal map $\mathcal{T}$ and a history DAG for queries.
+\Function{BuildTrapezoidalMap}{$S$}
+  \State $T \gets$ trapezoid covering the bounding box of $S$
+  \For{segment $s$ in a random order}
+    \State locate the trapezoid(s) of $T$ containing $s$
+    \State split the affected trapezoids by the vertical extensions of $s$'s endpoints
+    \State cut the segment into the trapezoids it crosses, updating adjacency
+    \State record the split in the history DAG
+  \EndFor
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Insertion order}: the segments are inserted in random order;
+  the expected number of trapezoids ever created is $O(n \log n)$ because a
+  segment's endpoints fall into expected $O(\log n)$ trapezoids over the
+  construction.
+\item \textbf{Bounding box}: a large box avoids unbounded trapezoids and
+  simplifies the data structure.
+\item \textbf{General position}: if endpoints share $x$-coordinates or
+  segments touch, the extensions are handled by the tie-breaking rules of
+  Section~\ref{sec:segint_degenerate}.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Storage}: $O(n)$.
+\item \textbf{Preprocessing}: expected $O(n \log n)$ time, expected $O(n)$
+  space, under a random insertion order \cite{seidel1991,berg2008}.
+\item \textbf{Query}: expected $O(\log n)$ via the history DAG of
+  Section~\ref{sec:pointloc_search_dags}.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Map overlay}: computing the overlay of two subdivisions
+  starts by trapezoidal decomposition of one of them
+  (Section~\ref{sec:segint_red_blue}).
+\item \textbf{Computing arrangements}: the trapezoidal map is the standard
+  structure for building arrangements of line segments
+  (Chapter~\ref{ch:envelopes}).
+\item \textbf{Voronoi and Delaunay queries}: locating a point in a Voronoi
+  diagram to answer nearest-site queries.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Count invariant}: verify the number of trapezoids against the
+  $6n+3$ bound on random segments.
+\item \textbf{Endpoint ties}: two segments sharing an endpoint, and a
+  vertex lying exactly above another, must produce the same map regardless
+  of insertion order.
+\item \textbf{Consistency}: locate random points both in the trapezoidal
+  map and by brute-force face scan, and require identical answers.
+\end{itemize}
+
+\subsection{9. References}
+
+The trapezoidal map and its randomized incremental construction with a
+history DAG are due to Mulmuley and to Seidel \cite{seidel1991}; the
+textbook treatment is in \cite{berg2008}.
+
 \section{Randomized Incremental Construction}
 \label{sec:pointloc_randomized}
+
+\subsection{1. Overview}
+
+The trapezoidal map is built incrementally: segments are inserted one at a
+time, in a random order, and each insertion splits the trapezoids the
+segment crosses. The construction simultaneously maintains a \textbf{history
+DAG}\index{history DAG} (Section~\ref{sec:pointloc_search_dags}) that turns
+every construction step into a query step. The expected behavior is
+remarkable: although a single insertion can change many trapezoids, the
+expected total work over a random order is $O(n \log n)$, and the expected
+query time is $O(\log n)$.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Insertion Step]\label{def:pointloc_insertion}
+  Inserting a segment $s$ into the trapezoidal map splits the trapezoids
+  that $s$ crosses: the vertical extensions of $s$'s endpoints create up to
+  four new trapezoids, and $s$ itself bisects the crossed trapezoids.
+\end{definition}
+
+\subsection{3. Theory}
+
+The analysis has two parts. First, the expected number of trapezoids created
+by inserting $n$ segments in random order is $O(n \log n)$: a given
+trapezoid survives until one of the two input segments bounding it is
+inserted, and a backward analysis shows each insertion destroys expected
+$O(1)$ trapezoids created so far. Second, the history DAG depth is expected
+$O(\log n)$: a query point's trajectory changes only when one of the
+trapezoids on its path is split, and backward analysis bounds the number of
+such splits by the expected $O(\log n)$.
+
+\subsection{4. Pseudocode}
+
+The insertion procedure is given in Algorithm~\ref{alg:pointloc_trapezoidal};
+the query procedure uses the history DAG built alongside:
+
+\begin{algorithm}[htbp]
+\caption{Query by History DAG}
+\label{alg:pointloc_query_dag}
+\begin{algorithmic}[1]
+\Require History DAG rooted at the initial bounding trapezoid, query point $q$.
+\Ensure The trapezoid (hence face) containing $q$.
+\Function{QueryDAG}{$q$}
+  \State $v \gets \text{root}$; $t \gets$ trapezoid of $v$
+  \While{$v$ has children}
+    \State $v \gets$ the child of $v$ containing $q$
+    \State $t \gets$ trapezoid of $v$
+  \EndWhile
+  \State \Return $t$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Randomization}: the random order is essential for the
+  expected bounds; a deterministic bad order (e.g., left-to-right) makes
+  the depth $\Theta(n)$.
+\item \textbf{Memory of the DAG}: the DAG has expected $O(n)$ nodes but can
+  grow; production implementations periodically rebuild the structure when
+  the number of nodes exceeds a constant times the map size.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Expected time}: $O(n \log n)$ preprocessing, $O(\log n)$ per
+  query.
+\item \textbf{Expected space}: $O(n)$ for the map plus $O(n)$ for the DAG.
+\end{itemize}
+All bounds hold with high probability under a uniformly random insertion
+order \cite{seidel1991}.
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Interactive graphics}: clicking to select a face of a map or
+  mesh.
+\item \textbf{Voronoi nearest-site queries}: locating the query point in
+  the Voronoi diagram returns its nearest site.
+\item \textbf{CSG and boolean geometry}: face classification in polygon
+  boolean operations (Chapter~\ref{ch:polygon_ops}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Order invariance}: the final map must be the same for any
+  insertion order; the DAG differs but queries must agree.
+\item \textbf{Random-point sweep}: query millions of random points and
+  compare against a brute-force reference.
+\item \textbf{Boundary queries}: points exactly on an input segment must
+  resolve to a consistent side by the fixed convention.
+\end{itemize}
+
+\subsection{9. References}
+
+The randomized incremental construction is presented in \cite{seidel1991}
+and \cite{berg2008}; the general framework of randomized incremental
+algorithms is developed in Chapter~\ref{ch:randomized_algorithms}.
 
 \section{Search DAGs}
 \label{sec:pointloc_search_dags}
 
+The \textbf{search DAG}\index{search DAG} (history DAG) is the data
+structure that turns the incremental construction of
+Section~\ref{sec:pointloc_randomized} into a query structure. Every time an
+insertion splits a trapezoid $t$ into trapezoids $t_1,\dots,t_j$, the node
+for $t$ is given children $t_1,\dots,t_j$ in the DAG. A query walks from
+the root: at each node, test which child contains the query point, descend,
+and repeat until reaching a leaf (a trapezoid of the final map). The leaf
+identifies the face.
+
+The structure is a DAG and not a tree because a trapezoid created by an
+early insertion can be split again later, so several construction paths
+lead to the same trapezoid; conversely, the query is correct because the
+trapezoids containing the query point at every construction step form a
+nested chain, and each child test is an $O(1)$ containment check against a
+trapezoid. The expected depth is $O(\log n)$, which is the expected query
+time. The DAG has expected $O(n)$ nodes (one per trapezoid ever created),
+though the constant is larger than the map's.
+
+The search-DAG idea is the special case for point location of the general
+\textbf{history-based} technique for randomized incremental algorithms: the
+history of the construction doubles as the query structure, which is why
+the Delaunay-based point location of Section~\ref{sec:pointloc_triangulations}
+also uses a history DAG (the \textbf{Delaunay hierarchy} of
+\cite{devillers2002}). For implementations, the DAG's memory is the
+practical constraint, and rebuilding once the node count exceeds a threshold
+keeps both memory and cache behavior under control.
+
+\index{search DAG}\index{history DAG}
+
 \section{Kirkpatrick's Hierarchy}
 \label{sec:pointloc_kirkpatrick}
+
+\subsection{1. Overview}
+
+Kirkpatrick's algorithm \cite{kirkpatrick1983} achieves \emph{worst-case}
+$O(\log n)$ point location with $O(n)$ space by building a hierarchy of
+progressively coarser triangulations: a sequence of triangulations
+$T_0 \supset T_1 \supset \cdots \supset T_m$ where each level refines the
+next and each vertex of $T_{i+1}$ keeps pointers to the constant number of
+vertices of $T_i$ it covers. The construction requires the subdivision to
+be a triangulation with no vertices of degree larger than a constant, which
+is achieved by a preliminary refinement step.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Independent Set]\label{def:pointloc_independent}
+  An \textbf{independent set} of a planar graph is a set of vertices no two
+  of which are adjacent. In a planar triangulation of $n$ vertices, an
+  independent set of size at least $n/18$ with bounded degree always exists
+  and can be found in linear time.
+\end{definition}
+
+\begin{definition}[Kirkpatrick Hierarchy]\label{def:pointloc_kh}
+  A \textbf{Kirkpatrick hierarchy} is a sequence of triangulations
+  $T_0, T_1, \dots, T_m$ where $T_{i+1}$ is obtained from $T_i$ by removing
+  an independent set of bounded-degree vertices and retriangulating the
+  holes, so that $T_{i+1}$ has at most a constant fraction of the vertices
+  of $T_i$.
+\end{definition}
+
+\subsection{3. Theory}
+
+Each level removes an independent set of bounded degree, so the remaining
+graph is still a triangulation (holes are retriangulated), and the size
+decreases by a constant factor per level, giving $m = O(\log n)$ levels.
+Retriangulating a hole around a removed vertex of degree at most $d$
+produces at most $d$ new triangles, and each new triangle stores a pointer
+to the (constant number of) triangles it overlaps in the previous level.
+A query descends level by level: at level $i+1$, the located triangle points
+to its $O(1)$ overlapping triangles in level $i$, one of which contains the
+query point.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Kirkpatrick Point Location}
+\label{alg:pointloc_kirkpatrick}
+\begin{algorithmic}[1]
+\Require Triangulation $T_0$ and its Kirkpatrick hierarchy, query point $q$.
+\Ensure The triangle of $T_0$ containing $q$.
+\Function{KirkpatrickLocate}{$q$}
+  \State $i \gets m$; $t \gets$ the single triangle of $T_m$
+  \While{$i > 0$}
+    \State $t' \gets$ the triangle of $T_{i-1}$ overlapping $t$ that contains $q$
+    \State $t \gets t'$; $i \gets i - 1$
+  \EndWhile
+  \State \Return $t$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Preprocessing}: refine the input subdivision into a
+  triangulation with bounded degree by inserting a bounded number of
+  Steiner points per edge and face; this adds $O(n)$ vertices.
+\item \textbf{Independent-set choice}: any maximal independent set of
+  bounded degree works; greedily selecting low-degree vertices keeps the
+  retriangulation cheap.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Storage}: $O(n)$.
+\item \textbf{Preprocessing}: $O(n)$ (with $O(n)$ Steiner points).
+\item \textbf{Query}: $O(\log n)$ worst case, with a small constant (about
+  12 pointer dereferences per level in the classic implementation).
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Worst-case guarantees}: the only linear-space planar
+  structure with a deterministic $O(\log n)$ query is the choice when
+  query-time variability is unacceptable.
+\item \textbf{Static triangulations}: terrains and meshes that are built
+  once and queried many times.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Degree bound}: verify the refinement step produced a
+  triangulation whose maximum degree is bounded; the independent-set lemma
+  fails otherwise.
+\item \textbf{Overlap pointers}: for every triangle of level $i+1$, all its
+  overlapping level-$i$ triangles must cover it exactly once.
+\item \textbf{Consistency}: brute-force comparison on random queries, plus
+  boundary queries on vertices and edges.
+\end{itemize}
+
+\subsection{9. References}
+
+The hierarchy and its analysis are due to Kirkpatrick \cite{kirkpatrick1983};
+textbook treatments appear in \cite{berg2008,preparata1985}.
 
 \section{Point Location in Triangulations}
 \label{sec:pointloc_triangulations}
 
-Walking methods locate a query point by crossing mesh edges (2D) or faces
-(3D) from a starting simplex toward the query point. The visibility walk and
-jump-and-walk are described in
+\subsection{1. Overview}
+
+A triangulation (of a point set, a terrain, or a mesh) is located by
+walking through the triangles: from a known starting triangle, cross the
+edge that the query point lies to the other side of, and repeat until the
+triangle containing the query point is found. Walking methods are the
+method of choice inside triangulation and mesh algorithms because they
+require almost no preprocessing (often none) and run in expected $O(\log n)$
+time when the start is well chosen. Walking methods locate a query point by
+crossing mesh edges (2D) or faces (3D) from a starting simplex toward the
+query point. The visibility walk and jump-and-walk are described in
 Section~\ref{sec:point_location_walking}, which covers both triangles and
 tetrahedra and the expected $O(\log n)$ walk length with a spatial-index
 start.
 
+\subsection{2. Definitions}
+
+\begin{definition}[Visibility Walk]\label{def:pointloc_visibility_walk}
+  In a \textbf{visibility walk}, from the current triangle $t$, test the
+  three edges of $t$; if the query point lies to the outside of one of
+  them, cross that edge into the adjacent triangle and repeat.
+\end{definition}
+
+\begin{definition}[Jump-and-Walk]\label{def:pointloc_jump_walk}
+  \textbf{Jump-and-walk} first finds a start triangle near the query point
+  using a spatial index (a grid, a $k$-d tree, or a
+  space-filling-curve index), then runs a visibility walk from it.
+\end{definition}
+
+\subsection{3. Theory}
+
+The visibility walk is correct if the triangulation is a valid
+triangulation of its domain and the walk never cycles; for a Delaunay
+triangulation, the walk moves monotonically closer to the query point and
+terminates. The number of steps is proportional to the graph distance in
+the triangulation, which in the worst case is $\Theta(\sqrt{n})$ for a
+triangular grid but in practice is small. The \textbf{Delaunay hierarchy}
+\cite{devillers2002} reduces the walk to expected $O(\log n)$ by building
+a hierarchy of randomly sampled triangulations: each level walks on a
+coarser triangulation and jumps into the next. Jump-and-walk
+\cite{mucke1999} achieves expected $O(\sqrt{n})$ steps on random Delaunay
+triangulations without any hierarchy, and near-constant practical time when
+the grid start is well chosen.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Visibility Walk in a Triangulation}
+\label{alg:pointloc_visibility_walk}
+\begin{algorithmic}[1]
+\Require Triangulation with neighbor pointers, start triangle $t_0$, query point $q$.
+\Ensure The triangle containing $q$.
+\Function{VisibilityWalk}{$t_0, q$}
+  \State $t \gets t_0$
+  \While{true}
+    \For{each edge $e$ of $t$}
+      \If{$q$ lies strictly outside the half-plane of $e$}
+        \State $t \gets \text{neighbor of } t \text{ across } e$; \textbf{break}
+      \EndIf
+    \EndFor
+    \If{no edge was crossed} \State \Return $t$ \EndIf
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Start choice}: the start triangle determines the walk length;
+  a grid or $k$-d-tree index (Chapter~\ref{ch:spatial_structures}) gives a
+  near-optimal start in expected $O(\log n)$ time.
+\item \textbf{Walk order}: checking edges in a fixed cyclic order makes the
+  walk deterministic; when the query lies outside the domain, the walk
+  should terminate by reaching the boundary.
+\item \textbf{Degeneracy}: if the query lies exactly on an edge, the
+  convention ``belongs to the higher-indexed face'' must be fixed to keep
+  the walk from cycling.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Preprocessing}: none for the bare walk; $O(n \log n)$ for a
+  spatial index.
+\item \textbf{Query}: worst-case $\Theta(\sqrt{n})$ steps on a grid;
+  expected $O(\log n)$ with a Delaunay hierarchy; expected $O(\sqrt{n})$
+  for jump-and-walk on random triangulations.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Delaunay and Voronoi algorithms}: inserting a point into a
+  Delaunay triangulation first locates it (Chapter~\ref{ch:delaunay_triangulations});
+  the history DAG of Section~\ref{sec:pointloc_search_dags} is the
+  standard accelerator there.
+\item \textbf{Finite elements}: locating integration points in a mesh
+  (Chapter~\ref{ch:mesh_analysis}).
+\item \textbf{Terrain interpolation}: locating a query position in a TIN
+  before interpolating elevation (Chapter~\ref{ch:applications_gis}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Outside points}: for a bounded triangulation, verify the walk
+  reports ``outside'' when the query is beyond the domain.
+\item \textbf{On-edge and on-vertex queries}: fix and test the convention
+  so the walk terminates.
+\item \textbf{Consistency}: compare against the brute-force face scan on
+  random and adversarial queries.
+\end{itemize}
+
+\subsection{9. References}
+
+Walking methods are covered in \cite{berg2008} and in the specialized
+literature on triangulation point location: the Delaunay hierarchy
+\cite{devillers2002} and the jump-and-walk analysis \cite{mucke1999}.
+
 \section{Dynamic Point Location}
 \label{sec:pointloc_dynamic}
+
+When the subdivision itself changes (edges inserted, deleted, moved), the
+point-location structure must be updated. The main dynamic scenarios are:
+
+\begin{description}
+  \item[Incremental construction] The trapezoidal map of
+    Section~\ref{sec:pointloc_randomized} is inherently incremental: each
+    insertion updates the map and the history DAG in expected $O(\log n)$
+    time, so ``point location while building'' is free.
+  \item[Deletions] Removing segments from a trapezoidal map requires
+    merging trapezoids and updating the DAG; the expected cost is
+    $O(\log^2 n)$ with the standard techniques \cite{overmars1983}.
+  \item[Moving subdivisions] When vertices move along known trajectories
+    (kinetic subdivisions), the combinatorial structure changes only at
+    discrete events; kinetic data structures maintain point-location
+    structures across events (Chapter~\ref{ch:dynamic_kinetic_geometry}).
+\end{description}
+
+For triangulations, insertions and deletions are local flips
+(Section~\ref{sec:pointloc_triangulations}), and walking locates the
+affected triangles; the Delaunay hierarchy supports deletions with expected
+$O(\log n)$ updates. The general theory of transforming static search
+structures into dynamic ones is Overmars' transform-and-conquer method
+\cite{overmars1983}, which yields logarithmic amortized update costs for
+most planar point-location structures at the price of larger constants.
+
+\index{dynamic point location}
 
 \section{Practical Implementations}
 \label{sec:pointloc_practical}
 
+Production point-location code differs from the textbook algorithms in
+predictable ways. The robust-predicate discipline of
+Section~\ref{sec:robust_predicates} is mandatory: a query whose
+orientation tests are inconsistent can walk into a cycle or return the
+wrong face, and the failures are silent. Implementations therefore:
+
+\begin{itemize}
+\item \textbf{Use exact predicates}: every edge-side test in the walk, the
+  DAG descent, and the hierarchy descent is an orientation predicate
+  evaluated with adaptive exact arithmetic (Chapter~\ref{ch:geometric_predicates}).
+\item \textbf{Fix boundary conventions}: points on edges and vertices are
+  resolved by a documented rule (e.g., ``open on the right side'') applied
+  uniformly by all code paths.
+\item \textbf{Index the start}: for triangulations, a grid or
+  space-filling-curve index (Chapter~\ref{ch:space_filling_curves}) gives
+  jump-and-walk a constant-time start on realistic data, beating the DAG in
+  cache behavior despite the same asymptotics.
+\item \textbf{Use cache-friendly layouts}: traversing the DCEL or the
+  triangle neighbors is pointer-chasing; layouts that store triangles in
+  adjacency order (space-filling curves, breadth-first numbering) improve
+  walk performance severalfold.
+\item \textbf{Build the structure once}: for a static mesh queried many
+  times, a $k$-d-tree start plus visibility walk is usually the best
+  engineering trade-off; for a subdivision that changes, the trapezoidal
+  map with a history DAG remains the reference.
+\end{itemize}
+
+The practical guidance for the reader is to start with a visibility walk
+over a $k$-d-tree start (simplest to implement correctly with exact
+predicates), benchmark against the application's query distribution, and
+move to a trapezoidal map or Delaunay hierarchy only when asymptotic
+behavior demands it. The spatial data structures of
+Chapter~\ref{ch:spatial_structures} and the space-filling curves of
+Chapter~\ref{ch:space_filling_curves} provide the indexing primitives.
+
+\index{implementation}
+
 \section{Exercises}
 \label{sec:pointloc_exercises}
+
+\begin{enumerate}
+  \item Prove that a convex polygon can be point-located with two binary
+    searches: first find the vertex sector by $x$, then test the relevant
+    edge.
+  \item Show that the trapezoidal map of $n$ segments has at most $6n+3$
+    trapezoids.
+  \item Explain why the history DAG of Section~\ref{sec:pointloc_search_dags}
+    is a DAG and not a tree, and why queries still terminate at the leaf.
+  \item Prove the independent-set lemma used by Kirkpatrick's hierarchy:
+    any planar triangulation with $n$ vertices has an independent set of
+    size at least $n/18$ with bounded degree.
+  \item Give a query point and a triangulation on which the visibility walk
+    of Section~\ref{sec:pointloc_triangulations} takes $\Theta(\sqrt{n})$
+    steps, and explain why a Delaunay hierarchy avoids this.
+  \item Compare the expected query time, space, and preprocessing of slab
+    decomposition, the trapezoidal map, Kirkpatrick's hierarchy, and
+    jump-and-walk for $n = 10^3, 10^6$.
+  \item Implement a brute-force locator and validate a trapezoidal-map
+    implementation on random segments, verifying the $6n+3$ count and the
+    agreement of the DAG with the brute-force answers on $10^5$ random
+    queries.
+  \item Extend the validation to boundary queries (points on edges and
+    vertices) and to degenerate inputs (vertical segments, shared
+    endpoints), and document the boundary convention used.
+\end{enumerate}
