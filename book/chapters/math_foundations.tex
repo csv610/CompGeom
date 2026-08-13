@@ -1,52 +1,639 @@
 \chapter{Mathematical Foundations}
 \label{ch:math_foundations}
 
-% Stub: outline only; content to be written.
+This chapter collects the mathematical vocabulary used throughout the book:
+affine and vector spaces, inner products and metrics, lines and hyperplanes,
+convexity, orientation, barycentric coordinates, duality, and the topological
+notions needed to reason about meshes and complexes. It is not a full course
+in any of these subjects; rather, it fixes notation and states the facts that
+the algorithmic chapters rely on. Readers familiar with linear algebra and
+point-set topology can skip directly to the chapter bibliographic notes.
+References such as Matou\v{s}ek's \emph{Lectures on Discrete Geometry}
+\cite{matousek1999} and de Berg et al.'s \emph{Computational Geometry:
+Algorithms and Applications} \cite{deberg2008} provide more complete
+treatments.
 
 \section{Vectors and Affine Spaces}
 \label{sec:math_vectors_affine}
 
+Computational geometry is mostly carried out in $\mathbb{R}^d$, but it is
+useful to keep the distinction between \emph{points} and \emph{vectors}.
+A \textbf{vector} is an element of a vector space: it has a magnitude and a
+direction and can be added, scaled, and compared. A \textbf{point} is a
+location in space; it cannot be added to another point in a coordinate-free
+way. The two are related through the translation operation: the vector $v$
+carries a point $p$ to the point $p+v$.
+
+\begin{definition}[Vector Space]
+  A \textbf{vector space} over the field $\mathbb{R}$ is a set $V$ together
+  with a zero element $\mathbf{0}$, a vector addition $u+v$, and a scalar
+  multiplication $\lambda v$ satisfying the standard axioms: associativity
+  and commutativity of addition, distributivity, existence of additive
+  inverses, and compatibility of scalar multiplication with multiplication in
+  $\mathbb{R}$. A \textbf{linear combination} of vectors $v_1,\dots,v_k$ is
+  $\lambda_1 v_1 + \cdots + \lambda_k v_k$ with $\lambda_i \in \mathbb{R}$.
+\end{definition}
+
+\begin{definition}[Affine Space]
+  An \textbf{affine space} over $\mathbb{R}$ is a set $A$ of \emph{points}
+  together with a vector space $V$ of \emph{translations} and a mapping
+  $(p,v) \mapsto p+v$ such that $p+\mathbf{0} = p$, $(p+u)+v = p+(u+v)$, and
+  for every pair of points $p,q$ there is a unique vector $v$ with $q=p+v$,
+  written $v = q - p$.
+\end{definition}
+
+The distinction matters for a practical reason: every algorithm in this book
+that computes with coordinates implicitly chooses an origin. Results that are
+independent of that choice are called \textbf{affine-invariant}; convexity,
+collinearity, ratios of collinear lengths, and barycentric coordinates are
+affine-invariant, while absolute positions and lengths are not. Choosing a
+basis identifies the affine space $\mathbb{R}^d$ with $d$-tuples of reals,
+which is how all the pseudocode in this book manipulates geometry.
+
+The \textbf{affine hull} of a set $S\subseteq A$ is the smallest affine
+subspace containing $S$. The affine hull of three non-collinear points is a
+plane, of four non-coplanar points is $\mathbb{R}^3$, and more generally of
+$d+1$ affinely independent points in $\mathbb{R}^d$ is all of
+$\mathbb{R}^d$. This notion is developed further in
+Section~\ref{sec:math_affine_combinations}. Point sets whose affine hull is
+low-dimensional (for example, collinear points in the plane) are called
+\textbf{degenerate} for algorithms that assume full dimension; the topic is
+treated in Section~\ref{sec:intro_degeneracies}.
+
+\begin{example}
+  In $\mathbb{R}^2$, the affine hull of two distinct points is the entire
+  line through them, and the affine hull of any three non-collinear points is
+  the whole plane. Algorithms that build, say, planar triangulations require
+  the affine hull to be the plane; the Delaunay algorithm of
+  Chapter~\ref{ch:delaunay_triangulations} therefore assumes general
+  position, perturbing degenerate inputs if necessary.
+\end{example}
+
+\index{affine space}\index{vector space}
+
 \section{Inner Products and Euclidean Distance}
 \label{sec:math_inner_products}
+
+The standard Euclidean structure on $\mathbb{R}^d$ comes from the
+\textbf{dot product} (inner product)
+\[
+  \langle u, v \rangle = \sum_{i=1}^d u_i v_i,
+\]
+which induces the Euclidean norm $\|v\| = \sqrt{\langle v,v\rangle}$ and the
+Euclidean distance $\mathrm{dist}(p,q) = \|p-q\|$.
+
+\begin{theorem}[Cauchy--Schwarz Inequality]\label{thm:math_cauchy_schwarz}
+  For all vectors $u,v \in \mathbb{R}^d$, $|\langle u, v\rangle| \le \|u\|
+  \cdot \|v\|$, with equality if and only if $u$ and $v$ are scalar multiples
+  of one another.
+\end{theorem}
+
+Cauchy--Schwarz implies the triangle inequality
+$\|u+v\| \le \|u\| + \|v\|$, which is exactly the requirement that the
+Euclidean norm define a metric (Section~\ref{sec:math_norms_metrics}). It also
+gives the cosine rule
+\[
+  \cos \theta = \frac{\langle u,v\rangle}{\|u\|\,\|v\|}
+\]
+for the angle $\theta$ between nonzero vectors, so the dot product lets us
+test orthogonality: $u \perp v$ iff $\langle u,v\rangle = 0$.
+
+The dot product is the central computational primitive of the geometry
+algorithms in this book. Predicates such as orientation and in-circle tests
+(Section~\ref{sec:orientation_predicate}) are determinants built from dot
+products; projections onto lines and planes are dot products followed by
+scaling; and the closest-point queries of Chapter~\ref{ch:distance_paths} all
+reduce to evaluating inner products. Because floating-point arithmetic can
+make a nearly zero inner product change sign, the robust evaluation methods
+of Section~\ref{sec:robust_predicates} are essential when a dot product
+determines a topological decision.
+
+\index{inner product}\index{dot product}\index{Euclidean distance}
 
 \section{Lines and Hyperplanes}
 \label{sec:math_lines_hyperplanes}
 
+A \textbf{line} through a point $p$ with direction $v \neq \mathbf{0}$ has
+the parametric form $\ell(t) = p + t v$, $t \in \mathbb{R}$. The line through
+two distinct points $p$ and $q$ is $\ell(t) = (1-t)p + tq$. A
+\textbf{segment} restricts the parameter: $[p,q] = \{(1-t)p + tq : 0 \le t
+\le 1\}$.
+
+A \textbf{hyperplane} in $\mathbb{R}^d$ is the set of points $x$ satisfying
+a nontrivial linear equation
+\[
+  H = \{ x \in \mathbb{R}^d : \langle n, x\rangle = c \},
+\]
+where $n \neq \mathbf{0}$ is a \textbf{normal vector} and $c$ is a scalar.
+In $\mathbb{R}^2$ a hyperplane is a line; in $\mathbb{R}^3$ it is a plane.
+The normal $n$ is unique up to nonzero scaling, and the unit normal
+$n/\|n\|$ is the direction perpendicular to the hyperplane.
+
+The signed distance from a point $x$ to the hyperplane $H$ is
+\[
+  \delta(x) = \frac{\langle n, x\rangle - c}{\|n\|},
+\]
+which is positive on one side of $H$ and negative on the other. This signed
+distance is the basic building block for many predicates and proximity
+queries: the distance from a point to a line in $\mathbb{R}^2$ is
+$|\delta(x)|$, and the distance between a point and a plane in
+$\mathbb{R}^3$ is the same expression. Hyperplanes divide space into two
+\textbf{half-spaces} (Section~\ref{sec:math_half_spaces}), and every convex
+polyhedron can be written as the intersection of finitely many half-spaces,
+one per facet.
+
+The point-to-line and point-to-plane distance formulas are used throughout
+Chapter~\ref{ch:distance_paths}; the sign of $\delta$ is the raw material of
+the orientation predicates of Section~\ref{sec:orientation_predicate}.
+
+\index{line}\index{hyperplane}\index{plane}
+
 \section{Affine Combinations}
 \label{sec:math_affine_combinations}
+
+\begin{definition}[Affine Combination]\label{def:math_affine_combination}
+  A point $x = \sum_{i=1}^k \lambda_i p_i$ is an \textbf{affine combination}
+  of the points $p_1,\dots,p_k$ if $\sum_{i=1}^k \lambda_i = 1$.
+\end{definition}
+
+The condition $\sum \lambda_i = 1$ is exactly what makes the combination
+independent of the choice of origin: translating all $p_i$ by $v$ moves $x$
+by $(\sum \lambda_i) v = v$. Affine combinations are closed under taking
+further affine combinations, so the set of all affine combinations of a
+point set is its affine hull (Section~\ref{sec:math_vectors_affine}).
+
+A set of points $p_1,\dots,p_k$ is \textbf{affinely independent} if no point
+is an affine combination of the others; equivalently, the vectors
+$p_2 - p_1, \dots, p_k - p_1$ are linearly independent. In $\mathbb{R}^d$ at
+most $d+1$ points are affinely independent. An \textbf{affine frame} is an
+affinely independent set of $d+1$ points $p_0,\dots,p_d$ in
+$\mathbb{R}^d$; every point has a unique representation as an affine
+combination of the frame, whose coefficients are the
+\textbf{barycentric coordinates} of Section~\ref{sec:math_barycentric}.
+
+Affine independence is the coordinate-level meaning of ``general position''
+in Section~\ref{sec:intro_degeneracies}: planar algorithms typically assume
+that no three points are collinear and no four points are concyclic, which is
+equivalent to all triples (resp.\ quadruples) being affinely independent
+(resp.\ affinely and spherically independent). The collinearity test itself
+is the orientation determinant of Section~\ref{sec:math_orientation_determinants}.
+
+\index{affine combination}\index{affine independence}
 
 \section{Convex Combinations}
 \label{sec:math_convex_combinations}
 
+\begin{definition}[Convex Combination and Convex Hull]\label{def:math_convex_hull}
+  An affine combination $x = \sum_{i=1}^k \lambda_i p_i$ is a
+  \textbf{convex combination} if in addition $\lambda_i \ge 0$ for all $i$.
+  A set $C$ is \textbf{convex} if it contains every convex combination of its
+  points. The \textbf{convex hull} $\operatorname{conv}(S)$ of a set $S$ is
+  the set of all convex combinations of points of $S$; it is the smallest
+  convex set containing $S$.
+\end{definition}
+
+Convex sets are closed under intersection and under Minkowski sums
+(Section~\ref{sec:math_separating_surfaces} treats one of their most
+important structural properties). The convex hull of a finite point set is a
+convex polytope whose vertices form a subset of the input points; computing
+it is Chapter~\ref{ch:convex_hulls}. The \textbf{vertices} of
+$\operatorname{conv}(S)$ are exactly those points of $S$ that are not convex
+combinations of the others.
+
+\begin{theorem}[Carath\'eodory]\label{thm:math_caratheodory}
+  In $\mathbb{R}^d$, every point of the convex hull of a set $S$ is a convex
+  combination of at most $d+1$ points of $S$.
+\end{theorem}
+
+Carath\'eodory's theorem justifies the ``small certificates'' that appear in
+many algorithms: to check whether a point lies in the convex hull it suffices
+to search for a small subset witnessing the inclusion, which is the basis of
+the separation-based membership tests in Chapter~\ref{ch:convex_hulls} and
+Section~\ref{sec:math_half_spaces}. The proof is the standard one: write the
+point with the minimal number $k$ of terms, and if $k > d+1$ the difference
+vectors are linearly dependent, so one can perturb the coefficients to zero
+one of them while preserving convexity.
+
+\index{convex set}\index{convex hull}\index{Carath\'eodory's theorem}
+
 \section{Orientation and Determinants}
 \label{sec:math_orientation_determinants}
+
+The \textbf{orientation} of an ordered point triple $(p,q,r)$ in
+$\mathbb{R}^2$ records whether $r$ lies to the left of, on, or to the right
+of the directed line from $p$ to $q$. It is the sign of the determinant
+\[
+  \operatorname{orient}(p,q,r) =
+  \det\begin{pmatrix}
+    1 & 1 & 1\\
+    p_x & q_x & r_x\\
+    p_y & q_y & r_y
+  \end{pmatrix}
+  = (q_x - p_x)(r_y - p_y) - (q_y - p_y)(r_x - p_x),
+\]
+which equals $2 \cdot \text{(signed area)}$ of the triangle $\triangle pqr$
+(Section~\ref{sec:math_signed_area_volume}). The value is positive when the
+turning from $p\to q$ to $p\to r$ is counterclockwise, negative when
+clockwise, and zero exactly when the three points are collinear.
+
+In $\mathbb{R}^3$, the orientation of an ordered quadruple $(p,q,r,s)$ is
+the sign of the $4\times 4$ determinant with rows $(1, p_x, p_y, p_z)$, etc.,
+and records whether $s$ lies above or below the plane through $p,q,r$.
+
+Orientation is the fundamental \textbf{predicate} of computational
+geometry: it decides convexity of hulls, the validity of triangulations,
+point-in-polygon tests, segment intersection, and the legality of edge flips
+in the Delaunay construction (Chapter~\ref{ch:delaunay_triangulations}).
+Because the sign of a nearly zero determinant is unstable in floating point,
+production implementations use the adaptive exact evaluation described in
+Section~\ref{sec:robust_predicates}. The chapter on geometric predicates
+(Section~\ref{sec:orientation_predicate}) develops these tests in detail.
+
+\begin{remark}
+  Orientation tests can be interpreted as the sign of a
+  $d+1$-dimensional determinant built from homogeneous coordinates, which
+  unifies the 2D and 3D cases: see Section~\ref{sec:math_homogeneous} for the
+  coordinate transform and Section~\ref{sec:math_orientation_determinants}
+  references for the predicate literature.
+\end{remark}
+
+\index{orientation}\index{determinant}\index{predicate}
 
 \section{Signed Area and Signed Volume}
 \label{sec:math_signed_area_volume}
 
+The \textbf{signed area} of an ordered polygon $p_1,\dots,p_n$ in the plane
+is given by the shoelace formula
+\[
+  A = \frac{1}{2}\sum_{i=1}^n (x_i y_{i+1} - x_{i+1} y_i),
+\]
+with indices taken modulo $n$. The area is positive if the boundary is
+oriented counterclockwise and negative if clockwise; for a simple polygon
+the absolute value is the usual area. The shoelace formula underlies the
+area computations in Chapter~\ref{ch:polygon_ops} and the
+planarity/orientation fixes used in polygon repair.
+
+In $\mathbb{R}^3$, the \textbf{signed volume} of a tetrahedron with ordered
+vertices $p,q,r,s$ is $\frac{1}{6}$ times the scalar triple product
+\[
+  V = \frac{1}{6} \bigl\langle (q-p) \times (r-p),\, s-p \bigr\rangle,
+\]
+which is $\frac{1}{6}$ of the orientation determinant of
+Section~\ref{sec:math_orientation_determinants}. The signed volume of a
+polyhedron is obtained by summing the signed volumes of tetrahedra formed
+with a fixed apex; this is the divergence-theorem (vector-calculus) way to
+compute volumes of arbitrary closed meshes, used in Chapter~\ref{ch:polyhedral_geometry}
+for volume, center of mass, and moments.
+
+Signed quantities are more than a convenience: they determine sidedness and
+orientation robustly and allow ``signed'' triangles to cancel outside a
+region, which is exactly how triangulated surface areas and enclosed volumes
+are computed without explicit inside/outside tests. The sign convention must
+be fixed consistently; the book uses counterclockwise (positive) polygons in
+the plane and positively oriented (right-handed) tetrahedra in space.
+
+\index{signed area}\index{signed volume}\index{shoelace formula}
+
 \section{Barycentric Coordinates}
 \label{sec:math_barycentric}
+
+Let $p_0,\dots,p_d$ be an affine frame of $\mathbb{R}^d$ (Section~\ref{sec:math_affine_combinations}).
+Every point $x$ has unique coefficients $(\lambda_0,\dots,\lambda_d)$ with
+$\sum_i \lambda_i = 1$ and $x = \sum_i \lambda_i p_i$, called the
+\textbf{barycentric coordinates} of $x$ with respect to the frame.
+
+For a triangle $\triangle ABC$ in the plane, the barycentric coordinates
+are the (signed) area ratios
+\[
+  \lambda_A = \frac{A(\triangle xBC)}{A(\triangle ABC)},\quad
+  \lambda_B = \frac{A(\triangle xCA)}{A(\triangle ABC)},\quad
+  \lambda_C = \frac{A(\triangle xAB)}{A(\triangle ABC)},
+\]
+where $A(\cdot)$ is the signed area of Section~\ref{sec:math_signed_area_volume}.
+The point $x$ lies inside the triangle iff all three coordinates are
+nonnegative; on the boundary iff one is zero; and outside iff some coordinate
+is negative. This yields a robust point-in-triangle test built from three
+orientation evaluations, and it gives the linear interpolation formula used
+for color, texture, and data interpolation on meshes.
+
+In a tetrahedron $p_0 p_1 p_2 p_3$, the barycentric coordinates are the
+ratios of the four signed volumes
+\[
+  \lambda_i = \frac{V(\triangle x p_j p_k p_l)}{V(\triangle p_0 p_1 p_2 p_3)},
+\]
+where $\{i,j,k,l\}$ is a permutation of $\{0,1,2,3\}$. Barycentric
+coordinates are the foundation of the linear finite-element basis on
+simplices used throughout Chapter~\ref{ch:mesh_analysis} and
+Chapter~\ref{ch:sampling}; generalized (non-affine) coordinates for
+arbitrary polygons are used in the mesh and parameterization literature.
+
+\index{barycentric coordinates}
 
 \section{Half-Spaces}
 \label{sec:math_half_spaces}
 
+For a hyperplane $H = \{x : \langle n,x\rangle = c\}$, the two associated
+closed \textbf{half-spaces} are
+\[
+  H^+ = \{x : \langle n,x\rangle \ge c\},\qquad
+  H^- = \{x : \langle n,x\rangle \le c\},
+\]
+and the open half-spaces are defined by strict inequalities. Every
+half-space is convex, and the intersection of any family of half-spaces is
+convex. The convex hull of Section~\ref{sec:math_convex_combinations} is
+related to half-spaces by a separation result: a convex set is the
+intersection of all half-spaces that contain it.
+
+\begin{theorem}[Hyperplane Separation]\label{thm:math_separation}
+  Two disjoint nonempty convex sets $A$ and $B$ in $\mathbb{R}^d$ with one
+  of them compact are strictly separated: there is a hyperplane
+  $H = \{x : \langle n,x\rangle = c\}$ with $\langle n, a\rangle < c <
+  \langle n, b\rangle$ for all $a\in A$, $b\in B$.
+\end{theorem}
+
+The half-space representation is used pervasively:
+\begin{itemize}
+  \item a convex polygon in the plane is the intersection of the
+    half-spaces of its directed edges (each edge is traversed so that the
+    polygon lies to the left);
+  \item a convex polyhedron in $\mathbb{R}^3$ is the intersection of the
+    half-spaces of its facets, one per face;
+  \item the feasible region of a linear program is an intersection of
+    half-spaces (Chapter~\ref{ch:linear_programming}), and the linear
+    programming algorithms solve exactly the question of whether such an
+    intersection is empty;
+  \item point-in-convex-polygon and polygon-clipping algorithms test
+    membership by checking the side of each edge half-space.
+\end{itemize}
+
+Because half-space intersection is how convex objects are stored, the
+boolean operations on convex solids of Chapter~\ref{ch:convex_intersection}
+reduce to the algebra of half-spaces and their boundary facets.
+
+\index{half-space}\index{hyperplane separation}
+
 \section{Hyperplanes and Separating Surfaces}
 \label{sec:math_separating_surfaces}
+
+Theorem~\ref{thm:math_separation} (Hyperplane Separation) is the
+one-dimensional separation that computational geometry uses constantly. In
+$\mathbb{R}^2$, two disjoint compact convex sets are separated by a line
+that can be moved until it is \textbf{supporting} both sets simultaneously,
+touching each in a point or a segment. Such a line is a \textbf{common
+supporting line} and exists exactly when the two sets are disjoint.
+
+For convex polygons and convex polyhedra, separation can be decided
+algorithmically: two convex polygons in the plane are disjoint iff there is
+a line parallel to one of their edges that separates them, and two convex
+polyhedra in $\mathbb{R}^3$ are disjoint iff there is a separating plane
+parallel to one of their faces, or a plane perpendicular to a cross product
+of a pair of edges. This is the \textbf{separating axis theorem}, the basis
+of the collision and intersection tests in Chapter~\ref{ch:convex_intersection}
+and of the broad-phase narrowing in motion planning
+(Chapter~\ref{ch:motion_planning}).
+
+The Minkowski sum $A \oplus B = \{a + b : a\in A, b\in B\}$ reformulates
+separation: $A$ and $B$ are disjoint iff $\mathbf{0} \notin A \oplus (-B)$.
+Convexity is preserved by Minkowski sums, so the distance between two convex
+sets is the distance from the origin to the Minkowski difference, which is
+what the \textsc{gjk} distance algorithm computes
+(Chapter~\ref{ch:convex_intersection}). This single equivalence is the
+geometric engine behind most collision-detection code in computer graphics
+and robotics.
+
+\index{separating axis}\index{Minkowski sum}\index{supporting line}
 
 \section{Norms and Metrics}
 \label{sec:math_norms_metrics}
 
+A \textbf{norm} on $\mathbb{R}^d$ is a function $\|\cdot\| \to
+[0,\infty)$ that is positive definite ($\|x\|=0$ iff $x=\mathbf{0}$),
+homogeneous ($\|\lambda x\| = |\lambda|\|x\|$), and satisfies the triangle
+inequality. The standard family is the $\ell_p$ family
+\[
+  \|x\|_p = \left(\sum_{i=1}^d |x_i|^p\right)^{1/p}, \qquad
+  \|x\|_\infty = \max_i |x_i|,
+\]
+with the Euclidean norm $\|\cdot\|_2$ from
+Section~\ref{sec:math_inner_products} as the $p=2$ member. A \textbf{metric}
+on a set is a distance function that is positive definite, symmetric, and
+satisfies the triangle inequality; every norm induces a metric via
+$d(x,y) = \|x-y\|$.
+
+Distances other than Euclidean arise naturally in geometry algorithms:
+\begin{itemize}
+  \item the $\ell_1$ (\emph{Manhattan}) and $\ell_\infty$ (\emph{Chebyshev})
+    metrics describe grid and axis-aligned motion and appear in
+    L-shaped/rectilinear path problems (Chapter~\ref{ch:distance_paths}) and
+    in the geometry of space-filling curves (Chapter~\ref{ch:space_filling_curves});
+  \item the \textbf{geodesic distance} on a surface is the length of the
+    shortest path constrained to the surface, a non-Euclidean metric central
+    to Chapters~\ref{ch:sampling} and \ref{ch:mesh_analysis};
+  \item in high dimension, $\ell_1$ distances are often more stable than
+    $\ell_2$ for nearest-neighbor search, a phenomenon studied in
+    Chapter~\ref{ch:high_dimensional}.
+\end{itemize}
+
+The choice of metric changes which structures are ``natural'': the Voronoi
+diagram and Delaunay triangulation (Chapters~\ref{ch:voronoi_diagrams} and
+\ref{ch:delaunay_triangulations}) are metric-dependent, and replacing the
+Euclidean metric with an $\ell_p$ metric changes the combinatorial
+complexity of the diagram. Metric properties also drive the correctness of
+nearest-neighbor algorithms in Chapter~\ref{ch:proximity}, which assume at
+minimum the triangle inequality.
+
+\index{norm}\index{metric}\index{Manhattan distance}\index{Chebyshev distance}\index{geodesic distance}
+
 \section{Transformations}
 \label{sec:math_transformations}
+
+An \textbf{isometry} (rigid motion) of $\mathbb{R}^d$ preserves distances
+and is a composition of translations, rotations, and reflections. A
+\textbf{similarity} additionally permits uniform scaling, preserving angles
+and ratios of lengths. An \textbf{affine transformation}
+$x \mapsto Mx + t$, with $M$ an invertible $d\times d$ matrix and $t$ a
+translation vector, preserves collinearity, parallelism, ratios along lines,
+and affine combinations, but not lengths or angles in general. A
+\textbf{projective transformation} is the most general transformation that
+maps lines to lines; it preserves incidence and cross-ratios but not
+parallelism, and it is naturally expressed in homogeneous coordinates
+(Section~\ref{sec:math_homogeneous}).
+
+\begin{center}
+\begin{tabular}{lllll}
+\toprule
+& lines & parallelism & distances & angles \\
+\midrule
+rigid & yes & yes & yes & yes \\
+similarity & yes & yes & scaled & yes \\
+affine & yes & yes & no & no \\
+projective & yes & no & no & no \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The properties preserved by each class determine which algorithms are
+invariant under which changes of coordinates. Clipping, convex hulls, and
+barycentric interpolation are affine-invariant; Voronoi diagrams and Delaunay
+triangulations are not (uniform scaling is harmless, anisotropic scaling
+breaks them). Applications in graphics and computer vision rely on the full
+projective group (Chapter~\ref{ch:applications_graphics}); mesh algorithms
+typically use isometries and similarities (Chapters~\ref{ch:mesh_analysis}).
+
+Rigid transformations are built from an orthonormal basis: a rotation matrix
+$R$ satisfies $R^\top R = I$ and $\det R = 1$. Computationally, applying a
+rigid transformation to a set of points preserves every computed invariant
+of distance-based algorithms, which is why point-cloud registration in
+Chapter~\ref{ch:geometric_matching} searches over rigid motions only.
+
+\index{transformation}\index{isometry}\index{affine transformation}\index{projective transformation}
 
 \section{Homogeneous Coordinates}
 \label{sec:math_homogeneous}
 
+A point $x = (x_1,\dots,x_d) \in \mathbb{R}^d$ is represented in
+\textbf{homogeneous coordinates} by any nonzero vector
+$(\tilde{x}_1,\dots,\tilde{x}_d, w)$ with $x_i = \tilde{x}_i / w$; the
+canonical choice is $(x_1,\dots,x_d,1)$. Two homogeneous vectors represent
+the same point iff they are scalar multiples of one another, so the
+projective space is the quotient of $\mathbb{R}^{d+1}\setminus\{0\}$ by
+scaling. Points with $w=0$ are \textbf{points at infinity}, one per
+direction.
+
+The payoff is that translations become linear: the affine map
+$x \mapsto Mx + t$ is the linear map
+\[
+  \begin{pmatrix} \tilde{x} \\ w \end{pmatrix}
+  \mapsto
+  \begin{pmatrix} M & t \\ 0 & 1 \end{pmatrix}
+  \begin{pmatrix} \tilde{x} \\ w \end{pmatrix}.
+\]
+Composing affine transformations is then ordinary matrix multiplication, and
+the composition of projective transformations is linear throughout
+(Section~\ref{sec:math_transformations}). In computer graphics this is why
+model, view, and projection matrices are kept as $4\times 4$ matrices and
+why the perspective divide $x_i = \tilde{x}_i/w$ is a single final division.
+
+Homogeneous coordinates also unify the orientation determinant: the
+$d$-dimensional orientation test of Section~\ref{sec:math_orientation_determinants}
+is the determinant of the $(d+1)\times(d+1)$ matrix whose rows are the
+homogeneous vectors of the points. This is the algebraic reason the same
+predicate code scales from 2D to 3D, and the reason the in-circle test of
+Section~\ref{sec:incircle_predicate} has a determinant of the same form.
+Hyperplane duality (Section~\ref{sec:math_duality}) is also most simply
+stated in homogeneous coordinates, where points and hyperplanes are dual
+vectors.
+
+\index{homogeneous coordinates}\index{point at infinity}\index{projective space}
+
 \section{Duality}
 \label{sec:math_duality}
+
+Duality is a correspondence that swaps points with hyperplanes (or lines in
+the plane) while preserving incidence and order. In the plane, the standard
+\textbf{dual transform} maps the point $p = (a,b)$ to the line
+\[
+  p^* : y = ax - b,
+\]
+and maps the line $\ell : y = mx - c$ to the point $\ell^* = (m,c)$. The
+transform is an involution up to the sign convention, preserves
+above/below relations, and maps vertical lines to points at infinity
+(Section~\ref{sec:math_homogeneous}). Its defining property is incidence
+preservation: $p$ lies on $\ell$ iff $\ell^*$ lies on $p^*$.
+
+Because convex hulls, intersections, and arrangements are transformed into
+dual objects with the same combinatorial structure, duality converts
+problems into easier ones. The convex hull of $n$ points in the plane is
+dual to the intersection of the $n$ upper half-planes below their dual
+lines; envelopes and lower envelopes
+(Chapter~\ref{ch:envelopes}) are the dual picture of convex hulls; and the
+Delaunay triangulation is dual to the arrangement of lifted tangent planes
+(Section~\ref{sec:delaunay_lifting}). Chapter~\ref{ch:geometric_duality}
+develops the planar theory, including the half-plane intersection
+formulation and its use in the randomized incremental algorithms.
+
+In $\mathbb{R}^d$, the polar transform maps the point $a = (a_1,\dots,a_d)$
+to the hyperplane $\{x : \langle a, x\rangle = 1\}$, and $0 \in
+\operatorname{conv}(S)$ iff the corresponding half-spaces have empty
+intersection; this is the polarity that underlies the convex-hull
+algorithms for higher dimensions and the certificates used in
+Chapter~\ref{ch:linear_programming}. All duality transforms preserve the
+ordering of points along a line through the relation between convex hull and
+half-space intersection, so the complexity results for hulls transfer
+directly to envelopes and back.
+
+\index{duality}\index{dual transform}\index{polarity}
 
 \section{Topological Preliminaries}
 \label{sec:math_topology}
 
+Computational geometry works mostly with finite combinatorial objects, but
+their global structure is topological, and a small vocabulary goes a long
+way. A set in $\mathbb{R}^d$ is \textbf{open} if every point has a small
+ball around it contained in the set, and \textbf{closed} if its complement
+is open; \textbf{compact} sets are closed and bounded. A set is
+\textbf{connected} if it cannot be split into two disjoint nonempty open
+pieces, and \textbf{path-connected} if any two points are joined by a
+continuous curve. A \textbf{homeomorphism} is a continuous bijection with
+continuous inverse; two sets are homeomorphic if one exists. The
+\textbf{Euler characteristic} of a 2D polyhedral surface is
+$V - E + F$, and for an orientable closed surface of genus $g$ it equals
+$2 - 2g$; the same invariant in higher dimension is the alternating sum of
+the numbers of faces.
+
+A \textbf{simplicial complex} is a finite collection $K$ of simplices such
+that every face of a simplex in $K$ is in $K$ and the intersection of any
+two simplices is a face of both. A triangulated surface or mesh is a
+simplicial complex in this sense, and all the mesh algorithms of
+Chapters~\ref{ch:mesh_analysis}, \ref{ch:computational_topology}, and
+\ref{ch:half_edge} operate on the combinatorial structure of such a
+complex. The \textbf{underlying space} $|K|$ is the topological space formed
+by the union of the simplices; two complexes that triangulate the same
+space are homeomorphic.
+
+The \textbf{manifold} concept lets us describe when a mesh is locally
+simple: a 2D surface is a manifold if every point has a neighborhood
+homeomorphic to a disk (or to a half-disk on the boundary). Manifold
+verification, orientation fixing, and genus computation are the subjects of
+the mesh-analysis chapter; the half-edge and half-face data structures of
+Chapter~\ref{ch:half_edge} are designed exactly to represent manifold
+meshes, and the discrete exterior calculus and cohomology algorithms of
+Chapter~\ref{ch:computational_topology} compute the Betti numbers
+$\beta_0,\beta_1,\dots$ of such complexes. These foundations are summarized
+in the notation table of the front matter and developed in the appendix
+(Appendix~\ref{app:math_reference}).
+
+\index{topology}\index{simplicial complex}\index{manifold}\index{Euler characteristic}
+
 \section{Exercises}
 \label{sec:math_exercises}
+
+\begin{enumerate}
+  \item Show that the set of affine combinations of a point set $S$ is the
+    smallest affine subspace containing $S$, and that convex combinations
+    give the smallest convex set.
+  \item Prove that three points $p,q,r$ are collinear iff the orientation
+    determinant of Section~\ref{sec:math_orientation_determinants} vanishes.
+  \item Derive the shoelace formula by decomposing a polygon into
+    triangles from a fixed vertex and canceling signed areas.
+  \item Compute the barycentric coordinates of the incenter of a triangle
+    in terms of side lengths, and verify that the three coordinates are
+    nonnegative.
+  \item Prove that a point lies in a convex polygon iff it is on the left
+    side of every directed edge (for a counterclockwise boundary).
+  \item Show that the intersection of the half-spaces of a convex polygon
+    equals the polygon.
+  \item For two axis-aligned boxes, give a condition for disjointness using
+    the separating axis theorem of Section~\ref{sec:math_separating_surfaces}.
+  \item Prove that the $\ell_1$, $\ell_2$, and $\ell_\infty$ norms are
+    equivalent in the sense that each bounds the others up to constant
+    factors, and give the constants for $\mathbb{R}^2$.
+  \item Verify that the point--line duality $p=(a,b)\mapsto y=ax-b$ of
+    Section~\ref{sec:math_duality} preserves the above/below relation.
+  \item Compute the Euler characteristic of a triangulated tetrahedron and
+    of a closed cube surface, and confirm $V-E+F=2$.
+  \item Show that the two homogeneous vectors $(x_1,x_2,1)$ and
+    $(\lambda x_1,\lambda x_2,\lambda)$ represent the same point.
+  \item Prove that a rigid transformation preserves the distances of a
+    point set, and that an arbitrary affine map need not.
+\end{enumerate}

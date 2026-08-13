@@ -1,55 +1,589 @@
 \chapter{Introduction to Computational Geometry}
 \label{ch:introduction}
 
-% Stub: outline only; content to be written.
-
 \section{What Is Computational Geometry?}
 \label{sec:intro_what_is}
+
+\textbf{Computational geometry} is the study of algorithms and data
+structures for problems that are stated in geometric terms: computing the
+convex hull of a point set, finding the intersection of two polygons,
+building a triangulation of a terrain, locating a point in a planar
+subdivision, or planning a motion for a robot that must avoid obstacles.
+It differs from classical geometry in that its objects of study are not
+shapes and their properties in the abstract, but the \emph{computational
+tasks} associated with them, and its answers are not just existence
+statements but efficient algorithms with provable running times.
+
+The field's objects are as diverse as its applications: points, line
+segments, polygons, polyhedra, arrangements of lines and planes, Voronoi
+diagrams, Delaunay triangulations, meshes, and curves and surfaces. Its
+methods combine discrete mathematics (the combinatorial structure of a
+geometric object), continuous mathematics (the geometry itself), and
+algorithm design (the data structures and complexity bounds). This
+combination is what makes the subject both useful and subtle: a geometric
+object has a continuous description with infinitely many points, yet its
+interesting features are captured by a finite combinatorial structure.
+
+This book presents the subject through its algorithms, each developed with
+definitions, theory, pseudocode, complexity analysis, and edge cases. The
+chapters are largely self-contained and cross-reference one another where
+algorithms build on shared foundations. The mathematical vocabulary is
+collected in Chapter~\ref{ch:math_foundations}; this chapter describes the
+field itself.
+
+\index{computational geometry}
 
 \section{Geometry as an Algorithmic Problem}
 \label{sec:intro_algorithmic_problem}
 
+The core intellectual step that created the field is the observation that
+geometric questions have \emph{algorithmic content}: for most geometric
+objects, the natural computational questions are decision and construction
+problems whose answers are finite combinatorial structures, and the
+efficiency of computing those answers depends on clever algorithms rather
+than on more arithmetic. The convex hull of $n$ points, for example, is a
+finite polygon whose complexity is at most $n$ in the plane; the algorithmic
+question is how to compute it from the input points in the best possible
+time, which turns out to be $\Theta(n \log n)$ for comparison-based
+algorithms (Chapter~\ref{ch:convex_hulls}).
+
+Formulating geometry as algorithms requires three ingredients:
+\begin{enumerate}
+  \item a \textbf{model of computation} that abstracts away floating-point
+    arithmetic, so that complexity can be discussed rigorously
+    (Section~\ref{sec:intro_real_ram});
+  \item a \textbf{combinatorial encoding} of the output, so that the
+    ``result'' of an algorithm is a well-defined object (e.g., a polygon, a
+    planar subdivision, or a triangulation);
+  \item a \textbf{general-position assumption} that rules out degenerate
+    inputs for the purposes of algorithm design, with methods to handle
+    degeneracies when they occur (Section~\ref{sec:intro_degeneracies}).
+\end{enumerate}
+
+These three ingredients are developed in the next sections and recur
+throughout the book. They are what distinguish computational geometry from
+numerical geometry and from computational topology, whose relationships to
+the subject are described in Section~\ref{sec:intro_combinatorial_vs_numerical}
+and in the chapters on discrete geometry and topology.
+
 \section{Historical Development}
 \label{sec:intro_history}
+
+The origins of computational geometry lie in the early 1970s. Several
+questions were asked at roughly the same time: what is the complexity of
+computing the convex hull of $n$ points? the closest pair among $n$ points?
+the intersection of two polygons? Work by Shamos, who coined the name
+\emph{computational geometry}, and by Preparata established the first
+algorithms and lower bounds, and the textbook of Preparata and Shamos
+\cite{preparata1985} codified the field. Around the same time, Dobkin,
+Kirkpatrick, and others developed the divide-and-conquer and
+randomized-incremental techniques that remain central today.
+
+Two developments in the late 1980s transformed the field. First, the
+discovery of efficient randomized incremental algorithms --- Clarkson and
+Shor, and independently Mulmuley, for convex hulls and arrangements, and
+Guibas, Knuth, and Sharir for Delaunay triangulations \cite{guibas1992} ---
+provided algorithms whose expected running times are optimal while being
+simple to implement. Second, the treatment of \emph{robustness} became a
+research subject in its own right, culminating in the exact and adaptive
+predicate techniques of Section~\ref{sec:intro_exact_computation}.
+
+In the 1990s the field expanded in breadth: kinetic data structures,
+arrangements of surfaces, mesh generation, and the interplay with
+topology and with computational biology took center stage, and efficient
+libraries such as CGAL and the algorithms of this book's CompGeom package
+brought the theory into practice (Section~\ref{sec:intro_software}). Today
+computational geometry underlies computer graphics, geographic information
+systems, robotics, scientific computing, and data analysis, and its
+randomized and output-sensitive methods have influenced algorithm design
+well beyond geometry. Historical accounts appear in the bibliographies of
+\cite{preparata1985} and \cite{deberg2008}.
+
+\index{history}
 
 \section{Geometric Objects and Representations}
 \label{sec:intro_objects_representations}
 
+Geometric objects admit several distinct representations, and choosing the
+right one is often the difference between an easy and an impossible
+algorithm. The principal representation families are:
+
+\begin{description}
+  \item[Set-theoretic] A shape is a subset of space, described either
+    implicitly by membership tests and inequalities (half-spaces,
+    implicit surfaces) or explicitly by its boundary (a polygon is a
+    sequence of edges; a polyhedron is a collection of faces).
+  \item[Combinatorial] A shape is described by incidence data: vertices,
+    edges, and faces and their adjacency, as in a planar subdivision
+    (Chapter~\ref{ch:point_location}), a half-edge structure
+    (Chapter~\ref{ch:half_edge}), or a simplicial complex
+    (Section~\ref{sec:math_topology}).
+  \item[Numerical] A shape is described by coordinates and parametric
+    equations, as with spline patches and NURBS in surface modeling
+    (Chapter~\ref{ch:curves_surfaces}).
+  \item[Point-cloud] A shape is represented only by a sample of boundary
+    points, from which connectivity must be reconstructed
+    (Chapter~\ref{ch:shape_reconstruction}).
+\end{description}
+
+The same physical object can be represented in several ways, and
+conversion between representations is itself a computational-geometry
+problem (rasterization, triangulation, polygonization, meshing). Many of
+the robustness and correctness issues in the field trace back to
+representation: a combinatorial structure asserts that two edges meet
+exactly at a point, while a numerical representation can only approximate
+that point. This tension between the exact combinatorial ideal and the
+approximate numerical reality is the subject of
+Sections~\ref{sec:intro_combinatorial_vs_numerical} through
+\ref{sec:intro_exact_computation}.
+
 \section{Points, Lines, Segments, Rays, and Polygons}
 \label{sec:intro_primitives}
+
+The primitive objects of planar computational geometry are:
+\begin{itemize}
+  \item a \textbf{point} $p = (x,y)$;
+  \item a \textbf{line}, given by a point and a direction, or by an
+    equation $ax + by + c = 0$;
+  \item a \textbf{segment} $[p,q]$, the set of convex combinations of its
+    two endpoints (Section~\ref{sec:math_lines_hyperplanes});
+  \item a \textbf{ray} $p + tv$, $t\ge 0$;
+  \item a \textbf{polygon}, a cyclic sequence of segments whose endpoints
+    are the vertices; a polygon is \textbf{simple} if its boundary does not
+    self-intersect.
+\end{itemize}
+
+In $\mathbb{R}^3$ the primitives are points, lines, planes, segments, and
+\textbf{polyhedra} (bounded unions of planar faces), treated in
+Chapters~\ref{ch:polyhedral_geometry} and \ref{ch:convex_polytopes}. These
+objects and their algebra --- orientation tests
+(Section~\ref{sec:math_orientation_determinants}), distances, and
+intersections --- are the vocabulary in which every algorithm in this book
+is written. Many algorithms reduce arbitrary input to these primitives:
+polygons are decomposed into triangles (Chapter~\ref{ch:triangulations}),
+polyhedra into tetrahedra (Chapter~\ref{ch:mesh_generation}), and surfaces
+into point clouds and meshes.
+
+A recurring theme is the difference between an \emph{exact} predicate
+(does this point lie to the left of that line?) and an \emph{approximate}
+measurement (how far is it?). Predicates are the discrete decisions that
+determine combinatorial structure, and they must be answered consistently;
+measurements can be approximate. This theme is developed in
+Section~\ref{sec:intro_robustness}.
+
+\index{primitive}\index{segment}\index{polygon}
 
 \section{Combinatorial versus Numerical Geometry}
 \label{sec:intro_combinatorial_vs_numerical}
 
+Computational geometry sits between two neighboring disciplines. On one
+side is \emph{numerical} geometry: linear algebra, numerical analysis, and
+scientific computing, in which coordinates are real numbers, arithmetic is
+approximate, and results are approximations. On the other side is
+\emph{combinatorial} and \emph{discrete} geometry: the study of finite
+configurations of points and their convex hulls, arrangements, and
+polytopes, in which the interesting structure is the incidence pattern
+rather than the coordinates.
+
+The combinatorial view is the source of the field's theoretical power. A
+Delaunay triangulation, for example, is defined by a predicate (the
+in-circle test, Section~\ref{sec:incircle_predicate}) and is a purely
+combinatorial object once the predicate values are fixed. Algorithms that
+compute it can be analyzed on the discrete level, with running times
+expressed in terms of $n$, the number of input points, and the output
+complexity $k$. The real-RAM model of Section~\ref{sec:intro_real_ram}
+formalizes this by treating arithmetic on real numbers as exact and free.
+
+The numerical view is the source of the field's practical difficulty.
+Floating-point arithmetic is neither exact nor consistent: the same
+algebraic expression evaluated in a different order can produce a different
+sign, and a predicate computed approximately can disagree with the exact
+result on which a combinatorial data structure was built. The resulting
+inconsistencies produce the classic failures of naive implementations
+(crashes in point location, invalid triangulations, inconsistent meshes)
+and motivate the exact-computation and robustness methods of
+Sections~\ref{sec:intro_robustness}--\ref{sec:intro_exact_computation}. A
+practical geometry library --- such as the CompGeom package that accompanies
+this book --- must therefore combine combinatorial algorithms with
+numerically sound predicates.
+
 \section{The Real-RAM Model}
 \label{sec:intro_real_ram}
+
+The \textbf{real-RAM} (random-access machine) model treats a geometric
+algorithm as a program over real numbers: each memory cell holds a real
+number, and each basic operation (addition, multiplication, comparison,
+square root, accessing an array element) takes constant time and is
+exact. This model was introduced precisely to analyze geometric algorithms
+without the distraction of floating-point roundoff, and it is the model
+assumed throughout this book when discussing running times.
+
+The real-RAM model has a well-known cost: because it can compute on real
+numbers exactly, it is more powerful than the integer/binary RAM, and some
+problems (e.g., deciding whether a real number is $0$) become free rather
+than hard. But for the combinatorial questions of computational geometry,
+the model matches intuition: an algorithm that runs in $O(n\log n)$
+comparison operations in the real-RAM also runs in $O(n\log n)$ on a
+binary machine for rational inputs, and lower bounds proved in the
+model (e.g., the $\Omega(n\log n)$ bound for convex hulls) carry over to
+comparison-based models on binary machines. For a rigorous account of the
+model and its variants see \cite{deberg2008} and the references in
+\cite{preparata1985}.
+
+In this book, pseudocode is written in the real-RAM spirit: it manipulates
+points and predicates as if they were exact primitives, and the question of
+how to evaluate a predicate exactly in finite arithmetic is delegated to
+the robustness machinery of Sections~\ref{sec:intro_robustness}--\ref{sec:intro_exact_computation}
+and the implementation notes in the appendices.
+
+\index{real-RAM}\index{model of computation}
 
 \section{Computational Models and Complexity}
 \label{sec:intro_models_complexity}
 
+Within the real-RAM framework, algorithms are measured by their running
+time as a function of the input size $n$ and, where relevant, the output
+size $k$. The standard notation is used throughout: $\mathcal{O}(f(n))$,
+$\Omega(f(n))$, and $\Theta(f(n))$ for asymptotic upper, lower, and tight
+bounds, as defined in the notation table of the front matter and reviewed in
+Appendix~\ref{app:math_reference}.
+
+Beyond plain worst-case analysis, several refinements recur in the book:
+\begin{description}
+  \item[Output-sensitive bounds] express the cost in terms of the number
+    $k$ of items actually produced, so that a convex hull of $k$ vertices
+    from $n$ points can be computed in $O(n \log k)$ rather than
+    $O(n \log n)$ (Chapter~\ref{ch:convex_hulls}) and a set of $k$ segment
+    intersections in $O((n+k)\log n)$ (Chapter~\ref{ch:segment_intersection}).
+  \item[Randomized bounds] replace worst-case over inputs with expectation
+    over the algorithm's own random choices, giving the clean $O(n \log n)$
+    expected bounds of the randomized incremental algorithms
+    (Chapter~\ref{ch:randomized_algorithms}).
+  \item[Expected-case bounds] average over a distribution of inputs, used
+    for search structures such as the history DAG of
+    Chapter~\ref{ch:point_location}.
+  \item[Approximation] relaxes the output requirement and measures the
+    approximation factor, as in the $\varepsilon$-kernels and
+    well-separated pair decompositions of Chapter~\ref{ch:approximation_algorithms}.
+\end{description}
+
+A recurring structural fact is that many geometric problems in
+$\mathbb{R}^2$ are governed by the same combinatorial objects --- planar
+graphs, arrangements, Voronoi diagrams --- so their complexity bounds are
+tied together; the planar graphs and their Euler-characteristic bound
+(Section~\ref{sec:math_topology}) explain why so many planar algorithms
+run in $O(n \log n)$.
+
+\index{complexity}\index{output-sensitive}\index{randomized algorithm}
+
 \section{Degeneracies and General Position}
 \label{sec:intro_degeneracies}
+
+An input is \textbf{degenerate} when it violates the assumptions that an
+algorithm's design (and analysis) silently makes. Typical planar
+degeneracies include three collinear points, four cocircular points, two
+coincident points, and vertical lines in contexts where a comparison by
+$x$-coordinate is used. Most algorithms in the classical theory are stated
+for inputs in \textbf{general position}: no three points collinear, no four
+cocircular, no two points sharing an $x$-coordinate, no point lying on a
+critical line. The general-position assumption is not a detail: it is what
+makes the algorithm's description (e.g., ``every vertex of a Delaunay
+triangulation has degree bounded by the number of cocircular points'')
+correct and its analysis clean.
+
+Degeneracies matter in practice because they do occur --- coordinates come
+from measurements and from snapping, and collinearity and cocircularity are
+common rather than rare. The standard strategies are:
+\begin{itemize}
+  \item \textbf{Symbolic perturbation}: perturb the input infinitesimally
+    so that all predicates have a definite sign, without changing the
+    answer of the intended problem (Section~\ref{sec:intro_symbolic_perturbation}).
+  \item \textbf{Exact predicates}: evaluate the degeneracy test exactly and
+    resolve ties by a rule, so the algorithm makes consistent choices even
+    on degenerate input (Section~\ref{sec:intro_exact_computation}).
+  \item \textbf{Explicit handling}: design the algorithm to process
+    degenerate configurations directly, as when convex-hull algorithms
+    remove collinear points and segment-intersection algorithms handle
+    overlaps (Chapters~\ref{ch:convex_hulls} and \ref{ch:segment_intersection}).
+\end{itemize}
+
+Each chapter of this book states its general-position assumptions and
+describes how its edge cases (collinear, coincident, cocircular, vertical,
+parallel) are treated; the testing sections document the corresponding
+test inputs.
+
+\index{degeneracy}\index{general position}
 
 \section{Robustness and Numerical Precision}
 \label{sec:intro_robustness}
 
+When an algorithm designed under general position and exact real arithmetic
+is implemented with double-precision floats, two kinds of failure occur.
+The first is \emph{sign error}: a predicate whose exact value is a tiny
+positive number is evaluated as negative, flipping a decision that changes
+the combinatorial output --- an invalid triangulation, a point located on
+the wrong side of an edge, a polygon whose boundary self-intersects. The
+second is \emph{inconsistency}: different evaluations of equivalent
+predicates disagree, so the data structure built by the algorithm is not
+consistent with any exact computation, and downstream operations (e.g.,
+point location) fail on it.
+
+These failures are not cosmetic. In geometric modeling they produce
+non-watertight meshes; in CAD and simulation they produce invalid
+intersections; in collision detection they produce missed collisions. The
+chapter on geometric predicates (Chapter~\ref{ch:geometric_predicates})
+develops the two standard remedies:
+
+\begin{description}
+  \item[Adaptive predicates] compute the predicate's value first in
+    floating point, then refine only when the result is provably
+    uncertain; for inputs in general position the fast path succeeds almost
+    always, so the cost is nearly that of a single floating-point
+    evaluation \cite{shewchuk1997}.
+  \item[Exact computation] evaluates the predicate exactly with arbitrary
+    precision, guaranteeing the same sign as the exact arithmetic in all
+    cases (Section~\ref{sec:intro_exact_computation}).
+\end{description}
+
+Robustness has an engineering dimension as well: predicates must be
+evaluated identically wherever they appear (no duplicated, subtly different
+expressions), coordinate transformations must not change predicate signs,
+and tolerances (epsilon comparisons) should be used only where a geometric
+tolerance is genuinely intended, never as a substitute for exact predicate
+evaluation. These rules are followed by the implementations referenced in
+this book and are discussed in Appendix~\ref{app:implementation_guide}.
+
+\index{robustness}\index{floating point}
+
 \section{Symbolic Perturbation}
 \label{sec:intro_symbolic_perturbation}
+
+\textbf{Symbolic perturbation} resolves degeneracies without changing the
+input's coordinates: instead of perturbing the points numerically, the
+algorithm evaluates predicates as if the points had been perturbed by an
+infinitesimal amount in a fixed direction, chosen so that every predicate
+has a definite value while all decisions that matter are unchanged. The
+classic scheme perturbs each point by $\varepsilon$ raised to a
+distinguished power so that the perturbed configuration is in general
+position and the ordering induced by the perturbation is a total order that
+can be evaluated symbolically \cite{edelsbrunner1985}.
+
+Symbolic perturbation turns a degenerate input into a non-degenerate one at
+the predicate level, which lets an algorithm designed under general position
+run on arbitrary input without modification. Its main limitation is
+conceptual: some problems (for example, computing the arrangement of
+overlapping segments, or intersecting polygons that share edges) have
+legitimate answers that depend on how the degeneracy is resolved, and a
+blind perturbation can produce a different answer than the caller intended.
+For this reason the book's chapters prefer explicit, documented handling of
+degenerate cases for the core data structures (triangulations, planar
+subdivisions, convex hulls), and mention symbolic perturbation as a
+technique where it is most natural, e.g.\ for point location and for the
+randomized incremental algorithms of Chapter~\ref{ch:randomized_algorithms}.
+
+\index{symbolic perturbation}
 
 \section{Exact Geometric Computation}
 \label{sec:intro_exact_computation}
 
+The \textbf{exact computation paradigm} guarantees that every predicate is
+evaluated with the same sign as the exact mathematical value, so the
+combinatorial output of an algorithm is exactly the output it would produce
+in the real-RAM model. This is achievable in principle for the predicates
+used in this book because they are determinants and rational combinations
+of the input coordinates, which can be evaluated exactly with multiprecision
+integer or rational arithmetic; in particular the orientation and in-circle
+predicates of Chapter~\ref{ch:geometric_predicates} are signs of
+determinants, and their exact values can be computed by exact integer
+arithmetic on scaled coordinates.
+
+Purely exact computation is often too slow to be the default, and the
+practical standard is the \emph{adaptive} hybrid: evaluate the predicate in
+floating point, certify the sign with error bounds when the value is not too
+close to zero, and only fall back to exact arithmetic when the sign is
+uncertain. Shewchuk's adaptive predicates \cite{shewchuk1997} show that for
+random (hence non-degenerate) inputs the fallback is exercised so rarely that
+the adaptive test is nearly as fast as the floating-point one. The geometry
+libraries discussed in Section~\ref{sec:intro_software} and the
+implementations accompanying this book follow this design.
+
+The exact-computation approach has a strong correctness payoff: algorithms
+whose inputs are exact (integer or rational) coordinates, and whose outputs
+are combinatorial (triangulations, hulls, subdivisions), can be made fully
+deterministic and reproducible, which is a requirement for geometry used in
+scientific computing, manufacturing, and computer-aided design. When input
+coordinates are already the result of approximation (measurement, sensor
+data), exact predicates still provide the consistency guarantees that keep
+downstream combinatorial structures valid.
+
+\index{exact computation}\index{adaptive predicate}
+
 \section{Major Families of Geometric Algorithms}
 \label{sec:intro_families}
+
+The algorithms of this book fall into a few broad families that organize the
+parts of the book:
+
+\begin{description}
+  \item[Fundamental predicates and constructions] --- orientation,
+    in-circle, and other predicates (Chapter~\ref{ch:geometric_predicates}),
+    convex hulls (Chapter~\ref{ch:convex_hulls}), segment intersection
+    (Chapter~\ref{ch:segment_intersection}), and the whole
+    polygon-operations suite (Chapter~\ref{ch:polygon_ops}).
+  \item[Spatial structures and searching] --- point location
+    (Chapter~\ref{ch:point_location}), range searching
+    (Chapter~\ref{ch:range_searching}), spatial data structures
+    (Chapter~\ref{ch:spatial_structures}), and space-filling curves
+    (Chapter~\ref{ch:space_filling_curves}).
+  \item[Proximity and tessellations] --- Voronoi diagrams
+    (Chapter~\ref{ch:voronoi_diagrams}), Delaunay triangulations
+    (Chapter~\ref{ch:delaunay_triangulations}), and nearest-neighbor
+    problems (Chapter~\ref{ch:proximity}).
+  \item[Arrangements, duality, and optimization] --- line arrangements and
+    envelopes (Chapter~\ref{ch:envelopes}), point--line duality
+    (Chapter~\ref{ch:geometric_duality}), linear programming
+    (Chapter~\ref{ch:linear_programming}), and convex intersection
+    (Chapter~\ref{ch:convex_intersection}).
+  \item[Meshes, curves, and surfaces] --- triangulations
+    (Chapter~\ref{ch:triangulations}), polyhedral geometry
+    (Chapter~\ref{ch:polyhedral_geometry}), curves and surfaces
+    (Chapter~\ref{ch:curves_surfaces}), mesh generation
+    (Chapter~\ref{ch:mesh_generation}), and mesh analysis
+    (Chapter~\ref{ch:mesh_analysis}).
+  \item[Motion, visibility, and planning] --- visibility
+    (Chapter~\ref{ch:visibility}), shortest paths
+    (Chapter~\ref{ch:distance_paths}), and motion planning
+    (Chapter~\ref{ch:motion_planning}).
+  \item[Sampling, reconstruction, and matching] --- sampling and Poisson-disk
+    methods (Chapter~\ref{ch:sampling}), surface reconstruction
+    (Chapter~\ref{ch:shape_reconstruction}), and shape matching
+    (Chapter~\ref{ch:geometric_matching}).
+  \item[Topology and high dimension] --- computational topology
+    (Chapter~\ref{ch:computational_topology}), randomized and approximation
+    algorithms (Chapters~\ref{ch:randomized_algorithms} and
+    \ref{ch:approximation_algorithms}), and high-dimensional and
+    data-driven geometry (Chapters~\ref{ch:high_dimensional} and
+    \ref{ch:geometry_data_ml}).
+\end{description}
+
+Each chapter follows the book's template: overview, definitions, theory,
+pseudocode, parameter selection, complexity, applications, testing, and
+references, as described in the front matter.
+
+\index{algorithm families}
 
 \section{Applications of Computational Geometry}
 \label{sec:intro_applications}
 
+Computational geometry is a service field: most of its algorithms exist
+because some application needs them. The application chapters of this book
+cover four domains in depth:
+
+\begin{description}
+  \item[Computer graphics] (Chapter~\ref{ch:applications_graphics}) ---
+    rendering (hidden-surface removal, rasterization, ray tracing with
+    spatial hierarchies), modeling (boolean operations, offsetting), and
+    animation (collision detection, motion);
+  \item[Geographic information systems] (Chapter~\ref{ch:applications_gis}) ---
+    terrain modeling and TINs, map overlay, point-in-polygon queries,
+    site selection, and spatial search;
+  \item[Robotics] (Chapter~\ref{ch:applications_robotics}) ---
+    configuration spaces, collision detection, path planning, and
+    manipulation;
+  \item[Scientific computing] (Chapter~\ref{ch:applications_scientific}) ---
+    finite-element meshing, computational fluid dynamics, molecular and
+    material modeling, and protein geometry.
+\end{description}
+
+Beyond these, geometric algorithms appear in computer-aided design and
+manufacturing (Chapter~\ref{ch:packing_algorithms} covers packing and
+enclosure problems), in data analysis through nearest-neighbor and
+clustering methods (Chapter~\ref{ch:proximity}), in visualization, in
+geometric optics, and in many other settings. Each application chapter
+closes with the concrete product-level context in which the algorithms are
+deployed, so that the reader can see both the mathematics and the
+engineering that surrounds it.
+
+\index{applications}
+
 \section{Software Libraries and Experimental Geometry}
 \label{sec:intro_software}
+
+Computational geometry is unusual among theoretical computer-science
+subjects in that its algorithms are routinely implemented, distributed, and
+used in production systems. The principal general-purpose libraries are
+CGAL (the Computational Geometry Algorithms Library), which provides
+industrial-grade implementations of most algorithms in this book with exact
+and adaptive predicates; the LEDA and more recent C++ libraries; and the
+Python ecosystem, including the CompGeom package that accompanies this book,
+whose API mirrors the algorithms described here. In addition, specialized
+libraries cover specific areas: Triangle and TetGen for meshing
+(Chapter~\ref{ch:mesh_generation}), CGAL and the ``delabella'' and other
+Delaunay codes for triangulations (Chapter~\ref{ch:delaunay_triangulations}),
+and numerical packages such as scipy for lower-level operations
+(Appendix~\ref{app:software}).
+
+Two practical lessons recur across these libraries and shape the book's
+implementation advice. First, the robustness machinery of
+Sections~\ref{sec:intro_robustness}--\ref{sec:intro_exact_computation} is
+not optional: production libraries invest heavily in exact predicates
+because their users depend on combinatorial validity. Second, performance
+is dominated by predicate evaluation and memory layout, so engineering
+details (predicate caching, branch-free evaluation, index-based data
+structures) matter as much as asymptotic bounds. The appendices of this book
+(Appendix~\ref{app:implementation_guide} and Appendix~\ref{app:software})
+collect the implementation-level guidance and library references, and
+experimental evaluation --- comparing algorithms on real data, measuring
+predicate call counts and cache behavior --- is a theme of the chapter
+testing sections.
+
+\index{CGAL}\index{software}\index{library}
 
 \section{Chapter Problems}
 \label{sec:intro_problems}
 
+\begin{enumerate}
+  \item Give three geometric problems and, for each, identify the
+    combinatorial object that encodes its output.
+  \item Explain why the real-RAM model is convenient for the analysis of
+    geometric algorithms, and state one setting in which the model gives a
+    misleading picture.
+  \item Describe a degenerate input for (a) a convex-hull algorithm, (b) a
+    Delaunay-triangulation algorithm, and (c) a point-location algorithm.
+  \item Give an example of a sign error that a floating-point evaluation of
+    the orientation predicate can produce, and explain how adaptive
+    evaluation avoids it.
+  \item Distinguish symbolic perturbation from exact predicates, and give a
+    situation where the two lead to different outputs on the same input.
+  \item List the four object-representation families of
+    Section~\ref{sec:intro_objects_representations} and, for each, name one
+    algorithm in this book that operates on that representation.
+  \item Explain why an output-sensitive bound is preferable to a
+    worst-case bound for reporting all intersections of many segments.
+  \item Identify, for each of the four application chapters, the two or
+    three geometric problems that are most central to that domain.
+\end{enumerate}
+
 \section{Computational Projects}
 \label{sec:intro_projects}
+
+\begin{enumerate}
+  \item Implement the orientation predicate in floating point and with
+    exact integer arithmetic, and compare their behavior on a set of
+    nearly collinear inputs.
+  \item Build a small polygon library: read a simple polygon, compute its
+    signed area (Section~\ref{sec:math_signed_area_volume}), and test
+    point-in-polygon membership.
+  \item Implement a brute-force closest-pair algorithm and a
+    divide-and-conquer version, and measure the crossover size on random
+    point sets (compare with Chapter~\ref{ch:proximity}).
+  \item Generate a set of degenerate inputs (collinear, cocircular,
+    coincident points) and record how a naive Delaunay implementation
+    fails on them; then repeat with an exact in-circle predicate.
+  \item Use a geometric library of your choice to compute the convex hull
+    and Delaunay triangulation of a public point dataset, and visualize
+    both.
+  \item Construct a terrain (2.5-D) model from a point cloud and compare
+    the natural-neighbor and nearest-neighbor interpolants on a regular
+    grid (Chapters~\ref{ch:voronoi_diagrams} and \ref{ch:sampling}).
+\end{enumerate}
