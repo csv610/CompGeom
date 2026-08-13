@@ -1,64 +1,878 @@
 \chapter{Line-Segment Intersection}
 \label{ch:segment_intersection}
 
-% Stub: outline only; content to be written.
-
 \section{The Intersection Problem}
 \label{sec:segint_problem}
+
+The \textbf{segment intersection problem} is the following: given $n$ line
+segments in the plane, report all pairs that intersect, or decide whether
+any two intersect. Intersections can occur at interior points of both
+segments, at endpoints, or along overlapping portions of collinear
+segments. The problem is fundamental: map overlay in geographic information
+systems, design-rule checking in VLSI layout, window clipping and
+overdraw analysis in computer graphics, and the detection of crossings in
+geometric algorithms all reduce to it. Because two segments can intersect
+only if they are close in the vertical order, the problem is a showcase for
+the \textbf{sweep-line paradigm}\index{sweep-line paradigm}, developed in
+Sections~\ref{sec:segint_sweep_line}--\ref{sec:segint_bentley_ottmann}.
+
+There are two versions of the problem with different complexity:
+\emph{detection} (is the set pairwise disjoint?) and \emph{reporting}
+(produce all $k$ intersecting pairs). They are contrasted in
+Section~\ref{sec:segint_reporting}. This chapter develops the classic
+Bentley--Ottmann algorithm \cite{bentley1979}, which reports all
+intersections among $n$ segments with $k$ crossings in
+$O((n+k)\log n)$ time, together with the degenerate-case handling and the
+specialized red--blue variant used for map overlay.
 
 \section{Pairwise Intersection Testing}
 \label{sec:segint_pairwise}
 
+\subsection{1. Overview}
+
+The elementary operation on which every segment-intersection algorithm is
+built is the test of whether two segments $s$ and $t$ intersect. The test
+must be a \emph{predicate} in the sense of Section~\ref{sec:math_orientation_determinants}:
+its output must be correct and consistent even on degenerate inputs, since
+an entire algorithm's correctness rests on it.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Segment Intersection]\label{def:segint_intersection}
+  Two segments $s = [p,q]$ and $t = [r,u]$ \textbf{intersect} if they share
+  at least one point: $[p,q] \cap [r,u] \neq \emptyset$. The intersection
+  may be a single point or, for collinear overlapping segments, a segment.
+\end{definition}
+
+\begin{definition}[Bounding Box]\label{def:segint_bbox}
+  The \textbf{axis-aligned bounding box} of a segment $s=[p,q]$ is the
+  rectangle $[\min(p_x,q_x), \max(p_x,q_x)] \times [\min(p_y,q_y),
+  \max(p_y,q_y)]$.
+\end{definition}
+
+\subsection{3. Theory}
+
+Two segments intersect exactly when each crosses the line containing the
+other, or when they share an endpoint, or when they overlap collinearly. A
+clean formulation uses the orientation predicate $\operatorname{orient}$
+of Section~\ref{sec:math_orientation_determinants}:
+\begin{itemize}
+  \item $s$ and $t$ have intersecting interiors iff
+    $\operatorname{orient}(p,q,r)$ and $\operatorname{orient}(p,q,u)$ have
+    opposite signs \emph{and} $\operatorname{orient}(r,u,p)$ and
+    $\operatorname{orient}(r,u,q)$ have opposite signs;
+  \item if any orientation is zero, the corresponding point lies on the
+    line of the other segment, and a collinearity/overlap check decides.
+\end{itemize}
+The two-sides test alone is insufficient for endpoints and collinear
+overlaps, so the complete test combines orientation signs with a bounding-box
+check that filters quickly.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Segment Intersection Test}
+\label{alg:pairwise_intersection}
+\begin{algorithmic}[1]
+\Require Two segments $s=[p,q]$ and $t=[r,u]$.
+\Ensure True iff $s \cap t \neq \emptyset$.
+\Function{Intersects}{$s, t$}
+  \State $o_1 \gets \text{orient}(p, q, r)$; $o_2 \gets \text{orient}(p, q, u)$
+  \State $o_3 \gets \text{orient}(r, u, p)$; $o_4 \gets \text{orient}(r, u, q)$
+  \If{$o_1 \neq o_2$ \textbf{and} $o_3 \neq o_4$}
+    \State \Return \textsc{True}  \Comment{proper crossing}
+  \EndIf
+  \For{$\{o_1,o_2,o_3,o_4\}$ with $o_i = 0$:}
+    \If{the witness point lies in both bounding boxes}
+      \State \Return \textsc{True}  \Comment{endpoint or collinear touch}
+    \EndIf
+  \EndFor
+  \State \Return \textsc{False}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Sign convention}: all four orientations must use the same
+  convention (e.g., positive = counterclockwise); flipping one sign breaks
+  the test.
+\item \textbf{Robustness}: the test is used as a predicate, so orientation
+  values must be evaluated with the adaptive exact method of
+  Section~\ref{sec:robust_predicates}; an $\varepsilon$ tolerance turns the
+  test into a measurement and produces inconsistent combinatorial outputs.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+The test evaluates four orientation predicates and a constant number of
+comparisons, each $O(1)$, so pairwise testing of all $\binom{n}{2}$ pairs
+costs $O(n^2)$ time and $O(1)$ space. This is the baseline against which the
+output-sensitive algorithms of the rest of the chapter are measured.
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Validity checks}: testing whether a polygon is simple, or a
+  triangulation non-crossing, reduces to checking all edge pairs.
+\item \textbf{Brute-force baseline}: for small $n$ ($n \lesssim 100$) the
+  $O(n^2)$ all-pairs test is fastest and simplest, and it is the reference
+  implementation used to validate sweep-line output in
+  Section~\ref{sec:segint_bentley_ottmann}.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Shared endpoints}: two segments sharing exactly one endpoint
+  must be reported as intersecting by the collinear/endpoint branch.
+\item \textbf{Collinear overlap}: segments on the same line overlapping in a
+  segment, or merely touching at a point, must be distinguished.
+\item \textbf{Consistency}: the test must agree with itself under
+  symmetric input order, so $\text{Intersects}(s,t)$ equals
+  $\text{Intersects}(t,s)$ on all inputs.
+\end{itemize}
+
+\subsection{9. References}
+
+The predicate formulation and the box-filtering strategy follow the standard
+treatment of the orientation test in Section~\ref{sec:orientation_predicate}
+and the textbook treatments \cite{preparata1985,berg2008}. The robust
+evaluation of the orientations is due to Shewchuk \cite{shewchuk1997}.
+
 \section{Sweep-Line Paradigm}
 \label{sec:segint_sweep_line}
+
+The \textbf{sweep-line paradigm}\index{sweep-line paradigm} processes a
+planar problem by moving an imaginary vertical line from left to right and
+maintaining the answer incrementally. At any position $x$, the sweep line
+$\ell_x = \{(x,y)\}$ meets a subset of the input objects; for segments, it
+intersects each segment in at most one point. The algorithm maintains two
+structures:
+\begin{itemize}
+  \item the \textbf{sweep status}\index{sweep status}, the ordered list of
+    objects intersected by $\ell_x$, stored so that insertion, deletion, and
+    neighbor queries cost $O(\log n)$ (Section~\ref{sec:segint_status});
+  \item the \textbf{event queue}\index{event queue}, the list of positions
+    at which the status changes, maintained as a priority queue ordered by
+    $x$-coordinate (Section~\ref{sec:segint_events}).
+\end{itemize}
+The sweep advances from event to event. Between two consecutive events the
+status is static, so the algorithm is correct as long as every status change
+is registered as an event in advance or discovered during the sweep.
+
+The paradigm appears throughout this book: it computes the contour of the
+union of rectangles (Section~\ref{sec:segint_union_rectangles}), the overlay
+of planar subdivisions (Section~\ref{sec:segint_red_blue}), and, in a
+rotating form, the convex hulls of Chapter~\ref{ch:convex_hulls} and the
+arrangement techniques of Chapter~\ref{ch:envelopes}. Its strength is that
+it converts a global combinatorial question into a sequence of local
+updates; its weakness is that events are not always known in advance --- the
+intersection of two segments is only discovered when the segments become
+adjacent in the status, which is the subtlety handled by the Bentley--Ottmann
+algorithm of Section~\ref{sec:segint_bentley_ottmann}.
+
+\index{sweep-line paradigm}\index{sweep status}
 
 \section{Events and Event Queues}
 \label{sec:segint_events}
 
+An \textbf{event}\index{event} is a position of the sweep line at which the
+status changes. In the segment-intersection sweep the event types are:
+\begin{description}
+  \item[left endpoint] a segment enters the status at its left endpoint;
+  \item[right endpoint] a segment leaves the status at its right endpoint;
+  \item[intersection] two segments cross, and their vertical order swaps.
+\end{description}
+
+The event queue stores the events ordered by $x$-coordinate, and events with
+equal $x$ must have a defined total order so that the algorithm is
+deterministic (Section~\ref{sec:segint_degenerate}). Endpoint events are
+known in advance and are inserted when the sweep starts. Intersection
+events are \emph{discovered}: when two segments become adjacent in the
+status, their intersection point is computed and inserted into the queue as
+a future event. If several pairs share the same intersection point, the
+event is inserted only once (the queue must be able to test membership, or
+each pair inserts its own event and duplicate processing is tolerated).
+
+The queue must support, in $O(\log m)$ time with $m$ events stored:
+insert a new event, extract the next event, and (for robustness against
+duplicate insertions) test membership. A balanced binary search tree with
+events ordered lexicographically by $(x, y)$ provides all three operations.
+Because intersection events are inserted with $x$-coordinates beyond the
+current sweep position, the queue is a standard priority structure; the
+subtlety that the same intersection can be enqueued from several adjacent
+pairs is handled by the degenerate-case rules of
+Section~\ref{sec:segint_degenerate}.
+
+\index{event queue}
+
 \section{Sweep-Line Status Structures}
 \label{sec:segint_status}
+
+The \textbf{status structure}\index{status structure} maintains the
+\textbf{vertical order} of the segments intersected by the sweep line: the
+sequence of segments sorted by the $y$-coordinate of their intersection with
+$\ell_x$. It must support, in $O(\log n)$ time:
+\begin{itemize}
+  \item insert a segment (at a left endpoint);
+  \item delete a segment (at a right endpoint);
+  \item return the segment immediately above and immediately below a given
+    segment (or point).
+\end{itemize}
+A balanced binary search tree keyed by vertical order provides all of these
+operations. The comparison between two segments $s$ and $t$ is defined at
+the current sweep position $x$: $s \prec t$ iff $s$ meets $\ell_x$ below
+$t$. The comparison is evaluated by computing the two intersection points
+with $\ell_x$ and comparing their $y$-coordinates; when $x$ lies to the
+right of one segment's right endpoint, the segment is no longer in the
+status and is never compared.
+
+The correctness of the whole approach rests on a locality lemma:
+two segments can intersect only if at some point during the sweep they are
+\emph{adjacent} in the vertical order. Consequently, only adjacent pairs
+need to be tested for future intersections, and each adjacency change
+(insertion, deletion, or swap) triggers at most $O(1)$ new tests. This
+lemma is proved in Section~\ref{sec:segint_correctness}.
+
+\index{status structure}
 
 \section{Bentley--Ottmann Algorithm}
 \label{sec:segint_bentley_ottmann}
 
+\subsection{1. Overview}
+
+The Bentley--Ottmann algorithm \cite{bentley1979} reports all $k$
+intersection points among $n$ line segments in $O((n+k)\log n)$ time. It is
+the canonical output-sensitive algorithm for the planar segment-intersection
+problem and the template for every sweep-line algorithm in this book. The
+same technique is used for the red--blue intersection of
+Section~\ref{sec:segint_red_blue} and for the union-of-rectangles contour of
+Section~\ref{sec:segint_union_rectangles}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Upper and Lower Neighbor]\label{def:segint_neighbor}
+  At sweep position $x$, the \textbf{upper neighbor} of a segment $s$ in the
+  status is the segment directly above $s$ in the vertical order, if any;
+  the \textbf{lower neighbor} is the segment directly below, if any.
+\end{definition}
+
+\begin{definition}[Status Adjacency]\label{def:segint_adjacent}
+  Two segments are \textbf{adjacent} in the status at position $x$ if no
+  other segment lies between them in the vertical order at $x$.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{lemma}[Adjacent-Pair Lemma]\label{thm:segint_adjacent_swap}
+  Let $s$ and $t$ intersect at a point $p$ and assume no segment passes
+  through $p$. Immediately before the sweep line reaches $p$, the segments
+  $s$ and $t$ are adjacent in the vertical order; immediately after, their
+  order is swapped.
+\end{lemma}
+
+\begin{proof}
+  For a position $x$ just to the left of $p_x$, the relative order of $s$
+  and $t$ is determined by their $y$-coordinates at $x$. If some segment $u$
+  lay strictly between them for all $x$ near $p_x$, then by continuity $u$
+  would still be between them at $x = p_x$, contradicting that $s$ and $t$
+  meet at $p$. Hence just before the event no segment separates them, so they
+  are adjacent. The swap is immediate because the two intersections with the
+  sweep line cross at $p$.
+\end{proof}
+
+The lemma justifies discovering intersection events only between adjacent
+segments: every intersection is found when its two segments first become
+adjacent, so testing only adjacent pairs (at most three new pairs per
+event) reports every intersection without missing any.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Bentley--Ottmann Segment Intersection}
+\label{alg:segint_bentley_ottmann}
+\begin{algorithmic}[1]
+\Require A set $S$ of $n$ line segments in general position.
+\Ensure All intersection points of the segments in $S$.
+\Function{BentleyOttmann}{$S$}
+  \State $Q \gets$ empty priority queue ordered by $(x, y)$
+  \For{each segment $s \in S$}
+    \State $Q.\text{insert}(\text{left}(s))$; $Q.\text{insert}(\text{right}(s))$
+  \EndFor
+  \State $T \gets$ empty balanced tree (vertical order)
+  \While{$Q$ is not empty}
+    \State $e \gets Q.\text{extract-min}()$
+    \If{$e$ is a left endpoint of $s$}
+      \State $T.\text{insert}(s)$; let $a,b$ be the neighbors of $s$
+      \If{$a$ and $s$ intersect to the right of the sweep}
+        \State $Q.\text{insert}(\text{intersection}(a,s))$
+      \EndIf
+      \If{$s$ and $b$ intersect to the right of the sweep}
+        \State $Q.\text{insert}(\text{intersection}(s,b))$
+      \EndIf
+    \ElsIf{$e$ is a right endpoint of $s$}
+      \State let $a,b$ be the neighbors of $s$ in $T$
+      \State $T.\text{delete}(s)$
+      \If{$a$ and $b$ intersect to the right of the sweep}
+        \State $Q.\text{insert}(\text{intersection}(a,b))$
+      \EndIf
+    \ElsIf{$e$ is an intersection of $s$ and $t$}
+      \State report $e$
+      \State swap $s$ and $t$ in $T$
+      \If{$s$ and its new upper neighbor $u$ intersect to the right}
+        \State $Q.\text{insert}(\text{intersection}(s,u))$
+      \EndIf
+      \If{$t$ and its new lower neighbor $v$ intersect to the right}
+        \State $Q.\text{insert}(\text{intersection}(t,v))$
+      \EndIf
+    \EndIf
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{General position}: the pseudocode assumes no vertical
+  segments, no three segments through one point, and no coincident
+  endpoints. Real inputs violate these assumptions; the ordering rules of
+  Section~\ref{sec:segint_degenerate} resolve the ties.
+\item \textbf{Ordering of events with equal $x$}: left endpoints must be
+  processed before right endpoints at the same $x$, so that segments that
+  touch at an endpoint are reported; the convention is fixed once and used
+  throughout.
+\item \textbf{Right of the sweep}: an intersection is enqueued only if its
+  $x$-coordinate is strictly to the right of the current event, so events
+  are never inserted into the past; this prevents infinite loops.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: each of the $O(n+k)$ events performs $O(1)$
+  insertions, deletions, or neighbor queries, each costing $O(\log n)$;
+  the total is $O((n+k)\log n)$.
+\item \textbf{Space}: the status holds $O(n)$ segments and the queue holds
+  $O(n+k)$ events, so the space is $O(n+k)$.
+\end{itemize}
+The bound is optimal up to the $\log n$ factor for comparison-based
+algorithms when $k$ is large, and $O((n+k)\log n)$ cannot be improved in
+the comparison model when $k=\Theta(n^2)$; the deterministic optimal
+algorithms of \cite{chazelle1992,balaban1995} reach $O(n\log n + k)$ but
+are substantially more complex and are rarely implemented.
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Map overlay}: computing the overlay of two planar
+  subdivisions (Section~\ref{sec:segint_red_blue}).
+\item \textbf{Design-rule checking}: detecting that VLSI wires intersect
+  where they must not.
+\item \textbf{Graphics overdraw and clipping}: finding pairs of edges that
+  cross within a window.
+\item \textbf{Verification}: sweep-line output is compared against the
+  brute-force baseline of Section~\ref{sec:segint_pairwise} in tests.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Random sweeps}: generate random segment sets, compare the
+  reported intersections against brute force, and verify both sets agree.
+\item \textbf{Vertical segments}: they break the ``one point per segment''
+  assumption; either rotate the input or handle them explicitly
+  (Section~\ref{sec:segint_degenerate}).
+\item \textbf{Multiple crossings at one point}: several segments through a
+  single point produce a ``cluster'' event; each pair must be reported
+  exactly once.
+\item \textbf{No crossings}: verify that the algorithm terminates and
+  reports nothing, i.e., no past events are ever enqueued.
+\end{itemize}
+
+\subsection{9. References}
+
+The algorithm was introduced by Bentley and Ottmann \cite{bentley1979}.
+Textbook treatments with correctness proofs appear in
+\cite{preparata1985,berg2008}. Optimal algorithms with reduced dependence on
+$k$ were given by Chazelle \cite{chazelle1992} and Balaban \cite{balaban1995}.
+
 \section{Correctness}
 \label{sec:segint_correctness}
+
+The Bentley--Ottmann algorithm is correct by induction on the sequence of
+events. The invariant is:
+\begin{quote}
+  \emph{Immediately after processing the event at $e$, the status $T$
+  reflects the vertical order of all segments at the sweep position $e_x +
+  \varepsilon$, and every intersection to the left of the sweep line has
+  been reported and every intersection immediately to the right involving a
+  status-adjacent pair has been enqueued.}
+\end{quote}
+At the start of the sweep no intersections lie to the left, and the invariant
+holds vacuously. For the induction step one examines the three event types:
+\begin{itemize}
+  \item a \textbf{left endpoint} inserts its segment into the correct
+    vertical position (the tree key is the $y$-coordinate at the sweep
+    line), and any future intersection with a neighbor is enqueued;
+  \item a \textbf{right endpoint} deletes its segment; any intersection of
+    the two neighbors that is uncovered by the deletion is enqueued;
+  \item an \textbf{intersection event} is reported and the swap is
+    performed; new adjacencies after the swap are tested and their
+    intersections enqueued.
+\end{itemize}
+The Adjacent-Pair Lemma (Theorem~\ref{thm:segint_adjacent_swap}) guarantees
+that no intersection is missed: every crossing pair is adjacent immediately
+before its crossing, at which time one of the three event handlers tests the
+pair and enqueues the event. Because events are processed in
+$(x,y)$-order and new events are only enqueued to the right of the sweep,
+no event is processed twice and the algorithm terminates. Thus the reported
+set is exactly the set of intersection points, with no duplicates.
+
+\index{correctness}
 
 \section{Complexity Analysis}
 \label{sec:segint_complexity}
 
+Let $n$ be the number of segments and $k$ the number of reported
+intersection points. The events processed are $2n$ endpoint events and at
+most $k$ distinct intersection events. Each event performs $O(1)$ status
+operations at $O(\log n)$ each, and each status operation performs $O(1)$
+queue insertions at $O(\log n)$ each, giving a total of
+$O((n+k)\log n)$ time. The queue can contain, besides the $2n$ endpoint
+events, up to $O(n)$ pending intersection events per sweep position --- the
+intersections of adjacent pairs --- so the space is $O(n+k)$.
+
+Two remarks about the bound. First, when $k$ is small the algorithm is
+nearly linear in $n$; when $k$ is large (e.g., a grid-like configuration
+with $k = \Theta(n^2)$), the output size dominates. Second, the $\log n$
+factor per reported intersection is not inherent to the problem: the
+optimal algorithms of \cite{chazelle1992,balaban1995} achieve
+$O(n\log n + k)$ by scheduling status operations in batches. The extra
+$\log n$ per event is the price of the simple ``always enqueue new
+adjacencies'' rule, and for most practical inputs the simple algorithm is
+preferred because of its dramatically lower constant factors and ease of
+robust implementation.
+
+The decision version of the problem (does any pair intersect?) has a lower
+bound of $\Omega(n\log n)$ in the comparison model, by reduction from
+element uniqueness under a geometric encoding, so the sweep-based decision
+test is optimal.
+
+\index{complexity}
+
 \section{Degenerate Intersections}
 \label{sec:segint_degenerate}
+
+Real inputs violate general position, and the Bentley--Ottmann algorithm
+must be extended to remain correct. The principal degenerate cases are:
+
+\begin{description}
+  \item[Coincident endpoints] When two segments share an endpoint, the
+    events at that $x$ must be processed in a fixed order: all left
+    endpoints, then all intersection events at that point, then all right
+    endpoints. This ordering ensures that segments meeting only at an
+    endpoint are reported exactly once.
+  \item[Three or more segments through one point] The pairwise crossings
+    all occur at the same event. A cluster is processed by rotating the
+    segments around the point: the segments that pass through the point
+    change vertical order all at once, and every pair must be reported. The
+    standard method reorders the affected segments at the event and tests
+    the new adjacencies, reporting every pair of segments through the
+    point.
+  \item[Vertical segments] A vertical segment meets every sweep line in its
+    $x$-range in a whole segment, not a point, so the ``one intersection
+    per segment'' ordering breaks. The common fix is to treat vertical
+    segments by a perturbation or by using $(x, \text{slope})$ orderings;
+    alternatively the input is rotated slightly so no segment is vertical.
+  \item[Collinear overlapping segments] Two collinear segments that overlap
+    have infinitely many common points; the ``intersection point'' event
+    model does not apply. Overlaps are handled either by splitting the
+    segments at their overlap endpoints and treating the pieces separately,
+    or by a separate collinearity pass that reports overlaps as segments
+    rather than points.
+  \item[Duplicate segments] Coincident segments are an extreme overlap; the
+    split-based handling reduces them to the duplicate-endpoint case.
+\end{description}
+
+The unifying technique for all of these cases is \textbf{simulation of
+simplicity} (Section~\ref{sec:intro_symbolic_perturbation}): a fixed
+symbolic perturbation makes every predicate definite, and the algorithm runs
+in general position on the perturbed input. The rules above are the explicit,
+predictable version of that idea, and they are what a production
+implementation should encode.
+
+\index{degenerate intersection}
 
 \section{Reporting versus Detecting Intersections}
 \label{sec:segint_reporting}
 
+The segment-intersection problem has two forms. \textbf{Detection} asks
+whether the input contains any intersecting pair and returns a yes/no
+answer; \textbf{reporting} asks for the set of all $k$ intersecting pairs
+(or points). The distinction drives both the complexity and the algorithm
+design:
+\begin{itemize}
+  \item reporting has output size $k$, so its cost must include $k$;
+    the Bentley--Ottmann bound $O((n+k)\log n)$ is the correct measure;
+  \item detection can stop at the first intersection and needs no output
+    structure, so its worst-case cost is at most $O(n\log n)$ --- the cost
+    of running the sweep until the first event of type intersection, or of
+    running a simpler proximity-based test;
+  \item \textbf{counting} (report $k$ without listing the pairs) is an
+    intermediate form studied in \cite{bentley1979,chazelle1992}.
+\end{itemize}
+The lower bound for detection is $\Omega(n\log n)$ in the comparison model,
+by the standard reduction from element uniqueness, and the sweep-line
+algorithm for detection is therefore asymptotically optimal. Reporting in
+time $O(n\log n + k)$ is also optimal, achieved by \cite{chazelle1992,
+balaban1995}; the Bentley--Ottmann algorithm is optimal in the sense that
+its $\log n$ factor per output element is unavoidable for the natural
+class of algorithms that update a sorted status at every event.
+
+In practice, most applications need reporting (map overlay, layout
+checking), and the practical question is rarely asymptotic optimality but
+robustness on degenerate inputs and a small constant factor, which favors
+the classic algorithm.
+
+\index{reporting}\index{detection}
+
 \section{Red--Blue Segment Intersection}
 \label{sec:segint_red_blue}
+
+\subsection{1. Overview}
+
+The \textbf{red--blue segment intersection} problem \cite{mairson1988}
+reports the intersections between two sets of segments, the red set $R$ and
+the blue set $B$, under the promise that no two red segments intersect and
+no two blue segments intersect. The promise holds in the canonical
+application, computing the overlay of two planar subdivisions: the edges of
+one subdivision form the red set, the edges of the other the blue set, and
+each color class is non-self-intersecting. With $n = |R| + |B|$ and $k$
+red--blue intersections, the problem admits a sweep-line algorithm running
+in $O((n+k)\log n)$ time, where the monochromatic promise reduces the event
+handling: within each color no swapping or overlap events occur.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Red--Blue Set]\label{def:segint_red_blue_set}
+  A pair $(R,B)$ of segment sets is a \textbf{red--blue set} if no two
+  segments in $R$ intersect and no two segments in $B$ intersect. A
+  \textbf{red--blue intersection} is an intersection point of a segment of
+  $R$ with a segment of $B$.
+\end{definition}
+
+\begin{definition}[Subdivision Overlay]\label{def:segint_overlay}
+  The \textbf{overlay} of two planar subdivisions is the planar subdivision
+  whose edges are the union of the two edge sets, split at every edge
+  crossing. Computing the overlay is exactly reporting all red--blue
+  intersections and then splitting the edges there.
+\end{definition}
+
+\subsection{3. Theory}
+
+The monochromatic promise simplifies the sweep in two ways. First, since
+segments of one color do not cross, their relative order never changes and
+they can be maintained without swap events. Second, an intersection event
+always involves a red and a blue segment, so the status can be maintained as
+two interleaved lists (red order and blue order), and a candidate pair is
+tested only when a red and a blue segment become adjacent in the combined
+order. The counting version of the problem is the basis of the
+\textbf{Klee--Mairson} measure problems and of the ``symmetrized''
+segment-intersection counting of \cite{mairson1988}.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Red--Blue Segment Intersection by Sweep}
+\label{alg:red_blue_intersection}
+\begin{algorithmic}[1]
+\Require Red set $R$ and blue set $B$ forming a red--blue set.
+\Ensure All red--blue intersection points.
+\Function{RedBlueIntersections}{$R$, $B$}
+  \State $Q \gets$ priority queue of all endpoints, then discovered events
+  \State $T \gets$ empty balanced tree (vertical order over both colors)
+  \While{$Q$ is not empty}
+    \State $e \gets Q.\text{extract-min}()$
+    \If{$e$ is a left endpoint of segment $s$}
+      \State $T.\text{insert}(s)$; let $a,b$ be the neighbors of $s$
+      \State test $a$ against $s$ and $s$ against $b$ for a crossing to the right; enqueue it
+    \ElsIf{$e$ is a right endpoint of segment $s$}
+      \State let $a,b$ be the neighbors of $s$; $T.\text{delete}(s)$
+      \If{$a,b$ have different colors and cross to the right} \State enqueue \EndIf
+    \ElsIf{$e$ is an intersection of $s$ (red) and $t$ (blue)}
+      \State report $e$; swap $s$ and $t$ in $T$; test new adjacencies to the right
+    \EndIf
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Color symmetry}: the algorithm is symmetric in the two colors;
+  only the monochromatic promise matters, not which color is ``red''.
+\item \textbf{Overlay output}: for the map-overlay application the
+  intersection points are used to split edges; the sweep should return the
+  crossing pairs, not just the points, so the two edges can be cut.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O((n+k)\log n)$ with $n = |R|+|B|$ and $k$ crossings.
+\item \textbf{Space}: $O(n+k)$.
+\end{itemize}
+The bound matches Bentley--Ottmann, but the promise typically makes the
+constant smaller and, more importantly, the monochromatic order never
+changes, which is used by the optimal algorithms \cite{chazelle1985power,
+mairson1988} to reach $O(n\log n + k)$.
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Map overlay in GIS}: overlaying two maps (parcels and
+  flood zones, roads and districts) is red--blue intersection followed by
+  edge splitting.
+\item \textbf{Boolean operations on polygons}: union/intersection of two
+  simple polygons first computes their overlay (Chapter~\ref{ch:polygon_ops}).
+\item \textbf{VLSI and printed-circuit checking}: comparing two wiring
+  layers for accidental contacts.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Red--blue violations}: a test must deliberately feed
+  self-intersecting color classes and verify the promise is checked or the
+  behavior documented.
+\item \textbf{Touching at vertices}: a red vertex lying on a blue segment
+  is a red--blue intersection; the endpoint-ordering rule of
+  Section~\ref{sec:segint_degenerate} must report it exactly once.
+\item \textbf{Overlapping collinear edges}: shared boundary between two
+  subdivisions produces collinear overlap; resolve by splitting as in
+  Section~\ref{sec:segint_degenerate}.
+\end{itemize}
+
+\subsection{9. References}
+
+The problem and its $O((n+k)\log n)$ sweep solution were introduced by
+Mairson and Stolfi \cite{mairson1988}; its connection to planar overlay is
+developed in the textbook treatments \cite{berg2008,preparata1985}.
 
 \section{Contour of the Union of Rectangles}
 \label{sec:segint_union_rectangles}
 
-\subsection{Overview}
-The contour of the union of rectangles\index{union of rectangles} problem asks for the boundary of the region covered by a set of axis-parallel rectangles. It is a classic application of the sweep-line paradigm\index{sweep-line paradigm}: a vertical line sweeps the plane while a status structure maintains the active set of rectangles, and the contour is assembled from the events at which the union boundary changes. Applications include VLSI mask checking, building footprints in GIS, and windowing in computer graphics~\cite{berg2008}.
+\subsection{1. Overview}
 
-\subsection{Definitions}
+The contour of the union of rectangles\index{union of rectangles} problem
+asks for the boundary of the region covered by a set of axis-parallel
+rectangles. It is a classic application of the sweep-line paradigm: a
+vertical line sweeps the plane while a status structure maintains the
+active set of rectangles, and the contour is assembled from the events at
+which the union boundary changes. Applications include VLSI mask checking,
+building footprints in GIS, and windowing in computer graphics
+\cite{berg2008}.
+
+\subsection{2. Definitions}
+
 \begin{definition}[Union Contour]\label{def:union_contour}
-The \emph{contour} of a set of rectangles is the boundary of their union: the set of points on the union's frontier that are not interior to any rectangle.
+  The \emph{contour} of a set of rectangles is the boundary of their union:
+  the set of points on the union's frontier that are not interior to any
+  rectangle.
 \end{definition}
 
 \begin{definition}[Contour Break Point]\label{def:contour_break_point}
-A \emph{break point} is a point on the contour where the boundary changes direction, occurring at rectangle corners or at intersections between rectangle edges.
+  A \emph{break point} is a point on the contour where the boundary changes
+  direction, occurring at rectangle corners or at intersections between
+  rectangle edges.
 \end{definition}
 
-\subsection{Complexity}
-With $n$ axis-parallel rectangles, the sweep processes $2n$ vertical edge events, each involving an $O(\log n)$ update of the interval status structure. The running time is $O(n\log n)$; the output has $O(k)$ segments, where $k$ is the number of contour break points.
+\subsection{3. Theory}
+
+At a sweep position $x$, the vertical line cuts the union of the rectangles
+into a set of disjoint intervals --- the union of the $y$-intervals of the
+rectangles active at $x$. The boundary of the union consists of pieces of
+rectangle edges, so the contour is described exactly by the changes in the
+interval set. When the sweep passes a rectangle's left edge, the
+$y$-interval of that rectangle is inserted; passing a right edge removes it.
+A vertical contour piece exists wherever the number of active rectangles
+changes, and horizontal contour pieces connect consecutive break points on
+the same rectangle edge. The problem therefore reduces to maintaining the
+union of intervals under insertions and deletions, and reporting the
+top/bottom boundary of that union at each event.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Union Contour of Axis-Parallel Rectangles}
+\label{alg:union_rectangles}
+\begin{algorithmic}[1]
+\Require $n$ axis-parallel rectangles.
+\Ensure The contour (list of break points) of their union.
+\Function{UnionContour}{$R_1,\dots,R_n$}
+  \State $E \gets$ all $2n$ vertical edges, each tagged open/close and sorted by $x$
+  \State $C \gets$ empty set of intervals (active $y$-intervals, kept sorted)
+  \State $P \gets$ empty list of break points
+  \For{each vertical edge $e$ in $E$ by $x$}
+    \State before: $U \gets$ union of intervals in $C$
+    \If{$e$ is a left edge} \State $C \gets C \cup \{\text{interval}(e)\}$
+    \Else \State $C \gets C \setminus \{\text{interval}(e)\}$ \EndIf
+    \State after: $U' \gets$ union of intervals in $C$
+    \State report the changed portions of the top and bottom of $U$ vs $U'$ as contour edges
+    \State append their break points to $P$
+  \EndFor
+  \State \Return $P$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Interval structure}: the active $y$-intervals are maintained
+  in a balanced tree keyed by bottom coordinate; the union is maintained
+  incrementally, merging intervals that overlap.
+\item \textbf{Edge ordering}: left and right edges at the same $x$ are
+  processed left edges first so that touching rectangles are handled
+  consistently.
+\item \textbf{Output assembly}: the contour is emitted as horizontal edges
+  (from break points on the top/bottom of the union) plus vertical edges
+  (where the active set changes), connected into closed loops afterwards.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+With $n$ axis-parallel rectangles, the sweep processes $2n$ vertical edge
+events, each involving an $O(\log n)$ update of the interval status
+structure. The running time is $O(n\log n)$; the output has $O(k)$ segments,
+where $k$ is the number of contour break points.
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{VLSI mask checking}: the contour of the union of mask
+  features is exactly the shape that fabrication sees, and design-rule
+  checks (minimum spacing, enclosure) run on the contour.
+\item \textbf{GIS building footprints}: merging overlapping parcel or
+  building footprints requires their union contour.
+\item \textbf{Graphics windowing}: the visible region of overlapping
+  windows is the union contour of their rectangles.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Overlapping rectangles}: nested, identical, and partially
+  overlapping rectangles must all merge correctly with no duplicate break
+  points.
+\item \textbf{Touching rectangles}: rectangles sharing an edge must produce
+  a single contour without a spurious internal edge.
+\item \textbf{Verification}: compare the contour area (by the shoelace
+  formula, Section~\ref{sec:math_signed_area_volume}) with an independent
+  area computation by inclusion--exclusion.
+\end{itemize}
+
+\subsection{9. References}
+
+The union-of-rectangles problem and its sweep solution are covered in
+\cite{berg2008,bentley1977}; the connection to interval maintenance and to
+Klee's measure problem is developed in \cite{bentley1977,bentley1979}.
 
 \section{Applications}
 \label{sec:segint_applications}
 
+Segment intersection algorithms are the engine behind several major
+application areas:
+
+\begin{description}
+  \item[Map overlay] Combining two thematic maps in a geographic
+    information system reduces to red--blue intersection and edge splitting
+    (Section~\ref{sec:segint_red_blue}); the overlay result is a new planar
+    subdivision, and the GIS application chapter develops the pipeline
+    (Chapter~\ref{ch:applications_gis}).
+  \item[Design-rule checking] In VLSI layout, wires must not intersect
+    where their netlists forbid contact; reporting all intersections of a
+    wire layer is a segment-intersection query over axis-aligned and
+    diagonal segments.
+  \item[Computer graphics] Window clipping, overdraw analysis, and boolean
+    operations on polygons all begin with edge-intersection reporting; the
+    graphics chapter uses these in modeling and rendering
+    (Chapter~\ref{ch:applications_graphics}).
+  \item[CAD and CAM] Verifying that a tool path does not self-intersect,
+    and detecting collisions of planar outlines, are segment-intersection
+    checks.
+  \item[Robotics and motion planning] In the plane, the validity of a path
+    is checked against obstacle edges by intersection tests, and the
+    configuration-space computations of Chapter~\ref{ch:motion_planning}
+    use them.
+  \item[Validity of geometric structures] Checking that a triangulation is
+    non-crossing, that a polygon is simple, and that a planar subdivision
+    is well-formed all reduce to segment-intersection tests over edge sets.
+\end{description}
+
+In each of these settings the practical requirements are the same: the
+underlying intersection predicate must be exact and consistent
+(Sections~\ref{sec:segint_pairwise} and \ref{sec:intro_exact_computation}),
+degenerate inputs must be handled by documented rules
+(Section~\ref{sec:segint_degenerate}), and the sweep must be
+output-sensitive because $k$ can be very small or very large depending on
+the data.
+
 \section{Exercises}
 \label{sec:segint_exercises}
 
+\begin{enumerate}
+  \item Prove the Adjacent-Pair Lemma of Section~\ref{sec:segint_bentley_ottmann}
+    when several segments pass through the intersection point.
+  \item Show that testing all pairs is $\Omega(n^2)$ even when the output
+    is empty, by giving an input with no intersections whose
+    \emph{bounding boxes} all pairwise overlap.
+  \item Explain why an intersection event must be enqueued only when it
+    lies strictly to the right of the current sweep position, and give an
+    input on which enqueueing past events loops forever.
+  \item Adapt the Bentley--Ottmann algorithm to vertical segments without
+    rotation, describing the exact ordering predicate.
+  \item Compute the running time of Bentley--Ottmann for an input with
+    $k = 0$ (no crossings) and for a ``spiral'' input where every segment
+    crosses every other ($k = \binom{n}{2}$).
+  \item Design a test oracle for red--blue intersection that uses the
+    pairwise predicate of Section~\ref{sec:segint_pairwise} but exploits
+    the monochromatic promise.
+  \item Show how the contour of the union of rectangles changes when two
+    rectangles touch at a single corner, and verify that the sweep of
+    Section~\ref{sec:segint_union_rectangles} handles it.
+  \item Prove that the decision version of segment intersection has an
+    $\Omega(n\log n)$ lower bound by reduction from element uniqueness.
+\end{enumerate}
+
 \section{Project: Interactive Sweep-Line Visualizer}
 \label{sec:segint_project}
+
+Build an interactive tool that visualizes the sweep-line algorithm
+(Section~\ref{sec:segint_bentley_ottmann}):
+\begin{enumerate}
+  \item \textbf{Input}: allow the user to place segments with the mouse, or
+    load segments from a file.
+  \item \textbf{Sweep}: animate the vertical line moving left to right,
+    drawing the status order as a ranked list beside the sweep line.
+  \item \textbf{Events}: highlight the current event; for an intersection
+    event, flash the two segments and report the point.
+  \item \textbf{Status}: display the vertical order explicitly and update
+    it with each event, so that insertions, deletions, and swaps are
+    visible.
+  \item \textbf{Verification}: include a brute-force button that highlights
+    every intersecting pair, and color any pair the sweep missed.
+  \item \textbf{Degenerate inputs}: add a library of degenerate examples
+    (vertical segments, clusters, collinear overlaps) and confirm the
+    implementation follows the rules of Section~\ref{sec:segint_degenerate}.
+  \item \textbf{Analysis}: report $n$, $k$, the number of events processed,
+    and the number of predicate evaluations, and compare the sweep against
+    brute force on random inputs.
+\end{enumerate}
+The project can be implemented with the \texttt{compgeom} package's segment
+predicates and with a small GUI layer; a terminal-based animation is
+sufficient if a full GUI is not desired.
