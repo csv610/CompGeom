@@ -1,45 +1,560 @@
 \chapter{Orthogonal Range Searching}
 \label{ch:range_searching}
 
-% Stub: outline only; content to be written.
-
 \section{Range Queries}
 \label{sec:rangesearch_queries}
+
+A \textbf{range query}\index{range query} asks for the points of a fixed set
+$P \subset \mathbb{R}^d$ that lie inside a query region $Q$: the output is
+either the \emph{count} $|P \cap Q|$ or the \emph{report} of all points in
+$P \cap Q$. The queries are answered by a data structure built once from
+$P$, and the structure is judged by its storage, its query time, and its
+construction and update costs. The problem is fundamental because it is the
+primitive behind database range selection, geographic windowing,
+multi-dimensional indexing, and the nearest-neighbor queries of
+Chapter~\ref{ch:proximity}.
+
+The query region $Q$ determines the difficulty of the problem:
+\begin{description}
+  \item[Orthogonal ranges] $Q$ is an axis-aligned box (a rectangle in the
+    plane, a box in $\mathbb{R}^d$), possibly with only some sides
+    specified (a 3-sided rectangle, a half-plane strip). These queries
+    support the elegant tree structures of this chapter.
+  \item[Simplex ranges] $Q$ is a half-space or a simplex; these queries
+    require the partition-tree and cutting techniques of
+    Section~\ref{sec:rangesearch_simplex}.
+  \item[General ranges] $Q$ is a disk, a polygon, or a set of several
+    ranges; these are typically answered by reduction to the orthogonal or
+    simplex case.
+\end{description}
+
+This chapter develops the classical orthogonal range-searching hierarchy:
+one-dimensional search (Section~\ref{sec:rangesearch_1d}), $k$-d trees
+(Section~\ref{sec:rangesearch_kd_trees}), range trees with multilevel
+structures (Sections~\ref{sec:rangesearch_range_trees}--\ref{sec:rangesearch_multilevel}),
+fractional cascading (Section~\ref{sec:rangesearch_fractional_cascading}),
+priority search trees (Section~\ref{sec:rangesearch_priority_search}), and
+the higher-dimensional and dynamic extensions
+(Sections~\ref{sec:rangesearch_higher_dimensional}--\ref{sec:rangesearch_dynamic}).
+The statistical structure of points in high dimensions is treated in
+Section~\ref{sec:rangesearch_curse} and
+Chapter~\ref{ch:high_dimensional}.
 
 \section{One-Dimensional Range Searching}
 \label{sec:rangesearch_1d}
 
+\subsection{Overview}
+
+In one dimension the points are a set of $n$ real numbers and the query is
+an interval $[x_1, x_2]$: report (or count) the points in the interval. This
+is the simplest nontrivial range-searching problem, and the ideas it
+introduces --- sorted order, binary search, and split nodes --- are the
+basis of every structure in this chapter.
+
+\subsection{Definitions}
+
+\begin{definition}[Range Counting and Reporting]\label{def:rangesearch_counting}
+  For a set $P$ of $n$ reals and an interval $I=[x_1,x_2]$, the
+  \textbf{counting query} asks for $|P \cap I|$ and the \textbf{reporting
+  query} asks for the sorted list of points in $P \cap I$.
+\end{definition}
+
+\subsection{Theory}
+
+Sort the points as $p_1 < p_2 < \cdots < p_n$. The points in the query
+interval form a contiguous block $p_{i+1}, \dots, p_j$, where $i$ is the
+number of points $\le x_1$ and $j$ the number of points $< x_2$. Both
+indices are found by binary search on the sorted array. A balanced binary
+search tree keyed by value stores the same information with the additional
+ability to support insertion and deletion (Section~\ref{sec:rangesearch_dynamic}).
+
+\subsection{Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{One-Dimensional Range Query}
+\label{alg:rangesearch_1d}
+\begin{algorithmic}[1]
+\Require Sorted array $A[1..n]$ of distinct points, query interval $[x_1,x_2]$.
+\Ensure The points of $A$ in $[x_1,x_2]$.
+\Function{RangeQuery}{$A, x_1, x_2$}
+  \State $i \gets \text{binarySearch}(A, x_1)$  \Comment{first index with $A[i] \ge x_1$}
+  \State $j \gets \text{binarySearch}(A, x_2)$  \Comment{last index with $A[j] \le x_2$}
+  \State \Return $A[i..j]$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Complexity}
+
+\begin{itemize}
+  \item \textbf{Time}: counting in $O(\log n)$; reporting in
+    $O(\log n + k)$ with $k = |P \cap I|$ (the output itself needs $k$ time).
+  \item \textbf{Storage}: $O(n)$.
+\end{itemize}
+
+\subsection{Usages}
+
+\begin{itemize}
+  \item \textbf{Database queries}: selecting records whose key lies in an
+    interval.
+  \item \textbf{Component of higher-dimensional structures}: every range
+    tree node stores a one-dimensional structure of exactly this kind
+    (Section~\ref{sec:rangesearch_range_trees}).
+\end{itemize}
+
+\subsection{References}
+
+The one-dimensional structure is elementary; its textbook treatment
+appears in \cite{berg2008} and the analysis of its use inside multilevel
+structures in \cite{bentley1980multidim}.
+
 \section{k-d Trees}
 \label{sec:rangesearch_kd_trees}
 
-K-d trees support orthogonal range queries by recursively partitioning the
-point set with axis-aligned splitting hyperplanes. A brief outline appears
-here; the full data structure -- construction, balancing, and query pruning
--- is developed in Section~\ref{sec:kd_tree} (Chapter 10).
+\subsection{Overview}
+
+The \textbf{$k$-d tree}\index{$k$-d tree} partitions the point set
+recursively with axis-aligned splitting hyperplanes: at each internal node,
+the points are split by a hyperplane perpendicular to one coordinate axis
+into two subsets of equal cardinality, each stored in a child. The result
+is a balanced binary tree whose leaves are points. $k$-d trees support
+orthogonal range queries by pruning any subtree whose cell is disjoint from
+the query range. A brief outline appears here; the full data structure ---
+construction, balancing, and query pruning --- is developed in
+Section~\ref{sec:kd_tree} (Chapter~\ref{ch:spatial_structures}).
+
+\subsection{Definitions}
+
+\begin{definition}[Split Plane and Cell]\label{def:kd_cell}
+  Each $k$-d tree node $v$ stores a \textbf{split hyperplane} $x_d = c$
+  (perpendicular to the split axis $d$) and is associated with a
+  \textbf{cell}, the axis-aligned box containing the points of its subtree.
+  The two children own the two halves of the cell on either side of the
+  split plane.
+\end{definition}
+
+\subsection{Theory}
+
+The query on an orthogonal range $Q$ descends the tree: if a node's cell
+does not intersect $Q$, the whole subtree is pruned; if the cell is
+contained in $Q$, the whole subtree is reported; otherwise the search
+continues in both children. The number of nodes visited is bounded by
+$O(n^{1-1/d} + k)$ in the worst case for a box query in $\mathbb{R}^d$
+with $n$ points; the exponent reflects that pruning eliminates entire
+subtrees only in dimensions with ``thick'' splits. The $k$-d tree is the
+structure of choice when the dimension is small ($d \le 3$) and the points
+are static or slowly changing, because its storage is exactly linear and
+its constants are tiny.
+
+\subsection{Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Orthogonal Range Query in a $k$-d Tree}
+\label{alg:kd_range_query}
+\begin{algorithmic}[1]
+\Require $k$-d tree root with cells, orthogonal query box $Q$.
+\Ensure All points of the tree inside $Q$.
+\Function{KDQuery}{$v, Q$}
+  \If{$v$ is a leaf} \State \Return $v.\text{point}$ if it lies in $Q$
+  \EndIf
+  \If{$\text{cell}(v) \cap Q = \emptyset$} \State \Return $\emptyset$ \EndIf
+  \If{$\text{cell}(v) \subseteq Q$} \State \Return all points of the subtree \EndIf
+  \State \Return $\textsc{KDQuery}(\text{left}(v), Q) \cup \textsc{KDQuery}(\text{right}(v), Q)$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Complexity}
+
+\begin{itemize}
+  \item \textbf{Storage}: $O(n)$.
+  \item \textbf{Construction}: $O(n \log n)$ by median finding at each node.
+  \item \textbf{Query}: $O(n^{1-1/d} + k)$ worst case for orthogonal ranges;
+    the expected behavior on typical data is much better (logarithmic plus
+    output).
+\end{itemize}
+
+\subsection{Usages}
+
+\begin{itemize}
+  \item \textbf{Nearest-neighbor search}: the branch-and-bound version of
+    the $k$-d tree is the workhorse of Chapter~\ref{ch:proximity}.
+  \item \textbf{Windowing}: reporting all points in a query rectangle, used
+    in GIS and graphics.
+  \item \textbf{Dynamic point sets}: reinsertion-based updates make the
+    $k$-d tree usable online (Section~\ref{sec:rangesearch_dynamic}).
+\end{itemize}
+
+\subsection{References}
+
+The $k$-d tree was introduced by Bentley \cite{bentley1975}; the analysis
+of its range queries and the branch-and-bound nearest-neighbor search are
+due to Friedman, Bentley, and Finkel \cite{friedman1977}; textbook
+treatments appear in \cite{berg2008,preparata1985}.
 
 \section{Range Trees}
 \label{sec:rangesearch_range_trees}
 
+\subsection{Overview}
+
+The \textbf{range tree}\index{range tree} answers orthogonal box queries in
+the plane in $O(\log^2 n + k)$ time with $O(n \log n)$ storage, and in
+$d$ dimensions in $O(\log^d n + k)$ time with $O(n \log^{d-1} n)$ storage.
+Unlike the $k$-d tree, its query time is near-logarithmic in $n$ and
+independent of the answer count's position on the $n^{1-1/d}$ curve; it is
+the textbook example of a \textbf{multilevel} (or layered) data structure.
+
+\subsection{Definitions}
+
+\begin{definition}[Range Tree]\label{def:range_tree}
+  A \textbf{range tree} for a set $P$ of points in $\mathbb{R}^2$ is a
+  balanced binary search tree $T$ on the $x$-coordinates of $P$. Each node
+  $v$ stores the subset $P_v$ of points in its subtree, organized as a
+  one-dimensional balanced tree (an \textbf{associate structure}) on their
+  $y$-coordinates.
+\end{definition}
+
+\subsection{Theory}
+
+A box query $[x_1,x_2] \times [y_1,y_2]$ is answered in two stages. First,
+search the primary tree for the $x$-range and collect the
+\textbf{canonical subset}: the $O(\log n)$ nodes whose subtrees exactly
+cover the points with $x$-coordinates in $[x_1,x_2]$. Then, for each such
+node $v$, query $v$'s associate $y$-tree for the interval $[y_1,y_2]$ and
+report the output. Counting is the same, with each associate query
+returning a count. The two-stage structure is correct because the points
+with $x \in [x_1,x_2]$ are exactly the disjoint union of the canonical
+nodes' subsets, and each is filtered by the $y$-query.
+
+\subsection{Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{2D Orthogonal Range Query}
+\label{alg:range_tree_query}
+\begin{algorithmic}[1]
+\Require Range tree $T$ on $P$, box $Q = [x_1,x_2] \times [y_1,y_2]$.
+\Ensure All points of $P$ in $Q$.
+\Function{RangeTreeQuery}{$T, Q$}
+  \State collect the $O(\log n)$ canonical nodes $v_1,\dots,v_m$ covering $[x_1,x_2]$
+  \For{each canonical node $v_i$}
+    \State report the points of $v_i$'s $y$-tree with $y \in [y_1,y_2]$
+  \EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Complexity}
+
+\begin{itemize}
+  \item \textbf{Storage}: $O(n \log n)$; each point appears in one
+    associate tree per level, of which there are $\log n$.
+  \item \textbf{Construction}: $O(n \log n)$ by building the associate
+    trees bottom-up.
+  \item \textbf{Query}: $O(\log^2 n + k)$ in 2D; the canonical search costs
+    $O(\log n)$ and each of the $O(\log n)$ associate queries costs
+    $O(\log n)$.
+\end{itemize}
+
+\subsection{Usages}
+
+\begin{itemize}
+  \item \textbf{Orthogonal windowing}: the canonical-subset mechanism is
+    the standard answer for exact-logarithmic queries on static data.
+  \item \textbf{Dual problems}: counting points in a query box is the
+    direct analogue of the database ``box select''.
+  \item \textbf{Reduction to 1D}: any problem solvable on a sorted set in
+    $O(\log n)$ transfers to $O(\log^2 n)$ in the plane via the range tree,
+    which is how the range tree is used as a black box inside other
+    algorithms.
+\end{itemize}
+
+\subsection{References}
+
+The range tree (as the ``layered range tree'' using multidimensional
+divide-and-conquer) is due to Bentley \cite{bentley1980multidim}; the
+higher-dimensional analysis and the fractional-cascading speedup are
+developed in \cite{berg2008} and \cite{willard1985}.
+
 \section{Multilevel Data Structures}
 \label{sec:rangesearch_multilevel}
+
+A \textbf{multilevel data structure}\index{multilevel data structure}
+answers a query by filtering through a hierarchy of one-dimensional
+structures, one level per dimension. The range tree is the canonical
+example: the primary level filters on $x$, and each canonical node contains
+a secondary structure that filters on $y$. The construction recurses: a
+$d$-dimensional range tree has a primary tree on the first coordinate and,
+at each node, a $(d-1)$-dimensional range tree on the remaining
+coordinates, with the base case $d=1$ being the balanced tree of
+Section~\ref{sec:rangesearch_1d}.
+
+The general design principle is: if a query on a set can be answered in
+$Q(n)$ time and the associate structures can be built in $S(n)$ storage per
+node, then the two-level structure answers in $O(\log n)$ (canonical
+search) times $Q(n)$ and stores $O(n)$ times the per-node storage. Applied
+recursively, this yields the $d$-dimensional bounds of
+Section~\ref{sec:rangesearch_higher_dimensional}. The same principle
+underlies many geometric data structures beyond range searching; it is
+sometimes called \textbf{multidimensional divide-and-conquer}
+\cite{bentley1980multidim}.
+
+Two implementation notes matter in practice. First, the associate structures
+at a node contain the points of the subtree, so a point participates in one
+structure per level, giving the $\log n$ blow-up in storage. Second, when
+the query filter is a contiguous interval in the associated coordinate, the
+associate structure can be a sorted array and the query becomes two binary
+searches --- this is the form used when fractional cascading
+(Section~\ref{sec:rangesearch_fractional_cascading}) is applied.
+
+\index{multilevel structure}\index{multidimensional divide-and-conquer}
 
 \section{Fractional Cascading}
 \label{sec:rangesearch_fractional_cascading}
 
+\subsection{Overview}
+
+A 2D range-tree query spends $O(\log n)$ time finding the canonical nodes
+and then performs $O(\log n)$ binary searches, one per canonical node, for a
+total of $O(\log^2 n)$. Each binary search looks for the same $y$-value in a
+related sorted list, and the repeated searches are wasteful: the list at a
+node and the list at its children are highly correlated. \textbf{Fractional
+cascading}\index{fractional cascading} removes the second $\log n$ factor
+by passing the search position from each list to the next, reducing the
+query time to $O(\log n + k)$.
+
+\subsection{Definitions}
+
+\begin{definition}[Fractional Cascading]\label{def:rangesearch_cascading}
+  \textbf{Fractional cascading} is a technique for sequences of sorted
+  lists $L_1, L_2, \dots$ where each list's successor can be searched
+  faster by \emph{cascading}: every element of $L_{i+1}$ stores a pointer
+  to the closest elements in $L_i$, so that a query value's position in
+  $L_i$ determines its position in $L_{i+1}$ in $O(1)$ time rather than
+  $O(\log n)$.
+\end{definition}
+
+\subsection{Theory}
+
+Each $y$-list in the range tree is replaced by a \textbf{cascading array}:
+for every element, a pair of pointers to the nearest elements of the same
+value range in the lists of the node's children. A query that has found
+its position in the root's $y$-list then walks down the tree, spending
+$O(1)$ per level to derive the position in the child's list. Searching all
+$O(\log n)$ canonical $y$-lists therefore costs $O(\log n)$ total instead
+of $O(\log^2 n)$. Because the lists are now linked, the storage remains
+$O(n \log n)$ but the constant grows by a small factor (each element keeps
+two extra pointers).
+
+\subsection{Complexity}
+
+\begin{itemize}
+  \item \textbf{Query}: $O(\log n + k)$ for 2D orthogonal boxes.
+  \item \textbf{Storage}: $O(n \log n)$.
+  \item \textbf{Construction}: $O(n \log n)$.
+\end{itemize}
+
+\subsection{Usages}
+
+\begin{itemize}
+  \item \textbf{Optimal orthogonal searching}: together with careful
+    canonical decomposition, fractional cascading gives the optimal
+    $O(\log n + k)$ 2D structure of Willard \cite{willard1985}.
+  \item \textbf{Any repeated-scan hierarchy}: the technique applies
+    wherever the same value is searched in related sorted lists, which
+    occurs in several other chapters (e.g., computing lower envelopes).
+\end{itemize}
+
+\subsection{References}
+
+Fractional cascading was introduced by Chazelle and Guibas \cite{chazelle1986cascading};
+its application to range trees is the textbook treatment of \cite{berg2008}
+and the optimal-structure result of \cite{willard1985}.
+
 \section{Priority Search Trees}
 \label{sec:rangesearch_priority_search}
+
+\subsection{Overview}
+
+A \textbf{priority search tree}\index{priority search tree} \cite{mccreight1985}
+answers \textbf{3-sided} orthogonal queries --- ranges of the form
+$[x_1,x_2] \times (-\infty, y]$ --- in $O(\log n + k)$ time with only
+$O(n)$ storage. The improvement over the range tree's $O(n \log n)$
+storage comes from combining the $x$-order (tree structure) and the
+$y$-order (heap order) in a single binary tree, a ``heap on $y$ over a
+search tree on $x$''.
+
+\subsection{Definitions}
+
+\begin{definition}[Priority Search Tree]\label{def:priority_search_tree}
+  A \textbf{priority search tree} for a set $P$ of $n$ points is a binary
+  tree where the root holds the point of minimal $y$, the remaining points
+  are split by $x$-median into the left and right subtrees, and each
+  subtree is itself a priority search tree. Every node stores the
+  $x$-range (min and max $x$) of its subtree.
+\end{definition}
+
+\subsection{Theory}
+
+A 3-sided query $[x_1,x_2] \times (-\infty, y]$ is answered by a pruning
+search: a node is visited only if its $x$-range intersects the query
+interval. When a visited node's point has $y$-coordinate at most $y$, the
+point is reported (the heap order guarantees that if the root of a subtree
+fails the $y$-test, no point of that subtree passes it). The number of
+visited nodes is $O(\log n + k)$, giving the near-logarithmic bound with
+linear storage. An axis-aligned rectangle query can be decomposed into two
+3-sided queries, so priority search trees also answer full orthogonal
+range queries, though with $O(k)$ reporting and $O(\log n)$ counting
+structure trade-offs different from the range tree.
+
+\subsection{Complexity}
+
+\begin{itemize}
+  \item \textbf{Storage}: $O(n)$.
+  \item \textbf{Query (3-sided)}: $O(\log n + k)$.
+  \item \textbf{Insertion/deletion}: $O(\log n)$.
+\end{itemize}
+
+\subsection{Usages}
+
+\begin{itemize}
+  \item \textbf{Dynamic 3-sided queries}: the heap order supports cheap
+    insertions, making the structure attractive when points arrive online.
+  \item \textbf{Component of box structures}: 3-sided queries are a
+    standard primitive into which general orthogonal queries are
+    decomposed.
+\end{itemize}
+
+\subsection{References}
+
+The structure is due to McCreight \cite{mccreight1985}; its relation to
+the range tree and its use in dynamic structures are covered in
+\cite{berg2008} and \cite{overmars1983}.
 
 \section{Reporting versus Counting}
 \label{sec:rangesearch_reporting_counting}
 
+Range queries come in two flavors whose complexity differs in an important
+way. \textbf{Reporting} queries must list the $k$ points in the range, so
+any structure costs at least $\Omega(k)$ per query, and a structure with
+$O(\log n)$ search time can report in $O(\log n + k)$. \textbf{Counting}
+queries return only the number $|P \cap Q|$, so their time is independent
+of $k$; the challenge is that counting often requires storing more
+information per canonical subset (a subtree size, or a precomputed count)
+while spending as little time as possible inside the structure.
+
+The two versions have different optimality landscapes:
+\begin{itemize}
+  \item for counting, a range tree stores the size of each $y$-tree, so a
+    box count costs $O(\log^d n)$ with $O(n \log^{d-1} n)$ storage;
+  \item for reporting, the same tree costs $O(\log^d n + k)$, where $k$
+    includes the output; priority search trees and $k$-d trees trade
+    query time for output time differently;
+  \item lower bounds differ as well: counting is easier than reporting in
+    the sense that the output term is absent, and decision-tree arguments
+    give $O(n \log n)$-ish bounds for the static 2D case, while reporting
+    has the trivial $\Omega(k)$ component.
+\end{itemize}
+In practice most applications need reporting, and the $k$ term dominates;
+counting appears in statistics (counts of points in half-spaces for
+classification) and in the simplex setting of Section~\ref{sec:rangesearch_simplex},
+where the near-linear-space lower bound $\Omega(n^{1-1/d})$ applies to
+counting and reporting alike.
+
+\index{counting query}\index{reporting query}
+
 \section{Higher-Dimensional Range Searching}
 \label{sec:rangesearch_higher_dimensional}
+
+The range-tree construction generalizes directly to $\mathbb{R}^d$: a
+$d$-dimensional range tree has a primary tree on the first coordinate and
+a $(d-1)$-dimensional range tree as each node's associate structure
+(Section~\ref{sec:rangesearch_multilevel}). The query cost and storage
+follow by induction:
+\begin{itemize}
+  \item \textbf{Range tree}: $O(\log^d n + k)$ query time and
+    $O(n \log^{d-1} n)$ storage in $d$ dimensions.
+  \item \textbf{$k$-d tree}: $O(n^{1-1/d} + k)$ query time with $O(n)$
+    storage in $d$ dimensions.
+  \item \textbf{Priority search tree}: $O(n \log n)$-free --- it answers
+    3-sided queries in $\mathbb{R}^2$ in $O(\log n + k)$ with $O(n)$
+    storage; in higher dimensions its role is taken by more specialized
+    structures.
+\end{itemize}
+The range tree's storage grows polynomially in the dimension (the
+$n\log^{d-1} n$ factor), so for $d$ fixed it is the near-logarithmic
+structure of choice; for variable dimension the polynomial storage becomes
+prohibitive. The $k$-d tree, with its strictly linear storage, is the
+practical default when $d$ is moderate (say $d \le 10$), because the
+$n^{1-1/d}$ query factor is small until $d$ approaches the data size. The
+extreme range --- where every structure degenerates toward linear scans ---
+is the curse of dimensionality of Section~\ref{sec:rangesearch_curse}.
+Simplex range searching in higher dimensions, with its near-optimal
+$O(n^{1-1/d}(\log n)^{O(1)})$ bounds, is treated in
+Section~\ref{sec:rangesearch_simplex}.
 
 \section{Dynamic Range Searching}
 \label{sec:rangesearch_dynamic}
 
+When points are inserted and deleted, a range-searching structure must
+maintain its invariants online. The classical framework is the
+transform-and-conquer method of Overmars \cite{overmars1983}, which
+converts any static structure into a dynamic one at the cost of a
+logarithmic factor per operation, provided the static structure can be
+rebuilt and queried efficiently. The main strategies are:
+
+\begin{description}
+  \item[Binary-search-tree dynamics] A dynamic range tree keeps the
+    primary tree balanced with rotations; each rotation changes only
+    $O(1)$ associate structures locally, so insertions and deletions cost
+    $O(\log^2 n)$ in 2D (an $O(\log n)$ factor for the tree update times
+    an $O(\log n)$ factor for the associate-structure updates).
+  \item[Rebuilding] Overmars' method maintains several static structures
+    of geometrically growing sizes (partial rebuilding): a new point is
+    inserted into the smallest structure, and structures are merged when
+    they exceed a size threshold. Querying all levels costs $O(\log n)$
+    times the static query cost.
+  \item[$k$-d tree updates] Insertions into a $k$-d tree are handled by
+    attaching a point at the appropriate leaf; deletions mark points and
+    periodically rebuild the subtree. The amortized update cost is
+    $O(\log n)$ and queries remain $O(n^{1-1/d} + k)$.
+\end{description}
+
+The fundamental limitation is that updates interfere with fractional
+cascading and heap orders (Section~\ref{sec:rangesearch_priority_search}),
+so the fully dynamic optimal 2D structure is considerably more complex
+than the static one; in practice, the field's recommendation is to use a
+dynamic range tree for moderate update rates and a $k$-d tree when updates
+are frequent and the dimension is low.
+
+\index{dynamic data structure}\index{partial rebuilding}
+
 \section{Curse of Dimensionality}
 \label{sec:rangesearch_curse}
+
+The \textbf{curse of dimensionality}\index{curse of dimensionality} is the
+phenomenon that all data structures for orthogonal range searching
+deteriorate as the dimension $d$ grows. The $k$-d tree's query factor
+$n^{1-1/d}$ approaches $n$ as $d \to \infty$, so for large $d$ the query
+degenerates to a linear scan; the range tree's storage
+$n\log^{d-1} n$ becomes astronomical in $d$; and, most fundamentally, the
+lower bounds of Section~\ref{sec:rangesearch_simplex} show that any
+structure with near-linear storage must spend $\Omega(n^{1-1/d})$ time per
+query in the worst case. For $d = \log n$, the exponents meet: every
+near-linear-space structure answers queries in time at least $n^{1-1/\log
+n} = n^{1 - o(1)}$, i.e., no better than scanning.
+
+The cause is combinatorial: the number of distinct orthogonal ranges that
+a point set can define grows exponentially in $d$, so a structure that
+wants to answer all of them with few canonical subsets cannot exist. Two
+practical responses are standard. First, for moderate $d$ ($d \le 20$),
+indexing schemes such as the $k$-d tree and the space-filling-curve index
+of Chapter~\ref{ch:space_filling_curves} still perform well on real data,
+whose intrinsic dimension is far below $d$; the analysis in
+Chapter~\ref{ch:high_dimensional} explains when this holds. Second, when
+$d$ is genuinely large, exact range searching is abandoned in favor of
+approximate structures --- locality-sensitive hashing, approximate nearest
+neighbors, and sketches --- whose guarantees are probabilistic rather than
+worst-case (Chapter~\ref{ch:high_dimensional}).
 
 \section{Simplex Range Searching}
 \label{sec:rangesearch_simplex}
@@ -149,5 +664,54 @@ the worst case.
 \section{Exercises}
 \label{sec:rangesearch_exercises}
 
+\begin{enumerate}
+  \item Show that a 1D range tree (Section~\ref{sec:rangesearch_1d}) is
+    just a sorted array, and that counting needs only the binary-search
+    indices.
+  \item Prove that the $k$-d tree query visits $O(n^{1-1/d} + k)$ nodes in
+    the worst case for a box query: argue that a query box whose side is
+    unbounded prunes half the subtrees per level, while a thin box cuts
+    many subtrees.
+  \item Verify the range-tree bounds: each point is stored in exactly one
+    associate tree per level, so storage is $O(n \log n)$, and the query
+    visits $O(\log n)$ canonical nodes.
+  \item Explain why fractional cascading reduces the query time by a
+    factor of $\log n$ and why the storage stays $O(n \log n)$.
+  \item Design a priority search tree that answers the query
+    $[x_1, x_2] \times (-\infty, y]$ and prove the visited-node bound
+    $O(\log n + k)$.
+  \item Compare the asymptotic costs of range trees and $k$-d trees for
+    orthogonal reporting in $d = 2, 3, 10$, and state which you would
+    choose for each.
+  \item Argue from the lower bound of Section~\ref{sec:rangesearch_simplex}
+    that no near-linear-space structure can answer counting queries
+    faster than $n^{1-1/d}$ in the worst case, and interpret the bound for
+    $d = \log n$.
+  \item Implement a brute-force counter and verify a range tree on random
+    point sets, checking that reporting agrees with brute force and that
+    counting equals the reported cardinality.
+\end{enumerate}
+
 \section{Project: Spatial Query Engine}
 \label{sec:rangesearch_project}
+
+Build a spatial query engine over a point dataset:
+\begin{enumerate}
+  \item \textbf{Index}: implement a 2D range tree (primary tree on $x$,
+    associate sorted arrays on $y$) and a $k$-d tree.
+  \item \textbf{Queries}: support box reporting and box counting, and a
+    point-in-polygon query by bounding-box filtering followed by an exact
+    test.
+  \item \textbf{Verification}: compare both indexes against a brute-force
+    scan on random and adversarial point sets, checking output equality and
+    reporting counts.
+  \item \textbf{Measurement}: plot query time and storage against $n$ and
+    against the query box size; verify the predicted $O(\log^2 n + k)$ and
+    $O(n^{1-1/2} + k)$ behaviors.
+  \item \textbf{Extras}: add the 3-sided query with a priority search
+    tree, and a nearest-neighbor query reusing the $k$-d tree
+    (Chapter~\ref{ch:proximity}).
+  \item \textbf{Visualization}: draw the points, the query boxes, and the
+    reported points; optionally animate the recursive subdivision of the
+    $k$-d tree.
+\end{enumerate}
