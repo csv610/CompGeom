@@ -1,0 +1,153 @@
+\chapter{Orthogonal Range Searching}
+\label{ch:range_searching}
+
+% Stub: outline only; content to be written.
+
+\section{Range Queries}
+\label{sec:rangesearch_queries}
+
+\section{One-Dimensional Range Searching}
+\label{sec:rangesearch_1d}
+
+\section{k-d Trees}
+\label{sec:rangesearch_kd_trees}
+
+K-d trees support orthogonal range queries by recursively partitioning the
+point set with axis-aligned splitting hyperplanes. A brief outline appears
+here; the full data structure -- construction, balancing, and query pruning
+-- is developed in Section~\ref{sec:kd_tree} (Chapter 10).
+
+\section{Range Trees}
+\label{sec:rangesearch_range_trees}
+
+\section{Multilevel Data Structures}
+\label{sec:rangesearch_multilevel}
+
+\section{Fractional Cascading}
+\label{sec:rangesearch_fractional_cascading}
+
+\section{Priority Search Trees}
+\label{sec:rangesearch_priority_search}
+
+\section{Reporting versus Counting}
+\label{sec:rangesearch_reporting_counting}
+
+\section{Higher-Dimensional Range Searching}
+\label{sec:rangesearch_higher_dimensional}
+
+\section{Dynamic Range Searching}
+\label{sec:rangesearch_dynamic}
+
+\section{Curse of Dimensionality}
+\label{sec:rangesearch_curse}
+
+\section{Simplex Range Searching}
+\label{sec:rangesearch_simplex}
+
+\subsection{Overview}
+Range searching asks for the set of points of a fixed point set $P$ that lie
+inside a query region $Q$. When $Q$ is a simplex (a half-plane, triangle, or
+half-space), the problem is called \textbf{simplex range searching}. It is one
+of the most fundamental query problems in computational geometry, with
+applications in databases, GIS, and computer graphics. The standard solutions
+use \textbf{partition trees}, \textbf{cuttings}, and \textbf{$\varepsilon$-nets}
+to answer counting queries in roughly $O(n^{1-1/d})$ time with linear storage,
+which is optimal in the worst case for near-linear space.
+
+\subsection{Definitions}
+
+\begin{definition}[Simplex Range Counting]\label{def:simplex_range_counting}
+Given a set $P$ of $n$ points in $\mathbb{R}^d$ and a query simplex $\Delta$,
+the \emph{simplex range counting} problem asks for $|P \cap \Delta|$. The
+\emph{reporting} variant asks for all points in $P \cap \Delta$.
+\end{definition}
+
+\begin{definition}[$\varepsilon$-Net]\label{def:eps_net}
+Let $(X, \mathcal{R})$ be a range space of points and subsets (ranges) with VC
+dimension $d$. A subset $N \subseteq X$ is an \emph{$\varepsilon$-net} if every
+range that contains at least $\varepsilon |X|$ points also contains a point of
+$N$.
+\end{definition}
+
+\subsection{Theory}
+A random sample of size $O(\frac{d}{\varepsilon}\log\frac{1}{\varepsilon})$ is
+an $\varepsilon$-net with high probability~\cite{hausslerwelzl1987}. Cuttings
+generalize this idea: a \emph{$(1/r)$-cutting} of an arrangement of $n$ lines
+subdivides the plane into $O(r^2)$ cells, each crossed by at most $n/r$ lines.
+Cuttings can be built deterministically in $O(nr)$ time~\cite{chazellefriedman1990},
+and hierarchical cuttings yield partition trees.
+
+\begin{theorem}[Simplex Range Searching Bounds]\label{thm:simplex_range_searching}
+For a set of $n$ points in $\mathbb{R}^d$, a partition tree of linear size can
+answer a simplex counting query in $O(n^{1-1/d}\,(\log n)^{O(1)})$ time and a
+reporting query in $O(n^{1-1/d}\,(\log n)^{O(1)} + k)$ time, where $k$ is the
+number of reported points~\cite{matousek1992,chazellefriedman1990}.
+This is optimal for near-linear space: any data structure using $O(n
+\operatorname{polylog} n)$ space requires $\Omega(n^{1-1/d})$ query time in
+the worst case.
+\end{theorem}
+
+\subsection{Pseudocode}
+
+\begin{algorithm}[ht]
+\label{alg:partition_tree}
+\caption{Simplex Range Counting with a Partition Tree}
+\begin{algorithmic}[1]
+\Function{CountSimplex}{node, $\Delta$}
+  \State \Comment{$node$ is a cell with an associated canonical subset}
+  \If{$node.\text{cell} \cap \Delta = \emptyset$}
+    \State \Return $0$
+  \EndIf
+  \If{$node.\text{cell} \subseteq \Delta$}
+    \State \Return $node.\text{count}$
+  \EndIf
+  \State \Return $\sum_{child} \textsc{CountSimplex}(child, \Delta)$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Complexity}
+\begin{itemize}
+    \item \textbf{Storage}: $O(n)$ for a partition tree; cutting-based
+      structures use $O(n \operatorname{polylog} n)$.
+    \item \textbf{Counting Query}: $O(n^{1-1/d}\,(\log n)^{O(1)})$ time.
+    \item \textbf{Reporting Query}: add $O(k)$ output time.
+    \item \textbf{Construction}: $O(n \log n)$ with randomized incremental
+      methods, or $O(nr)$ for a single cutting.
+\end{itemize}
+
+\subsection{Usages}
+\begin{itemize}
+    \item \textbf{Database and GIS} polygon windowing queries.
+    \item \textbf{Geometric statistics}: counting points in a query half-space
+      for classification and density estimation.
+    \item \textbf{Levels and duality}: by duality, half-plane range counting
+      is equivalent to counting vertices of an arrangement below the query
+      line, connecting to levels (Section~\ref{sec:arrangement_levels}).
+\end{itemize}
+
+\subsection{Testing Methods and Edge Cases}
+\begin{itemize}
+    \item \textbf{Degenerate queries}: simplex boundaries through points,
+      empty and full queries.
+    \item \textbf{Consistency}: compare counting against brute force for small
+      $n$; compare reporting to counting by checking the output size.
+\end{itemize}
+
+\subsection{References}
+\begin{itemize}
+    \item Haussler, D., \& Welzl, E. (1987). ``$\varepsilon$-Nets and Simplex
+      Range Queries''. Discrete \& Computational Geometry.
+    \item Matou\v{s}ek, J. (1992). ``Reporting Points in Halfspaces''
+      Computational Geometry: Theory and Applications.
+    \item Chazelle, B., \& Friedman, J. (1990). ``A Deterministic View of
+      Random Sampling and Its Use in Geometry''. Combinatorica.
+    \item Matou\v{s}ek, J. (1999). ``Geometric Discrepancy: An Illustrated
+      Guide''. Springer.
+\end{itemize}
+
+\section{Exercises}
+\label{sec:rangesearch_exercises}
+
+\section{Project: Spatial Query Engine}
+\label{sec:rangesearch_project}

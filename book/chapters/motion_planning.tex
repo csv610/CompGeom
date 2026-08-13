@@ -1,0 +1,123 @@
+\chapter{Motion Planning}
+\label{ch:motion_planning}
+
+Motion planning asks whether an object can move from a start state to a goal
+state without colliding with obstacles. The central idea is to replace motion
+of a physical object by a path for a point in a higher-dimensional
+\emph{configuration space}.
+
+\section{Configuration Space}
+\label{sec:configuration_space}
+
+A configuration records all degrees of freedom of a moving object. A point
+robot translating in the plane has configuration $q=(x,y)\in\mathbb{R}^2$. A rigid
+body translating and rotating in the plane has
+\[
+q=(x,y,\theta)\in\mathbb{R}^2\times S^1,
+\]
+while a rigid body in three dimensions has six degrees of freedom,
+$q=(x,y,z,\alpha,\beta,\gamma)\in\mathbb{R}^3\times SO(3)$.
+
+The configuration space $\mathcal{C}$ contains all possible configurations.
+The obstacle region $\mathcal{C}_{\mathrm{obs}}$ consists of configurations
+in which the robot intersects an obstacle. The free configuration space is
+\[
+\mathcal{C}_{\mathrm{free}} =
+\mathcal{C}\setminus\mathcal{C}_{\mathrm{obs}}.
+\]
+Motion planning then becomes the problem of finding a continuous path
+$\tau:[0,1]\to\mathcal{C}_{\mathrm{free}}$ with
+$\tau(0)=q_{\mathrm{start}}$ and $\tau(1)=q_{\mathrm{goal}}$.
+
+\section{Configuration-Space Obstacles}
+\label{sec:configuration_obstacles}
+
+For a translating robot $R$ and workspace obstacle $O$, collision-free
+translations can be computed using the Minkowski difference:
+\[
+\mathcal{C}_{\mathrm{obs}} = O\oplus(-R).
+\]
+Thus a finite-sized robot can be replaced by a point, while the obstacles are
+expanded by the reflected robot. For a rotating robot, this construction is
+performed for each orientation, producing a slice of the higher-dimensional
+configuration-space obstacle.
+
+\begin{definition}[Free Path]
+A free path is a continuous map $\tau:[0,1]\to\mathcal{C}_{\mathrm{free}}$.
+It is \emph{feasible} if it connects the start and goal configurations and
+satisfies any required constraints, such as joint limits or velocity bounds.
+\end{definition}
+
+\section{Exact Planning Methods}
+\label{sec:exact_motion_planning}
+
+\subsection{Cell Decomposition}
+
+Cell decomposition partitions $\mathcal{C}_{\mathrm{free}}$ into simple cells
+whose interiors are either entirely free or entirely blocked. A connectivity
+graph is built by connecting adjacent free cells. A graph search gives a
+sequence of cells, after which a continuous path is constructed through them.
+Exact decompositions provide completeness, but their complexity grows rapidly
+with the dimension and algebraic complexity of the configuration space.
+
+\subsection{Visibility Graphs}
+
+For a polygonal point robot in the plane, a visibility graph uses the start,
+goal, and obstacle vertices as nodes. Two nodes are connected when the segment
+between them lies in free space. Dijkstra's algorithm or A* then finds a
+shortest collision-free path in the graph. Visibility graphs are exact for
+Euclidean shortest paths among polygonal obstacles.
+
+\section{Roadmaps and Sampling-Based Planning}
+\label{sec:sampling_motion_planning}
+
+Sampling-based planners avoid explicitly constructing high-dimensional
+obstacle boundaries. They sample configurations, reject samples in
+$\mathcal{C}_{\mathrm{obs}}$, and connect nearby collision-free samples.
+
+\begin{algorithm}[htbp]
+\caption{Probabilistic Roadmap Planner}
+\label{alg:probabilistic_roadmap}
+\begin{algorithmic}[1]
+\Function{BuildRoadmap}{$\mathcal{C}$, $N$}
+  \State $G\gets$ empty graph
+  \For{$i=1$ to $N$}
+    \State Sample $q$ from $\mathcal{C}$
+    \If{$q\in\mathcal{C}_{\mathrm{free}}$}
+      \State Add $q$ to $G$
+      \For{nearby vertex $p$ in $G$}
+        \If{the local path from $p$ to $q$ is collision-free}
+          \State Add edge $(p,q)$ to $G$
+        \EndIf
+      \EndFor
+    \EndIf
+  \EndFor
+  \State \Return $G$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+Probabilistic roadmaps (PRM) are effective for repeated queries in a fixed
+environment. Rapidly-exploring random trees (RRT) grow from the start toward
+unexplored regions and are useful for single-query planning and systems with
+complex dynamics. Both methods are probabilistically complete under standard
+sampling and local-planning assumptions, but they do not automatically return
+the shortest path.
+
+\section{Planning Constraints and Validation}
+\label{sec:motion_planning_validation}
+
+Collision checking must test the entire local path, not only its endpoints.
+Practical planners also handle robot joint limits, self-collision, narrow
+passages, dynamic obstacles, clearance requirements, and kinodynamic limits on
+velocity and acceleration. A returned path should be checked independently,
+then shortened or smoothed only with collision tests after every modification.
+
+\section{Applications}
+
+Motion planning is used in robot manipulation, autonomous vehicles, computer
+animation, computer games, surgical navigation, warehouse automation, and
+molecular modeling. Configuration-space reasoning also connects polygon
+offsets, Minkowski operations, shortest paths, visibility, and geometric
+collision detection.
+

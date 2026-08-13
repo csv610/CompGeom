@@ -1,0 +1,152 @@
+\documentclass[11pt,a4paper,twoside]{book}
+
+\usepackage{preamble}
+\input{diagrams}
+
+\title{%
+  \textsc{Algorithms, Data Structures, and Applications}\\[6pt]
+  \large Computational Geometry%
+}
+\author{%
+  Chaman Singh Verma%
+}
+\date{July 2026}
+
+\begin{document}
+
+%% ---- Front Matter ----
+\frontmatter
+\maketitle
+\input{chapters/front_matter}
+
+%% ---- Table of Contents ----
+\setcounter{tocdepth}{1}
+\tableofcontents
+\listofalgorithms
+\listoffigures
+
+%% ---- Main Content ----
+\mainmatter
+
+% Part I: Foundations
+\part{Foundations}
+\input{chapters/introduction}
+\input{chapters/math_foundations}
+\input{chapters/geometric_predicates}
+
+% Part II: Fundamental Planar Algorithms
+\part{Fundamental Planar Algorithms}
+\input{chapters/convex_hulls}
+\input{chapters/segment_intersection}
+\input{chapters/polygon_ops}
+\begingroup
+\let\chapter\section
+\input{chapters/polygon_partitioning}
+\endgroup
+\input{chapters/triangulations}
+
+% Part III: Geometric Searching and Spatial Data Structures
+\part{Geometric Searching and Spatial Data Structures}
+\input{chapters/point_location}
+\input{chapters/range_searching}
+\input{chapters/spatial_structures}
+\begingroup
+\let\chapter\section
+\input{chapters/space_filling_curves}
+\endgroup
+
+% Part IV: Proximity and Tessellations
+\part{Proximity and Tessellations}
+\input{chapters/voronoi}
+\input{chapters/delaunay_triangulations}
+\input{chapters/proximity}
+
+% Part V: Arrangements and Duality
+\part{Arrangements and Duality}
+\input{chapters/envelopes}
+\input{chapters/geometric_duality}
+
+% Part VI: Convexity and Geometric Optimization
+\part{Convexity and Geometric Optimization}
+\input{chapters/convex_polytopes}
+\input{chapters/linear_programming}
+\input{chapters/convex_intersection}
+\begingroup
+\let\chapter\section
+\input{chapters/enclosure_convex_distance}
+\endgroup
+
+% Part VII: Curves, Surfaces, and Three-Dimensional Geometry
+\part{Curves, Surfaces, and Three-Dimensional Geometry}
+\input{chapters/polyhedral_geometry}
+\input{chapters/curves_surfaces}
+\input{chapters/half_edge}
+\input{chapters/mesh_generation}
+\input{chapters/voxel_geometry}
+
+% Part VIII: Motion, Visibility, and Robotics
+\part{Motion, Visibility, and Robotics}
+\input{chapters/visibility}
+\begingroup
+\let\chapter\section
+\input{chapters/distance_paths}
+\endgroup
+\input{chapters/art_gallery}
+\input{chapters/motion_planning}
+
+% Part IX: Shape Analysis and Geometric Data
+\part{Shape Analysis and Geometric Data}
+\input{chapters/sampling}
+\input{chapters/shape_reconstruction}
+\input{chapters/geometric_matching}
+\input{chapters/computational_topology}
+
+% Part X: Advanced Algorithmic Techniques
+\part{Advanced Algorithmic Techniques}
+\input{chapters/randomized_algorithms}
+\input{chapters/approximation_algorithms}
+\input{chapters/packing_enclosure}
+\input{chapters/dynamic_kinetic_geometry}
+
+% Part XI: Applications
+\part{Applications}
+\input{chapters/applications_graphics}
+\input{chapters/applications_gis}
+\input{chapters/applications_robotics}
+\input{chapters/applications_scientific}
+\begingroup
+\let\chapter\section
+\input{chapters/stochastic_pde}
+\endgroup
+
+% Part XII: Modern and Research-Level Topics
+\part{Modern and Research-Level Topics}
+\input{chapters/high_dimensional}
+\input{chapters/geometry_data_ml}
+\input{chapters/research_frontiers}
+\begingroup
+\let\chapter\section
+\input{chapters/algebra}
+\endgroup
+
+%% ---- Appendices ----
+\appendix
+\input{appendices/appendix_a_math_reference}
+\input{appendices/appendix_b_algorithms_structures}
+\input{appendices/appendix_c_geometry_formulas}
+\input{appendices/appendix_d_implementation_guide}
+\input{appendices/appendix_e_software}
+\input{appendices/appendix_f_graduate_projects}
+\input{appendices/appendix_g_solutions}
+
+%% ---- Back Matter ----
+\backmatter
+
+%% ---- Bibliography ----
+\bibliographystyle{alpha}
+\bibliography{app_references}
+
+%% ---- Index ----
+\printindex
+
+\end{document}

@@ -1,0 +1,85 @@
+\chapter{Computational Geometry in Three Dimensions}
+\label{ch:polyhedral_geometry}
+
+The convex hull of a finite set of points in $\mathbb{R}^3$ is the smallest convex
+polyhedron containing them. It is the three-dimensional analogue of the
+planar convex hull and is a foundation for collision detection, visibility,
+solid modeling, meshing, and geometric optimization.
+
+\section{Polyhedral Representation}
+\label{sec:polyhedral_representation}
+
+A polyhedron can be represented by its vertices, edges, and polygonal faces,
+or by half-spaces of the form $a_i^{\mathsf T}x\leq b_i$. A valid boundary
+representation records face cycles and the adjacency between faces and edges.
+For a closed connected convex polyhedron, Euler's formula is
+\[
+  V-E+F=2.
+\]
+The boundary orientation must be consistent so that all outward normals point
+in the same direction.
+
+\section{Three-Dimensional Predicates}
+\label{sec:three_dimensional_predicates}
+
+The signed volume test
+\[
+\operatorname{orient3d}(A,B,C,D)=
+\det\begin{pmatrix}(B-A)^{\mathsf T}\\(C-A)^{\mathsf T}\\(D-A)^{\mathsf T}\end{pmatrix}
+\]
+determines which side of the oriented plane $ABC$ contains $D$. A positive
+value indicates one side, a negative value the other, and zero coplanarity.
+Robust evaluation is essential: an incorrect sign can create a non-manifold
+polyhedron or reverse a face during hull construction.
+
+\section{Incremental Three-Dimensional Hulls}
+\label{sec:incremental_3d_hull}
+
+An incremental hull algorithm starts with a non-degenerate tetrahedron and
+inserts points one at a time. For each point, it finds the faces visible from
+that point, removes those faces, extracts the horizon cycle between visible
+and invisible faces, and connects the new point to the horizon edges.
+
+\begin{algorithm}[htbp]
+\caption{Incremental Three-Dimensional Convex Hull}
+\label{alg:incremental_3d_hull}
+\begin{algorithmic}[1]
+\Function{ConvexHull3D}{$P$}
+  \State Select four non-coplanar points and initialize tetrahedron $H$
+  \For{each remaining point $p$}
+    \State $V\gets$ faces of $H$ visible from $p$
+    \If{$V$ is non-empty}
+      \State $R\gets$ boundary edges between visible and invisible faces
+      \State Remove $V$ from $H$
+      \For{each edge $(u,v)$ in $R$}
+        \State Add face $(u,v,p)$ with consistent outward orientation
+      \EndFor
+    \EndIf
+  \EndFor
+  \State \Return $H$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The visible-face search can be accelerated with a conflict graph storing the
+points visible from each face. With suitable randomized ordering, expected
+running time is $O(n\log n+k)$ for $n$ input points and $k$ output features;
+the worst case is output-sensitive and can be quadratic for poorly ordered
+inputs.
+
+\section{Degeneracies and Validation}
+\label{sec:polyhedral_degeneracies}
+
+Implementations must define behavior for coplanar points, duplicate points,
+collinear subsets, cospherical configurations, and points lying on existing
+faces. Symbolic perturbation or exact predicates can make the combinatorial
+result deterministic. A resulting hull should be checked for positive face
+orientation, edge incidence, connectedness, Euler's formula, and containment
+of every input point.
+
+\section{Applications}
+
+Three-dimensional convex hulls provide collision proxies, bounding volumes,
+support mappings for GJK, visibility boundaries, polyhedral approximations,
+and input domains for tetrahedral and hexahedral mesh generation.
+

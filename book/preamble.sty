@@ -1,0 +1,102 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{preamble}[2026/07/15 Computational Geometry Book Preamble]
+
+%% ---- Packages ----
+\usepackage[margin=1in,headheight=14pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{mathrsfs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,positioning,shapes.geometric,decorations.pathmorphing,patterns}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!70!black,
+  citecolor=green!50!black,
+  urlcolor=blue!60!black,
+  pdftitle={Computational Geometry: Algorithms and Applications},
+  pdfauthor={CompGeom Contributors},
+}
+\usepackage[capitalise,noabbrev]{cleveref}
+\usepackage{microtype}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{titletoc}
+\usepackage{imakeidx}
+\makeindex
+
+%% ---- Bibliography ----
+\usepackage{cite}
+
+%% ---- Theorem Environments ----
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{observation}[theorem]{Observation}
+
+%% ---- Algorithm convenience commands ----
+\algnewcommand\algorithmicinput{\textbf{Input:}}
+\algnewcommand\algorithmicoutput{\textbf{Output:}}
+\algrenewcommand\algorithmicrequire{\algorithmicinput}
+\algrenewcommand\algorithmicensure{\algorithmicoutput}
+\renewcommand{\Call}[2]{\textnormal{#1}\ensuremath{(#2)}}
+
+%% ---- Unique hyperlink anchors per algorithmic block ----
+\makeatletter
+\newcounter{algolineanchor}
+\renewcommand{\theHALG@line}{alg.\arabic{algolineanchor}.\arabic{ALG@line}}
+\let\@@ALG@beginalgorithmic\ALG@beginalgorithmic
+\renewcommand{\ALG@beginalgorithmic}{%
+  \stepcounter{algolineanchor}%
+  \@@ALG@beginalgorithmic}
+\makeatother
+
+%% ---- Header/Footer ----
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\nouppercase{\leftmark}}
+\fancyhead[RO]{\nouppercase{\rightmark}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+%% ---- Chapter/Section formatting ----
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titleformat{\section}{\normalfont\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries}{\thesubsection}{1em}{}
+
+%% ---- Code/verbatim styling ----
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!5},
+  keywordstyle=\color{blue!70!black}\bfseries,
+  commentstyle=\color{green!50!black}\itshape,
+  stringstyle=\color{red!60!black},
+  showstringspaces=false,
+  columns=flexible,
+  keepspaces=true,
+}
+
+%% ---- TikZ style for diagrams ----
+\tikzset{
+  vertex/.style={circle,fill,inner sep=1.5pt},
+  edge/.style={thick},
+  face/.style={fill=blue!10},
+  hull/.style={draw,thick,dashed,blue!60!black},
+  label/.style={font=\small},
+}

@@ -1,0 +1,218 @@
+\chapter{Delaunay Triangulations}
+\label{ch:delaunay_triangulations}
+
+% Stub: outline only; content to be written.
+
+\section{Voronoi--Delaunay Duality}
+\label{sec:delaunay_duality}
+
+\section{Empty-Circumcircle Property}
+\label{sec:delaunay_empty_circumcircle}
+
+\section{Local Delaunay Criterion}
+\label{sec:delaunay_local_criterion}
+
+\section{Edge Flipping}
+\label{sec:delaunay_edge_flipping}
+
+\section{Incremental Construction}
+\label{sec:delaunay_incremental}
+
+\section{Randomized Incremental Algorithm}
+\label{sec:delaunay_randomized}
+
+\section{Divide-and-Conquer Construction}
+\label{sec:delaunay_divide_conquer}
+
+\section{Lifting to a Paraboloid}
+\label{sec:delaunay_lifting}
+
+\section{Relationship to Convex Hulls}
+\label{sec:delaunay_convex_hulls}
+
+\section{Constrained Delaunay Triangulation}
+\label{sec:delaunay_constrained}
+
+\section{Quality Properties}
+\label{sec:delaunay_quality}
+
+\section{Delaunay Refinement}
+\label{sec:delaunay_refinement}
+
+\section{Higher-Dimensional Delaunay Complexes}
+\label{sec:delaunay_higher_dimensional}
+
+\section{Intrinsic Delaunay Triangulation}
+\label{sec:delaunay_intrinsic}
+
+The Euclidean Delaunay triangulation is defined through empty circumcircles, a notion that depends on the ambient metric of $\mathbb{R}^2$. On a polyhedral surface $\mathcal{M}$ triangulated by triangles that do not lie in a common plane, this extrinsic test is meaningless: the two triangles sharing an edge lie in different tangent planes, so their circumcircles (as circles in $\mathbb{R}^3$) cannot be compared. An \emph{intrinsic Delaunay triangulation}\index{intrinsic Delaunay triangulation} instead uses only the intrinsic metric of the surface, i.e., the edge lengths of the mesh, to decide legality. This section follows the flip-based construction of Bobenko and Springborn~\cite{bobenko2007} and its practical implementation by Fisher et al.\ \cite{fisher2007}.
+
+\begin{definition}[Intrinsic Delaunay Edge]\label{def:intrinsic_delaunay_edge}
+Let $e = (i,j)$ be an interior edge of a triangulated polyhedral surface, shared by triangles $T_1$ and $T_2$, and let $\alpha_e$ and $\beta_e$ be the angles opposite $e$ in $T_1$ and $T_2$, respectively. The edge $e$ is \emph{intrinsically Delaunay}\index{intrinsic Delaunay edge} if
+\[
+\alpha_e + \beta_e \le \pi.
+\]
+A triangulation is \emph{intrinsic Delaunay} if every interior edge is intrinsically Delaunay.
+\end{definition}
+
+Because each triangle of the surface is intrinsically a Euclidean triangle, the angles $\alpha_e$ and $\beta_e$ are computed from the three edge lengths of the respective triangles using the law of cosines. The criterion therefore depends only on the intrinsic metric, never on how the triangles are embedded in $\mathbb{R}^3$.
+
+\begin{definition}[Cotangent Weight]\label{def:cotangent_weight}
+For an interior edge $e$, the \emph{cotangent weight} is $w_e = \cot \alpha_e + \cot \beta_e$, where $\alpha_e, \beta_e$ are the angles opposite $e$. The identity
+\[
+\cot \alpha_e + \cot \beta_e = \frac{\sin(\alpha_e + \beta_e)}{\sin \alpha_e \sin \beta_e}
+\]
+shows that $w_e \ge 0$ if and only if $\alpha_e + \beta_e \le \pi$. Thus a triangulation is intrinsic Delaunay if and only if all cotangent weights are non-negative.
+\end{definition}
+
+The connection to the Laplace--Beltrami operator motivates the definition. The cotangent Laplacian of the mesh has off-diagonal entries $-\tfrac{1}{2} w_e$ and diagonal entries summing to zero; it is positive semi-definite exactly when the triangulation is intrinsic Delaunay. Negative weights, which can appear in an ordinary triangulation containing obtuse triangles, are responsible for spurious oscillations in discrete harmonic functions and for unstable heat propagation. Intrinsic Delaunay re-triangulation removes this defect at no cost in resolution.
+
+\subsection{Algorithm}
+
+The construction proceeds by flipping illegal edges exactly as in the planar case (Section~\ref{sec:delaunay_flips}), but with two differences:
+
+\begin{enumerate}
+\item The legality test uses the intrinsic angle sum $\alpha_e + \beta_e$ rather than the planar in-circle predicate.
+\item After a flip, the new diagonal $e'$ of the quadrilateral must be given an intrinsic length. The two triangles sharing $e$ are, intrinsically, two Euclidean triangles glued along $e$; unfolding them into a common plane yields a flat (possibly non-convex) quadrilateral, and the new edge length is the length of the other diagonal of this quadrilateral, computed from the four known edge lengths.
+\end{enumerate}
+
+\begin{algorithm}[htbp]
+\caption{Intrinsic Delaunay Flip Algorithm}
+\label{alg:intrinsic_delaunay_flip}
+\begin{algorithmic}[1]
+\Function{IntrinsicDelaunay}{triangulation}
+  \State $queue \gets$ all interior edges of $triangulation$
+  \While{$queue$ is not empty}
+    \State $e \gets queue.\text{pop}()$
+    \State $(\alpha_e, \beta_e) \gets$ angles opposite $e$ in its two incident triangles
+    \If{$\alpha_e + \beta_e > \pi$}
+      \State $e' \gets$ other diagonal of the quadrilateral formed by the two triangles
+      \State $\ell(e') \gets$ intrinsic length of $e'$ from the unfolded quadrilateral
+      \State flip $e$ to $e'$
+      \For{$f$ in the two newly created edges}
+        \State $\text{push}(queue, f)$
+      \EndFor
+    \EndIf
+  \EndWhile
+  \State \Return $triangulation$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Existence of Intrinsic Delaunay Triangulation]\label{thm:intrinsic_delaunay_exists}
+Every triangulation of a polyhedral surface admits an intrinsic Delaunay re-triangulation of the same vertices, obtainable by a finite sequence of edge flips~\cite{bobenko2007,fisher2007}.
+\end{theorem}
+\begin{proof}[Proof sketch]
+Each flip replaces an edge whose opposite angles sum to more than $\pi$ by the other diagonal. An angle-sum decrease argument shows that every flip strictly decreases a global potential over the set of triangulations of the intrinsic metric; since the set of triangulations of a fixed vertex set is finite, the process terminates. When the intrinsic Delaunay condition determines every diagonal uniquely, the resulting triangulation is unique; otherwise ties are broken consistently, for example lexicographically over edges.
+\end{proof}
+
+\begin{remark}
+The intrinsic Delaunay triangulation of a mesh is the dual of the \emph{geodesic Voronoi diagram} of its vertices on the surface, just as the planar Delaunay triangulation is the dual of the planar Voronoi diagram. This explains why the intrinsic construction is the ``correct'' generalization for surface processing.
+\end{remark}
+
+\subsection{Properties}
+
+\begin{itemize}
+\item \textbf{Metric invariance}: The result depends only on edge lengths, so it is invariant under isometric deformations of the surface (bending without stretching).
+\item \textbf{Non-negative weights}: All cotangent weights are non-negative, making the cotangent Laplacian positive semi-definite and well-behaved for PDEs, harmonic maps, and the heat method.
+\item \textbf{Same vertex set}: The algorithm changes only connectivity, never vertex positions; it is a pure re-tiling of the intrinsic metric.
+\item \textbf{Compatibility}: The intrinsic flip criterion coincides with the planar one on flat regions of the mesh, so the algorithm reproduces the usual Delaunay triangulation on planar surfaces.
+\end{itemize}
+
+\subsection{Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: Each flip is $O(1)$; the total number of flips is $O(n^2)$ in the worst case and $O(n)$ in typical cases for meshes with reasonable initial quality~\cite{fisher2007}.
+\item \textbf{Space}: $O(n)$ for the mesh and the queue of candidate edges.
+\end{itemize}
+
+\subsection{Applications}
+
+\begin{itemize}
+\item \textbf{Discrete Laplace--Beltrami}: Guaranteeing positive semi-definiteness of the cotangent operator for spectral analysis and shape signature computation.
+\item \textbf{Heat methods}: Stabilizing the heat kernel and geodesic-distance approximation on meshes with obtuse triangles.
+\item \textbf{Harmonic and biharmonic fields}: Removing spurious extrema caused by negative cotangent weights in, e.g., parameterization and deformation~\cite{bobenko2007}.
+\item \textbf{Discrete exterior calculus}: Restoring the non-negativity of the Hodge-star edge weights discussed in the discrete exterior calculus chapter (Section~\ref{sec:hodge_star}).
+\end{itemize}
+
+\section{Applications to Mesh Generation}
+\label{sec:delaunay_mesh_applications}
+
+Delaunay meshes are the workhorse of industrial mesh generation because the
+empty-circumcircle (empty-circumsphere in 3D) property and the associated
+refinement algorithms of Section~\ref{sec:delaunay_refinement} produce
+element-quality guarantees that are provably unobtainable with other
+triangulation schemes. The following are the principal industrial use cases.
+
+\begin{itemize}
+\item \textbf{Finite Element Analysis (FEM)}: Delaunay meshes with the
+  refinement guarantees of Section~\ref{sec:delaunay_refinement} bound the
+  minimum angle of every triangle away from zero, which is necessary for the
+  conditioning of the stiffness matrix and the convergence of FEM solvers in
+  structural and thermal analysis. The commercial FEA market---\texttt{ANSYS},
+  \texttt{Abaqus} (Dassault Syst\`emes), \texttt{COMSOL}, and Altair---sells
+  solvers whose mesh generators are exactly this refinement
+  scheme~\cite{shewchuk1998}.
+
+\item \textbf{Computational Fluid Dynamics (CFD)}: Commercial CFD meshers
+  (\texttt{ANSYS} Fluent meshing, SIMULIA, \texttt{STAR-CCM+}, and
+  \texttt{Pointwise}) generate quality tetrahedral meshes from CAD geometry;
+  the empty-sphere property keeps high-aspect-ratio elements near the
+  anisotropic inflation layers while preserving the angle bounds that
+  stabilize pressure--velocity coupling on aircraft, turbine, and vehicle
+  models.
+
+\item \textbf{Reservoir Simulation (Voronoi/PEBI Simulation Grids)}: The
+  perpendicular-bisector (PEBI) grids used for reservoir flow simulation are
+  Voronoi diagrams, and their construction is driven by the dual Delaunay
+  triangulation. Commercial reservoir-modeling suites such as \texttt{Roxar
+  RMS} (Emerson) build unstructured simulation grids whose cells honor
+  wells, faults, and fracture networks, on which multiphase flow and
+  transport solvers run.
+
+\item \textbf{Medical Imaging and Surgical Planning}: Delaunay
+  tetrahedralization of segmented CT and MRI volumes produces the volumetric
+  meshes used in finite-element modeling of bone, soft tissue, and blood
+  flow. Commercial planning platforms such as \texttt{Materialise Mimics}
+  sell patient-specific modeling for surgical guides, implants, and
+  biomechanical simulation.
+
+\item \textbf{Reverse Engineering and Metrology}: Surface reconstruction
+  from laser-scan point clouds builds a Delaunay (or alpha-shape,
+  Section~\ref{sec:delaunay_higher_dimensional}) complex of the scanned
+  part. Commercial scanning pipelines such as \texttt{PolyWorks}
+  (InnovMetric) and \texttt{Geomagic} (3D Systems) ship this reconstruction
+  and the resulting mesh to downstream CAD and inspection.
+
+\item \textbf{Geographic Information Systems (GIS)}: Conforming Delaunay
+  triangulations of terrain point clouds produce the triangulated irregular
+  networks (TINs) that back digital elevation models, visibility analysis,
+  and contouring in \texttt{Esri ArcGIS} 3D Analyst and comparable
+  commercial GIS; the conforming refinement also generates the meshes for
+  watershed and flood modeling.
+
+\item \textbf{Shape and Topology Optimization}: The conforming mesh produced
+  by Delaunay refinement with sizing fields adapts element density to the
+  stress field, accelerating the density-based optimization loop in
+  commercial tools such as \texttt{Altair OptiStruct}, SIMULIA Tosca, and
+  \texttt{nTopology} for automotive and aerospace lightweighting.
+\end{itemize}
+
+\subsection{Industrial-Scale Software}
+The algorithms of this chapter are implemented at production scale in the
+open-source meshers \texttt{TetGen} (tetrahedralization and constrained
+Delaunay), \texttt{CGAL} (2D and 3D Delaunay and regular triangulations),
+\texttt{Triangle} (2D CDT and refinement, embedded under license in
+commercial GIS and numerical products), \texttt{Gmsh} (unstructured mesh
+generation), and \texttt{MMG} (remeshing and metric adaptation), as well as
+in commercial tools such as \texttt{ANSYS}, \texttt{COMSOL}, and
+\texttt{Pointwise} for CFD. Their shared core is the incremental insertion and
+flip algorithm of Sections~\ref{sec:delaunay_incremental} and
+\ref{sec:delaunay_edge_flipping}, coupled with the quality refinement
+guarantees of Section~\ref{sec:delaunay_refinement}.
+
+\section{Exercises}
+\label{sec:delaunay_exercises}
+
+\section{Project: Delaunay Triangulation from Scratch}
+\label{sec:delaunay_project}

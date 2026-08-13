@@ -1,0 +1,104 @@
+\chapter*{Preface}
+\addcontentsline{toc}{chapter}{Preface}
+
+Computational geometry is the study of algorithms for solving geometric problems. It sits at the intersection of mathematics, computer science, and engineering, providing the theoretical foundations and practical tools for manipulating geometric objects in two and three dimensions.
+
+This book presents a comprehensive collection of algorithms drawn from the \texttt{CompGeom} library. Each chapter provides a self-contained treatment of a family of related algorithms, including formal definitions, theoretical analysis, pseudocode implementations, complexity bounds, practical applications, and edge-case considerations.
+
+The material is organized into twelve parts, progressing from foundations and mathematical preliminaries through fundamental planar algorithms, spatial data structures, proximity and tessellations, arrangements and duality, geometric optimization, curves and surfaces, motion and robotics, shape analysis, advanced algorithmic techniques, application domains, and finally modern research-level topics.
+
+\section*{How to Use This Book}
+Each algorithm entry follows a consistent structure:
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item \textbf{Overview} --- a high-level description of the problem and its significance.
+  \item \textbf{Definitions} --- precise mathematical terminology.
+  \item \textbf{Theory} --- the mathematical foundations and proofs.
+  \item \textbf{Pseudocode} --- a readable implementation sketch.
+  \item \textbf{Parameter Selection} --- practical tuning advice.
+  \item \textbf{Complexity} --- time and space bounds.
+  \item \textbf{Applications} --- real-world use cases.
+  \item \textbf{Edge Cases} --- testing strategies and degenerate inputs.
+  \item \textbf{References} --- original papers and textbooks.
+\end{enumerate}
+
+Readers may approach the book topically or use it as a reference for individual algorithms. Cross-references between chapters are provided where algorithms build upon one another.
+
+\chapter*{Introduction}
+\addcontentsline{toc}{chapter}{Introduction}
+
+\section*{Euclidean Geometry}
+
+Euclidean geometry studies points, lines, angles, distances, and shapes in a
+flat space governed by Euclid's parallel postulate. In $\mathbb{R}^2$ and $\mathbb{R}^3$,
+the distance between points is measured by the Euclidean norm,
+\[
+  \|x-y\|_2 = \sqrt{\sum_i (x_i-y_i)^2},
+\]
+and straight lines are the shortest paths between their points. Most
+classical computational-geometry algorithms in this book are Euclidean:
+orientation tests, convex hulls, Delaunay triangulations, Voronoi diagrams,
+line and segment intersections, polygon operations, and mesh algorithms all
+use this flat-space model either directly or as their local approximation.
+
+\section*{Non-Euclidean Geometries}
+
+Non-Euclidean geometry changes one or more assumptions of Euclidean geometry,
+especially the behavior of parallel lines and the definition of distance.
+The two principal examples are:
+
+\begin{itemize}
+  \item \textbf{Spherical or elliptic geometry}: points lie on a curved
+  surface such as a sphere. ``Straight'' paths are great-circle arcs, and
+  initially parallel geodesics can meet.
+  \item \textbf{Hyperbolic geometry}: the space has negative curvature. A
+  point and a line can have multiple distinct parallels through that point,
+  and triangle angles sum to less than $\pi$.
+\end{itemize}
+
+More generally, differential geometry describes a curved space using a
+manifold, a metric tensor, and geodesics. This viewpoint is important for
+surface parameterization, geodesic distance, curvature, discrete exterior
+calculus, and spectral geometry. Algorithms designed for Euclidean input
+cannot automatically be transferred to curved spaces: Euclidean dot products,
+cross products, circumcenters, and straight-line interpolation may need to be
+replaced by metric-aware operations, local tangent-plane constructions, or
+geodesic computations. Several later chapters introduce these extensions.
+
+\section*{Prerequisites}
+A basic understanding of data structures, algorithms, and linear algebra is assumed. Familiarity with discrete mathematics and introductory geometry will be helpful but is not strictly required, as key concepts are introduced inline.
+
+\chapter*{Notation}
+\addcontentsline{toc}{chapter}{Notation}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+$\mathbb{R}^d$ & Euclidean space of dimension $d$ \\
+$\mathbb{R}^2, \mathbb{R}^3$ & The 2D and 3D Euclidean planes \\
+$n$ & Number of input points or elements \\
+$k$ & Number of output features (intersections, layers, etc.) \\
+$P = \{p_1, \dots, p_n\}$ & A set of points \\
+$CH(P)$ & Convex hull of $P$ \\
+$DT(P)$ & Delaunay triangulation of $P$ \\
+$VD(P)$ & Voronoi diagram of $P$ \\
+$\mathcal{O}(f(n))$ & Big-O complexity notation \\
+$\Omega(f(n))$ & Big-Omega complexity notation \\
+$\Theta(f(n))$ & Big-Theta complexity notation \\
+$\alpha(n)$ & Inverse Ackermann function \\
+$\Delta$ & Laplace--Beltrami operator (or cotangent Laplacian) \\
+$d, \delta$ & Exterior derivative and codifferential \\
+$\star$ & Hodge star operator \\
+$\oplus, \ominus$ & Minkowski sum and difference \\
+$\langle \cdot, \cdot \rangle$ & Inner product \\
+$| \cdot |$ & Euclidean norm (or cardinality, context-dependent) \\
+$\partial K$ & Boundary of a simplicial complex $K$ \\
+$\chi(K)$ & Euler characteristic of $K$ \\
+$\beta_p$ & $p$-th Betti number \\
+\bottomrule
+\end{tabular}
+\caption{Principal notation used throughout the book.}
+\label{tab:notation}
+\end{table}

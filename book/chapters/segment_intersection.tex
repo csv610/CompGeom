@@ -1,0 +1,64 @@
+\chapter{Line-Segment Intersection}
+\label{ch:segment_intersection}
+
+% Stub: outline only; content to be written.
+
+\section{The Intersection Problem}
+\label{sec:segint_problem}
+
+\section{Pairwise Intersection Testing}
+\label{sec:segint_pairwise}
+
+\section{Sweep-Line Paradigm}
+\label{sec:segint_sweep_line}
+
+\section{Events and Event Queues}
+\label{sec:segint_events}
+
+\section{Sweep-Line Status Structures}
+\label{sec:segint_status}
+
+\section{Bentley--Ottmann Algorithm}
+\label{sec:segint_bentley_ottmann}
+
+\section{Correctness}
+\label{sec:segint_correctness}
+
+\section{Complexity Analysis}
+\label{sec:segint_complexity}
+
+\section{Degenerate Intersections}
+\label{sec:segint_degenerate}
+
+\section{Reporting versus Detecting Intersections}
+\label{sec:segint_reporting}
+
+\section{Red--Blue Segment Intersection}
+\label{sec:segint_red_blue}
+
+\section{Contour of the Union of Rectangles}
+\label{sec:segint_union_rectangles}
+
+\subsection{Overview}
+The contour of the union of rectangles\index{union of rectangles} problem asks for the boundary of the region covered by a set of axis-parallel rectangles. It is a classic application of the sweep-line paradigm\index{sweep-line paradigm}: a vertical line sweeps the plane while a status structure maintains the active set of rectangles, and the contour is assembled from the events at which the union boundary changes. Applications include VLSI mask checking, building footprints in GIS, and windowing in computer graphics~\cite{berg2008}.
+
+\subsection{Definitions}
+\begin{definition}[Union Contour]\label{def:union_contour}
+The \emph{contour} of a set of rectangles is the boundary of their union: the set of points on the union's frontier that are not interior to any rectangle.
+\end{definition}
+
+\begin{definition}[Contour Break Point]\label{def:contour_break_point}
+A \emph{break point} is a point on the contour where the boundary changes direction, occurring at rectangle corners or at intersections between rectangle edges.
+\end{definition}
+
+\subsection{Complexity}
+With $n$ axis-parallel rectangles, the sweep processes $2n$ vertical edge events, each involving an $O(\log n)$ update of the interval status structure. The running time is $O(n\log n)$; the output has $O(k)$ segments, where $k$ is the number of contour break points.
+
+\section{Applications}
+\label{sec:segint_applications}
+
+\section{Exercises}
+\label{sec:segint_exercises}
+
+\section{Project: Interactive Sweep-Line Visualizer}
+\label{sec:segint_project}

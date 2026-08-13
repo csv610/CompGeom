@@ -1,0 +1,101 @@
+\chapter{Linear Programming in Geometry}
+\label{ch:linear_programming}
+
+Linear programming provides a common language for geometric optimization.
+Many geometric problems ask for a point satisfying linear inequalities while
+maximizing or minimizing a linear objective. In two dimensions, the feasible
+region is an intersection of half-planes and therefore a convex polygon.
+
+\section{Geometric Linear Programs}
+\label{sec:geometric_linear_programs}
+
+A linear program has the form
+\[
+  \text{maximize } c^{\mathsf T}x
+  \qquad\text{subject to}\qquad Ax\leq b.
+\]
+Each row of $Ax\leq b$ defines a half-plane. The feasible set is convex, and
+when it is non-empty and bounded, an optimum occurs at a vertex of the
+feasible polytope. In two dimensions this reduces optimization to a convex
+polygon; in three dimensions it reduces to a convex polyhedron.
+
+Applications include smallest enclosing regions, collision separation,
+supporting-line queries, facility placement, and motion-planning constraints.
+
+\section{Half-Plane Intersection}
+\label{sec:halfplane_intersection}
+
+For an oriented line through points $p$ and $q$, the left half-plane is
+\[
+  H(p,q)=\{x\in\mathbb{R}^2:\operatorname{orient2d}(p,q,x)\geq 0\}.
+\]
+The intersection of a finite collection of half-planes is a convex polygon,
+possibly empty or unbounded. A bounding box can be added when a finite output
+polygon is required.
+
+One robust approach sorts the boundary lines by direction and maintains a
+deque of candidate lines. Whenever the intersection of the last two lines is
+outside the next half-plane, the last line is removed. A symmetric check is
+performed at the front of the deque.
+
+\begin{algorithm}[htbp]
+\caption{Half-Plane Intersection}
+\label{alg:halfplane_intersection}
+\begin{algorithmic}[1]
+\Function{HalfPlaneIntersection}{$H$}
+  \State Sort half-planes by boundary direction
+  \State $D\gets$ empty deque
+  \For{$h$ in $H$}
+    \While{$|D|\geq 2$ and intersection of the last two lines is outside $h$}
+      \State Remove the last half-plane from $D$
+    \EndWhile
+    \While{$|D|\geq 2$ and intersection of the first two lines is outside $h$}
+      \State Remove the first half-plane from $D$
+    \EndWhile
+    \State Append $h$ to $D$
+  \EndFor
+  \While{$|D|\geq 3$ and the last intersection is outside the first half-plane}
+    \State Remove the last half-plane from $D$
+  \EndWhile
+  \While{$|D|\geq 3$ and the first intersection is outside the last half-plane}
+    \State Remove the first half-plane from $D$
+  \EndWhile
+  \State \Return polygon formed by consecutive boundary intersections
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+After sorting, the deque algorithm takes $O(n)$ time and $O(n)$ space. Parallel
+or coincident boundary lines require a consistent rule: retain the more
+restrictive half-plane when their feasible sides agree, and report an empty
+intersection when they conflict.
+
+\section{Low-Dimensional Linear Programming}
+\label{sec:low_dimensional_lp}
+
+In fixed dimension, randomized incremental algorithms solve linear programs
+efficiently by processing constraints in random order. When a new constraint
+violates the current optimum, the optimum must lie on that constraint's
+boundary, reducing the problem dimension by one. This gives expected linear
+time for two-dimensional linear programming and expected linear time for
+fixed-dimensional LP under the usual boundedness and constant-dimension
+assumptions.
+
+The same boundary-reduction idea appears in smallest-enclosing-circle
+algorithms, support-point queries, and randomized convex-hull construction.
+It is therefore a useful bridge between predicates, convexity, optimization,
+and geometric data structures.
+
+\section{Duality and Applications}
+\label{sec:lp_duality_applications}
+
+Point-line duality maps a point $(a,b)$ to a line such as $y=ax-b$. Under a
+consistent duality transform, incidence and above/below relationships are
+preserved or reversed in a controlled way. This converts convex-hull and
+half-plane questions into upper- or lower-envelope questions.
+
+Linear constraints also describe collision-free configuration-space regions,
+visibility restrictions, separating planes, and feasible placement regions.
+Numerical implementations should use the robust orientation predicates from
+Chapter~\ref{ch:geometric_predicates} when testing boundary intersections.
+

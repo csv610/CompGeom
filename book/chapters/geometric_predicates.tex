@@ -1,0 +1,220 @@
+\chapter[Geometric Predicates and Robust Computation]{Geometric Predicates\\ and Robust Computation}
+\label{ch:geometric_predicates}
+
+Geometric predicates are exact-sign tests that determine the combinatorial
+relationship between geometric objects. They are the foundation of the
+point, line, triangle, quadrilateral, tetrahedral, and hexahedral algorithms
+that follow. A predicate should return a discrete result such as positive,
+zero, or negative, rather than a constructed geometric object.
+
+\section{Orientation Predicate}
+\label{sec:orientation_predicate}
+
+For points $A,B,C \in \mathbb{R}^2$, define
+\[
+  \operatorname{orient2d}(A,B,C) =
+  (B_x-A_x)(C_y-A_y) - (B_y-A_y)(C_x-A_x).
+\]
+The sign is positive when $C$ lies to the left of the directed line
+$A\mathbin{\to}B$, negative when it lies to the right, and zero when the
+three points are collinear. This test is used by convex hull, intersection,
+point-location, and triangulation algorithms.
+
+\begin{algorithm}[H]
+\caption{Two-dimensional orientation test}
+\label{alg:orient2d}
+\begin{algorithmic}[1]
+\Function{Orient2D}{$A,B,C$}
+  \State $u \gets B_x-A_x$
+  \State $v \gets B_y-A_y$
+  \State $w \gets C_x-A_x$
+  \State $z \gets C_y-A_y$
+  \State \Return $u z-v w$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\section{Three-dimensional Orientation}
+\label{sec:orientation3d_predicate}
+
+For points $A,B,C,D \in \mathbb{R}^3$, the signed volume predicate is
+\[
+  \operatorname{orient3d}(A,B,C,D) =
+  \det\begin{pmatrix}
+    B-A\\ C-A\\ D-A
+  \end{pmatrix}.
+\]
+Its sign identifies which side of the oriented plane $ABC$ contains $D$.
+Its zero case detects coplanarity. Tetrahedralization, volume-mesh
+validation, and tetrahedron--hexahedron conversion use this predicate.
+
+\section{In-circle Predicate}
+\label{sec:incircle_predicate}
+
+Given a counter-clockwise triangle $ABC$ and a point $D$, the in-circle
+predicate determines whether $D$ lies inside, on, or outside the circumcircle
+of $ABC$. It is evaluated from the sign of
+\[
+  \operatorname{incircle}(A,B,C,D) =
+  \det\begin{pmatrix}
+    A_x & A_y & A_x^2+A_y^2 & 1\\
+    B_x & B_y & B_x^2+B_y^2 & 1\\
+    C_x & C_y & C_x^2+C_y^2 & 1\\
+    D_x & D_y & D_x^2+D_y^2 & 1
+  \end{pmatrix}.
+\]
+The test is central to Delaunay triangulation and edge-flip algorithms.
+
+\section{Robust Evaluation}
+\label{sec:robust_predicates}
+
+Floating-point roundoff can change the sign of a nearly zero determinant and
+therefore change an algorithm's topology. Implementations should evaluate
+predicates with adaptive precision or exact arithmetic when the rounded
+result is uncertain. Epsilon thresholds may be useful for application-level
+ tolerances, but they do not by themselves provide a consistent combinatorial
+result. Symbolic perturbation is another way to define deterministic answers
+for coincident, collinear, coplanar, or co-circular inputs.
+
+The predicates in this chapter have constant arithmetic cost for fixed
+dimension. Their practical cost is dominated by the precision required to
+certify the sign.
+
+\section{Floating-Point Filters}
+\label{sec:floating_point_filters}
+
+\subsection{Overview}
+A \index{floating-point filter}\textbf{floating-point filter} evaluates a
+predicate in floating point first and certifies the sign using an \emph{a
+priori} error bound; only when the rounded result is too close to zero does
+it fall back to a slower, exact evaluation. Because ill-conditioned inputs
+are rare in practice, filters give the robustness of exact arithmetic at
+nearly floating-point speed~\cite{shewchuk1997}.
+
+\subsection{Static and Dynamic Filters}
+A \textbf{static filter} derives a fixed error bound from the magnitudes of
+the input coordinates before the computation begins; it is cheap but
+pessimistic. A \textbf{dynamic filter} computes the bound during the
+evaluation, tightening it as intermediate results are refined, so the exact
+path is entered only when it is genuinely needed~\cite{bronnimann2001}.
+
+\subsection{Adaptive Predicates}
+Shewchuk's adaptive predicates evaluate the orientation and in-circle
+determinants as a sequence of increasingly accurate approximations built
+from \index{expansion arithmetic}\textbf{expansion arithmetic}, stopping as
+soon as the sign is certified~\cite{shewchuk1997}. The arithmetic rests on
+error-free transformations such as the \emph{two-sum} and \emph{two-product}
+primitives of Knuth and Priest: for IEEE~754 inputs these recover the
+roundoff error exactly, so the exact sign is obtained with no explicit
+multiple-precision representation~\cite{priest1991,goldberg1991}. In the
+common nondegenerate case the predicates run at roughly the speed of plain
+floating point.
+
+\subsection{Complexity}
+Each error-free transformation costs a small constant number of floating
+operations. The adaptive stage recomputes the determinant with increasing
+precision only along the path where roundoff threatens the sign; the exact
+stage has cost proportional to the number of bits that must be carried.
+
+\section{Exact Arithmetic}
+\label{sec:exact_arithmetic}
+
+\subsection{Overview}
+The \index{exact geometric computation}\textbf{exact geometric computation}
+(EGC) paradigm treats robustness as a non-issue by computing predicates
+exactly, and only when a new geometric object is constructed does it degrade
+to a certified numerical value~\cite{yap1997}. Exactness is achieved with
+arbitrary-precision integers, rationals, or floating-point expansions.
+
+\subsection{Integer and Rational Kernels}
+When input coordinates are given as integers (or rationals), every predicate
+sign is an exact integer computation. Fortune and Van Wyk generate
+specialized, unrolled evaluation code from an expression compiler so that the
+cost tracks the actual bit-length of the operands rather than paying a
+general-purpose library's overhead~\cite{fortune1993,fortune1996}. The bit
+length grows only by a constant factor for each predicate: a 2D
+orientation of $\tau$-bit integers needs $O(\tau)$ bits, and an in-circle
+test needs $O(\tau)$ as well.
+
+\subsection{Expansions}
+An \index{expansion}\textbf{expansion} represents an exact value as the
+exact sum of non-overlapping floating-point components. The two-sum and
+two-product identities split a single floating-point addition or product into
+the rounded result and its exact error, and these identities compose into
+exact sums and products of arbitrary length~\cite{priest1991,shewchuk1997}.
+This is the representation used by robust implementations of the orientation
+and in-circle predicates.
+
+\subsection{Exact Geometric Computation}
+Yap's EGC framework adds \emph{precision-driven} evaluation: expressions are
+evaluated to successively higher precision until a requested bound is met.
+It underwrites libraries such as CORE that combine rational and algebraic
+number types, and it extends exact computation beyond predicates to
+constructed objects like intersection points~\cite{yap1997,halperin2004}.
+
+\section{Rational Arithmetic in Computational Geometry}
+\label{sec:rational_arithmetic}
+
+\subsection{Overview}
+\index{rational arithmetic}Rational arithmetic represents every number as a
+ratio of arbitrary-precision integers, so all predicates and all constructed
+points remain exact. It is the natural arithmetic for algorithms whose input
+is integer or rational, and it avoids the roundoff of floating point at the
+price of normalizing fractions and managing large numerators.
+
+\subsection{Application to Delaunay Triangulation}
+Karasick, Lieber, and Nackman showed that a Delaunay triangulation driven by
+rational arithmetic eliminates the failures caused by floating-point in-circle
+tests, at a cost that is acceptable for engineering input~\cite{karasick1991}.
+The in-circle predicate for rational inputs reduces to a fixed combination of
+integer operations whose size is bounded by the input bit-length.
+
+\subsection{Trade-offs}
+Rational arithmetic is exact and uniform, but numerators can grow large when
+intersection points are repeatedly constructed. Hybrid designs combine a
+floating-point filter with a rational or integer fallback so that typical
+queries never touch the expensive exact kernel~\cite{fortune1993,karasick1991}.
+
+\section{Simulation of Simplicity}
+\label{sec:simulation_of_simplicity}
+
+\subsection{Overview}
+\index{Simulation of Simplicity}\textbf{Simulation of Simplicity} (SoS) is a
+general technique for coping with degenerate inputs: it simulates an
+infinitesimal perturbation of the data that eliminates all coincident,
+collinear, coplanar, and co-circular configurations, yet the perturbation is
+never actually computed~\cite{edelsbrunner1990}. The programmer writes the
+algorithm for general position only; the tie-breaking is hidden inside the
+predicate implementations.
+
+\subsection{Construction}
+Each coordinate $x_i$ is conceptually replaced by $x_i(\epsilon)$, a
+polynomial in an indeterminate $\epsilon$, so that the perturbed predicate
+$P(x_0(\epsilon), \ldots, x_{n-1}(\epsilon))$ is a nonzero polynomial whose
+sign at $\epsilon \to 0^{+}$ is the lexicographically first nonzero term.
+Evaluating only that leading term yields a deterministic, consistent answer
+for every degenerate input. Yap proved consistency for the corresponding
+symbolic perturbation scheme and extended the technique to arbitrary
+predicates~\cite{yap1988,yap1990}.
+
+\subsection{Cost and Limitations}
+For determinant predicates the perturbed test costs only a small constant
+factor over the unperturbed one. SoS cannot make an inconsistent
+\emph{algorithm} robust, and it ties degeneracies to a fixed symbolic order
+rather than to any geometric meaning; exact arithmetic with explicit
+degeneracy handling remains the alternative when the tie-break matters~\cite{edelsbrunner1990,halperin2004}.
+
+\section{Robustness Failure Examples}
+\label{sec:robustness_failures}
+
+Floating-point predicates do not merely produce slightly wrong answers; they
+can make an algorithm crash, loop forever, or output an inconsistent
+structure. Kettner, Mehlhorn, Pion, Schirra, and Yap collected a suite of
+small, reproducible examples --- such as a convex-hull routine whose
+topology changes under rotation, and a segment intersection where roundoff
+contradicts the planar subdivision --- that expose these failures and are
+now used as regression tests for libraries like CGAL~\cite{kettner2008}.
+These examples motivate the filter and exact-arithmetic machinery above:
+certifying the sign of a predicate is the only way to guarantee a consistent
+combinatorial result.
+

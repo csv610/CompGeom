@@ -1,0 +1,415 @@
+\chapter{Voxel Geometry and OpenVDB}
+\label{ch:voxel_geometry}
+
+Voxel geometry\index{voxel geometry} represents three-dimensional shape on a
+regular grid of volume elements, or voxels. Where a mesh stores geometry on
+its boundary, a voxel representation samples the volume itself, making
+topological queries such as inside/outside tests, boolean operations, and
+morphological changes trivial and robust. The cost is memory: a dense uniform
+grid grows as the cube of its resolution. Voxel geometry became practical at
+high resolution through \emph{sparse} representations, most prominently the
+OpenVDB library and its hierarchical tree of fixed-size blocks~\cite{museth2013}.
+This chapter develops the dense and sparse representations, signed distance
+fields, and the conversions between voxel and mesh form. Mesh
+voxelization\index{voxelization} itself is treated in
+Section~\ref{sec:mesh_voxelization}.
+
+\section{Voxel Grids}
+\label{sec:voxel_grids}
+
+\subsection{1. Overview}
+A \textbf{voxel grid} is the 3D analogue of a pixel image: a rectangular
+array of cubic cells aligned to an axis-aligned bounding box. Each cell
+either records a binary occupancy (occupied or empty) or stores a scalar,
+vector, or other attribute sampled at the cell center. Grids support
+constant-time random access and simple neighbor iteration, which makes them
+the substrate for most volumetric algorithms~\cite{akeninemoller2001,nooruddin2003}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Voxel]\label{def:voxel_grid}
+A \emph{voxel} is a volume element: the cubic cell centered at a grid point.
+The grid resolution $(n_x, n_y, n_z)$ and the voxel size $s$ determine the
+box that the grid represents.
+\end{definition}
+
+\begin{definition}[Binary and Attribute Grids]\label{def:binary_grid}
+A \emph{binary grid} stores occupancy per voxel (0 empty, 1 occupied). An
+\emph{attribute grid} stores values such as a signed distance, density, or
+velocity field.
+\end{definition}
+
+\begin{definition}[Conservative Voxelization]\label{def:conservative_vox}
+A voxelization is \emph{conservative} if a voxel is occupied whenever any
+part of the surface passes through it; otherwise it is \emph{exact} (a voxel
+is occupied only when it is pierced by the surface)~\cite{nooruddin2003}.
+\end{definition}
+
+\subsection{3. Theory}
+A dense grid of resolution $n^3$ costs $n^3$ entries and thus $O(n^3)$ bytes.
+The occupied surface of a triangle mesh passes through only $O(n^2)$ voxels,
+so for high resolution almost all storage is wasted on empty space. This
+observation motivates the sparse schemes of
+Section~\ref{sec:sparse_voxel} and the hierarchical trees of
+Section~\ref{sec:openvdb}. The resolution must balance aliasing (too coarse)
+against memory and computation time (too fine); adaptive sampling that keeps
+dense cells near the surface and coarsens empty regions is the resolution
+used in production systems~\cite{museth2013}.
+
+\subsection{4. Pseudo code}
+\begin{algorithmic}
+\Function{IsInside}{$p$, grid, $\mathrm{occ}$}
+    \State $c \gets \mathrm{ToCell}(p, \mathrm{grid})$
+    \State \Return $\mathrm{occ}[c]$
+\EndFunction
+\end{algorithmic}
+
+\subsection{5. Parameters Selections}
+\begin{itemize}
+    \item \textbf{Resolution}: choose $n$ so that the smallest surface feature spans several voxels; alias errors appear below ~3 voxels per feature.
+    \item \textbf{Bounds}: an axis-aligned bounding box must contain the whole object; padding avoids boundary artifacts.
+    \item \textbf{Data type}: one bit per voxel for occupancy, 8--32 bits per voxel for scalar attributes.
+\end{itemize}
+
+\subsection{6. Complexity}
+Dense grids: $O(n^3)$ space, $O(1)$ access, $O(n^3)$ build. A surface of $O(n^2)$
+cells can be voxelized in $O(n^2)$ time plus $O(n^3)$ for the grid itself.
+
+\subsection{7. Usages}
+\begin{itemize}
+    \item \textbf{Physics simulation}: grid-based fluids, collision and pressure fields.
+    \item \textbf{Medical imaging}: CT and MRI produce data natively as grids.
+    \item \textbf{Boolean and morphological operations}: union, intersection, erosion, and dilation are voxel-wise.
+\end{itemize}
+
+\subsection{8. Testing methods and Edge cases}
+\begin{itemize}
+    \item \textbf{Surface vs.\ solid}: verify whether boundary voxels are classified as inside.
+    \item \textbf{Resolution sensitivity}: re-run the pipeline at two resolutions and compare the extracted surfaces.
+    \item \textbf{Boundary alignment}: voxels exactly on the box boundary must be handled consistently.
+\end{itemize}
+
+\subsection{9. References}
+\begin{itemize}
+    \item Akenine-M\"oller, T. (2001). ``Fast 3D triangle-box overlap testing''. Journal of Graphics Tools.
+    \item Nooruddin, F. S., \& Turk, G. (2003). ``Simplification and repair of polygonal models using volumetric techniques''. IEEE TVCG.
+    \item Wikipedia: \href{https://en.wikipedia.org/wiki/Voxel}{Voxel}
+\end{itemize}
+
+\section{Signed Distance Fields}
+\label{sec:sdf_voxel}
+
+\subsection{1. Overview}
+A \textbf{signed distance field}\index{signed distance field} (SDF) stores,
+at every voxel, the signed distance to the nearest surface, negative inside
+and positive outside. The zero set of the field is the surface itself, so
+blending, boolean operations, and collision queries reduce to arithmetic on
+the sampled field~\cite{osher2003}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Signed Distance Field]\label{def:sdf_volume}
+A \emph{signed distance field} is a function $d:\mathbb{R}^3 \to \mathbb{R}$ with
+$|d(x)| = \operatorname{dist}(x, \Gamma)$, where $\Gamma$ is the surface,
+and $\operatorname{sgn}(d)$ indicates the side of $\Gamma$.
+\end{definition}
+
+\begin{definition}[Narrow Band]\label{def:narrow_band}
+A \emph{narrow band} stores $d$ only within $w$ voxels of $\Gamma$ (typically
+$w = 3$); outside the band the field is clamped to $\pm w\,s$. This bounds
+the stored volume to the neighborhood of the surface~\cite{osher2003,museth2013}.
+\end{definition}
+
+\subsection{3. Theory}
+An SDF is usually constructed either by computing the distance to a triangle
+mesh with a fast sweeping or fast marching method, or by reinitializing an
+arbitrary level-set function so that $|\nabla d| = 1$. Once it is a true
+signed distance, operations are exact up to the grid resolution: the surface
+is extracted as the zero level set, and distance queries are direct voxel
+lookups. Level-set evolution updates $d$ with a velocity field, moving the
+surface while preserving its implicit character~\cite{osher2003}.
+
+\subsection{4. Pseudo code}
+\begin{algorithmic}
+\Function{BuildSDF}{$\Gamma$, grid, $w$}
+    \State initialize voxels near $\Gamma$ with exact distances
+    \State propagate distances outward with fast sweeping
+    \State clamp all values to $[{-w\,s}, +w\,s]$
+    \State \Return $d$
+\EndFunction
+\end{algorithmic}
+
+\subsection{5. Parameters Selections}
+\begin{itemize}
+    \item \textbf{Band width $w$}: $w = 3$ is the standard OpenVDB default; larger bands smooth boolean operations at higher cost.
+    \item \textbf{Renormalization}: enforce $|\nabla d| = 1$ periodically so the field stays a true distance.
+\end{itemize}
+
+\subsection{6. Complexity}
+Fast sweeping computes the distance to a grid of $N$ voxels in $O(N)$ passes
+of $O(N)$ work; reinitialization of the narrow band is $O(w\,n^2)$ per sweep
+for an $n^3$ grid.
+
+\subsection{7. Usages}
+\begin{itemize}
+    \item \textbf{Boolean operations}: $\min/\max$ of SDFs implement union/intersection.
+    \item \textbf{Collision and proximity}: distance queries become lookup + clamp.
+    \item \textbf{Level-set surface evolution} for sculpting and fluid boundaries~\cite{osher2003}.
+\end{itemize}
+
+\subsection{8. Testing methods and Edge cases}
+\begin{itemize}
+    \item \textbf{Accuracy}: compare against analytic distance for a sphere.
+    \item \textbf{Sign consistency}: verify the inside/outside convention matches the mesh orientation.
+    \item \textbf{Thin features}: features thinner than $2s$ may vanish from the field.
+\end{itemize}
+
+\subsection{9. References}
+\begin{itemize}
+    \item Osher, S., \& Fedkiw, R. (2003). ``Level Set Methods and Dynamic Implicit Surfaces''. Springer.
+    \item Wikipedia: \href{https://en.wikipedia.org/wiki/Signed_distance_function}{Signed distance function}
+\end{itemize}
+
+\section{Sparse Voxel Representations}
+\label{sec:sparse_voxel}
+
+\subsection{1. Overview}
+Sparse voxel representations store only occupied cells, typically in a
+\textbf{sparse voxel octree}\index{sparse voxel octree} (SVO): a tree that
+subdivides the box into octants, recursing only where occupied cells
+exist. Hierarchical sparse volumes such as OpenVDB push the idea further,
+storing dense fixed-size blocks at the leaves and summarized tiles in the
+interior~\cite{museth2013}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Sparse Voxel Octree]\label{def:svo}
+An \emph{SVO} is an octree whose nodes store the geometry and material of the
+cells they represent; nodes whose subtree is empty are pruned. Resolution
+increases only where the object actually exists.
+\end{definition}
+
+\begin{definition}[Tile]\label{def:voxel_tile}
+A \emph{tile} is an internal node value that summarizes a uniform region of
+the volume (for example a constant SDF value) without expanding it into
+children. Tiles are the key to storing large homogeneous regions cheaply~\cite{museth2013}.
+\end{definition}
+
+\subsection{3. Theory}
+An SVO with $n$ occupied voxels uses $O(n \log n)$ nodes and supports
+ray-marching and level-of-detail rendering directly on the tree. OpenVDB's
+tree generalizes the octree to arbitrary branching and depth (up to five
+levels) and adds \emph{active} states: every node or tile is either active
+(stores topology) or inactive (implicitly background), so constant regions
+are represented by single tiles instead of millions of voxels~\cite{museth2013}.
+
+\subsection{4. Pseudo code}
+\begin{algorithmic}
+\Function{Insert}{tree, $c$, value}
+    \State descend to the leaf containing cell $c$, expanding empty nodes
+    \State set the leaf voxel value and mark the voxel active
+    \State \Return tree
+\EndFunction
+\end{algorithmic}
+
+\subsection{5. Parameters Selections}
+\begin{itemize}
+    \item \textbf{Branching factor and depth}: octrees use 8; OpenVDB uses 16-child levels with 8$^3$ leaves.
+    \item \textbf{Tile threshold}: collapse a subtree into a tile when all children share a value.
+\end{itemize}
+
+\subsection{6. Complexity}
+Insertion and lookup descend $O(\log n)$ levels (bounded by the fixed tree
+depth in OpenVDB). Memory is proportional to the number of active voxels and
+tiles, not the bounding-box volume.
+
+\subsection{7. Usages}
+\begin{itemize}
+    \item \textbf{High-resolution volume rendering}: SVO ray tracing of gigavoxel scenes.
+    \item \textbf{Production VFX}: OpenVDB effects in film pipelines~\cite{museth2013}.
+\end{itemize}
+
+\subsection{8. Testing methods and Edge cases}
+\begin{itemize}
+    \item \textbf{Deep trees}: verify behavior at the maximum supported depth.
+    \item \textbf{Empty regions}: inserting into a fully empty tree must create only the minimal path.
+    \item \textbf{Tile/leaf transitions}: adjacent active and inactive regions must share correct boundaries.
+\end{itemize}
+
+\subsection{9. References}
+\begin{itemize}
+    \item Museth, K. (2013). ``VDB: High-resolution sparse volumes with dynamic topology''. ACM Transactions on Graphics.
+    \item Wikipedia: \href{https://en.wikipedia.org/wiki/Sparse_voxel_octree}{Sparse voxel octree}
+\end{itemize}
+
+\section{OpenVDB: Hierarchical Sparse Volumes}
+\label{sec:openvdb}
+
+\subsection{1. Overview}
+\textbf{OpenVDB}\index{OpenVDB} is an open-source C++ library, originated at
+DreamWorks and now under the Academy Software Foundation, that implements a
+hierarchical, sparse, dynamic topology data structure for volumetric
+data~\cite{museth2013}. It is the de facto standard for production voxel
+geometry, supporting narrow-band signed distance fields, boolean operations,
+smoothing, morphing, and level-set tracking at billion-voxel effective
+resolutions.
+
+\subsection{2. Definitions}
+
+\begin{definition}[VDB Tree]\label{def:vdb_tree}
+A \emph{VDB tree} has at most five levels: a root node with a hash-mapped set
+of children, up to three internal levels, and leaf nodes. Leaves store dense
+$8 \times 8 \times 8$ blocks; internal nodes store the states of their
+children as fixed-size arrays, and may hold a constant value (a tile) instead
+of children~\cite{museth2013}.
+\end{definition}
+
+\begin{definition}[Active State]\label{def:vdb_active}
+A node, tile, or voxel is \emph{active} if its value is explicitly set and
+participates in topology; inactive elements are implicitly equal to the
+background value. All tree operations respect and maintain these states.
+\end{definition}
+
+\subsection{3. Theory}
+Each level of the tree multiplies the coordinate space by 16 in each
+dimension, so five levels span coordinates of $2^{19}$ per axis (about
+$524{,}288$ voxels) while a leaf stores only 512 voxels. Because interior
+levels can be represented by tiles, a large flat region costs the same as a
+single voxel. Random access descends at most four pointer hops, and topology
+is dynamic: voxels can be inserted or deleted in expected $O(1)$ amortized
+time through the hash-mapped root, which makes level-set evolution efficient
+even as the interface moves~\cite{museth2013}.
+
+\subsection{4. Pseudo code}
+\begin{algorithmic}
+\Function{GetValue}{tree, $x$}
+    \State $n \gets \Call{root}{tree}$
+    \For{level $L = 1 \dots 5$}
+        \State $i \gets \operatorname{coord2index}_L(x)$
+        \If{$n$ holds a tile} \State \Return tile value
+        \ElsIf{$n[i]$ is a child} \State $n \gets n[i]$
+        \Else \State \Return background value
+        \EndIf
+    \EndFor
+    \State \Return leaf voxel value at $x$
+\EndFunction
+\end{algorithmic}
+
+\subsection{5. Parameters Selections}
+\begin{itemize}
+    \item \textbf{Background value}: choose the "empty" value (e.g., $\pm\infty$ for SDF grids) consistently; it determines inactive semantics.
+    \item \textbf{Tree configuration}: leaf log-dimension 3 and internal log-dimension 4 are defaults; larger leaf blocks trade memory for iteration speed.
+    \item \textbf{Narrow-band mode}: for SDF grids, band width 3 is standard~\cite{museth2013}.
+\end{itemize}
+
+\subsection{6. Complexity}
+Access is $O(1)$ (at most five level hops, hash lookup at the root).
+Memory is proportional to active voxels and tiles; a 3D SDF of effective
+resolution $4096^3$ typically requires only a few megabytes.
+
+\subsection{7. Usages}
+\begin{itemize}
+    \item \textbf{Visual effects}: level-set sculpting, liquid surfaces, and volumetric fire/smoke in film~\cite{museth2013}.
+    \item \textbf{Robotics and simulation}: signed distance collision and meshing pipelines.
+    \item \textbf{Medical and geometry processing}: fast boolean operations on scanned geometry.
+\end{itemize}
+
+\subsection{8. Testing methods and Edge cases}
+\begin{itemize}
+    \item \textbf{Bounding}: writing outside the current tree extent must grow the root's hash map correctly.
+    \item \textbf{Tile collapse}: coalescing a region must not corrupt neighboring active voxels.
+    \item \textbf{Level-set reinitialization}: verify the band stays $|\nabla d| = 1$ after many operations.
+\end{itemize}
+
+\subsection{9. References}
+\begin{itemize}
+    \item Museth, K. (2013). ``VDB: High-resolution sparse volumes with dynamic topology''. ACM Transactions on Graphics.
+    \item OpenVDB: \href{https://www.openvdb.org}{https://www.openvdb.org}
+    \item Wikipedia: \href{https://en.wikipedia.org/wiki/OpenVDB}{OpenVDB}
+\end{itemize}
+
+\section{Voxel-to-Mesh Conversion}
+\label{sec:voxel_to_mesh}
+
+\subsection{1. Overview}
+Converting a voxel field back into a mesh recovers an explicit surface from
+an implicit or occupancy representation. The standard algorithm is
+\textbf{marching cubes}\index{marching cubes}, which extracts the zero level
+set of an SDF (or the boundary of an occupancy grid) by triangulating each
+cell independently~\cite{lorensen1987}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Marching Cubes]\label{def:marching_cubes_grid}
+\emph{Marching cubes} enumerates, for every grid cell, the $2^8$ cases
+determined by which of the eight corner values are below the isovalue, and
+emits the corresponding polygon from a precomputed case table.
+\end{definition}
+
+\begin{definition}[Surface Nets]\label{def:surface_nets}
+\emph{Surface nets} place one vertex per crossing cell and connect adjacent
+vertices into a quad mesh, relaxing the vertices toward the surface; the
+result avoids some of marching cubes' topology artifacts~\cite{gibson1998}.
+\end{definition}
+
+\subsection{3. Theory}
+Marching cubes produces watertight surfaces for well-sampled SDFs but has
+ambiguous cases (15 base cases, 256 with symmetry and inversion) that must be
+resolved consistently to avoid cracks. Because the surface is the zero set of
+a sampled field, the mesh resolution is bounded by the grid resolution, and
+features thinner than one voxel are lost. Surface nets produce smoother
+results with fewer triangles at the same resolution~\cite{gibson1998}.
+
+\subsection{4. Pseudo code}
+\begin{algorithmic}
+\Function{MarchingCubes}{$d$, $\rho$}
+    \State $M \gets$ empty mesh
+    \For{each cell with corners $c_0 \dots c_7$}
+        \State case $\gets \sum_i 2^i\,[d(c_i) < \rho]$
+        \State emit triangles of case from the lookup table
+    \EndFor
+    \State \Return $M$
+\EndFunction
+\end{algorithmic}
+
+\subsection{5. Parameters Selections}
+\begin{itemize}
+    \item \textbf{Iso-value $\rho$}: 0 for a signed distance field; 0.5 for a binary grid.
+    \item \textbf{Vertex placement}: linear interpolation on edges vs.\ central placement in the cell.
+    \item \textbf{Ambiguity resolution}: use the asymptotic-decider criterion for consistent topology.
+\end{itemize}
+
+\subsection{6. Complexity}
+Marching cubes runs in $O(N)$ time for $N$ cells and outputs $O(N)$
+triangles; output is proportional to the surface area, not the volume.
+
+\subsection{7. Usages}
+\begin{itemize}
+    \item \textbf{Surface extraction} from CT/MRI scans.
+    \item \textbf{Mesh generation} from SDF sculpting and level-set simulations.
+    \item \textbf{Mesh repair}: voxelize a broken mesh, then extract a clean, watertight one.
+\end{itemize}
+
+\subsection{8. Testing methods and Edge cases}
+\begin{itemize}
+    \item \textbf{Watertightness}: verify no cracks at cell boundaries (ambiguity cases).
+    \item \textbf{Normals}: orient triangles consistently from the field gradient.
+    \item \textbf{Empty grids}: fields with no sign change must produce no triangles.
+\end{itemize}
+
+\subsection{9. References}
+\begin{itemize}
+    \item Lorensen, W. E., \& Cline, H. E. (1987). ``Marching cubes: A high resolution 3D surface construction algorithm''. Computer Graphics (SIGGRAPH).
+    \item Gibson, S. F. F. (1998). ``Constrained elastic surface nets''. MICCAI.
+    \item Wikipedia: \href{https://en.wikipedia.org/wiki/Marching_cubes}{Marching cubes}
+\end{itemize}
+
+\section{Applications}
+\label{sec:voxel_applications}
+
+\begin{itemize}
+    \item \textbf{Visual effects}: volumetric fluids, explosions, and organic sculpting in production using OpenVDB~\cite{museth2013}.
+    \item \textbf{Autonomous driving and robotics}: occupancy grids and signed-distance collision maps for perception and planning.
+    \item \textbf{Medical imaging}: segmentation, surface extraction, and morphometry from volumetric scans~\cite{lorensen1987}.
+    \item \textbf{Computational fabrication}: voxel models drive 3D printing and material assignment.
+\end{itemize}

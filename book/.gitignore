@@ -1,0 +1,15 @@
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.idx
+*.ind
+*.ilg
+*.loa
+*.lof
+*.bbl
+*.blg
+texput.log
+algtest2.*
+v2test.*

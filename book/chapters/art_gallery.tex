@@ -1,0 +1,202 @@
+\chapter{Art Gallery Problem}
+\label{ch:art_gallery}
+
+The art gallery problem\index{art gallery problem} is a visibility question
+that has become one of the most studied problems in computational geometry:
+given the floor plan of an art gallery, modeled as a simple polygon, how many
+stationary guards are needed so that every point of the gallery is visible
+from at least one guard? Chv\'{a}tal's theorem gives a tight bound of
+$\lfloor n/3 \rfloor$ guards for an $n$-vertex polygon, and the structural
+connection between guarding, polygon triangulation, vertex coloring, and
+polygon kernels makes the problem a rich source of theory and algorithms.
+This chapter develops the classical results, the guard-placement algorithm,
+and the closely related notion of a polygon kernel.
+
+\section{Art Gallery Guard Placement}
+\label{sec:art_gallery_guards}
+
+\subsection{1. Overview}
+The \textbf{Art Gallery Problem}\index{art gallery problem} (AGP) is a classic problem in computational geometry that asks for the minimum number of guards required to monitor every point within a given art gallery (represented as a simple polygon)~\cite{orourke1987}. A guard at a point $P$ can ``see'' any point $Q$ if the line segment $PQ$ lies entirely within the polygon.
+
+\subsection{2. Definitions}
+\begin{definition}[Art Gallery]
+\label{def:ag_gallery}
+An \emph{art gallery} is a simple polygon $P$ with $n$ vertices.
+\end{definition}
+
+\begin{definition}[Visibility]
+\label{def:ag_visibility}
+A point $Q$ is \emph{visible} from a point $P$ inside a polygon $P$ if the line segment $\overline{PQ}$ lies entirely within the polygon: $\overline{PQ} \subseteq P$.
+\end{definition}
+
+\begin{definition}[Guard Set]
+\label{def:ag_guard_set}
+A \emph{guard set} is a set of points $\{G_1, G_2, \dots, G_k\}$ such that every point in $P$ is visible from at least one $G_i$. The \emph{guard number} $\gamma(P)$ is the minimum cardinality of a guard set.
+\end{definition}
+
+\begin{theorem}[Chv\'{a}tal's Art Gallery Theorem]
+\label{thm:chvatal}
+For a simple polygon with $n$ vertices, $\lfloor n/3 \rfloor$ guards are always sufficient and sometimes necessary to guard the polygon~\cite{chvatal1975}.
+\end{theorem}
+\begin{proof}
+The proof proceeds by \textbf{polygon triangulation and 3-coloring}~\cite{fisk1978}.
+\begin{enumerate}
+    \item \textbf{Triangulate}\index{polygon triangulation} the polygon into $n-2$ triangles using an algorithm like ear clipping or monotone decomposition.
+    \item \textbf{3-color} the vertices of the resulting triangulation graph such that no two adjacent vertices share the same color. Since the dual graph of a triangulated simple polygon is a tree, the triangulation graph is chordal and therefore 3-colorable.
+    \item \textbf{Count} the number of vertices for each of the three colors. Since there are $n$ vertices total, by the pigeonhole principle, the color with the minimum count has at most $\lfloor n/3 \rfloor$ vertices.
+    \item \textbf{Place} a guard at every vertex of this minimum-count color. Since every triangle in the triangulation must contain all three colors, every triangle is visible from at least one guard, and hence the entire polygon is guarded.
+\end{enumerate}
+The bound is tight: Chv\'{a}tal constructed ``comb'' polygons\index{comb polygon} with $3k$ vertices that require exactly $k = \lfloor n/3 \rfloor$ guards~\cite{chvatal1975}.
+\end{proof}
+
+\begin{remark}
+For \textbf{orthogonal polygons}\index{orthogonal polygon} (all edges horizontal or vertical), the bound improves to $\lfloor n/4 \rfloor$ guards, proved by O'Rourke~\cite{orourke1987}.
+\end{remark}
+
+\begin{example}[Art Gallery with 6 Vertices]
+\label{ex:ag_6}
+Consider the simple polygon with vertices $(0,0), (4,0), (4,3), (2,1), (0,3)$ (5 vertices). After triangulation we have 3 triangles. A 3-coloring of the vertices yields color classes of sizes at most $\lfloor 5/3 \rfloor = 1$. Placing a single guard at a vertex of the minority color (e.g., at $(2,1)$) guards the entire polygon.
+\end{example}
+
+\input{diagrams/art_gallery}
+
+\subsection{4. Pseudo code}
+\begin{algorithm}
+\begin{algorithmic}[1]
+\Function{PlaceGuards}{polygon}
+\label{alg:place_guards}
+    \Comment{1. Triangulate the polygon}
+    \State triangles $\gets$ Triangulate(polygon)
+    
+    \Comment{2. Build the triangulation graph}
+    \State graph $\gets$ BuildTriangulationGraph(triangles)
+    
+    \Comment{3. 3-Color the graph (using DFS since it's a chordal graph)}
+    \State colors $\gets$ \{v: None for v in polygon.vertices\}
+    \State DFS\_Coloring(graph, start\_vertex, colors)
+    
+    \Comment{4. Partition vertices by color}
+    \State color\_groups $\gets$ [[], [], []]
+    \For{v, c in colors.items()}
+        \State color\_groups[c].append(v)
+    \EndFor
+        
+    \Comment{5. Select the smallest group}
+    \State guard\_positions $\gets$ min(color\_groups, key=len)
+    
+    \State \Return guard\_positions
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameters Selections}
+\begin{definition}[Vertex vs.\ Point Guarding]
+\label{def:ag_vertex_guarding}
+\emph{Vertex guarding} restricts guards to polygon vertices. \emph{Point guarding} allows guards anywhere in the interior. Point guarding might reduce the total count in some cases, but the Chv\'{a}tal bound $\lfloor n/3 \rfloor$ remains the same for worst-case bounds.
+\end{definition}
+
+\begin{definition}[Triangulation Algorithm Choice]
+\label{def:ag_triangulation_choice}
+The choice of triangulation (ear clipping vs.\ monotone decomposition) does not affect the 3-coloring result but does affect the $O(n \log n)$ vs.\ $O(n)$ construction time.
+\end{definition}
+
+\subsection{6. Complexity}
+\begin{theorem}[Art Gallery Algorithm Complexity]
+\label{thm:ag_complexity}
+The guard placement algorithm runs in $O(n \log n)$ time using monotone decomposition for triangulation, followed by $O(n)$ for graph construction and 3-coloring. The space is $O(n)$.
+\end{theorem}
+
+\subsection{7. Usages}
+\begin{itemize}
+    \item \textbf{Physical Security}\index{physical security}: Optimizing the placement of cameras or motion sensors in buildings.
+    \item \textbf{Wireless Networking}\index{wireless networking}: Determining the minimum number of Wi-Fi access points or cellular towers to cover a given region.
+    \item \textbf{Robotics}\index{robotics}: Path planning for a surveillance robot that needs to maintain visibility of its surroundings.
+    \item \textbf{Environmental Monitoring}: Placing sensors to detect smoke or pollutants in complex indoor spaces.
+\end{itemize}
+
+\subsection{8. Testing methods and Edge cases}
+\begin{itemize}
+    \item \textbf{Convex Polygons}: $n=3, 4, 5$ all require only 1 guard ($\lfloor 5/3 \rfloor = 1$).
+    \item \textbf{Comb Polygons}: ``Comb'' shapes (ortho-polygons) reach the upper bound of $\lfloor n/3 \rfloor$.
+    \item \textbf{Star Polygons}\index{star polygon}: By definition, star polygons only require 1 guard (placed at the kernel).
+    \item \textbf{Orthogonal Polygons}: For polygons where all edges are horizontal or vertical, the bound is tighter: $\lfloor n/4 \rfloor$ guards are sufficient (Hoffman's Theorem).
+    \item \textbf{Holes}: Polygons with holes require significantly more guards, and the problem becomes NP-hard.
+\end{itemize}
+
+\subsection{9. References}
+\begin{itemize}
+    \item Chv\'{a}tal, V. (1975). ``A combinatorial theorem in plane geometry''. Journal of Combinatorial Theory, Series B.
+    \item Fisk, S. (1978). ``A short proof of Chv\'{a}tal's watchman theorem''. Journal of Combinatorial Theory, Series B.
+    \item O'Rourke, J. (1987). ``Art Gallery Theorems and Algorithms''. Oxford University Press.
+    \item \href{https://en.wikipedia.org/wiki/Art_gallery_problem}{Wikipedia: Art gallery problem}
+\end{itemize}
+
+\section{Polygon Kernel and Star-Shaped Polygons}
+\label{sec:polygon_kernel}
+
+\subsection{1. Overview}
+The \index{kernel of a polygon}\textbf{kernel} of a simple polygon is the set of points from which every point of the polygon is visible. A polygon whose kernel is non-empty is called \index{star-shaped polygon}\textbf{star-shaped}. Computing the kernel answers visibility questions such as ``is there a point that sees the whole polygon?'', which arises in art gallery problems, motion planning for a point robot inside a polygon, and star-shaped polygonization~\cite{laszlo1996}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Kernel of a Polygon]\label{def:polygon_kernel}
+The \emph{kernel} of a simple polygon $P$ is
+\[
+\ker(P) = \{p \in P \mid \text{the segment } \overline{pq} \subset P \text{ for all } q \in P\}.
+\]
+\end{definition}
+
+\begin{definition}[Star-Shaped Polygon]\label{def:star_shaped}
+A polygon is \emph{star-shaped} if it has a non-empty kernel: there exists a point $p$ such that every point of the polygon is visible from~$p$. The kernel need not be a single point; it is itself a (possibly degenerate) convex polygon.
+\end{definition}
+
+\subsection{3. Theory}
+Let $P$ be given in counter-clockwise order. The kernel is the intersection of the closed left half-planes defined by the directed edges of~$P$:
+\[
+\ker(P) = \bigcap_{i} H(e_i),\qquad
+H(e_i) = \{x \mid \operatorname{orient2d}(v_i, v_{i+1}, x) \ge 0\}.
+\]
+For a simple polygon this half-plane intersection is always convex and non-empty exactly when $P$ is star-shaped. In general the kernel is computed by \index{half-plane intersection}half-plane intersection in $O(n \log n)$ time; for the special case of polygon kernels there is a linear-time $O(n)$ algorithm using a deque, due to Lee and Preparata~\cite{lee1979}. A point $p \in \ker(P)$ need only be checked against the vertices: $p$ sees the entire polygon if and only if $\overline{pv_i} \subset P$ for every vertex~$v_i$.
+
+\subsection{4. Pseudo code}
+\begin{algorithmic}
+\Function{Kernel}{$P$}
+    \State $H \gets \emptyset$
+    \For{each directed edge $(v_i, v_{i+1})$ of $P$}
+        \State add the left half-plane of $(v_i, v_{i+1})$ to $H$
+    \EndFor
+    \State \Return \Call{HalfPlaneIntersection}{$H$}
+\EndFunction
+\end{algorithmic}
+
+\subsection{5. Parameters Selections}
+\begin{itemize}
+    \item \textbf{Vertex order}: assume a consistent counter-clockwise ordering; reverse the half-plane side if the polygon is clockwise.
+    \item \textbf{Exact predicates}: use robust orientation tests, since near-degenerate edges decide membership of kernel boundary points.
+    \item \textbf{Collinear edges}: consecutive collinear edges define the same half-plane and may be merged.
+\end{itemize}
+
+\subsection{6. Complexity}
+The general half-plane intersection approach runs in $O(n \log n)$ time and $O(n)$ space. The specialized deque algorithm of Lee and Preparata computes the kernel in optimal $O(n)$ time~\cite{lee1979}.
+
+\subsection{7. Usages}
+\begin{itemize}
+    \item \textbf{Art gallery}: the kernel identifies points from which a single guard observes the entire polygon.
+    \item \textbf{Motion planning}: a point robot can navigate between any two points of a star-shaped region without leaving it.
+    \item \textbf{Star-shaped polygonization}: connecting points to a common kernel point produces a star-shaped polygonization of a point set~\cite{laszlo1996}.
+\end{itemize}
+
+\subsection{8. Testing methods and Edge cases}
+\begin{itemize}
+    \item \textbf{Convex polygon}: the kernel equals the polygon itself.
+    \item \textbf{L-shaped polygon}: the kernel is the region common to both arms.
+    \item \textbf{Spiral polygon}: the kernel is empty.
+    \item \textbf{Clockwise input}: verify the half-plane orientation is flipped correctly.
+\end{itemize}
+
+\subsection{9. References}
+\begin{itemize}
+    \item Laszlo, M. J. (1996). ``Computational Geometry and Computer Graphics in C++''. Prentice Hall.
+    \item Lee, D. T., \& Preparata, F. P. (1979). ``An optimal algorithm for finding the kernel of a polygon''. Journal of the ACM.
+    \item Wikipedia: \href{https://en.wikipedia.org/wiki/Star-shaped_polygon}{Star-shaped polygon}
+\end{itemize}
