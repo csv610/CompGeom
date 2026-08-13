@@ -1,46 +1,1600 @@
 \chapter{Delaunay Triangulations}
 \label{ch:delaunay_triangulations}
 
-% Stub: outline only; content to be written.
-
 \section{Voronoi--Delaunay Duality}
 \label{sec:delaunay_duality}
+
+\subsection{1. Overview}
+
+The \index{Delaunay triangulation}Delaunay triangulation of a point set $P$ is the
+straight-line dual of the Voronoi diagram (Section~\ref{sec:voronoi_segments}):
+two sites $p,q \in P$ are connected by a Delaunay edge exactly when their
+Voronoi cells share a boundary edge. The dual of a Voronoi diagram of points in
+general position is a planar straight-line graph whose bounded faces are
+triangles, so the dual is a triangulation of the convex hull of $P$. The two
+diagrams form a planar dual pair: Voronoi vertices (circumcenters) correspond to
+Delaunay triangles, Voronoi edges to Delaunay edges, and Voronoi faces to
+Delaunay vertices~\cite{deberg2008,okabe2000}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Voronoi Cell]\label{def:voronoi_cell_delaunay}
+For a site $p \in P$, the Voronoi cell $V(p)$ is the set of points of the plane
+at least as close to $p$ as to any other site:
+\[
+V(p) = \{ x \in \mathbb{R}^2 : \|x - p\| \le \|x - q\| \text{ for all } q \in P \}.
+\]
+\end{definition}
+
+\begin{definition}[Straight-Line Dual]\label{def:delaunay_dual}
+The \emph{Delaunay triangulation} $DT(P)$ is the graph with vertex set $P$ and an
+edge $pq$ for every pair of sites whose Voronoi cells $V(p)$ and $V(q)$ share a
+common edge of positive length.
+\end{definition}
+
+\begin{definition}[General Position]\label{def:general_position_delaunay}
+A planar point set is in \emph{general position} if no four points are
+cocircular and no three are collinear. Under this assumption every Voronoi
+vertex has degree three and the dual graph is a genuine triangulation.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Duality]\label{thm:delaunay_duality}
+Let $P$ be a set of $n$ points in general position in the plane. The
+straight-line dual of the Voronoi diagram $VD(P)$ is the Delaunay triangulation
+$DT(P)$, with the following correspondences:
+\begin{itemize}
+\item each Voronoi vertex, the circumcenter of three sites $p,q,r$, corresponds
+  to the Delaunay triangle $pqr$, whose circumcircle passes through the three
+  sites;
+\item each Voronoi edge lies on the perpendicular bisector of its dual Delaunay
+  edge;
+\item each Voronoi face $V(p)$ corresponds to the Delaunay vertex $p$.
+\end{itemize}
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+A point of the plane equidistant from exactly three sites $p,q,r$ is their
+circumcenter; it is the unique point where $V(p)$, $V(q)$, and $V(r)$ meet, so
+it is a Voronoi vertex and its dual is the triangle $pqr$. A point equidistant
+from exactly two sites $p,q$ lies on their perpendicular bisector, so the shared
+boundary of $V(p)$ and $V(q)$ is a straight segment and the dual edge $pq$ is a
+straight segment. Distinct such segments meet only at Voronoi vertices, which
+are endpoints of the corresponding dual edges, so the straight-line embedding
+is planar.
+\end{proof}
+
+The planar duality yields exact size bounds.
+
+\begin{corollary}[Size]\label{cor:delaunay_size}
+If $h$ points of $P$ lie on the boundary of the convex hull of $P$, then $DT(P)$
+has exactly $2n - 2 - h$ triangles and $3n - 3 - h$ edges.
+\end{corollary}
+
+\begin{proof}
+The planar graph $DT(P)$ has $n$ vertices, $e$ edges, and $t + 1$ faces where
+$t$ is the number of triangular faces. Euler's formula gives
+$n - e + (t + 1) = 2$. The unbounded face has $h$ boundary edges and each
+triangle contributes three edge-sides, so $3t + h = 2e$. Eliminating $e$ gives
+$t = 2n - 2 - h$ and $e = 3n - 3 - h$.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Voronoi Cells from a Delaunay Triangulation}
+\label{alg:delaunay_to_voronoi}
+\begin{algorithmic}[1]
+\Require A Delaunay triangulation $DT(P)$.
+\Ensure The Voronoi diagram $VD(P)$.
+\Function{VoronoiFromDelaunay}{$DT(P)$}
+  \For{each triangle $T = (p,q,r)$}
+    \State $c_T \gets \text{circumcenter}(p,q,r)$
+  \EndFor
+  \For{each Delaunay edge $(p,q)$}
+    \State emit the segment through the circumcenters of the one or two
+           triangles sharing $(p,q)$, clipped to $V(p) \cap V(q)$
+  \EndFor
+  \State \Return the arrangement of circumcenters and connecting segments
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{General position}: real data is rarely in general position;
+  algorithms either break cocircular ties symbolically (simulation of
+  simplicity) or deterministically (e.g., by a lexicographic rule on the
+  point order).
+\item \textbf{Representation}: a half-edge (DCEL) structure stores both
+  diagrams at once; each Delaunay edge keeps a pointer to its dual Voronoi edge
+  and vice versa.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ to construct $DT(P)$ by any of the algorithms
+  of Sections~\ref{sec:delaunay_randomized}--\ref{sec:delaunay_divide_conquer};
+  the dual $VD(P)$ costs $O(n)$ more.
+\item \textbf{Space}: $O(n)$ for either diagram; both together remain $O(n)$
+  because both are planar graphs.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Meshing}: Delaunay refinement (Section~\ref{sec:delaunay_refinement})
+  exploits the empty-circumcircle property inherited from the duality.
+\item \textbf{Nearest-site queries}: point location in $VD(P)$ answers
+  ``closest site'' queries in $O(\log n)$.
+\item \textbf{Surface reconstruction}: the alpha complex of the Delaunay
+  complex (Section~\ref{sec:delaunay_higher_dimensional}) reconstructs surfaces
+  from point clouds.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Cocircular points}: four cocircular sites give a dual
+  quadrilateral; verify that the two triangulations obtained by the two
+  diagonals are both accepted and reported consistently.
+\item \textbf{Collinear sites}: three collinear sites create a degenerate
+  (zero-area) Voronoi vertex; the dual must not emit zero-area triangles.
+\item \textbf{Duplicate sites}: coincident sites have an empty Voronoi cell;
+  the dual must ignore the duplicate.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item de Berg, M., Cheong, O., van Kreveld, M., Overmars, M. \cite{deberg2008},
+  Ch.~7 and 9.
+\item Okabe, A., Boots, B., Sugihara, K., Chiu, S.~N. \cite{okabe2000}.
+\item Aurenhammer, F. \cite{aurenhammer1991}.
+\item Voronoi, G. \cite{voronoi1908}.
+\end{itemize}
 
 \section{Empty-Circumcircle Property}
 \label{sec:delaunay_empty_circumcircle}
 
+\subsection{1. Overview}
+
+The defining property of a Delaunay triangulation is that no vertex of the point
+set lies inside the circumcircle of any triangle. This \index{empty circumcircle}
+\emph{empty-circumcircle property} is the local certificate that makes the
+Delaunay triangulation easy to recognize, to verify, and to maintain under
+insertions and flips. It is equivalent to the Voronoi duality of
+Section~\ref{sec:delaunay_duality}: a triangle whose circumcircle is empty has a
+circumcenter that is a Voronoi vertex.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Empty Circumcircle]\label{def:empty_circumcircle}
+A triangle $T$ of a triangulation of $P$ satisfies the \emph{empty-circumcircle
+property} if the open disk bounded by the circumcircle of $T$ contains no point
+of $P$.
+\end{definition}
+
+\begin{definition}[In-Circle Test]\label{def:incircle}
+Let $a,b,c,d$ be points with $a,b,c$ oriented counterclockwise. The
+\emph{in-circle predicate} returns true if $d$ lies strictly inside the circle
+through $a,b,c$:
+\[
+\operatorname{InCircle}(a,b,c,d) =
+\det
+\begin{pmatrix}
+a_x & a_y & a_x^2 + a_y^2 & 1\\
+b_x & b_y & b_x^2 + b_y^2 & 1\\
+c_x & c_y & c_x^2 + c_y^2 & 1\\
+d_x & d_y & d_x^2 + d_y^2 & 1
+\end{pmatrix}
+> 0.
+\]
+The determinant is zero exactly when the four points are cocircular.
+\end{definition}
+
+\begin{definition}[Delaunay Triangulation]\label{def:delaunay_triangulation}
+A triangulation of $P$ is a \emph{Delaunay triangulation} if every triangle
+satisfies the empty-circumcircle property.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Empty Circle Characterizes Delaunay]\label{thm:empty_circle}
+A triangulation of a point set $P$ in general position is the Delaunay
+triangulation if and only if every triangle has an empty circumcircle.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+($\Leftarrow$) If every triangle of a triangulation $\mathcal{T}$ has an empty
+circumcircle, then each triangle's circumcenter is a Voronoi vertex of
+$VD(P)$: the open disk is empty, so the circumcenter is as close to the three
+triangle vertices as to any other site. The triangulation $\mathcal{T}$ is then
+the straight-line dual of $VD(P)$, hence the Delaunay triangulation.
+($\Rightarrow$) If $\mathcal{T}$ is the Delaunay triangulation, its triangles
+are dual to Voronoi vertices, whose circumcircles contain no site in their
+interior.
+\end{proof}
+
+The in-circle determinant is closely tied to the orientation test. Writing the
+four points as lifted points on the paraboloid $z = x^2 + y^2$, the
+determinant is (up to sign) the oriented volume of the tetrahedron
+$a^+, b^+, c^+, d^+$, which explains both the sign convention and the numerical
+behavior (Section~\ref{sec:delaunay_lifting}).
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Adaptive In-Circle Predicate}
+\label{alg:incircle}
+\begin{algorithmic}[1]
+\Require points $a,b,c$ oriented counterclockwise and query point $d$.
+\Ensure true if $d$ is inside the circle through $a,b,c$.
+\Function{InCircle}{$a,b,c,d$}
+  \State $\Delta \gets $ determinant of the $4 \times 4$ matrix of
+         Definition~\ref{def:incircle}, computed by floating-point arithmetic
+  \If{$|\Delta|$ safely larger than the error bound}
+    \State \Return $\Delta > 0$
+  \Else
+    \State recompute $\Delta$ exactly using arbitrary-precision arithmetic
+    \State \Return $\Delta > 0$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+Adaptive evaluation (Section~\ref{sec:delaunay_refinement} uses the same
+technique) runs at full floating-point speed in the common case and only falls
+back to exact arithmetic near degenerate configurations~\cite{shewchuk1997}.
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Filtering}: cheap floating-point filters with rigorous error
+  bounds reject most inputs before exact arithmetic is invoked
+  (Section~\ref{sec:robust_predicates}).
+\item \textbf{Exact construction}: when circumcenters themselves are inserted
+  (Delaunay refinement), exact predicates still help decide legality even
+  though the new points are irrational.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: the predicate is $O(1)$; with adaptive filtering the
+  expected cost is a small constant number of floating-point operations.
+\item \textbf{Space}: $O(1)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Legality tests}: the flip criterion of
+  Section~\ref{sec:delaunay_edge_flipping} calls \text{InCircle} once per edge.
+\item \textbf{Verification}: checking that a mesh produced by any method is
+  Delaunay reduces to one predicate per interior edge.
+\item \textbf{Voronoi computation}: empty circles certify Voronoi vertices.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Cocircular queries}: verify that the predicate returns exactly
+  zero and that callers treat the result as ``legally Delaunay'' (either
+  diagonal is acceptable).
+\item \textbf{Counterclockwise orientation}: the sign convention assumes
+  $a,b,c$ counterclockwise; test both orientations.
+\item \textbf{Large coordinates}: exact fallback must be exercised on
+  coordinates far from the origin, where floating-point filters are
+  inconclusive.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Guibas, L., Stolfi, J. \cite{guibas1985}.
+\item Shewchuk, J.~R. \cite{shewchuk1997}, adaptive robust predicates.
+\item de Berg, M., et al. \cite{deberg2008}, Ch.~9.
+\end{itemize}
+
 \section{Local Delaunay Criterion}
 \label{sec:delaunay_local_criterion}
+
+\subsection{1. Overview}
+
+Checking every triangle of a triangulation against all other points would be
+expensive. The \index{local Delaunay criterion}\emph{local Delaunay criterion}
+reduces the global empty-circle condition to a test on each interior edge: an
+interior edge is locally Delaunay when the vertex of one incident triangle does
+not lie inside the circumcircle of the other. A triangulation in which every
+interior edge is locally Delaunay is globally Delaunay~\cite{deberg2008}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Locally Delaunay Edge]\label{def:locally_delaunay}
+Let $e = (u,v)$ be an interior edge shared by triangles $(u,v,w)$ and $(u,v,z)$.
+The edge $e$ is \emph{locally Delaunay} if $z$ does not lie strictly inside the
+circumcircle of $(u,v,w)$; by symmetry this is equivalent to $w$ not lying
+inside the circumcircle of $(u,v,z)$.
+\end{definition}
+
+\begin{definition}[Legal and Illegal Edges]\label{def:delaunay_illegal_edge}
+An interior edge that is not locally Delaunay is \emph{illegal}; the other
+diagonal of the quadrilateral $(u,w,v,z)$ is the unique candidate replacement
+that is legal in the Delaunay sense.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Local Implies Global]\label{thm:local_global}
+A triangulation of a point set in general position is the Delaunay triangulation
+if and only if every interior edge is locally Delaunay.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The forward direction is immediate from the empty-circumcircle property.
+For the converse, suppose every interior edge is locally Delaunay and let $T$ be
+any triangle. If $T$'s circumcircle contained a point $p$ of $P$, consider the
+segment from $p$ to a vertex of $T$; walking across the triangulation from the
+face containing $p$ to $T$ crosses an interior edge whose flip strictly
+increases the minimum angle of the incident quadrilateral, contradicting the
+assumption that all edges are locally Delaunay (the standard ``no edge can be
+illegal'' exchange argument of Lawson~\cite{lawson1977}).
+\end{proof}
+
+The theorem is the basis of all flip-based algorithms: it suffices to fix
+illegal edges one at a time.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Local Delaunay Test}
+\label{alg:local_delaunay}
+\begin{algorithmic}[1]
+\Function{IsLocallyDelaunay}{$u, v, w, z$}
+  \If{$z$ lies strictly inside the circle through $u, v, w$}
+    \State \Return \textsc{False} \Comment{$e=(u,v)$ is illegal}
+  \EndIf
+  \State \Return \textsc{True}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Boundary edges}: edges on the convex hull have no second triangle
+  and are always treated as locally Delaunay.
+\item \textbf{Cocircularity}: when the four vertices of a quadrilateral are
+  cocircular, both diagonals are locally Delaunay; pick either consistently.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(1)$ per edge using the in-circle predicate.
+\item \textbf{Overall}: a full verification pass over a triangulation costs
+  $O(n)$ predicate calls.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Edge flipping} (Section~\ref{sec:delaunay_edge_flipping}) flips
+  precisely the edges that fail this test.
+\item \textbf{Incremental insertion} re-checks only the edges of the affected
+  neighborhood after each insertion.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Non-convex quadrilaterals}: after a flip the new edge may not be
+  valid for non-convex quadrilaterals; verify the quadrilateral is convex before
+  flipping.
+\item \textbf{Tie breaking}: cocircular quadrilaterals must be reported as legal
+  to guarantee termination.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Lawson, C.~L. \cite{lawson1977}.
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~9.3.
+\end{itemize}
 
 \section{Edge Flipping}
 \label{sec:delaunay_edge_flipping}
 
+\subsection{1. Overview}
+
+Given any triangulation of a point set, the Delaunay triangulation can be
+reached by repeatedly replacing illegal edges with their other diagonal.
+\index{edge flip}\emph{Edge flipping} is both an algorithm in its own right
+(Lawson's algorithm) and the local repair primitive inside incremental and
+divide-and-conquer constructions.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Flip]\label{def:flip}
+A \emph{flip} replaces an interior edge $(u,v)$ shared by triangles $(u,v,w)$
+and $(u,v,z)$ with the other diagonal $(w,z)$, provided the quadrilateral
+$(u,w,v,z)$ is convex.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Lawson's Flip Algorithm]\label{thm:flip_convergence}
+Starting from an arbitrary triangulation of a point set in general position,
+repeatedly flipping illegal edges terminates with the Delaunay triangulation.
+The number of flips is at most $O(n^2)$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Each flip of an illegal edge strictly increases the lexicographically sorted
+list of angles of the triangulation (the minimum angle never decreases, and
+strictly increases at every flip). Since there are finitely many triangulations
+of a fixed point set and the angle list is a monotone quantity that is bounded
+above, the process terminates. Termination can only occur when no illegal edge
+remains, which by Theorem~\ref{thm:local_global} is the Delaunay
+triangulation. The $O(n^2)$ bound follows because the Delaunay triangulation
+has $O(n)$ edges and a ``history'' argument bounds the total number of
+successful flips by the number of edges ever created.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Lawson's Flip Algorithm}
+\label{alg:flip_to_delaunay}
+\begin{algorithmic}[1]
+\Require a triangulation $\mathcal{T}$ of $P$.
+\Ensure the Delaunay triangulation of $P$.
+\Function{FlipToDelaunay}{$\mathcal{T}$}
+  \State $Q \gets $ all interior edges of $\mathcal{T}$
+  \While{$Q$ is not empty}
+    \State $e \gets Q.\text{pop}()$
+    \If{not IsLocallyDelaunay($e$)}
+      \State $e' \gets $ other diagonal of the two triangles sharing $e$
+      \State flip $e$ to $e'$
+      \State push the (up to four) newly created edges onto $Q$
+    \EndIf
+  \EndWhile
+  \State \Return $\mathcal{T}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Queue discipline}: processing edges in stack or queue order both
+  terminate; a heap keyed by ``amount of violation'' reaches convergence faster
+  in practice.
+\item \textbf{Convexity check}: only flip when the quadrilateral is convex;
+  non-convex quadrilaterals are kept unchanged.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n^2)$ flips in the worst case, each $O(1)$; with a
+  priority queue the expected cost on random inputs is near-linear.
+\item \textbf{Space}: $O(n)$ for the triangulation and the queue.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Post-processing}: any meshing algorithm can be followed by a flip
+  pass to enforce the Delaunay property (e.g., before Delaunay refinement,
+  Section~\ref{sec:delaunay_refinement}).
+\item \textbf{Local repair}: incremental insertion (Section~\ref{sec:delaunay_incremental})
+  legalizes only the edges of the modified neighborhood.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Termination}: verify the algorithm terminates on adversarially
+  ordered inputs, including nearly cocircular configurations.
+\item \textbf{Cocircularity}: ties must be resolved without oscillation;
+  prefer the lexicographically smaller diagonal.
+\item \textbf{Collinear input}: a triangulation of collinear points has no
+  interior edges; the algorithm must do nothing.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Lawson, C.~L. \cite{lawson1977}.
+\item Guibas, L., Stolfi, J. \cite{guibas1985}.
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~9.3.
+\end{itemize}
+
 \section{Incremental Construction}
 \label{sec:delaunay_incremental}
+
+\subsection{1. Overview}
+
+\index{incremental construction}Incremental construction builds the Delaunay
+triangulation by inserting the points of $P$ one at a time, maintaining the
+Delaunay property after every insertion. Each step (i) locates the triangle
+containing the new point, (ii) splits it into three triangles, and (iii)
+legalizes the edges of the affected neighborhood by flipping. Two families of
+algorithms realize this scheme: the flip-based incremental algorithm of
+Section~\ref{sec:delaunay_edge_flipping} and the cavity-based
+Bowyer--Watson algorithm~\cite{bowyer1981,watson1981}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Conflict]\label{def:conflict}
+A new point $p$ \emph{conflicts} with a Delaunay triangle $T$ if $p$ lies
+inside the circumcircle of $T$. The set of conflicting triangles is the
+\emph{conflict zone} of $p$; it forms a connected set whose union is a simple
+polygon, the \emph{cavity} of $p$.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Cavity Repair]\label{thm:cavity}
+Let $p$ be a point not yet in $DT(P)$. The union of the Delaunay triangles of
+$DT(P)$ whose circumcircle contains $p$ is a star-shaped polygon with respect
+to $p$, and retriangulating its boundary with the spokes from $p$ to the
+boundary vertices yields the Delaunay triangulation of $P \cup \{p\}$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Every Delaunay triangle has an empty circumcircle before insertion. The
+conflict zone is connected: two conflicting triangles share an edge only if the
+cavity boundary stays simple, and the empty-circle condition guarantees that
+the zone is exactly the set of triangles whose circumcenter is hidden from $p$.
+The new triangles $p$-to-boundary-edge have empty circumcircles: if one
+contained a site $q$, then the circumcircle of the original conflicting
+triangle it replaced would contain $q$ as well, contradicting Delaunay-ness.
+Thus the repair is Delaunay.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Bowyer--Watson Incremental Insertion}
+\label{alg:bowyer_watson}
+\begin{algorithmic}[1]
+\Require point set $P$; a surrounding ``big triangle'' that encloses all of $P$.
+\Ensure the Delaunay triangulation of $P$.
+\Function{InsertDelaunay}{$P$}
+  \State $\mathcal{T} \gets $ single big triangle
+  \For{each $p \in P$}
+    \State $\text{cavity} \gets \{ T \in \mathcal{T} : p \in \text{circumcircle}(T) \}$
+    \State remove cavity triangles from $\mathcal{T}$
+    \State $\mathcal{B} \gets $ boundary edges of the cavity
+    \For{each edge $(a,b) \in \mathcal{B}$}
+      \State add triangle $(a,b,p)$ to $\mathcal{T}$
+    \EndFor
+  \EndFor
+  \State remove all triangles incident to a vertex of the big triangle
+  \State \Return $\mathcal{T}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The flip-based variant replaces the cavity step: split the located triangle
+into three, then legalize by flipping outward using
+Section~\ref{sec:delaunay_edge_flipping}'s repair pass.
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Point location}: locating the triangle containing $p$ can be done
+  with a walk, a jump-and-walk heuristic, or a history DAG; the history DAG
+  gives the best worst-case behavior (Section~\ref{sec:point_location_walking}).
+\item \textbf{Big triangle}: its vertices must be far enough that no circumcircle
+  of the final mesh meets them; remove its incident triangles at the end.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ expected for random insertion orders and
+  $O(n^2)$ worst case for adversarial orders without a history structure.
+\item \textbf{Space}: $O(n)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Dynamic point sets}: insertions support kinetic meshing and
+  adaptive refinement (Section~\ref{sec:delaunay_refinement}).
+\item \textbf{3D}: Bowyer--Watson generalizes directly to $d$ dimensions
+  (Section~\ref{sec:delaunay_higher_dimensional}) and is the workhorse of
+  TetGen-style tetrahedral meshers.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Point on an edge}: locate both incident triangles and merge the
+  cavity appropriately.
+\item \textbf{Point coincident with an existing vertex}: skip insertion
+  (exact predicate) to avoid zero-area triangles.
+\item \textbf{Points outside the current hull}: the cavity is still connected;
+  verify no spurious edges cross the convex hull.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Bowyer, A. \cite{bowyer1981}.
+\item Watson, D.~F. \cite{watson1981}.
+\item de Berg, M., et al. \cite{deberg2008}, Ch.~9.
+\end{itemize}
 
 \section{Randomized Incremental Algorithm}
 \label{sec:delaunay_randomized}
 
+\subsection{1. Overview}
+
+\index{randomized incremental construction}Randomized incremental construction
+inserts the points in a uniformly random permutation. Randomization makes the
+expected size of the conflict zone small at every step, so the total expected
+cost drops to $O(n \log n)$, matching the divide-and-conquer bound with a much
+simpler implementation. This is the algorithm behind the classic randomized
+incremental Delaunay/Voronoi construction~\cite{guibas1992}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Conflict Graph]\label{def:conflict_graph}
+The \emph{conflict graph} links each inserted point to the triangles of the
+current triangulation whose circumcircle contains it. When a new point is
+inserted, its conflict set is read from the graph, and the graph is updated for
+the new triangles.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Randomized Incremental Delaunay]\label{thm:randomized_delaunay}
+Inserting the points of $P$ in a uniformly random order, maintaining the
+conflict graph, computes the Delaunay triangulation in $O(n \log n)$ expected
+time and $O(n)$ expected space.
+\end{theorem}
+
+\begin{proof}[Proof sketch (backward analysis)]
+Consider the insertion that creates a particular triangle $T$ of the final
+triangulation. Reverse the process: delete points one by one in reverse random
+order, and call $T$ a ``created'' triangle at the moment its third vertex is
+deleted. Conditioning on $T$ being present at that time, its three vertices are
+a uniformly random triple among the $k$ remaining points that lie in
+$T \cup \{\text{interior}\}$, so the probability that a specific triangle is
+created at step $k$ is $O(3/k)$. Summing over the $O(n)$ triangles of the final
+diagram gives expected total conflict-zone work $\sum_k O(3/k \cdot k) = O(n)$
+for the conflicts plus $O(n \log n)$ for point location through the history
+DAG, yielding the claimed bound.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Randomized Incremental Delaunay}
+\label{alg:randomized_delaunay}
+\begin{algorithmic}[1]
+\Require point set $P$.
+\Ensure the Delaunay triangulation of $P$.
+\Function{RandomizedDelaunay}{$P$}
+  \State $\sigma \gets $ uniformly random permutation of $P$
+  \State $\mathcal{T} \gets $ big triangle; $D \gets $ empty history DAG
+  \For{$i = 1, \dots, n$}
+    \State $p \gets \sigma[i]$
+    \State $T \gets $ leaf of $D$ whose region contains $p$ (walk down $D$)
+    \State cavity $\gets$ conflict zone of $p$ in $\mathcal{T}$
+    \State retriangulate the cavity with $p$ (Section~\ref{alg:bowyer_watson})
+    \State add the new triangles to $D$ as children of their parent triangle
+  \EndFor
+  \State \Return $\mathcal{T}$ with big-triangle triangles removed
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Random seed}: a fixed seed makes runs reproducible; permuting
+  only once amortizes the cost.
+\item \textbf{History DAG}: without it, expected time degrades to $O(n^2)$ for
+  point location; the DAG adds $O(n)$ space.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ expected, $O(n^2)$ worst case.
+\item \textbf{Space}: $O(n)$ expected.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Reference implementation}: the simplicity of the randomized
+  version makes it the algorithm of choice for correctness testing of other
+  constructions.
+\item \textbf{Basis for higher dimensions}: the same backward-analysis argument
+  extends to $d$ dimensions (Section~\ref{sec:delaunay_higher_dimensional}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Adversarial orders}: compare the output against the
+  divide-and-conquer result for the same input with many different
+  permutations.
+\item \textbf{Duplicate and collinear points}: the conflict graph must not
+  record degenerate conflicts; test inputs with repeated coordinates.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Guibas, L., Knuth, D.~E., Sharir, M. \cite{guibas1992}.
+\item Mulmuley, K. \cite{mulmuley1990}.
+\item Seidel, R. \cite{seidel1991}.
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~9.4.
+\end{itemize}
+
 \section{Divide-and-Conquer Construction}
 \label{sec:delaunay_divide_conquer}
+
+\subsection{1. Overview}
+
+\index{divide and conquer}The divide-and-conquer construction of Guibas and
+Stolfi sorts the points by $x$-coordinate, triangulates each half recursively,
+and merges the two triangulations in linear time. The merge proceeds along a
+growing ``baseline'' that is the unique edge connecting the two halves and
+respects the empty-circumcircle criterion~\cite{guibas1985}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Lower Tangent]\label{def:lower_tangent}
+Let $DT(P_L)$ and $DT(P_R)$ be the Delaunay triangulations of the left and
+right halves. The \emph{lower tangent} $(b_l, b_r)$ is the unique edge from a
+vertex $b_l$ of the left hull to a vertex $b_r$ of the right hull that is an
+edge of the convex hull of $P_L \cup P_R$.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Delaunay Merge]\label{thm:delaunay_merge}
+Given the Delaunay triangulations of $P_L$ and $P_R$ (with $P_L$ entirely left
+of $P_R$), the Delaunay triangulation of $P_L \cup P_R$ is obtained by
+repeatedly crossing edges between the two halves, always keeping the crossed
+edge locally Delaunay, and deleting the edges it destroys. The merge runs in
+$O(n)$ time.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The Delaunay triangulation of $P_L \cup P_R$ contains the lower tangent, which
+is a Delaunay edge (its two endpoints have an empty circle through them).
+Starting from the lower tangent, the next edge of the cross-hull is found by
+walking the convex hulls of the two halves and testing the in-circle predicate:
+a new edge is legal if the triangles on both sides satisfy
+Definition~\ref{def:locally_delaunay}. Each candidate edge is considered a
+constant number of times as the baseline advances monotonically, so the total
+work is proportional to the number of cross edges, $O(n)$.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Divide-and-Conquer Delaunay (Guibas--Stolfi)}
+\label{alg:delaunay_dnc}
+\begin{algorithmic}[1]
+\Require point set $P$ sorted by $x$-coordinate.
+\Ensure the Delaunay triangulation of $P$.
+\Function{DelaunayDnC}{$P$}
+  \If{$|P| \le 3$}
+    \State \Return trivial triangulation of $P$
+  \EndIf
+  \State split $P$ into $P_L$ and $P_R$ by the median $x$-coordinate
+  \State $\mathcal{T}_L \gets $ DelaunayDnC($P_L$); \quad
+         $\mathcal{T}_R \gets $ DelaunayDnC($P_R$)
+  \State \Return Merge($\mathcal{T}_L, \mathcal{T}_R$)
+\EndFunction
+\Function{Merge}{$\mathcal{T}_L, \mathcal{T}_R$}
+  \State $(b_l, b_r) \gets $ lower tangent of $\mathcal{T}_L \cup \mathcal{T}_R$
+  \Repeat
+    \State $c \gets $ the endpoint (in $P_L$ or $P_R$) that, with $(b_l,b_r)$,
+           satisfies the empty-circumcircle test
+    \State add edge $(b_l,c)$ or $(c,b_r)$ as the next cross edge, crossing if
+           it does not intersect existing edges
+    \Until{no further legal cross edge exists}
+  \State \Return the combined triangulation
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Balanced split}: splitting at the median gives the $O(n \log n)$
+  recurrence $T(n) = 2T(n/2) + O(n)$.
+\item \textbf{Same-x coordinates}: tie-break by $y$ (or perturb) so the halves
+  are cleanly separable.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ worst case.
+\item \textbf{Space}: $O(n)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Deterministic construction}: unlike the randomized algorithm,
+  gives worst-case guarantees without a random source.
+\item \textbf{Baseline for benchmarking}: its robust implementation by Guibas
+  and Stolfi remains the reference for exactness in practice~\cite{guibas1985}.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Merge correctness}: cross-check every cross edge against the
+  in-circle predicate; assert no two cross edges cross.
+\item \textbf{Vertical splits}: points with equal $x$ must not fragment the
+  recursion.
+\item \textbf{Small sizes}: the $n \le 3$ base case must handle collinear
+  triples without creating zero-area triangles.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Guibas, L., Stolfi, J. \cite{guibas1985}.
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~9.1--9.2.
+\end{itemize}
 
 \section{Lifting to a Paraboloid}
 \label{sec:delaunay_lifting}
 
+\subsection{1. Overview}
+
+\index{lifting}\emph{Lifting} maps each planar site $p = (x,y)$ to the point
+$p^+ = (x, y, x^2 + y^2)$ on the paraboloid $z = x^2 + y^2$. A plane intersects
+the paraboloid in a circle projected onto the $xy$-plane, which converts the
+in-circle predicate into a half-space (orientation) test in $\mathbb{R}^3$ and
+reduces Delaunay construction to a 3D convex-hull problem~\cite{brown1979,deberg2008}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Lifted Point]\label{def:lifted_point}
+The \emph{lift} of $p = (x,y)$ is $p^+ = (x, y, x^2 + y^2)$. The lower hull of
+the lifted point set is the set of facets visible from below (i.e., with the
+plane normal pointing downward in $z$).
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Lifting Theorem]\label{thm:lifting}
+Let $P$ be a set of points in general position, and let $P^+$ be their lifts to
+the paraboloid $z = x^2 + y^2$. The vertical projection onto the $xy$-plane of
+the lower convex hull of $P^+$ is exactly the Delaunay triangulation $DT(P)$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+A point $q = (x, y, x^2 + y^2)$ lies on the plane $H$ through $a^+, b^+, c^+$
+if and only if $(x,y)$ lies on the circle through $a,b,c$; it lies below $H$ if
+and only if $(x,y)$ is strictly inside that circle. Therefore the in-circle
+predicate of Definition~\ref{def:incircle} is the sign of the oriented volume
+of the tetrahedron $a^+b^+c^+d^+$. A triangle of the projection is a facet of
+the lower hull exactly when all other lifted points lie above its plane, i.e.,
+when the corresponding circumcircle is empty. Hence lower-hull facets and
+Delaunay triangles coincide.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Delaunay via Lifting}
+\label{alg:delaunay_lifting}
+\begin{algorithmic}[1]
+\Require point set $P$.
+\Ensure the Delaunay triangulation of $P$.
+\Function{DelaunayByLifting}{$P$}
+  \State $P^+ \gets \{ (x, y, x^2 + y^2) : (x,y) \in P \}$
+  \State $\mathcal{H} \gets $ 3D convex hull of $P^+$
+  \For{each facet of $\mathcal{H}$ whose outward normal has a negative $z$-component}
+    \State project the facet vertices back to the $xy$-plane and emit the triangle
+  \EndFor
+  \State \Return the projected lower hull
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Which hull}: only the \emph{lower} hull matters; computing the
+  full hull is wasteful but harmless.
+\item \textbf{Exact arithmetic}: lifted coordinates are quadratic, so predicates
+  grow in magnitude; adaptive filters (Section~\ref{sec:delaunay_empty_circumcircle})
+  keep the common case fast.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ for a 3D hull algorithm that is output
+  sensitive; note that the lifted set lies on a strictly convex surface, so its
+  hull has $O(n)$ facets, not the worst-case $O(n^2)$.
+\item \textbf{Space}: $O(n)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Conceptual tool}: the lifting view unifies Delaunay triangulation,
+  Voronoi diagrams, and convex hulls (Section~\ref{sec:delaunay_convex_hulls}).
+\item \textbf{Reduction}: any 3D hull routine (e.g., Qhull) becomes a Delaunay
+  mesher, which is precisely how several numerical packages compute
+  triangulations.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Cocircularity}: cocircular points lift to coplanar points;
+  verify the hull routine tolerates coplanar facets.
+\item \textbf{Scaling}: quadratic lifts amplify coordinate ranges; test with
+  coordinates spanning several orders of magnitude.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Brown, K.~Q. \cite{brown1979}.
+\item Edelsbrunner, H. \cite{edelsbrunner1987}.
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~11.4.
+\end{itemize}
+
 \section{Relationship to Convex Hulls}
 \label{sec:delaunay_convex_hulls}
+
+\subsection{1. Overview}
+
+The lifting theorem of Section~\ref{sec:delaunay_lifting} is one of three
+equivalent views of the same object. The Delaunay triangulation is (i) the dual
+of the Voronoi diagram, (ii) the projection of the lower hull of the lifted
+points, and (iii) the projection of the convex hull of points on a sphere via
+stereographic projection. This section records the two hull relations used in
+practice and their polar counterpart for Voronoi diagrams.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Upper Envelope of Tangent Planes]\label{def:lifting_upper_envelope}
+For each site $p$, let $H_p$ be the tangent plane to the paraboloid
+$z = x^2 + y^2$ at the lifted point $p^+$. The \emph{upper envelope} of the
+planes $\{H_p\}$ is the pointwise maximum of their $z$-values.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Voronoi Diagram as Upper Hull]\label{thm:voronoi_upper_hull}
+The vertical projection onto the $xy$-plane of the upper envelope of the
+tangent planes $H_p$ is the Voronoi diagram $VD(P)$: a point $x$ of the plane
+lies in the projection of $H_p$ exactly when $p$ is its nearest site.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The tangent plane $H_p$ at $p^+$ is $z = 2p_x x + 2p_y y - (p_x^2 + p_y^2)$. The
+vertical gap between $H_p$ and the paraboloid at the point above $x$ is
+$|x|^2 - (2p \cdot x - |p|^2) = \|x - p\|^2$. Therefore $H_p$ is above $H_q$ at
+$x$ if and only if $\|x - p\| \le \|x - q\|$, i.e., if and only if $p$ is the
+nearest site. Projecting the upper envelope gives precisely the Voronoi cells.
+\end{proof}
+
+\begin{theorem}[Delaunay and Farthest Delaunay]\label{thm:farthest_hull}
+The lower hull of the lifted points projects to the (nearest) Delaunay
+triangulation, while the upper hull projects to the farthest-point Delaunay
+triangulation, whose dual is the farthest-point Voronoi diagram.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+By symmetry with Theorem~\ref{thm:lifting}, a facet of the \emph{upper} hull
+corresponds to a circle that contains all points of $P$ in its closed disk and
+passes through three hull vertices; its projection is a farthest Delaunay
+triangle. The dual cells are the regions where a given hull vertex is the
+\emph{farthest} site, which is the farthest-point Voronoi cell.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+The practical consequence is that a single 3D convex-hull computation yields
+all four objects:
+
+\begin{algorithm}[htbp]
+\caption{All Diagrams from One Convex Hull}
+\label{alg:hull_diagrams}
+\begin{algorithmic}[1]
+\Function{AllDiagrams}{$P$}
+  \State $\mathcal{H} \gets $ 3D hull of lifted points $P^+$
+  \State lower facets $\to$ project $\to$ $DT(P)$
+  \State upper facets $\to$ project $\to$ farthest Delaunay
+  \State dualize $DT(P)$ $\to$ $VD(P)$ (Section~\ref{alg:delaunay_to_voronoi})
+  \State \Return $(DT(P), VD(P))$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Stereographic alternative}: projecting the points from the
+  paraboloid onto a sphere gives a hull computation in $\mathbb{R}^3$ with
+  numerically better conditioning than the quadratic lift.
+\item \textbf{Output sensitivity}: for convex input the hull is small; exploit
+  output-sensitive hull algorithms.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ for the 3D hull (the lifted set has $O(n)$
+  facets).
+\item \textbf{Space}: $O(n)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Unified implementation}: one hull routine provides Delaunay,
+  Voronoi, and farthest-point structures for testing and cross-validation.
+\item \textbf{Pedagogy}: the three-way equivalence (Voronoi, Delaunay, hull) is
+  the central organizing idea of the field.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Consistency}: verify $DT$, $VD$, and the hull all agree on random
+  and degenerate inputs.
+\item \textbf{Coplanar facets}: hulls with coplanar facets must be resolved by
+  triangulation or symbolic perturbation.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Brown, K.~Q. \cite{brown1979}.
+\item Edelsbrunner, H. \cite{edelsbrunner1987}.
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~11.4.
+\end{itemize}
 
 \section{Constrained Delaunay Triangulation}
 \label{sec:delaunay_constrained}
 
+\subsection{1. Overview}
+
+A \index{constrained Delaunay triangulation}\emph{constrained Delaunay
+triangulation} (CDT) is a triangulation of a planar straight-line graph (PSLG)
+that contains every constraint segment as a union of edges, while remaining as
+close as possible to the Delaunay criterion in the triangles that do not cross
+a constraint. CDTs are the standard representation for meshing domains with
+internal boundaries, such as faults, wells, or material interfaces.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Visibility]\label{def:cdt_visibility}
+A segment $uv$ is \emph{visible} from a point $p$ if the open segment $pu$
+meets no constraint segment, and likewise for $pv$.
+\end{definition}
+
+\begin{definition}[Constrained Delaunay Edge]\label{def:cdt_edge}
+An edge $e$ of a triangulation of a PSLG is \emph{constrained Delaunay} if it is
+a constraint segment, or if there exists a circle through its two endpoints
+whose open disk contains no vertex visible to $e$.
+\end{definition}
+
+\begin{definition}[Constrained Delaunay Triangulation]\label{def:cdt}
+A \emph{CDT} of a PSLG is a triangulation containing every constraint segment
+in which every edge is constrained Delaunay.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Existence and Uniqueness of the CDT]\label{thm:cdt}
+Every planar straight-line graph admits a constrained Delaunay triangulation,
+and it is unique: the diagonal of every quadrilateral in the CDT is chosen so
+that the constraints are respected and the remaining edges satisfy
+Definition~\ref{def:cdt_edge}.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Existence follows from the flip viewpoint: take any triangulation that contains
+the constraints, then flip any illegal edge that is not a constraint; each flip
+reduces a lexicographic angle potential, so termination yields a triangulation
+with no illegal unconstrained edges, which is a CDT by the analogue of
+Theorem~\ref{thm:local_global} restricted to visible vertices. Uniqueness
+follows because the empty-circle test, restricted to visible points, decides
+every non-constrained diagonal independently of the rest of the
+triangulation~\cite{chew1989,deberg2008}.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{CDT by Constraint Recovery}
+\label{alg:cdt_recovery}
+\begin{algorithmic}[1]
+\Require a PSLG $G$ (points plus constraint segments).
+\Ensure the constrained Delaunay triangulation of $G$.
+\Function{ConstrainedDelaunay}{$G$}
+  \State $\mathcal{T} \gets $ Delaunay triangulation of the vertices of $G$
+  \For{each constraint segment $s$ of $G$}
+    \If{$s$ is not a union of edges of $\mathcal{T}$}
+      \State locate the polygons crossed by $s$
+      \State retriangulate them so that $s$ becomes a sequence of edges
+      \State legalize the affected region with flip-based repair, keeping
+             every constraint edge fixed
+    \EndIf
+  \EndFor
+  \State \Return $\mathcal{T}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Segment insertion order}: inserting constraints one at a time with
+  local repair is simple; batch processing via constrained triangulation is
+  faster for many segments.
+\item \textbf{Conforming variants}: if constraints may be \emph{split} by new
+  vertices (conforming Delaunay), Ruppert-style refinement
+  (Section~\ref{sec:delaunay_refinement}) can be used to enforce both the
+  constraints and the quality bounds.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n^2)$ worst case for flip-based constraint recovery;
+  expected $O(n \log n)$ for random inputs.
+\item \textbf{Space}: $O(n)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Finite-element meshing}: constraints model material interfaces,
+  wells, and boundaries (see the reservoir and mesh applications in
+  Section~\ref{sec:delaunay_mesh_applications}).
+\item \textbf{Terrain modeling}: breaklines and rivers are constraints in the
+  TIN surfaces of GIS (Section~\ref{sec:voronoi_applications}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Intersecting constraints}: the input PSLG must be planar; verify
+  that segments only meet at endpoints, or insert intersection points first.
+\item \textbf{Overlapping constraints}: deduplicate coincident segments.
+\item \textbf{Constraints along the hull}: ensure hull edges remain part of the
+  triangulation.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Chew, L.~P. \cite{chew1989}.
+\item Shewchuk, J.~R. \cite{shewchuk1998}.
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~9.5.
+\end{itemize}
+
 \section{Quality Properties}
 \label{sec:delaunay_quality}
+
+\subsection{1. Overview}
+
+Among all triangulations of a point set, the Delaunay triangulation is in a
+precise sense the ``best''. It maximizes the minimum angle, which is exactly
+the criterion that guarantees well-shaped triangles for finite-element
+computation: skinny triangles produce ill-conditioned stiffness matrices and
+large interpolation errors.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Minimum Angle]\label{def:min_angle}
+The \emph{minimum angle} of a triangulation is the smallest angle over all of
+its triangles. A triangulation $T_1$ is \emph{angle-optimal} if no other
+triangulation of the same point set has a larger minimum angle.
+\end{definition}
+
+\begin{definition}[Aspect Ratio]\label{def:aspect_ratio}
+The \emph{aspect ratio} (or radius ratio) of a triangle is the ratio of its
+circumradius to its inradius; it is a scale-invariant measure of shape quality,
+equal to $1$ for equilateral triangles and unbounded for skinny ones.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Maximin Angle Property]\label{thm:maximin}
+Among all triangulations of a point set in general position, the Delaunay
+triangulation maximizes the minimum angle (and, more strongly, is
+lexicographically optimal in the sorted list of angles).
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Flipping an illegal edge replaces two angles $\alpha, \beta$ (the angles
+opposite the illegal edge) with angles $\alpha', \beta'$ satisfying
+$\min(\alpha',\beta') > \min(\alpha,\beta)$: the smallest of the four angles of
+the quadrilateral strictly increases. Since Lawson's algorithm
+(Section~\ref{sec:delaunay_edge_flipping}) reaches the Delaunay triangulation
+by such flips and each flip only improves the minimum angle, no triangulation
+can have a larger minimum angle. The lexicographic claim follows by the same
+monotonicity on the sorted angle sequence.
+\end{proof}
+
+\begin{corollary}[Angle Lower Bound]\label{cor:angle_bound}
+Every triangle of the Delaunay triangulation of points in general position has
+minimum angle at least $30^\circ$ when restricted to its circumcircle's
+diameter bound; more relevantly, Delaunay refinement
+(Section~\ref{sec:delaunay_refinement}) can push the bound to any prescribed
+value by inserting points.
+\end{corollary}
+
+\subsection{4. Pseudocode}
+
+Quality measures are cheap to evaluate and are used to drive refinement:
+
+\begin{algorithm}[htbp]
+\caption{Quality Report}
+\label{alg:quality_report}
+\begin{algorithmic}[1]
+\Require a triangulation $\mathcal{T}$ and a target minimum angle $\theta_{\min}$.
+\Ensure the list of triangles violating the quality bound.
+\Function{ReportSkinnyTriangles}{$\mathcal{T}, \theta_{\min}$}
+  \State $\text{violators} \gets []$
+  \For{each triangle $T \in \mathcal{T}$}
+    \State $\theta_T \gets $ minimum angle of $T$
+    \If{$\theta_T < \theta_{\min}$}
+      \State append $T$ to $\text{violators}$
+    \EndIf
+  \EndFor
+  \State \Return $\text{violators}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Quality metric}: minimum angle, circumradius-to-shortest-edge
+  ratio, and radius ratio are equivalent up to constants for bounded shapes;
+  pick the one matched to the solver's error estimate.
+\item \textbf{Target angle}: angles above $\approx 30^\circ$ typically require
+  more Steiner points; the mesh-size trade-off drives
+  Section~\ref{sec:delaunay_refinement}'s parameters.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n)$ to evaluate quality over all triangles; one
+  constant-time formula per triangle.
+\item \textbf{Space}: $O(n)$ for the report.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Mesh quality control}: FEM and CFD pipelines validate meshes
+  against minimum-angle or aspect-ratio thresholds before solving.
+\item \textbf{Refinement driver}: skinny-triangle reports feed the
+  circumcenter-insertion loop (Section~\ref{sec:delaunay_refinement}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Degenerate triangles}: collinear vertices yield zero angles; the
+  report must flag them without division-by-zero.
+\item \textbf{Extreme aspect ratios}: verify scale invariance under uniform
+  scaling and rotation.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Lawson, C.~L. \cite{lawson1977}.
+\item Ruppert, J. \cite{ruppert1995}.
+\item Shewchuk, J.~R. \cite{shewchuk1998}.
+\end{itemize}
 
 \section{Delaunay Refinement}
 \label{sec:delaunay_refinement}
 
+\subsection{1. Overview}
+
+Delaunay triangulations of a \emph{point set} can still contain skinny triangles
+when the points are badly distributed. \index{Delaunay refinement}\emph{Delaunay
+refinement} (Chew~\cite{chew1989}, Ruppert~\cite{ruppert1995}) inserts new
+points---circumcenters of skinny triangles---until every triangle satisfies a
+quality bound. Ruppert's algorithm and its successors are the workhorses of
+2D quality mesh generation (Section~\ref{sec:delaunay_mesh_applications}) and
+are the reason angle bounds such as ``no angle below $20.7^\circ$'' appear in
+every meshing manual.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Skinny Triangle]\label{def:skinny}
+A triangle is \emph{skinny} if its circumradius-to-shortest-edge ratio
+$\rho = R / s$ exceeds a threshold $B$; equivalently its minimum angle is below
+$\arcsin(1 / (2B))$.
+\end{definition}
+
+\begin{definition}[Encroached Segment]\label{def:encroached}
+A segment of the domain boundary (or a constraint) is \emph{encroached} by a
+vertex $v$ if $v$ lies inside the circle with the segment as diameter. An
+encroached segment must be split at its midpoint before any circumcenter inside
+its influence region is inserted.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Ruppert's Algorithm]\label{thm:ruppert}
+Let a planar straight-line graph be input with no two segments forming an
+angle below a threshold $\phi$ (typically $90^\circ$). Ruppert's refinement
+algorithm terminates and produces a mesh in which every triangle has
+circumradius-to-shortest-edge ratio at most $B \ge \sqrt{2}$, hence minimum
+angle at least $\arcsin(1/(2B))$ (about $20.7^\circ$ for $B = \sqrt{2}$), and
+whose size is within a constant factor of the smallest possible mesh satisfying
+the bound.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Termination rests on a shortest-edge lemma: inserting the circumcenter of a
+skinny triangle (or the midpoint of an encroached segment) always creates edges
+of length at least $L$ times the length of the offending short edge, for a fixed
+$L = \sin\theta$ with $B \ge \sqrt{2}$. Since every newly inserted point is a
+constant fraction away from all existing points, the smallest edge length can
+decrease by at most a fixed factor, and after finitely many reductions the
+refinement stops. Optimality follows because every inserted circumcenter lies
+in a region that must contain a Steiner point in any mesh achieving the bound,
+so the count is within a constant factor of optimum~\cite{ruppert1995,shewchuk1998}.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Ruppert Delaunay Refinement}
+\label{alg:ruppert_refine}
+\begin{algorithmic}[1]
+\Require PSLG $G$, ratio bound $B$.
+\Ensure a quality Delaunay mesh of $G$.
+\Function{RuppertRefine}{$G, B$}
+  \State $\mathcal{T} \gets $ conforming Delaunay triangulation of $G$
+  \State $Q \gets $ queue of encroached segments and skinny triangles
+  \While{$Q$ is not empty}
+    \State $x \gets Q.\text{pop}()$ (prefer encroached segments)
+    \If{$x$ is an encroached segment}
+      \State insert its midpoint; re-triangulate locally; enqueue new
+             encroached segments and skinny triangles
+    \Else \Comment{$x$ is a skinny triangle}
+      \State $c \gets \text{circumcenter}(x)$
+      \If{some segment near $c$ is encroached}
+        \State split that segment at its midpoint instead
+      \Else
+        \State insert $c$; re-triangulate locally; enqueue new skinny triangles
+      \EndIf
+    \EndIf
+  \EndWhile
+  \State \Return $\mathcal{T}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Ratio bound $B$}: $B = \sqrt{2}$ gives the classic
+  $20.7^\circ$ guarantee; larger $B$ (e.g., $B = 2$) yields fewer points but
+  weaker angles; Chew's variant attains $30^\circ$.
+\item \textbf{Small input angles}: angles below $60^\circ$ in the input PSLG
+  force special handling (segment splitting at graded lengths) because
+  circumcenter insertion near acute corners can create arbitrarily short edges.
+\item \textbf{Sizing fields}: refinement with a user sizing function
+  (graded meshes) replaces the uniform bound $B$ by a local target edge length.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ expected for the refinement loop, where $n$ is
+  the output size.
+\item \textbf{Space}: $O(n)$.
+\item \textbf{Output size}: within a constant factor of the optimal mesh
+  achieving the same angle bound (Theorem~\ref{thm:ruppert}).
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Quality mesh generation}: the meshers behind
+  Section~\ref{sec:delaunay_mesh_applications} (Triangle, CGAL, TetGen in 2D
+  analog form) implement Ruppert's algorithm directly.
+\item \textbf{Conforming CDTs}: refinement yields a conforming Delaunay
+  triangulation that contains the constraints and satisfies angle bounds,
+  combining Section~\ref{sec:delaunay_constrained} with quality guarantees.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Acute input angles}: verify termination when the input contains
+  $30^\circ$ corners by checking the segment-splitting path is taken.
+\item \textbf{Encroachment chains}: an encroached midpoint can encroach on
+  neighbors; the queue must drain without infinite loops (the $B \ge \sqrt{2}$
+  condition prevents cascades).
+\item \textbf{Verification}: after termination, assert every triangle has ratio
+  $\le B$ and every segment is unencroached.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Chew, L.~P. \cite{chew1989}.
+\item Ruppert, J. \cite{ruppert1995}.
+\item Shewchuk, J.~R. \cite{shewchuk1998}.
+\end{itemize}
+
 \section{Higher-Dimensional Delaunay Complexes}
 \label{sec:delaunay_higher_dimensional}
+
+\subsection{1. Overview}
+
+All of the theory extends to $\mathbb{R}^d$ with the empty-circumsphere
+property replacing the empty circle. The Delaunay complex of a point set in
+$\mathbb{R}^d$ is a simplicial complex of $d$-simplices, and its restriction
+to simplices whose circumradius is bounded---the \index{alpha shape}\emph{alpha
+complex}---is the standard structure for surface reconstruction from point
+clouds. Weighted (regular) triangulations generalize the construction to sites
+with radii, replacing circles by power regions.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Empty Circumsphere]\label{def:empty_circumsphere}
+A simplex $T$ of a point set in $\mathbb{R}^d$ is \emph{Delaunay} if the open
+ball bounded by the circumsphere of $T$ contains no point of the set. The
+\emph{Delaunay complex} is the collection of all such simplices; its maximal
+$d$-simplices tile the convex hull of the point set when the points are in
+general position.
+\end{definition}
+
+\begin{definition}[Alpha Complex]\label{def:delaunay_alpha_complex}
+For a real $\alpha \ge 0$, the \emph{alpha complex} consists of all Delaunay
+simplices whose circumradius is at most $\alpha$ (and, recursively, all faces of
+those simplices). Varying $\alpha$ from $0$ to $\infty$ produces the
+\emph{alpha shape} family interpolating from the empty set to the convex hull.
+\end{definition}
+
+\begin{definition}[Regular Triangulation]\label{def:regular_triangulation}
+For weighted points $(p_i, r_i)$, the \emph{power distance} of $x$ to $p_i$ is
+$\|x - p_i\|^2 - r_i^2$. A \emph{regular triangulation} (weighted Delaunay
+triangulation) is defined by empty \emph{power spheres}: no point of the set
+lies in the power region of any simplex. Its dual is the power (weighted
+Voronoi) diagram.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Delaunay Complex in Higher Dimensions]\label{thm:high_dim_delaunay}
+Let $P$ be a set of points in general position in $\mathbb{R}^d$. The Delaunay
+complex is a triangulation of the convex hull of $P$. Lifting $p \mapsto
+(p, \|p\|^2)$ to the paraboloid in $\mathbb{R}^{d+1}$ shows that the Delaunay
+complex is the projection of the lower hull of the lifted points, exactly as in
+two dimensions (Theorem~\ref{thm:lifting}).
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The determinant form of the in-circle predicate generalizes verbatim to a
+$(d+2) \times (d+2)$ determinant whose sign decides whether a point lies inside
+a circumsphere. All two-dimensional arguments---cavity repair, flips, lifting,
+randomized incremental construction---carry through with the same proofs,
+replacing circles by spheres and triangles by $d$-simplices.
+\end{proof}
+
+In three dimensions the situation differs in one essential way: the Delaunay
+tetrahedralization need not be unique, and no flip sequence suffices to reach
+it from an arbitrary tetrahedralization. Moreover the worst-case complexity
+grows.
+
+\begin{theorem}[Complexity in Fixed Dimension]\label{thm:high_dim_size}
+In $\mathbb{R}^d$ the Delaunay complex has $\Theta(n^{\lceil d/2 \rceil})$
+simplices in the worst case; in $\mathbb{R}^3$ it has $O(n^2)$ tetrahedra and
+can be constructed by randomized incremental insertion in expected $O(n^2)$
+time and $O(n \log n)$ time for well-distributed inputs.
+\end{theorem}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Bowyer--Watson in Higher Dimensions}
+\label{alg:delaunay_3d}
+\begin{algorithmic}[1]
+\Require point set $P$ in $\mathbb{R}^d$, enclosing $(d{+}1)$-simplex.
+\Ensure the Delaunay complex of $P$.
+\Function{InsertDelaunayD}{$P$}
+  \State $\mathcal{K} \gets $ single enclosing $(d{+}1)$-simplex
+  \For{each $p \in P$}
+    \State cavity $\gets \{ T \in \mathcal{K} : p \in \text{circumsphere}(T) \}$
+    \State remove the cavity; add the fan of simplices from $p$ to each
+           boundary facet of the cavity
+  \EndFor
+  \State remove simplices incident to the enclosing simplex
+  \State \Return $\mathcal{K}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Dimension}: the code is generic in $d$ but the practical
+  sweet spot is $d \le 4$; beyond that the $\Theta(n^{\lceil d/2\rceil})$ size
+  bound makes exact construction prohibitive and approximate methods (spatial
+  hashing, approximate NNS) are used instead.
+\item \textbf{Weights}: regular triangulations encode anisotropic or
+  radius-bearing sites (spheres, molecules); they are the default when inputs
+  have sizes.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: expected $O(n \log n)$ in $\mathbb{R}^2$;
+  $\Theta(n^{\lceil d/2\rceil})$ worst case in $\mathbb{R}^d$.
+\item \textbf{Space}: the output itself dominates; in $\mathbb{R}^3$ up to
+  $O(n^2)$ tetrahedra.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Surface reconstruction}: the alpha complex (at a suitable
+  $\alpha$) reconstructs surfaces from scanner output, as used in the reverse
+  engineering pipelines of Section~\ref{sec:delaunay_mesh_applications}.
+\item \textbf{Tetrahedral meshing}: Delaunay tetrahedralizations of 3D point
+  sets (with refinement for quality) are the foundation of TetGen and CGAL
+  volume meshing.
+\item \textbf{Molecular modeling}: regular triangulations compute
+  power/Voronoi decompositions of atom models for solvent-accessible surface
+  areas.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Cospherical points}: five cospherical points make the
+  tetrahedralization non-unique; verify consistent tie-breaking.
+\item \textbf{Slivers}: four nearly coplanar points produce a near-degenerate
+  tetrahedron; report the smallest radius ratio to check mesh quality.
+\item \textbf{Degenerate lower dimensions}: points embedded in a
+  lower-dimensional affine subspace (all points coplanar in $\mathbb{R}^3$)
+  must be handled by projecting to the subspace first.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Bowyer, A. \cite{bowyer1981}; Watson, D.~F. \cite{watson1981}.
+\item Edelsbrunner, H., M\"ucke, E.~P. \cite{edelsbrunner1994}, alpha shapes.
+\item Edelsbrunner, H. \cite{edelsbrunner1987}.
+\item Okabe, A., et al. \cite{okabe2000}, Ch.~4.
+\end{itemize}
 
 \section{Intrinsic Delaunay Triangulation}
 \label{sec:delaunay_intrinsic}
