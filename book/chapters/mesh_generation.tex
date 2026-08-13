@@ -1,49 +1,699 @@
 \chapter{Mesh Generation}
 \label{ch:mesh_generation}
 
-% Stub: outline only; content to be written.
-
 \section{Computational Meshes}
 \label{sec:meshgen_intro}
+
+A \textbf{computational mesh}\index{mesh} is a discretization of a geometric
+domain into simple cells --- triangles and quadrilaterals in the plane,
+tetrahedra, hexahedra, and prisms in space --- on which numerical methods
+(finite elements, finite volumes, boundary elements) compute approximate
+solutions of partial differential equations. Mesh generation is the
+algorithmic discipline that constructs such meshes automatically from a
+geometric description of the domain: a polygon, a polyhedron, or a CAD
+boundary representation, possibly with prescribed mesh sizes near features
+and a quality requirement on the cells.
+
+The quality of a mesh directly controls the accuracy and stability of the
+numerical solution: poorly shaped cells (very small angles, slivers) inflate
+the discretization error and the condition number of the assembled linear
+system. Mesh generation therefore balances three competing goals:
+\textbf{conformity} (the mesh reproduces the domain boundary and any
+prescribed features exactly), \textbf{quality} (every cell satisfies a
+geometric quality bound, e.g., a minimum angle), and \textbf{efficiency}
+(the number of cells is as small as the size field allows). These goals,
+their algorithmic resolutions, and their analysis are the subject of this
+chapter.
+
+Two families of methods dominate practice. \textbf{Delaunay-based} methods
+(Chapter~\ref{ch:delaunay_triangulations}) build the mesh as a Delaunay
+triangulation refined by inserting points at circumcenters of bad cells;
+they dominate the triangulated meshes of scientific computing
+(Section~\ref{sec:meshgen_refinement}). \textbf{Advancing-front} methods
+grow the mesh inward from the boundary (Section~\ref{sec:meshgen_advancing_front}).
+Both are supported by the mesh-analysis machinery of
+Chapter~\ref{ch:mesh_analysis}, which verifies the validity and quality of
+the output.
 
 \section{Simplicial Complexes}
 \label{sec:meshgen_simplicial}
 
+\begin{definition}[Simplicial Complex]\label{def:meshgen_simplicial_complex}
+  A \textbf{simplicial complex} $K$ is a finite collection of simplices
+  (vertices, edges, triangles, tetrahedra) such that (i) every face of a
+  simplex of $K$ is in $K$, and (ii) the intersection of any two simplices
+  of $K$ is a face of both. The \textbf{underlying space} $|K|$ is the
+  union of the simplices.
+\end{definition}
+
+Simplicial complexes are the abstract combinatorial skeleton of a mesh: a
+triangular mesh is a 2D simplicial complex whose underlying space
+approximates the domain, and a tetrahedral mesh is a 3D simplicial complex.
+The axioms guarantee that cells meet only in shared faces --- there are no
+hanging vertices or cracked edges --- which is exactly the topological
+validity that finite-element assembly requires. Two meshes are related by
+\textbf{refinement} if one is obtained from the other by subdividing
+simplices; a \textbf{conforming} refinement keeps the complex a
+simplicial complex after every subdivision, which is what makes adaptive
+meshing (Section~\ref{sec:meshgen_adaptive}) possible.
+
+The half-edge data structure of Chapter~\ref{ch:half_edge} stores a 2D
+simplicial complex with adjacency queries in $O(1)$; the combinatorial
+machinery of Chapter~\ref{ch:computational_topology} (Euler characteristic,
+Betti numbers) checks that a mesh is a manifold of the intended genus.
+These validity checks are run as part of mesh generation's testing phase
+(Section~\ref{sec:meshgen_project}).
+
+\index{simplicial complex}\index{underlying space}
+
 \section{Triangular and Tetrahedral Meshes}
 \label{sec:meshgen_tri_tet}
+
+The two most common mesh types are the \textbf{triangular mesh} (2D, or a
+surface triangulation in 3D) and the \textbf{tetrahedral mesh} (3D
+volumetric). A triangular mesh of a polygonal domain conforms to the domain
+if every boundary edge of the domain is a union of mesh edges; a
+tetrahedral mesh of a polyhedron conforms if the boundary triangles exactly
+cover the domain's faces. The mesh is \textbf{simplicial} if all cells are
+simplices, which is the case here; quadrilateral and hexahedral meshes
+require the different machinery of structured and block-structured methods
+and are not treated in this chapter.
+
+The generation pipeline is the same for both dimensions:
+\begin{enumerate}
+  \item \textbf{Input}: a domain described by its boundary (a polygon with
+    holes, a CAD boundary representation, or a point cloud with boundary
+    information);
+  \item \textbf{Initial triangulation}: a coarse conforming triangulation of
+    the domain, typically a constrained Delaunay triangulation of the
+    boundary (Section~\ref{sec:meshgen_constrained});
+  \item \textbf{Size field}: a function that prescribes the desired cell
+    size at each point, derived from feature sizes, curvature, or a
+    prescribed grading (Section~\ref{sec:meshgen_adaptive});
+  \item \textbf{Refinement}: inserting points until every cell satisfies
+    the size and quality requirements (Sections~\ref{sec:meshgen_refinement}
+    --\ref{sec:meshgen_chew});
+  \item \textbf{Optimization}: smoothing and edge flips to improve quality
+    beyond the guarantee (Section~\ref{sec:meshgen_optimization});
+  \item \textbf{Output}: the mesh in a standard format (e.g., Gmsh's MSH
+    format, or the half-edge/triangle-index structures of
+    Chapter~\ref{ch:half_edge}).
+\end{enumerate}
+The Delaunay triangulation of Section~\ref{sec:meshgen_delaunay} is the
+central building block of the most widely used pipeline, implemented in
+production meshers such as TetGen \cite{si2015} and Gmsh \cite{geuzaine2009}.
+
+\index{triangular mesh}\index{tetrahedral mesh}
 
 \section{Mesh Quality Measures}
 \label{sec:meshgen_quality}
 
+The \textbf{quality} of a triangle or tetrahedron measures how far the cell
+is from equilateral; the numerical stability of finite-element assembly
+degrades with poor quality. The standard measures are:
+
+\begin{description}
+  \item[Minimum angle] For a triangle, the minimum interior angle. The
+    fundamental bound of this chapter is that every angle is at least
+    $30^\circ$ (Delaunay refinement with the smallest-angle rule), because
+    the discretization error in the finite-element method is inversely
+    proportional to $\sin(\text{minimal angle})$.
+  \item[Aspect ratio] The ratio of the circumradius to the inradius; $2$
+    for an equilateral triangle and $\infty$ for a degenerate one. A bound
+    on the aspect ratio is equivalent to a bound on the minimum angle.
+  \item[Radius--edge ratio] The ratio $\rho = R / \ell_{\min}$ of the
+    circumradius $R$ to the shortest edge $\ell_{\min}$. A triangle with
+    $\rho$ bounded by $\rho^*$ has all angles bounded away from $0$ and
+    $180^\circ$; this is the quantity that Ruppert's algorithm controls
+    directly (Section~\ref{sec:meshgen_ruppert}).
+  \item[Sliver measure (3D)] A tetrahedron whose four vertices are nearly
+    coplanar but whose edges are long; slivers have small volume-to-edge
+    ratios and pass the angle tests that fail triangles. Sliver exudation
+    removes them by vertex perturbation (Section~\ref{sec:meshgen_optimization}).
+\end{description}
+
+The relationships among measures matter for algorithm design: bounding
+$\rho$ bounds all angles for triangles, but in 3D no single edge-based
+ratio bounds the sliver shape, which is why tetrahedral Delaunay refinement
+has weaker guarantees than the 2D theory. Quality is measured and reported
+by the mesh-analysis routines of Chapter~\ref{ch:mesh_analysis}, which
+compute histograms of these measures over the mesh.
+
+\index{aspect ratio}\index{radius-edge ratio}\index{sliver}
+
 \section{Delaunay Mesh Generation}
 \label{sec:meshgen_delaunay}
+
+Delaunay mesh generation builds the mesh as (a constrained)
+\textbf{Delaunay triangulation}\index{Delaunay triangulation} of the domain
+and its inserted points. Recall from Chapter~\ref{ch:delaunay_triangulations}
+that a triangulation is Delaunay if every triangle's circumcircle contains
+no point of the triangulation in its interior (the \emph{empty-circumcircle
+property}, Section~\ref{sec:delaunay_empty_circumcircle}); equivalently, no
+edge is \emph{illegal} and flipping illegal edges terminates at the Delaunay
+triangulation (Section~\ref{sec:delaunay_edge_flipping}). The Delaunay
+triangulation maximizes the minimum angle over all triangulations of the
+same point set, which makes it the natural starting point for quality mesh
+generation: it is already the best possible on the given points, and
+refinement only improves it further.
+
+Mesh generation uses the Delaunay machinery in two ways:
+\begin{itemize}
+  \item \textbf{As the initial mesh}: the boundary of the domain is
+    triangulated by a constrained Delaunay triangulation
+    (Section~\ref{sec:meshgen_constrained});
+  \item \textbf{As the refinement engine}: inserting a new point into a
+    Delaunay triangulation requires locating its enclosing triangle (by the
+    walking methods of Section~\ref{sec:pointloc_triangulations} or the
+    history DAG of Section~\ref{sec:pointloc_search_dags}), splitting the
+    triangle, and legalizing edges by flips. Each insertion is a local
+    operation, so the mesh is updated in expected $O(\log n)$ time.
+\end{itemize}
+The theory of Section~\ref{sec:delaunay_randomized} (expected $O(n\log n)$
+construction) and Section~\ref{sec:delaunay_refinement} (angle guarantees)
+therefore transfers directly to mesh generation, and the practical
+implementations in TetGen \cite{si2015} and Gmsh \cite{geuzaine2009} are
+direct descendants of these algorithms.
 
 \section{Constrained Delaunay Meshing}
 \label{sec:meshgen_constrained}
 
+A mesh must reproduce the domain's boundary exactly, but an ordinary
+Delaunay triangulation of the boundary vertices can contain edges that
+cross the boundary or lie outside the domain. The \textbf{constrained
+Delaunay triangulation (CDT)}\index{constrained Delaunay triangulation}
+fixes this: a set of constraint edges (the domain boundary and any
+prescribed internal features such as material interfaces) is forced into
+the triangulation, and every triangle must have the empty-circumcircle
+property \emph{relative to the constraints}: its circumcircle contains no
+vertex that is \emph{visible} from the triangle's interior, where the line
+of sight must not cross a constraint. This is the definition developed in
+Section~\ref{sec:delaunay_constrained}.
+
+The CDT of the boundary provides the initial conforming mesh from which
+refinement proceeds. The constrained edges are the domain's boundary
+segments, and the refinement process (Section~\ref{sec:meshgen_refinement})
+never removes them: points are inserted only in the interior of cells (or
+on constrained edges in a way that preserves the boundary, by splitting the
+edge into two constrained pieces). Guaranteeing that the boundary is
+reproduced \emph{exactly} requires exact arithmetic on the input
+coordinates; floating-point snap is not acceptable, and the robust
+predicates of Chapter~\ref{ch:geometric_predicates} are used throughout.
+
+For a polyhedron, the 3D constrained Delaunay triangulation is
+considerably harder than the 2D CDT because the boundary is a surface
+triangulation and the empty-circumsphere condition is more delicate; the
+practical resolution used by TetGen \cite{si2015} is to start from a
+boundary conforming Delaunay triangulation of the input's vertices and then
+enforce the boundary faces, using Shewchuk's boundary-conforming algorithms
+\cite{si2015}.
+
+\index{constrained Delaunay triangulation}
+
 \section{Delaunay Refinement}
 \label{sec:meshgen_refinement}
+
+\subsection{1. Overview}
+
+\textbf{Delaunay refinement}\index{Delaunay refinement} is the process of
+improving a Delaunay triangulation by inserting a new point at the
+\textbf{circumcenter} of any cell that fails the size or quality
+requirements, and legalizing the affected cells. The two classical
+algorithms are Chew's (Section~\ref{sec:meshgen_chew}) and Ruppert's
+(Section~\ref{sec:meshgen_ruppert}), analyzed in the survey of Shewchuk
+\cite{shewchuk2002}; together they show that a Delaunay refinement process
+that inserts circumcenters of cells whose radius--edge ratio exceeds a
+threshold terminates and produces a mesh whose minimum angle is bounded by
+a constant --- $30^\circ$ being the canonical bound.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Skinny Triangle]\label{def:meshgen_skinny}
+  A triangle is \textbf{skinny} if its radius--edge ratio $\rho = R/\ell_{\min}$
+  exceeds a threshold $\rho^*$ (equivalently, if some angle is too small).
+  Its \textbf{circumcenter} is a candidate insertion point.
+\end{definition}
+
+\subsection{3. Theory}
+
+The power of circumcenter insertion is a locality argument. Inserting a
+point at the circumcenter of a skinny triangle subdivides that triangle into
+three smaller triangles, each with radius--edge ratio at most that of the
+parent (the circumradius halves while the shortest edge stays bounded
+below). The danger is that the insertion point lies \emph{outside} the
+domain (it is a boundary or a split of a constrained edge), in which case
+the point is inserted on the midpoint of the offending edge instead. The
+termination and quality proofs control the accumulation of short edges:
+Ruppert's algorithm \cite{ruppert1995} shows that if the threshold is
+$\rho^* < 2$ and every boundary segment is \emph{encroached} (its
+diametral circle contains another vertex), then the process terminates and
+the output mesh has no angle smaller than $\arcsin(\sqrt{3}/(2\rho^*))$
+--- at least $20.7^\circ$ for $\rho^* = 2$, and $30^\circ$ for the variant
+that refines skinny and encroached cells together.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Delaunay Refinement (Ruppert--Chew style)}
+\label{alg:meshgen_refinement}
+\begin{algorithmic}[1]
+\Require A constrained Delaunay triangulation of the domain, quality threshold $\rho^*$.
+\Ensure A conforming mesh with no triangle of radius--edge ratio $> \rho^*$.
+\Function{DelaunayRefine}{$\mathcal{T}$, $\rho^*$}
+  \State $Q \gets$ priority queue of skinny triangles and encroached boundary segments
+  \While{$Q$ is not empty}
+    \State pop the highest-priority item
+    \If{it is an encroached segment $e$}
+      \State insert the midpoint of $e$; split $e$ into two constrained pieces; legalize
+    \ElsIf{the circumcenter $c$ of skinny triangle $t$ encroaches a segment $e$}
+      \State insert the midpoint of $e$ instead of $c$; legalize
+    \Else
+      \State insert $c$; legalize the affected edges by flips
+    \EndIf
+    \State re-evaluate the quality of all affected cells and update $Q$
+  \EndWhile
+  \State \Return $\mathcal{T}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Threshold $\rho^*$}: smaller $\rho^*$ gives better angles but
+  more cells; the practical sweet spot is $\rho^* = 2$ (angle bound
+  $20.7^\circ$) to $2\sqrt{2}$.
+\item \textbf{Priority order}: processing encroached segments before
+  circumcenters (Chew's ``split the worst first'') is required for the
+  termination proof.
+\item \textbf{Size field}: refinement stops when cells satisfy both the
+  quality bound and the size field of Section~\ref{sec:meshgen_adaptive};
+  the two criteria are combined into one priority.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ expected for a mesh of $n$ cells, since
+  each point insertion is an expected-$O(\log n)$ Delaunay update.
+\item \textbf{Size}: for a domain whose features are resolved, the number
+  of cells is proportional to the size-field integral; the constants depend
+  on the angle bound.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Finite-element meshing}: the default engine of production
+  triangular and tetrahedral meshers (Section~\ref{sec:meshgen_fem}).
+\item \textbf{Guaranteed-quality requirements}: applications that must bound
+  the worst element (e.g., FEM error control, computational fluid dynamics
+  meshes) use Delaunay refinement precisely because of its angle guarantee.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Angle check}: after refinement, verify numerically that no
+  angle is below the promised bound, using the quality measures of
+  Section~\ref{sec:meshgen_quality}.
+\item \textbf{Encroachment}: deliberately construct an input where a
+  circumcenter encroaches a boundary segment and verify the midpoint split.
+\item \textbf{Small features}: boundaries with features closer than the
+  requested size must be resolved to their feature size first.
+\end{itemize}
+
+\subsection{9. References}
+
+The refinement algorithms are due to Chew \cite{chew1989} and Ruppert
+\cite{ruppert1995}; the complete analysis and engineering guidance are in
+Shewchuk's survey \cite{shewchuk2002} and thesis \cite{shewchuk1998}, and
+the Delaunay background in Chapter~\ref{ch:delaunay_triangulations}.
 
 \section{Ruppert's Algorithm}
 \label{sec:meshgen_ruppert}
 
+\subsection{1. Overview}
+
+Ruppert's algorithm \cite{ruppert1995} is the canonical Delaunay refinement
+method with a provable angle guarantee. It maintains a constrained Delaunay
+triangulation and refines it by inserting circumcenters of skinny triangles
+and midpoints of \emph{encroached} boundary segments, in a priority order
+that guarantees termination. The output has all angles at least a fixed
+bound (about $20.7^\circ$ for the standard parameter) and respects the
+domain boundary exactly.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Encroachment]\label{def:meshgen_encroachment}
+  A boundary segment $e$ is \textbf{encroached} if some vertex of the
+  triangulation lies in the interior of the circle with diameter $e$.
+  Inserting a vertex into the circle with diameter $e$ can make the Delaunay
+  triangulation lose $e$ as an edge, so encroached segments must be split at
+  their midpoint first.
+\end{definition}
+
+\subsection{3. Theory}
+
+The correctness rests on two lemmas proved in \cite{ruppert1995,
+shewchuk2002}:
+\begin{itemize}
+  \item \textbf{Termination}: every inserted point is at distance at least
+    $\ell_{\min} \cdot \rho^* / (\rho^* + 1)$ from every existing vertex
+    (a separation bound), so the refinement inserts only finitely many
+    points and the mesh size is bounded in terms of the smallest feature.
+  \item \textbf{Quality}: after termination, no triangle has radius--edge
+    ratio exceeding $\rho^*$; for $\rho^* = 2$ this implies no angle
+    smaller than $\arcsin(\sqrt{3}/4) \approx 20.7^\circ$. The
+    ``smallest angle'' refinement variant (inserting the circumcenter with
+    the rule that the new triangle angles are at least $30^\circ$) gives
+    the $30^\circ$ bound.
+\end{itemize}
+
+\subsection{4. Pseudocode}
+
+The algorithm is the specialization of
+Algorithm~\ref{alg:meshgen_refinement} with the priority rule ``always
+split an encroached segment before inserting any circumcenter'', i.e., the
+Chew--Ruppert order in which a skinny triangle is processed only if its
+circumcenter is not encroaching a segment.
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Angle bound}: the angle guarantee improves with the choice of
+  $\rho^*$; the theory is cleanest at $\rho^* = 2$.
+\item \textbf{Size field}: Ruppert's algorithm was originally analyzed
+  without a size field; combining it with the graded size field of
+  Section~\ref{sec:meshgen_adaptive} preserves the angle bound and the
+  linear size behavior.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ expected, dominated by the Delaunay
+  insertions.
+\item \textbf{Size}: $O(n)$ cells, with constants that grow as the angle
+  bound tightens.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Guaranteed-quality 2D meshing}: the reference algorithm
+  implemented in Triangle and in the planar meshers of Gmsh
+  \cite{geuzaine2009,shewchuk2002}.
+\item \textbf{Conforming boundary meshes}: the exact boundary reproduction
+  makes it the tool for FEM and CFD preprocessing (Section~\ref{sec:meshgen_fem}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Angle histogram}: assert the promised minimum angle over
+  thousands of random domains.
+\item \textbf{Boundary reproduction}: verify every input boundary segment is
+  a union of output edges.
+\item \textbf{Encroachment regression}: construct domains whose boundary
+  segments are longer than the local feature and verify midpoint splitting.
+\end{itemize}
+
+\subsection{9. References}
+
+Ruppert \cite{ruppert1995} introduced the algorithm; Shewchuk
+\cite{shewchuk2002} presents the complete proof of termination and the
+angle bounds, and the engineering details \cite{shewchuk1998}.
+
 \section{Chew's Algorithm}
 \label{sec:meshgen_chew}
+
+\subsection{1. Overview}
+
+Chew's algorithm \cite{chew1989} is the earliest Delaunay refinement method
+with a quality guarantee. It maintains a constrained Delaunay triangulation
+and repeatedly splits the \textbf{worst} triangle: the triangle with the
+largest circumradius--shortest-edge ratio is refined by inserting its
+circumcenter. Chew proved that this process converges to a mesh in which
+every angle is at least $30^\circ$ when a careful tie-breaking is used; the
+algorithm is the prototype of the priority-queue refinement implemented in
+Algorithm~\ref{alg:meshgen_refinement}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Worst Triangle]\label{def:meshgen_worst}
+  The \textbf{worst triangle} of a triangulation is the triangle whose
+  radius--edge ratio is maximal. Chew's algorithm always refines the worst
+  triangle, resolving ties by a fixed rule (e.g., by edge length).
+\end{definition}
+
+\subsection{3. Theory}
+
+The worst-first rule is what makes the analysis simple: refining the
+worst triangle at every step guarantees that no triangle ever becomes worse
+than the current worst, so the worst ratio decreases monotonically toward
+the bound. Chew's proof shows the process terminates with no angle below
+$30^\circ$ on inputs with well-separated features; Ruppert's refinement
+(Section~\ref{sec:meshgen_ruppert}) extended the guarantee to arbitrary
+inputs by adding the encroachment rule.
+
+\subsection{4. Pseudocode}
+
+The pseudocode is Algorithm~\ref{alg:meshgen_refinement} restricted to the
+single rule ``pop the worst triangle $t$; insert its circumcenter unless it
+encroaches a segment, in which case split the segment''.
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Worst-first priority}: the priority is the radius--edge
+  ratio; the deterministic tie-break matters for reproducibility.
+\item \textbf{Degenerate resolution}: when the circumcenter is ill-defined
+  (nearly collinear cells), refine by the longest edge instead.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ expected with a heap-based priority
+  queue of $O(n)$ triangles.
+\item \textbf{Size}: linear in the output mesh size.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Theoretic basis}: the ``worst-first'' scheme is the template
+  for guaranteed-quality refinement in two and three dimensions.
+\item \textbf{Implementation default}: many meshers use worst-first with
+  the $30^\circ$ target as the practical default refinement policy.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Bound verification}: assert the $30^\circ$ angle bound on
+  structured and unstructured test domains.
+\item \textbf{Infinite loop guard}: verify that the priority queue drains on
+  domains with tiny features (the separation bound of
+  Section~\ref{sec:meshgen_ruppert} is what guarantees termination).
+\end{itemize}
+
+\subsection{9. References}
+
+Chew's original result \cite{chew1989} and its placement in the refinement
+theory by Shewchuk \cite{shewchuk2002}.
 
 \section{Advancing-Front Methods}
 \label{sec:meshgen_advancing_front}
 
+\textbf{Advancing-front methods}\index{advancing-front} generate the mesh
+by growing cells inward from the domain boundary: the boundary is first
+discretized into a set of front edges, and new triangles (or tetrahedra)
+are created by connecting front vertices, one cell at a time, with the
+front advancing into the domain until it collapses. The method is the
+main non-Delaunay approach and is favored in certain settings:
+
+\begin{itemize}
+  \item \textbf{Boundary fidelity}: cells start at the boundary, so the
+    mesh matches the input surface precisely and can align cells with
+    anisotropic directions on the boundary.
+  \item \textbf{Anisotropy}: the local cell shapes are controlled directly
+    by the front construction, which suits anisotropic boundary-layer
+    meshes in computational fluid dynamics.
+  \item \textbf{No global structure}: no global Delaunay machinery is
+    needed, which simplifies implementations for domains with many
+    disconnected boundary components.
+\end{itemize}
+
+Its weaknesses are equally well known. The quality guarantee is local and
+empirical rather than provable; the front can ``collapse'' poorly near
+internal boundaries; and the element count is not controlled by a size
+field as cleanly as in Delaunay refinement. In practice the two families
+are often combined: an advancing-front method generates the boundary layer
+and the coarse interior, and a Delaunay refinement pass cleans up the
+interior cells (as in Gmsh's default pipeline \cite{geuzaine2009}).
+Simpler but robust alternatives for many applications are the
+distmesh-style physically motivated generators \cite{persson2004}, which
+relax an initial triangulation under forces derived from the desired cell
+size, and the Delaunay refinement methods of Sections
+\ref{sec:meshgen_refinement}--\ref{sec:meshgen_chew}.
+
+\index{advancing front}
+
 \section{Adaptive Meshing}
 \label{sec:meshgen_adaptive}
+
+\textbf{Adaptive meshing}\index{adaptive meshing} generates a mesh whose
+cell size varies over the domain according to a \textbf{size field}: small
+cells where the solution (or the geometry) changes rapidly, large cells
+where it is smooth. The size field is prescribed either a priori from
+geometric features (curvature, thin regions, feature edges) or a posteriori
+from a computed error estimator of the numerical solution --- the
+loop that iterates ``solve, estimate error, adapt mesh, solve again''
+is the \textbf{adaptive finite-element method}.
+
+The two standard adaptation mechanisms are:
+\begin{description}
+  \item[$h$-refinement] Subdividing cells where the size field demands
+    smaller cells; the subdivision must be \textbf{conforming} (the result
+    remains a simplicial complex, Section~\ref{sec:meshgen_simplicial}),
+    which is enforced by propagating subdivisions across faces and, for
+    tetrahedra, by the standard (newest-vertex or longest-edge) refinement
+    templates.
+  \item[Regeneration] Rebuilding the mesh with the new size field, which is
+    how the Delaunay refinement methods of
+    Sections~\ref{sec:meshgen_refinement}--\ref{sec:meshgen_chew} adapt:
+    the size field enters as a second stopping criterion, and the insertion
+    of circumcenters proceeds until every cell satisfies both the quality
+    and the size bounds.
+\end{description}
+
+The efficiency guarantee of adaptive Delaunay refinement is that the final
+mesh size is bounded by the size-field integral (a consequence of the
+separation bound), so the mesh does not overshoot the requested sizes even
+under rapid grading. Verifying that the computed mesh respects the size
+field is part of the testing protocol of Section~\ref{sec:meshgen_project}.
+
+\index{adaptive meshing}\index{size field}\index{h-refinement}
 
 \section{Mesh Optimization}
 \label{sec:meshgen_optimization}
 
+The refinement methods of Sections~\ref{sec:meshgen_refinement}--\ref{sec:meshgen_chew}
+guarantee a worst-case angle bound but not the best achievable quality.
+\textbf{Mesh optimization}\index{mesh optimization} improves the mesh
+beyond the guarantee by local operations that preserve the conforming
+boundary:
+
+\begin{description}
+  \item[Edge flips] In 2D, an interior edge shared by two triangles is
+    flipped to the other diagonal when the flip increases the minimum angle
+    (the Delaunay legality test of Section~\ref{sec:delaunay_edge_flipping});
+    repeatedly flipping illegal edges converges to the Delaunay
+    triangulation.
+  \item[Laplacian smoothing] Each interior vertex is moved to the average
+    of its neighbors' positions; this usually improves the angles, but it
+    can invert cells, so the move is accepted only if it improves a quality
+    measure (constrained smoothing).
+  \item[Optimization-based smoothing] Each vertex is moved to the position
+    maximizing the minimum angle (or minimizing the maximum
+    radius--edge ratio) over its incident cells, solved by a small local
+    nonlinear optimization; this is the strongest local smoother.
+  \item[Sliver exudation (3D)] Slivers (Section~\ref{sec:meshgen_quality})
+    are removed by perturbing their vertices slightly, keeping the
+    Delaunay condition while destroying the near-coplanarity; sliver
+    exudation is what turns a merely angle-bounded tetrahedral mesh into a
+    numerically acceptable one \cite{si2015}.
+\end{description}
+
+Optimization is a postprocess: its moves must never violate the domain
+boundary (boundary vertices are fixed), must never invert a cell, and must
+be idempotent for reproducibility. The quality measures of
+Section~\ref{sec:meshgen_quality} and the validity checks of
+Chapter~\ref{ch:mesh_analysis} are the acceptance criteria.
+
+\index{mesh smoothing}\index{edge flip}\index{sliver exudation}
+
 \section{Finite-Element Applications}
 \label{sec:meshgen_fem}
+
+The meshes built in this chapter are the discretization layer of the
+\textbf{finite-element method}\index{finite element method} (FEM) and the
+finite-volume and finite-difference methods. The FEM on a triangular mesh
+approximates a PDE solution by continuous piecewise-linear functions on the
+triangles; the accuracy of the approximation depends on the mesh through
+two mechanisms:
+\begin{itemize}
+  \item the \textbf{interpolation error} is bounded in terms of the
+    circumradius of each cell and the second derivatives of the true
+    solution, so small cells (the size field) control accuracy;
+  \item the \textbf{stability} is controlled by the minimal angle, which
+    appears in the constants of the error bounds and in the condition
+    number of the stiffness matrix, so the angle guarantee of
+    Section~\ref{sec:meshgen_refinement} controls robustness.
+\end{itemize}
+This is the precise reason mesh generation and mesh analysis
+(Chapter~\ref{ch:mesh_analysis}) are inseparable: the quality measures of
+Section~\ref{sec:meshgen_quality} are exactly the quantities that FEM
+analysis cites, and the adaptive loop of Section~\ref{sec:meshgen_adaptive}
+drives the accuracy of industrial simulations. The production meshers used
+in FEM workflows --- Gmsh \cite{geuzaine2009} for mesh generation and
+visualization, and TetGen \cite{si2015} for guaranteed-quality tetrahedral
+meshes --- implement the algorithms of this chapter, and their interfaces
+are the de facto standards for exchanging meshes with solvers.
 
 \section{Exercises}
 \label{sec:meshgen_exercises}
 
+\begin{enumerate}
+  \item Prove that the minimum angle of a triangle is a decreasing function
+    of its radius--edge ratio, and give the exact relation.
+  \item Show that inserting the circumcenter of a triangle subdivides it
+    into three triangles whose radius--edge ratios are at most the parent's.
+  \item Define encroachment and prove that inserting a point strictly
+    inside the diametral circle of a segment can destroy the segment's
+    presence in the Delaunay triangulation.
+  \item Simulate Ruppert's algorithm by hand on a right triangle whose
+    hypotenuse is a boundary segment longer than the other edges, and
+    verify the termination rule.
+  \item Compare the angle guarantees of Ruppert's and Chew's algorithms and
+    state which parameter choices produce a $30^\circ$ bound.
+  \item Explain why the 3D Delaunay refinement analysis fails for slivers
+    and how sliver exudation repairs the problem.
+  \item Implement a conforming adaptive $h$-refinement for a 2D mesh with a
+    prescribed size field, and verify the conforming property (no hanging
+    vertices) after each step.
+  \item Run a mesh-quality histogram (Chapter~\ref{ch:mesh_analysis}) on
+    the output of Algorithm~\ref{alg:meshgen_refinement} for a random
+    polygon and confirm the angle bound numerically.
+\end{enumerate}
+
 \section{Project: Adaptive Mesh Generator}
 \label{sec:meshgen_project}
+
+Build an adaptive triangular mesh generator for planar domains:
+\begin{enumerate}
+  \item \textbf{Input}: read a simple polygon with holes and a size field
+    (a function of position, e.g., $h(x,y)$ small near features).
+  \item \textbf{Initial mesh}: compute the constrained Delaunay
+    triangulation of the boundary (Section~\ref{sec:meshgen_constrained}).
+  \item \textbf{Refinement}: implement
+    Algorithm~\ref{alg:meshgen_refinement} with a priority queue over
+    radius--edge ratio and size violation, inserting circumcenters and
+    splitting encroached boundary segments.
+  \item \textbf{Quality controls}: verify every angle against the promised
+    bound and every edge length against the size field, and report the
+    histograms using the quality measures of Section~\ref{sec:meshgen_quality}.
+  \item \textbf{Optimization}: add constrained Laplacian smoothing
+    (Section~\ref{sec:meshgen_optimization}) and measure the quality
+    improvement.
+  \item \textbf{Verification}: for a known domain (square, annulus),
+    check the cell count against the size-field integral and check the mesh
+    with the validity routines of Chapter~\ref{ch:mesh_analysis}.
+  \item \textbf{Visualization}: draw the mesh, color cells by radius--edge
+    ratio, and animate the refinement steps.
+\end{enumerate}
+The project mirrors the pipeline of Gmsh and TetGen at small scale and
+exercises the Delaunay, point-location, and mesh-analysis machinery of the
+corresponding chapters.
