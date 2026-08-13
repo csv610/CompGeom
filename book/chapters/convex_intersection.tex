@@ -1,37 +1,738 @@
 \chapter{Intersection and Distance of Convex Objects}
 \label{ch:convex_intersection}
 
-% Stub: outline only; content to be written.
-
 \section{Convex Polygon Intersection}
 \label{sec:convexint_polygon_intersection}
+
+\subsection{1. Overview}
+
+Given two convex polygons $P$ and $Q$ in the plane, the intersection problem
+asks whether $P \cap Q$ is empty and, if not, returns the convex polygon
+$P \cap Q$. Because the inputs are convex, the intersection is either empty
+or a convex polygon with at most $|P| + |Q|$ vertices, and it can be
+computed in linear time. The general (non-convex) polygon intersection
+problem is harder and is handled by the segment-intersection and overlay
+machinery of Chapter~\ref{ch:polygon_ops}; convexity is what makes this
+chapter's results possible.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Polygon Intersection]\label{def:convexint_polygon_inter}
+  The \textbf{intersection} of two convex polygons $P$ and $Q$ is the set
+  $P \cap Q$, which is empty or a convex polygon. Its vertices are either
+  vertices of $P$ or $Q$ inside the other polygon, or crossing points of
+  the two boundaries.
+\end{definition}
+
+\subsection{3. Theory}
+
+Two classic facts underlie the linear-time algorithms. First, since the
+boundaries of two convex polygons cross at most $|P|+|Q|$ times, the
+intersection polygon has $O(|P|+|Q|)$ vertices. Second, the two boundaries
+can be merged by a plane sweep in a single pass because each boundary is
+sorted around its hull; this is the basis of the $O(n)$ algorithm of Shamos
+\cite{preparata1985}. The distance version of the same problem --- finding
+the closest points of two convex polygons --- is solved in $O(\log n)$
+after linear preprocessing by the Dobkin--Kirkpatrick hierarchy
+\cite{dobkin1983,dobkin1985}, and in $O(n)$ by rotating calipers
+\cite{toussaint1983}.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Intersection of Two Convex Polygons}
+\label{alg:convexint_polygon_intersection}
+\begin{algorithmic}[1]
+\Require Two convex polygons $P, Q$ with vertices in counterclockwise order.
+\Ensure The convex polygon $P \cap Q$, or empty.
+\Function{ConvexPolygonIntersection}{$P$, $Q$}
+  \State $R \gets \emptyset$; $i \gets 0$; $j \gets 0$; $n \gets |P|$; $m \gets |Q|$
+  \While{$i < n$ or $j < m$}
+    \State test edge $e_P = (P_i, P_{i+1})$ against edge $e_Q = (Q_j, Q_{j+1})$ using orient()
+    \State add crossing points of $e_P, e_Q$ to $R$
+    \State advance the edge whose supporting line the other polygon is ``ahead of'' ($i$ or $j$)
+    \State add the endpoint that lies inside the other polygon to $R$
+  \EndWhile
+  \State output the vertices of $R$ in order as the intersection polygon
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Orientation convention}: both polygons must be traversed in
+  the same orientation (counterclockwise); a clockwise input must be
+  reversed first.
+\item \textbf{Degeneracies}: touching edges (one vertex on an edge of the
+  other) and coincident edges must be handled by the exact predicate
+  discipline of Section~\ref{sec:robust_predicates}, and reported once.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n + m)$.
+\item \textbf{Space}: $O(n + m)$ for the output (which has at most
+  $n + m$ vertices).
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Boolean geometry}: union/intersection/difference of convex
+  parts (Chapter~\ref{ch:polygon_ops}).
+\item \textbf{Windowing and culling}: computing the visible overlap of two
+  convex windows.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Separation}: disjoint polygons with large and small gaps.
+\item \textbf{Containment}: $Q \subset P$, $P \subset Q$, and identical
+  polygons.
+\item \textbf{Boundary contact}: polygons sharing an edge, a vertex, or a
+  vertex on an edge.
+\end{itemize}
+
+\subsection{9. References}
+
+The linear intersection algorithm is due to Shamos (1978 thesis) and is
+presented in \cite{preparata1985}; the logarithmic distance and
+intersection queries follow from the Dobkin--Kirkpatrick hierarchy
+\cite{dobkin1983,dobkin1985} and the rotating-calipers technique of
+Toussaint \cite{toussaint1983}.
 
 \section{Separating Axis Theorem}
 \label{sec:convexint_sat}
 
+\subsection{1. Overview}
+
+The \textbf{separating axis theorem} (SAT)\index{separating axis theorem}
+gives a finite test for whether two convex polygons (in 2D) or convex
+polyhedra (in 3D) intersect: two convex sets are disjoint exactly when
+there is an axis such that their projections onto that axis are disjoint.
+For polygons and polyhedra, only a small finite set of axes --- the face
+normals and, in 3D, the cross products of edge directions --- must be
+tested. SAT is the fastest intersection test for boxes and for convex
+primitives in physics engines, and it underlies the separating plane
+reasoning of Section~\ref{sec:math_separating_surfaces}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Projection Interval]\label{def:convexint_projection}
+  The \textbf{projection} of a convex set $C$ onto an axis $u$ is the
+  interval $[\min_{x\in C} \langle x, u\rangle, \max_{x\in C} \langle x,
+  u\rangle]$. Two sets are \textbf{separated by axis $u$} if their
+  projection intervals are disjoint.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Separating Axis Theorem]\label{thm:convexint_sat}
+  Two convex polygons in the plane are disjoint iff their projections are
+  disjoint on some axis perpendicular to one of their edges. Two convex
+  polyhedra in $\mathbb{R}^3$ are disjoint iff their projections are
+  disjoint on some axis perpendicular to one of their faces, or parallel to
+  the cross product of one edge of each polyhedron.
+\end{theorem}
+
+The theorem follows from the hyperplane-separation theorem of
+Section~\ref{sec:math_separating_surfaces}: the separating line (or plane)
+can be rotated until it supports both sets, at which point it is parallel
+to an edge (or a face, or an edge-edge cross product). For two
+axis-aligned boxes, the candidate axes are the three coordinate axes, which
+makes the box test three interval comparisons.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Separating Axis Test for Two Convex Polygons}
+\label{alg:convexint_sat}
+\begin{algorithmic}[1]
+\Require Convex polygons $P$, $Q$.
+\Ensure True iff $P \cap Q = \emptyset$.
+\Function{SATIntersect}{$P$, $Q$}
+  \For{each edge $e$ of $P$ \textbf{and} each edge $e$ of $Q$}
+    \State $u \gets$ unit normal of $e$
+    \State $I_P \gets$ projection of $P$ onto $u$; $I_Q \gets$ projection of $Q$ onto $u$
+    \If{$I_P \cap I_Q = \emptyset$} \State \Return \textsc{False} \EndIf
+  \EndFor
+  \State \Return \textsc{True}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Test order}: in practice, short-circuit on the most
+  discriminating axis first (e.g., the bounding-box axes), which exits early
+  for most disjoint pairs.
+\item \textbf{3D}: the candidate set is all face normals plus all
+  edge-pair cross products; for boxes this is 6 normals (only 3 distinct)
+  plus 9 cross products, but only 3 are distinct.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n + m)$ with $n, m$ the numbers of vertices; for
+  boxes, $O(1)$.
+\item \textbf{Space}: $O(1)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Physics engines}: box-box and box-convex tests in real-time
+  physics use SAT because of its tiny constant and early exit.
+\item \textbf{Culling}: as a fast filter before the precise (GJK) test of
+  Section~\ref{sec:convexint_gjk}.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Touching configurations}: verify that touching (projections
+  sharing an endpoint) is treated consistently as intersecting or not.
+\item \textbf{Degenerate polygons}: collinear vertices produce zero-length
+  edges and must be filtered before computing normals.
+\end{itemize}
+
+\subsection{9. References}
+
+SAT is folklore in the game-physics community and is developed carefully in
+\cite{ericson2004,vandenbergen2004}; its theoretical basis is the
+separation theorem of Section~\ref{sec:math_separating_surfaces} and
+\cite{deberg2008}.
+
 \section{Distance between Convex Sets}
 \label{sec:convexint_distance}
+
+The \textbf{distance} between two convex sets $A$ and $B$ is
+$\operatorname{dist}(A,B) = \min_{a\in A, b\in B} \|a-b\|$. The minimum is
+attained because the sets are closed; the minimizers are the \textbf{closest
+points} of $A$ and $B$. For convex polygons in the plane, the closest pair
+is found in $O(n)$ time by rotating calipers \cite{toussaint1983}, and in
+$O(\log n)$ time after $O(n)$ preprocessing by the Dobkin--Kirkpatrick
+method \cite{dobkin1985}. For convex polyhedra in $\mathbb{R}^3$ the same
+hierarchy gives an $O(\log^2 n)$ distance query, while the iterative
+GJK algorithm of Section~\ref{sec:convexint_gjk} computes the distance by
+support-function evaluations without any preprocessing.
+
+Distance computations between convex sets are the primitive of collision
+response (how far must the objects move apart?), of motion planning
+(Chapter~\ref{ch:motion_planning}), and of the minimum-separation checks in
+Section~\ref{sec:convexint_penetration_depth}. Two structural facts are
+used throughout:
+
+\begin{itemize}
+  \item the distance between $A$ and $B$ equals the distance from the
+    origin to the Minkowski difference $A \ominus B$ defined in
+    Section~\ref{sec:convexint_minkowski_difference};
+  \item the closest points are found by projecting onto the supporting
+    plane of the nearest feature (vertex, edge, or face), which is exactly
+    the geometric intuition exploited by GJK and by the Gilbert--Johnson--
+    Keerthi family of algorithms.
+\end{itemize}
+
+\index{distance between convex sets}\index{closest points}
 
 \section{Support Functions}
 \label{sec:convexint_support_functions}
 
+\begin{definition}[Support Function and Support Point]\label{def:convexint_support}
+  For a convex set $C$ and a direction $u$, the \textbf{support point}
+  $s_C(u)$ is a point of $C$ maximizing $\langle x, u\rangle$ over $x \in
+  C$. The \textbf{support function} $h_C(u) = \langle s_C(u), u\rangle$ is
+  the maximum of the linear functional in direction $u$.
+\end{definition}
+
+Support points are the fundamental oracle for convex intersection and
+distance algorithms, because many questions about $C$ reduce to evaluating
+$s_C$ in a few directions and $s_C$ is easy to compute for every convex
+primitive:
+\begin{itemize}
+  \item \textbf{box}: $s(u) = (\operatorname{sign}(u_x)L_x, \dots)$, one
+    comparison per coordinate;
+  \item \textbf{polygon}: $O(\log n)$ by binary search over the edge
+    directions, or $O(n)$ by scanning;
+  \item \textbf{sphere/ellipsoid}: $s(u) = c + R u/\|u\|$;
+  \item \textbf{Minkowski sum}: $s_{A \oplus B}(u) = s_A(u) + s_B(u)$.
+\end{itemize}
+The last identity is crucial: the support point of a Minkowski sum is the
+sum of the support points of the summands, which is how GJK computes
+support on the difference object $A \ominus B = A \oplus (-B)$ without ever
+building it explicitly (Section~\ref{sec:convexint_minkowski_difference}).
+Support functions also make the distance-to-origin queries of
+Section~\ref{sec:convexint_distance} well defined for any convex body,
+including those with smooth boundary, and they are the basis of the
+Dobkin--Kirkpatrick hierarchy \cite{dobkin1983}.
+
+\index{support function}\index{support point}
+
 \section{Minkowski Difference}
 \label{sec:convexint_minkowski_difference}
+
+The \textbf{Minkowski difference} (or Minkowski sum of $A$ with $-B$) is
+\[
+  A \ominus B = A \oplus (-B) = \{ a - b : a \in A, b \in B\}.
+\]
+The Minkowski difference reformulates every intersection and distance
+question about $A$ and $B$ as a question about the origin and
+$A \ominus B$:
+
+\begin{theorem}[Minkowski Difference Reductions]\label{thm:convexint_minkowski}
+  For convex sets $A, B$:
+  \begin{itemize}
+    \item $A \cap B \neq \emptyset$ iff $\mathbf{0} \in A \ominus B$;
+    \item $\operatorname{dist}(A, B) = \operatorname{dist}(\mathbf{0},
+      A \ominus B)$;
+    \item if $\mathbf{0} \notin A \ominus B$, the penetration depth of
+      Section~\ref{sec:convexint_penetration_depth} is the distance from
+      the origin to the boundary of $A \ominus B$.
+  \end{itemize}
+\end{theorem}
+
+If $A$ and $B$ are convex, so is $A \ominus B$. The boundary of
+$A \ominus B$ is made of translated copies of features of $A$ and $B$
+(vertices, edges, faces), which is what GJK's simplex search exploits: the
+closest point of $A \ominus B$ to the origin lies on a simplex whose
+vertices are support points of $A \ominus B$, and that simplex is found by
+iteratively adding the support point in the direction of the current
+closest point and discarding redundant vertices. The
+support-point construction of Section~\ref{sec:convexint_support_functions}
+makes every evaluation of $A \ominus B$ cheap: $s_{A\ominus B}(u) =
+s_A(u) - s_B(-u)$. This is the computational heart of GJK.
+
+\index{Minkowski difference}
 
 \section{Gilbert--Johnson--Keerthi Algorithm}
 \label{sec:convexint_gjk}
 
+\subsection{1. Overview}
+
+The \textbf{Gilbert--Johnson--Keerthi (GJK) algorithm} \cite{gilbert1988}
+computes the distance between two convex sets $A$ and $B$, or decides that
+they intersect, using only support-function evaluations. Because it never
+materializes the Minkowski difference, it runs in near-constant time for
+simple primitives (boxes, spheres, convex hulls of a few points) and is the
+standard narrow-phase test for convex objects in real-time physics engines
+\cite{ericson2004,vandenbergen2004}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Simplex in Minkowski Space]\label{def:convexint_simplex}
+  A \textbf{simplex} $\sigma \subseteq A \ominus B$ is a set of up to $d+1$
+  support points $\{s(u_1), \dots, s(u_k)\}$, $k \le d+1$, generated by the
+  algorithm. The origin's location relative to $\operatorname{conv}(\sigma)$
+  determines whether $A$ and $B$ intersect.
+\end{definition}
+
+\subsection{3. Theory}
+
+GJK iterates the following scheme. Start with an arbitrary support point of
+$A \ominus B$ in some direction. At each step, let $v$ be the point of
+$\operatorname{conv}(\sigma)$ closest to the origin. If $v = \mathbf{0}$,
+then $\mathbf{0} \in A \ominus B$ and the objects intersect. Otherwise
+compute $w = s_{A\ominus B}(-v)$, the support point in the direction
+opposite the current closest point. If $\langle w, -v\rangle \le
+\langle v, -v\rangle$ --- equivalently, if the origin is closer to
+$\mathbf{0}$ than $w$ in direction $-v$ --- then no point of $A \ominus B$
+is closer to the origin than $v$, and the distance is $\|v\|$. Otherwise
+add $w$ to the simplex, remove any vertex not needed to keep the origin in
+the affine hull of the simplex, and repeat.
+
+\begin{theorem}[GJK Termination]\label{thm:convexint_gjk_term}
+  The GJK iteration terminates: the distance of the current closest point
+  to the origin strictly decreases at every step, and the stopping
+  criterion is met when the support point in the test direction does not
+  improve on the current closest point. In $\mathbb{R}^3$ the simplex has
+  at most four vertices, so each iteration is $O(1)$.
+\end{theorem}
+
+The number of iterations is small in practice (typically a few dozen for
+polyhedra); the worst case is bounded by the number of features but is not
+polynomial in the input size, which is why GJK is used as an iterative
+numerical algorithm rather than analyzed to an exact worst-case bound.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{GJK Distance / Intersection Test}
+\label{alg:convexint_gjk}
+\begin{algorithmic}[1]
+\Require Convex sets $A, B$ with support functions.
+\Ensure Distance $\operatorname{dist}(A,B)$ and closest points, or ``intersect''.
+\Function{GJK}{$A$, $B$}
+  \State $d \gets (1,0,0)$; $S \gets \{s_{A\ominus B}(d)\}$
+  \State $v \gets$ closest point of $\operatorname{conv}(S)$ to origin
+  \While{true}
+    \If{$\|v\| < \varepsilon$} \State \Return \textsc{Intersect} \EndIf
+    \State $w \gets s_{A\ominus B}(-v)$
+    \If{$\langle w, -v\rangle \le \langle v, v\rangle$}
+      \State \Return $\|v\|$ (and the features supporting $v$)
+    \EndIf
+    \State $S \gets S \cup \{w\}$, reduced to the minimal simplex containing the origin in its affine hull
+    \State $v \gets$ closest point of $\operatorname{conv}(S)$ to origin
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Tolerance $\varepsilon$}: the termination threshold trades
+  accuracy against iterations; for boolean queries a tolerance of $10^{-9}$
+  in double precision is typical, and the convergence is quadratic once the
+  simplex is right (the closest point approaches the origin).
+\item \textbf{Initial direction}: any nonzero direction works; using the
+  relative displacement of the centers of mass speeds up convergence.
+\item \textbf{Caching}: caching the last support feature (warm starting)
+  reduces iterations dramatically for nearby queries between the same
+  objects across time steps.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Per iteration}: $O(1)$ support evaluations (each $O(1)$ for
+  simple primitives, $O(\log n)$ for a polygon, $O(n)$ for a general
+  polyhedron), plus a constant-size closest-point computation on the
+  simplex.
+\item \textbf{Iterations}: a small constant in practice; the theoretical
+  worst case is larger but does not arise on typical inputs.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Real-time physics}: the narrow phase of collision detection
+  for convex bodies in physics engines such as PhysX, Havok, and Bullet
+  \cite{ericson2004,vandenbergen2004}.
+\item \textbf{Robotics}: distance queries in configuration spaces
+  (Chapter~\ref{ch:motion_planning}).
+\item \textbf{Haptics and surgical simulation}: fast contact queries for
+  force feedback.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Touching objects}: verify the zero-distance threshold
+  distinguishes touching from overlapping consistently.
+\item \textbf{Deep penetration}: GJK with an origin strictly inside
+  $A \ominus B$ returns ``intersect'' but no depth; the penetration depth
+  of Section~\ref{sec:convexint_penetration_depth} requires EPA.
+\item \textbf{Support correctness}: the support oracle must be exact on
+  flat faces (all vertices of a face are support points); the choice of
+  representative affects the closest-point computation.
+\end{itemize}
+
+\subsection{9. References}
+
+GJK was introduced in \cite{gilbert1988}; the standard engineering
+treatments with implementation details are \cite{ericson2004,vandenbergen2004}.
+
 \section{Penetration Depth}
 \label{sec:convexint_penetration_depth}
+
+\subsection{1. Overview}
+
+When two convex objects overlap, the \textbf{penetration depth} measures how
+deeply: the minimum translation that separates them. For convex $A, B$, the
+penetration depth is the distance from the origin to the boundary of the
+Minkowski difference $A \ominus B$ (Theorem~\ref{thm:convexint_minkowski}),
+and the separating translation is the closest boundary point. The
+\textbf{expanding polytope algorithm (EPA)}\index{expanding polytope algorithm}
+computes this distance by iteratively expanding a polytope inside
+$A \ominus B$ toward the boundary point closest to the origin
+\cite{vandenbergen2004}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Penetration Depth]\label{def:convexint_penetration_depth}
+  The \textbf{penetration depth} of overlapping convex sets $A, B$ is
+  $\min\{ \|t\| : (A + t) \cap B = \emptyset \}$, the length of the
+  smallest translation that separates them. The \textbf{penetration
+  vector} is the translation achieving the minimum.
+\end{definition}
+
+\subsection{3. Theory}
+
+By Theorem~\ref{thm:convexint_minkowski}, the penetration depth equals
+$\operatorname{dist}(\mathbf{0}, \partial(A \ominus B))$. Since the
+boundary of $A \ominus B$ is composed of facets whose support directions are
+the feature normals, the closest boundary point is found by expanding a
+simplex (from GJK) into a polytope: maintain the polytope's facets, find
+the facet closest to the origin, push the polytope outward at the support
+point in the facet's normal direction, and repeat until the closest facet
+converges. EPA is correct because the polytope is always contained in
+$A \ominus B$ and expands toward the closest boundary point.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Expanding Polytope Algorithm (Penetration Depth)}
+\label{alg:convexint_epa}
+\begin{algorithmic}[1]
+\Require Simplex $S$ from GJK with origin in $\operatorname{conv}(S) \subseteq A \ominus B$.
+\Ensure Penetration vector of $A, B$.
+\Function{EPA}{$A$, $B$, $S$}
+  \State build a polytope $P$ (triangulation of the boundary of $S$)
+  \While{true}
+    \State $f \gets$ facet of $P$ closest to the origin; $n \gets$ normal of $f$
+    \State $w \gets s_{A\ominus B}(n)$
+    \If{$\langle w, n\rangle - \langle \text{point of } f, n\rangle < \varepsilon$}
+      \State \Return $\langle \text{point of } f, n\rangle \cdot n$  \Comment{penetration vector}
+    \EndIf
+    \State add $w$ to $P$; retriangulate the visible facets
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Initial simplex}: EPA starts from the GJK simplex containing
+  the origin; the polytope quality determines convergence speed.
+\item \textbf{Convergence threshold}: the $\varepsilon$ on the facet
+  support controls accuracy versus iterations; for game physics a value
+  near $10^{-4}$ of the object scale is common.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(1)$ per iteration plus $O(1)$ support evaluations;
+  the polytope grows linearly in the number of iterations, and the
+  iteration count is a small constant in practice.
+\item \textbf{Space}: $O(k)$ for the polytope with $k$ facets.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Collision response}: computing the separating impulse
+  magnitude in physics engines.
+\item \textbf{Contact manifolds}: the penetration vector defines the
+  contact normal for solver-based dynamics.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Deep overlaps}: verify convergence when the origin is far
+  inside $A \ominus B$.
+\item \textbf{Flat faces}: a facet parallel to a face of the difference
+  gives a unique closest point; test boxes and degenerate (flat) convex
+  bodies.
+\item \textbf{Consistency}: for small overlaps, the penetration vector must
+  agree with the vector computed by a reference translation test.
+\end{itemize}
+
+\subsection{9. References}
+
+EPA is described in the game-physics literature
+\cite{vandenbergen2004,ericson2004}; its Minkowski-difference foundation is
+the classical theory of convex sets (Section~\ref{sec:math_separating_surfaces}).
 
 \section{Collision Detection}
 \label{sec:convexint_collision}
 
+Collision detection in an interactive or physical system is organized in
+two phases. The \textbf{broad phase} prunes pairs of objects that cannot
+possibly touch using cheap bounding volumes: each object is wrapped in an
+axis-aligned bounding box (AABB), and pairs whose boxes do not overlap are
+discarded. The canonical broad-phase algorithms are:
+
+\begin{description}
+  \item[Sweep and prune] sort the boxes by one coordinate and slide a
+    window, testing only pairs within the window; for moderately sized
+    scenes this is near-linear because the window is small
+    \cite{ericson2004}.
+  \item[Boundary volume hierarchies] each object stores a tree of
+    bounding volumes (boxes or spheres); overlapping subtrees are descended
+    recursively, giving output-sensitive behavior for complex objects
+    (Chapter~\ref{ch:spatial_structures}).
+  \item[Uniform and spatial hashing] objects are bucketed into cells of a
+    grid; only pairs sharing a cell are tested, which suits uniformly
+    distributed scenes.
+\end{description}
+
+The \textbf{narrow phase} then tests the surviving pairs exactly. For
+convex pairs, the narrow phase uses SAT (Section~\ref{sec:convexint_sat})
+for boxes and GJK (Section~\ref{sec:convexint_gjk}) for general convex
+bodies, followed by EPA when penetration is needed
+(Section~\ref{sec:convexint_penetration_depth}). The overall cost is
+dominated by the broad phase, so the engineering advice is to make the
+bounding volumes tight, keep the broad-phase prune aggressive, and spend
+the narrow-phase budget only on pairs that truly overlap. The spatial data
+structures of Chapter~\ref{ch:spatial_structures} and the sweep techniques
+of Chapter~\ref{ch:segment_intersection} provide the primitives.
+
+\index{collision detection}\index{broad phase}\index{narrow phase}
+
 \section{Continuous Collision Detection}
 \label{sec:convexint_continuous}
+
+\subsection{1. Overview}
+
+\textbf{Continuous collision detection} (CCD)\index{continuous collision
+detection} asks not only whether two objects overlap at the current time,
+but whether they overlap at \emph{any} time in an interval --- and, if so,
+the first time of contact (the \textbf{time of impact}, TOI). Discrete
+tests at the endpoints of the interval can miss a collision that occurs
+between the sampled instants (tunneling), so CCD computes the swept
+behavior.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Time of Impact]\label{def:convexint_toi}
+  For bodies moving on prescribed trajectories during $[0,1]$, the
+  \textbf{time of impact} is the smallest $t$ at which two bodies touch.
+\end{definition}
+
+\subsection{3. Theory}
+
+The standard CCD method for convex objects is \textbf{conservative
+advancement}: at the current time, compute the distance $\delta$ between
+the two bodies (with GJK, Section~\ref{sec:convexint_gjk}) and bound the
+relative speed $v_{\max}$ over the interval; then no collision can occur
+before the objects close the distance, so the time is advanced by
+$\delta / v_{\max}$ and the process repeats until the step is below a
+tolerance. Conservative advancement is correct as long as the speed bound
+is valid, which makes it the default for convex bodies. An alternative for
+polyhedra is the exact swept-volume/feature-interval method: subdivide time
+at the events where the separating feature changes, and test each interval
+algebraically \cite{ericson2004}.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Conservative Advancement (Time of Impact)}
+\label{alg:convexint_ccd}
+\begin{algorithmic}[1]
+\Require Convex bodies $A(t), B(t)$, trajectories over $[0,1]$, tolerance $\varepsilon$.
+\Ensure The time of impact $t$ (or no collision).
+\Function{ConservativeAdvancement}{$A$, $B$}
+  \State $t \gets 0$
+  \While{$t \le 1$}
+    \State $\delta \gets \textsc{GJK}(A(t), B(t))$
+    \If{$\delta \le \varepsilon$} \State \Return $t$ \EndIf
+    \State $v_{\max} \gets$ bound on relative speed of closest features over $[t,1]$
+    \State $t \gets \min(1, t + \delta / v_{\max})$
+  \EndWhile
+  \State \Return \textsc{NoCollision}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Speed bound}: a global Lipschitz bound on the relative motion
+  makes the algorithm conservative (never misses a collision) but may step
+  slowly; a local bound on the closest features is tighter.
+\item \textbf{Tolerance}: $\varepsilon$ controls the accuracy of the
+  reported TOI; the cost grows logarithmically with $1/\varepsilon$.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(I \cdot T)$ where $T$ is the GJK cost and $I$ the
+  number of advancement steps, which is $O(\log(\text{scale}/\varepsilon))$
+  for linearly separated trajectories.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Games and physics}: preventing tunneling of fast bullets and
+  thin objects.
+\item \textbf{Robotics}: verifying that a moving manipulator path is
+  collision-free (Chapter~\ref{ch:motion_planning}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Tunneling regression}: a fast small object passing through a
+  thin wall must be reported, not missed.
+\item \textbf{Graze and rest contact}: contact that lasts exactly at an
+  instant (tangent) must be returned consistently.
+\item \textbf{Consistency}: compare TOI against fine-grained discrete
+  sampling on random motions.
+\end{itemize}
+
+\subsection{9. References}
+
+CCD and conservative advancement are treated in
+\cite{ericson2004,vandenbergen2004}.
 
 \section{Applications in Robotics and Simulation}
 \label{sec:convexint_applications}
 
+The intersection and distance algorithms of this chapter power the
+collision layer of three industries:
+
+\begin{description}
+  \item[Game and simulation physics] Real-time physics engines ---
+    NVIDIA PhysX, Havok, and Bullet --- run SAT, GJK, and EPA millions of
+    times per second to maintain non-penetrating rigid-body simulations; the
+    algorithms of this chapter (broad-phase bounding hierarchies, SAT for
+    boxes, GJK for convex hulls, EPA for penetration, and conservative
+    advancement for CCD) are the exact components they ship
+    \cite{ericson2004,vandenbergen2004}.
+  \item[Robotics] Motion planners compute distances between the robot's
+    links and its environment using GJK-based distance queries over convex
+    decompositions of non-convex links, and the configuration-space
+    techniques of Chapter~\ref{ch:motion_planning} rely on these queries
+    for feasibility tests. Collision-free programming for industrial arms
+    is a direct consumer.
+  \item[CAD and CAM] Clearance analysis, toolpath validation, and assembly
+    feasibility checks are distance and penetration queries between convex
+    primitives and convex hulls of tooling geometry; the closest-feature
+    results are reused for tolerancing and clearance reporting.
+\end{description}
+
+In each setting the convex intersection chapter's contribution is the
+same: a small set of primitives (support oracles, projection tests, and
+simplex geometry) from which the entire collision pipeline is assembled,
+with the exactness and robustness requirements of
+Sections~\ref{sec:intro_robustness}--\ref{sec:intro_exact_computation}.
+
+\index{physics engine}\index{collision}
+
 \section{Exercises}
 \label{sec:convexint_exercises}
+
+\begin{enumerate}
+  \item Prove the separating axis theorem for two convex polygons from the
+    hyperplane-separation theorem of Section~\ref{sec:math_separating_surfaces}.
+  \item Show that the projection interval of a convex polygon onto an axis
+    is determined by its support function values at the axis and its
+    negation.
+  \item Verify the Minkowski-difference reductions of
+    Theorem~\ref{thm:convexint_minkowski} for two boxes, one contained in
+    the other.
+  \item Implement GJK for two polygons in the plane and verify it against a
+    brute-force distance computation on random inputs.
+  \item Prove that in $\mathbb{R}^2$ the GJK simplex has at most three
+    vertices, and that the stopping test $\langle w, -v\rangle \le \langle
+    v, v\rangle$ is necessary and sufficient.
+  \item Explain why GJK alone cannot report penetration depth, and
+    construct an input where the origin lies strictly inside
+    $A \ominus B$.
+  \item Adapt the separating axis test to axis-aligned boxes in
+    $\mathbb{R}^3$ and show it requires only three interval comparisons per
+    candidate axis.
+  \item Simulate a tunneling failure: sample two trajectories at their
+    endpoints and show a missed collision that conservative advancement
+    (Section~\ref{sec:convexint_continuous}) detects.
+\end{enumerate}
