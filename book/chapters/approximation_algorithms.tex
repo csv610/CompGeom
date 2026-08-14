@@ -1,46 +1,1141 @@
 \chapter{Approximation Algorithms in Geometry}
 \label{ch:approximation_algorithms}
 
-% Stub: outline only; content to be written.
-
 \section{Why Approximation?}
 \label{sec:approx_why}
+
+Many optimization problems that sound easy to state are computationally
+intractable. The traveling salesman problem asks for the shortest tour that
+visits every given point; the $k$-center problem asks for the $k$ balls of
+smallest radius covering a set; $k$-median and $k$-means ask for $k$ centers
+minimizing the sum of (squared) distances to the points they serve; and
+geometric covering and packing ask for the fewest shapes covering a set, or
+the largest number of non-overlapping shapes fitting in a container. Every
+one of these problems is NP-hard, and several remain NP-hard even for points
+in the plane, so exact polynomial-time algorithms are out of the question
+unless the celebrated conjecture $\mathrm{P} \neq \mathrm{NP}$ fails.
+
+This chapter studies the alternative computational geometry offers:
+\textbf{approximation algorithms}\index{approximation algorithm} that run in
+polynomial time and return solutions provably close to optimal. Two
+resources trade off against each other: the running time and the
+\emph{approximation factor}, the worst-case ratio between the returned and
+the optimal value. At one end, a constant-factor approximation is cheap; at
+the other, a polynomial-time approximation scheme (PTAS) drives the ratio to
+$1 + \varepsilon$ for any fixed $\varepsilon > 0$ at a cost that grows with
+$1/\varepsilon$.
+
+Geometry makes approximation easier than it is for arbitrary graphs, for
+three reasons. First, Euclidean distances satisfy the
+\textbf{triangle inequality}\index{triangle inequality}, which bounds the
+cost of shortcuts and local improvements. Second,
+\textbf{packing bounds} -- a ball of radius $R$ in $\mathbb{R}^d$ holds only
+boundedly many mutually separated points -- keep quadtree-based structures
+under control; these power the Arora--Mitchell PTAS, approximate nearest
+neighbors, and well-separated pairs. Third, \textbf{small representatives
+exist}: a small sample or core-set often suffices for a near-optimal answer.
+The systematic theory is Har-Peled's monograph \cite{harpeled2011};
+the textbooks \cite{deberg2008,cormen2009} cover the elementary material,
+the randomization tools are in Chapter~\ref{ch:randomized_algorithms}, and
+the range-counting machinery in Chapter~\ref{ch:range_searching}.
+
+Sections~\ref{sec:approx_intro}--\ref{sec:approx_eps} set up the vocabulary
+(approximation ratios, PTAS/FPTAS) and the sampling theorems
+($\varepsilon$-nets and $\varepsilon$-approximations).
+Sections~\ref{sec:approx_coresets}--\ref{sec:approx_distance_queries}
+build the data structures: core-sets, approximate nearest neighbors,
+locality-sensitive hashing, well-separated pairs, and spanners.
+Sections~\ref{sec:approx_clustering}--\ref{sec:approx_enclosing} apply them
+to clustering, $k$-center/$k$-median, and minimum enclosing shapes, and
+Section~\ref{sec:approx_high_dimensional} treats high dimensions. The
+chapter closes with exercises and a project on approximate nearest-neighbor
+search.
+
+\index{approximation ratio}\index{polynomial-time approximation scheme}
 
 \section{Geometric Approximation}
 \label{sec:approx_intro}
 
+\begin{definition}[Approximation Ratio]\label{def:approx_ratio}
+  An \textbf{$\alpha$-approximation algorithm} for a minimization problem
+  returns, on every instance $I$, a feasible solution with value
+  $\operatorname{val}(A(I)) \leq \alpha \cdot \operatorname{OPT}(I)$, where
+  $\operatorname{OPT}(I)$ is the optimal value and $\alpha \geq 1$ is the
+  \textbf{approximation ratio}\index{approximation ratio}. For
+  maximization problems the inequality is reversed. An algorithm with ratio
+  $1 + \varepsilon$ for every $\varepsilon > 0$ is a
+  \textbf{$(1+\varepsilon)$-approximation}.
+\end{definition}
+
+\begin{definition}[PTAS and FPTAS]\label{def:approx_ptas}
+  A problem admits a \textbf{polynomial-time approximation scheme} (PTAS)
+  if for every fixed $\varepsilon > 0$ there is a polynomial-time algorithm
+  computing a $(1 + \varepsilon)$-approximation, the constant of the
+  polynomial depending arbitrarily on $\varepsilon$. A \textbf{fully
+  polynomial-time approximation scheme} (FPTAS) runs in time polynomial in
+  both $n$ and $1/\varepsilon$; a \textbf{randomized} PTAS succeeds with
+  probability at least $1/2$ and is boosted by repetition. These are the
+  standard definitions of \cite{cormen2009}.
+\end{definition}
+
+Two facts bound what is possible. An FPTAS implies the problem is only
+weakly NP-hard; strongly NP-hard geometric problems therefore have PTASs at
+best, with running time exponential in $1/\varepsilon$. And some problems
+resist a PTAS entirely: $k$-center cannot be approximated within
+$2 - \delta$ unless $\mathrm{P} = \mathrm{NP}$ (Section~\ref{sec:approx_k_center_median}),
+so the goal there is a tight constant factor.
+
+\begin{example}[Metric TSP]\label{ex:approx_tsp_ratio}
+  In a general metric, the Christofides algorithm (see \cite{cormen2009})
+  finds a tour of length at most $3/2$ times optimal: it builds a minimum
+  spanning tree, duplicates the odd-degree vertices to get an Eulerian
+  multigraph, and shortcuts the Euler tour. The triangle inequality enters
+  in the shortcut step. The Euclidean case is far better behaved: by
+  Theorem~\ref{thm:approx_arora_ptas} it has a PTAS.
+\end{example}
+
+The signature achievement of geometric approximation is the
+\textbf{quadtree-based PTAS for Euclidean TSP}, found independently by
+Arora \cite{arora1998} and Mitchell \cite{mitchell1999}.
+
+\begin{theorem}[Arora's PTAS for Euclidean TSP]\label{thm:approx_arora_ptas}
+  For every fixed integer $c \geq 1$, there is a randomized algorithm that
+  computes a Euclidean TSP tour on $n$ points whose length is within a
+  factor $1 + 1/c$ of optimal, with probability at least $1/2$, in time
+  $O(n\,(\log n)^{O(c)})$. Mitchell's guillotine subdivision method gives a
+  deterministic scheme in $n^{O(c)}$ time with a simpler proof.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  The scheme has three steps. (i) \textbf{Quadtree dissection}: enclose the
+  points in a square of side $2^L$ with $L = O(\log n)$ and split it into
+  four equal quadrants until each cell holds at most one point.
+  (ii) \textbf{Portals}: place $m = O(c \log n)$ equally spaced points on
+  every cell edge and allow the tour to cross edges only at portals; a
+  \emph{patching lemma} -- the triangle inequality plus a packing bound on
+  how often a tour crosses a cell boundary -- shows some portals-only tour
+  is within $1 + O(1/c)$ of optimal. (iii) \textbf{Dynamic programming}:
+  over the quadtree cells, keep for each cell and each portal pairing the
+  best set of paths visiting all points inside the cell; with $4m$ portals
+  per cell there are $2^{O(m)} = n^{O(c)}$ pairing patterns, giving total
+  time $O(n\,(\log n)^{O(c)})$. Repeating over a random shift of the grid
+  boosts the probability. The scheme extends to $\mathbb{R}^d$, other norms,
+  and Steiner tree and $k$-TSP; see \cite{arora1998,mitchell1999}.
+\end{proof}
+
+\begin{remark}
+  The two ingredients -- a hierarchical decomposition whose cells have
+  bounded crossing number, and an exact program over it -- recur throughout
+  the chapter: they drive the core-set algorithms of
+  Section~\ref{sec:approx_enclosing}, the well-separated pairs of
+  Section~\ref{sec:approx_wsd}, and the approximate nearest-neighbor
+  structure of Section~\ref{sec:approx_ann}.
+\end{remark}
+
+\index{quadtree}\index{Euclidean TSP}\index{PTAS}
+
 \section{\texorpdfstring{$\varepsilon$}{epsilon}-Approximations}
 \label{sec:approx_eps}
+
+\subsection{1. Overview}
+
+Range searching (Chapter~\ref{ch:range_searching}) answers exact counting
+queries. $\varepsilon$-nets and $\varepsilon$-approximations approximate
+\emph{all} such counts simultaneously with a single small random sample
+whose size depends only on the range family, not on $n$. They are the
+probabilistic backbone of this chapter: core-sets
+(Section~\ref{sec:approx_coresets}), randomized algorithms
+(Section~\ref{sec:randomized_eps_nets}), and partition-tree range structures
+all rest on the sampling theorems proved here.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Range Space]\label{def:approx_range_space}
+  A \textbf{range space} is a pair $(X, \mathcal{R})$ of a finite ground set
+  $X$ and a family $\mathcal{R}$ of subsets (the \textbf{ranges}); for point
+  sets in $\mathbb{R}^d$ the standard ranges are halfspaces, disks,
+  rectangles, and simplices. The \textbf{VC dimension}
+  $\operatorname{VCdim}(\mathcal{R})$ is the size of the largest subset of
+  $X$ that is \emph{shattered} by $\mathcal{R}$, i.e., whose every subset is
+  realized as $R \cap Y$. Halfplanes in the plane have VC dimension $3$;
+  axis-parallel rectangles have VC dimension $4$.
+\end{definition}
+
+\begin{definition}[$\varepsilon$-Net and $\varepsilon$-Approximation]\label{def:approx_eps_net}
+  A subset $N \subseteq X$ is an \textbf{$\varepsilon$-net} if every range
+  $R$ with $|R| \geq \varepsilon |X|$ contains a point of $N$. A subset $A$
+  is an \textbf{$\varepsilon$-approximation} if for every
+  $R \in \mathcal{R}$,
+  \[
+    \left|\frac{|A \cap R|}{|A|} - \frac{|R|}{|X|}\right| \leq \varepsilon .
+  \]
+\end{definition}
+
+An $\varepsilon$-approximation is stronger than an $\varepsilon$-net: a
+range with an $\varepsilon$-fraction of the points is counted with
+positive empirical measure, hence hit. This is the notion introduced as
+Definition~\ref{def:eps_net} in Chapter~\ref{ch:range_searching}: nets serve
+\emph{hitting} problems, approximations serve \emph{counting}.
+
+\subsection{3. Theory}
+
+\begin{theorem}[Haussler--Welzl]\label{thm:approx_eps_net_bound}
+  Let $(X, \mathcal{R})$ have VC dimension $d$. A random sample of
+  $m = O(\frac{d}{\varepsilon}\log\frac{1}{\varepsilon})$ points is an
+  $\varepsilon$-net with probability at least $1/2$; an additive
+  $O(\frac{1}{\varepsilon}\log\frac{1}{\delta})$ raises it to $1 - \delta$.
+\end{theorem}
+
+The proof in \cite{hausslerwelzl1987} bounds the number of ``essentially
+different'' ranges by $O(m^d)$ via shattering, then applies a union bound:
+a range of size $\varepsilon |X|$ is missed with probability at most
+$(1 - \varepsilon)^m$.
+
+\begin{theorem}[$\varepsilon$-Approximations by Sampling]\label{thm:approx_eps_approx_bound}
+  For VC dimension $d$, a random sample of
+  $m = O(\frac{d}{\varepsilon^2}\log\frac{d}{\varepsilon})$ is an
+  $\varepsilon$-approximation with probability at least $1/2$. Halfspace
+  ranges in $\mathbb{R}^d$ admit $\varepsilon$-approximations of size
+  $O(\frac{d}{\varepsilon^2}\log\frac{1}{\varepsilon})$.
+\end{theorem}
+
+The size is optimal up to logarithmic factors: variance forces
+$\Omega(1/\varepsilon^2)$, and the halfspace upper bounds follow from the
+discrepancy theory of \cite{matousek1995,matousek1999}; a set of small
+discrepancy is exactly a good $\varepsilon$-approximation.
+
+\begin{remark}[Covering and Hitting]\label{rem:approx_hitting}
+  An $\varepsilon$-net is a \textbf{hitting set} for the ranges that are
+  large relative to $X$. By duality this gives constant-factor
+  approximations for many geometric covering problems in fixed dimension.
+  Packing is different: geometric bin packing (Chapter~\ref{ch:packing_algorithms},
+  Section~\ref{sec:rectangle_packing}) is NP-hard
+  (Theorem~\ref{thm:rect_pack_nphard}) yet admits approximation schemes of
+  its own; see \cite{deberg2008,harpeled2011}.
+\end{remark}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Random Sampling for $\varepsilon$-Nets}
+\label{alg:approx_eps_net_sample}
+\begin{algorithmic}[1]
+\Require Range space $(X, \mathcal{R})$ of VC dimension $d$; error $\varepsilon$; confidence $\delta$.
+\Ensure An $\varepsilon$-net $N$ of $X$ with probability at least $1 - \delta$.
+\Function{NetSample}{$X$, $d$, $\varepsilon$, $\delta$}
+  \State $m \gets \lceil \frac{c}{\varepsilon}(d\log\frac{1}{\varepsilon} + \log\frac{1}{\delta})\rceil$
+  \State draw $m$ points of $X$ independently and uniformly at random into $N$
+  \For{each range $R$ with $|R| \geq \varepsilon |X|$}
+    \State verify $R \cap N \neq \emptyset$ \Comment{range-counting step}
+  \EndFor
+  \If{some large range misses $N$}
+    \State \Return \Call{NetSample}{X, d, \varepsilon, \delta} \Comment{resample}
+  \EndIf
+  \State \Return $N$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+Verifying the net property uses the range trees and partition trees of
+Chapter~\ref{ch:range_searching}.
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{$\varepsilon$}: the sample grows like $d/\varepsilon$ (nets)
+  or $d/\varepsilon^2$ (approximations); use a net when only a witness is
+  needed and an approximation when counts must be accurate.
+\item \textbf{VC dimension $d$}: intervals on a line have $d = 2$;
+  halfplanes and disks in the plane $d = 3$; simplices in $\mathbb{R}^d$
+  grow linearly in $d$ (\cite{hausslerwelzl1987,matousek1999}).
+\item \textbf{Confidence}: repetition boosts the guarantee at logarithmic
+  cost.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(m)$ to draw the sample, plus a verification pass;
+  with logarithmic range counting, $O(m \log^{O(1)} n)$ total.
+\item \textbf{Size}: independent of $n$ -- $O(\frac{d}{\varepsilon}
+  \log\frac{1}{\varepsilon})$ and $O(\frac{d}{\varepsilon^2}
+  \log\frac{d}{\varepsilon})$ respectively. This independence is what makes
+  the rest of the chapter nearly input-size-free.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Range counting}: estimate any query count in constant time
+  after sampling.
+\item \textbf{Hitting sets for covering}: Remark~\ref{rem:approx_hitting}.
+\item \textbf{Discrepancy theory}: the deterministic counterpart
+  (\cite{matousek1999}).
+\item \textbf{Core-sets}: sampling is the cheapest construction of the
+  core-sets of Section~\ref{sec:approx_coresets}.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item Verify the net property on adversarial ranges just above
+  $\varepsilon |X|$ points, and at the exact threshold.
+\item Test duplicates (VC dimension can drop) and collinear configurations.
+\item For approximations, check the count error is at most $\varepsilon$
+  on all tested ranges, not merely on average.
+\end{itemize}
+
+\subsection{9. References}
+
+Haussler and Welzl's $\varepsilon$-net theorem \cite{hausslerwelzl1987},
+Matou\v{s}ek's discrepancy constructions \cite{matousek1995,matousek1999},
+and the textbook treatments \cite{deberg2008,harpeled2011}.
 
 \section{Coresets}
 \label{sec:approx_coresets}
 
+A recurring theme is that a \emph{small representative} of the input
+suffices for a near-optimal answer.
+
+\begin{definition}[Core-Set]\label{def:approx_coreset}
+  Let $f$ be a cost on point sets and $P \subset \mathbb{R}^d$ the input. A
+  weighted subset $S \subseteq P$ (point $s$ with weight $w(s) \geq 0$) is
+  an \textbf{$\varepsilon$-core-set}\index{core-set} for $f$ if for every
+  candidate solution $C$,
+  \[
+    (1 - \varepsilon)\, f_C(P) \;\leq\; f_C(S) \;\leq\;
+    (1 + \varepsilon)\, f_C(P),
+  \]
+  where $f_C$ holds $C$ fixed. Then any near-optimal solution on $S$ is
+  near-optimal on $P$.
+\end{definition}
+
+Core-sets give a dimension-free speed-up: an exact algorithm -- however slow
+-- run on the $m$ points of $S$ yields a $(1 + \varepsilon)$-approximation
+for $P$. The two constructions are random sampling
+(Section~\ref{sec:approx_eps}) and greedy farthest-point expansion; both
+produce sizes bounded in terms of $\varepsilon$ and $d$ but not $n$, which
+also enables streaming and distributed algorithms that merge core-sets.
+
+\begin{theorem}[Core-Sets for Minimum Enclosing Balls]\label{thm:approx_meb_coreset_bound}
+  Let $P$ have $n$ points and minimum enclosing ball radius $r^*$. For every
+  $\varepsilon \in (0,1)$: (i) an $\varepsilon$-core-set of size
+  $O(1/\sqrt{\varepsilon})$ exists, and this is tight \cite{badoiu2002};
+  (ii) the farthest-point procedure of
+  Algorithm~\ref{alg:approx_meb_coreset} finds a ball of radius
+  $(1 + \varepsilon) r^*$ in time $O(dn/\varepsilon + \varepsilon^{-5})$
+  with a core-set of size at most $\lceil 2/\varepsilon \rceil$
+  \cite{badoiu2002}; (iii) Kumar, Mitchell, and Yildirim compute a
+  $(1 + \varepsilon)$-approximation in time linear in $n$ and $d$ for fixed
+  $\varepsilon$, with core-sets of size $O(1/\varepsilon)$
+  \cite{kumar2003}.
+\end{theorem}
+
+For clustering, Har-Peled and Mazumdar \cite{harpeled2004} showed $k$-means
+and $k$-median admit core-sets of size $O(k \varepsilon^{-d} \log n)$ and
+hence $(1 + \varepsilon)$-approximations linear in $n$ for fixed
+$k, d, \varepsilon$; Section~\ref{sec:approx_k_center_median} develops the
+algorithms. The connection to randomization is direct: every core-set here
+is either a certified random sample (Theorem~\ref{thm:approx_eps_approx_bound})
+or a greedy procedure that terminates after $O(1/\varepsilon)$ rounds
+(Algorithm~\ref{alg:approx_meb_coreset}). Section~\ref{sec:approx_high_dimensional}
+returns to the striking fact that the ball core-set bound is
+\emph{dimension-free}, which is why approximate minimum enclosing balls are
+tractable in high dimensions where the exact algorithms of
+Chapter~\ref{ch:enclosure_convex_distance} (Section~\ref{sec:welzls_algorithm})
+are not.
+
+\begin{remark}
+  The word ``coreset'' also names the $\varepsilon$-approximation of a range
+  space restricted to a query family (Definition~\ref{def:approx_eps_net});
+  the distinction is only which cost is preserved.
+\end{remark}
+
+\index{core-set}\index{streaming algorithm}
+
 \section{Approximate Nearest Neighbors}
 \label{sec:approx_ann}
+
+\subsection{1. Overview}
+
+The nearest-neighbor problem (Definition~\ref{def:nearest_neighbor},
+Chapter~\ref{ch:proximity}) asks for the point of a preprocessed set $P$
+closest to a query $q$. Exact search is easy in low dimensions -- the
+$k$d-tree of Chapter~\ref{ch:spatial_structures}
+(Section~\ref{sec:kd_tree}, Algorithm~\ref{alg:kd_nn}) answers queries in
+$O(\log n)$ expected time -- but degrades exponentially with the dimension,
+and in high dimensions exact search suffers the curse of dimensionality
+(Section~\ref{sec:highdim_curse}). \textbf{Approximate nearest neighbors}
+(ANN)\index{approximate nearest neighbor} relax the answer by a factor
+$c \geq 1$ and recover polynomial structure. This section develops the
+low-dimensional regime via balanced box decompositions \cite{arya1998};
+Section~\ref{sec:approx_lsh} handles the high-dimensional regime.
+
+\subsection{2. Definitions}
+
+\begin{definition}[$c$-Approximate Nearest Neighbor]\label{def:approx_ann_c}
+  For $c \geq 1$, a point $p' \in P$ is a \textbf{$c$-approximate nearest
+  neighbor} of query $q$ if $\|q - p'\| \leq c \min_{p \in P}\|q - p\|$. A
+  structure supports \textbf{$c$-ANN queries} if it returns such a point
+  for every query (cf.\ Section~\ref{sec:highdim_nearest_neighbor}).
+\end{definition}
+
+The relaxation makes search \emph{output-sensitive}: the algorithm may stop
+once it can prove no unexplored point can beat the current answer by more
+than $c$, and cell-based pruning makes that proof cheap.
+
+\subsection{3. Theory}
+
+\begin{theorem}[Balanced Box Decomposition]\label{thm:approx_ann_complexity}
+  The \textbf{balanced box-decomposition (BBD) tree} stores $n$ points in
+  $\mathbb{R}^d$ in $O(dn)$ space and $O(dn \log n)$ preprocessing time and
+  answers $c$-ANN queries in $O(c^d \log n)$ time \cite{arya1998}; in fixed
+  dimension the query time is $O(\log n)$, which is optimal in the worst
+  case.
+\end{theorem}
+
+The BBD tree is a balanced cousin of the compressed quadtree whose nodes are
+\emph{boxes} (axis-parallel boxes with few extra dimensions), with the
+property that every node is either a grid cell or decomposes into boundedly
+many sub-boxes. Search (Algorithm~\ref{alg:approx_ann_quadtree}) keeps a
+priority queue over boxes keyed by distance to the query and prunes a box
+once its distance exceeds the current answer divided by $c$; packing bounds
+limit the number of expanded boxes to $O(c^d)$. This is the same dissection
+structure as Theorem~\ref{thm:approx_arora_ptas}, and it repairs the balance
+weakness of the $k$d-tree (Theorem~\ref{thm:kd_nn_complexity}).
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{$c$-Approximate Nearest Neighbor via Box Decomposition}
+\label{alg:approx_ann_quadtree}
+\begin{algorithmic}[1]
+\Require A BBD tree $\mathcal{T}$ over $P$; query point $q$; factor $c \geq 1$.
+\Ensure A point $p' \in P$ with $\|q - p'\| \leq c \min_{p \in P}\|q - p\|$.
+\Function{ApproxNN}{$\mathcal{T}$, $q$, $c$}
+  \State $R \gets +\infty$; $p' \gets$ any point of $P$
+  \State priority queue $Q$ of boxes keyed by $\operatorname{dist}(q, \text{box})$; push root
+  \While{$Q$ is not empty}
+    \State pop box $B$ with minimal $\operatorname{dist}(q, B)$
+    \If{$\operatorname{dist}(q, B) > R / c$} \State break \EndIf \Comment{pruning test}
+    \If{$B$ is a leaf}
+      \For{each $p \in B$} \If{$\|q - p\| < R$} $R \gets \|q - p\|$; $p' \gets p$ \EndIf \EndFor
+    \Else \State push the children of $B$ onto $Q$ \EndIf
+  \EndWhile
+  \State \Return $p'$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The pruning test is where the approximation enters: a box at distance
+exceeding $R/c$ cannot contain a point closer than $R/c$, good enough since
+$R$ is the best found so far.
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{$c$}: query time grows like $c^d$; choose the smallest factor
+  the application tolerates ($c = 1$ gives no pruning and degenerates to
+  exact search).
+\item \textbf{Box decomposition}: cap the extra dimensions per node and the
+  leaf capacity to balance query and update cost.
+\item \textbf{Search order}: best-first by distance minimizes expanded
+  boxes; depth-first uses less queue memory.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Preprocessing}: $O(dn \log n)$ time, $O(dn)$ space.
+\item \textbf{Query}: $O(c^d \log n)$; the term $c^d$ is why this is a
+  \emph{fixed-dimensional} structure -- in high dimensions
+  Section~\ref{sec:approx_lsh} is the better tool.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Registration and reconstruction}: closest-point queries feed
+  the ICP-style matching of Chapter~\ref{ch:geometric_matching}.
+\item \textbf{Robotics and graphics}: proximity queries and collision
+  acceleration (Chapter~\ref{ch:applications_graphics}).
+\item \textbf{Similarity search}: practical systems such as navigable
+  small-world graphs \cite{malkov2018} are heuristic cousins of the
+  guarantees developed here.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item Compare against brute force on random sets and verify the ratio
+  $\|q - p'\| / \|q - p^*\| \leq c$.
+\item Adversarial clusters (true neighbor just beyond the first expanded
+  box) stress the pruning test; verify termination with exact predicates
+  (Chapter~\ref{ch:geometric_predicates}).
+\item Queries far outside the data must trigger the break condition without
+  scanning the tree.
+\end{itemize}
+
+\subsection{9. References}
+
+The BBD tree and its optimal query time are due to Arya, Mount, Netanyahu,
+Silverman, and Wu \cite{arya1998}; the quadtree background is in
+Chapter~\ref{ch:spatial_structures} and the high-dimensional treatment in
+\cite{harpeled2011}.
+
+\index{approximate nearest neighbor}\index{box decomposition}
 
 \section{Locality-Sensitive Hashing}
 \label{sec:approx_lsh}
 
+\subsection{1. Overview}
+
+In high dimensions the BBD tree's $O(c^d \log n)$ query time of
+Theorem~\ref{thm:approx_ann_complexity} is exponential in $d$.
+\textbf{Locality-sensitive hashing} (LSH)\index{locality-sensitive hashing}
+instead hashes points so that \emph{near} points collide with high
+probability and \emph{far} points with low probability, then answers queries
+by hashing and scanning colliding buckets. Indyk and Motwani's scheme
+\cite{indyk1998} was the first to break the curse of dimensionality in the
+worst case with sublinear query time. The engine is the random-projection
+intuition of Chapter~\ref{ch:high_dimensional} (Section~\ref{sec:highdim_jl}).
+
+\subsection{2. Definitions}
+
+\begin{definition}[$(r, cr, p_1, p_2)$-Sensitive Family]\label{def:approx_lsh_sensitive}
+  A family $\mathcal{H}$ of hash functions from a metric space to a range
+  $U$ is \textbf{$(r, cr, p_1, p_2)$-sensitive} for $c > 1$, $p_1 > p_2$ if
+  for all $p, q$:
+  \[
+    d(p,q) \leq r \;\Rightarrow\; \Pr_h[h(p) = h(q)] \geq p_1, \qquad
+    d(p,q) \geq cr \;\Rightarrow\; \Pr_h[h(p) = h(q)] \leq p_2 .
+  \]
+  The ratio $\rho = \frac{\ln(1/p_1)}{\ln(1/p_2)}$ controls efficiency.
+\end{definition}
+
+Single-coordinate projections give an $(r, cr, 1 - r/d, 1 - cr/d)$-sensitive
+family on the Hamming cube; random hyperplanes serve Euclidean space.
+
+\subsection{3. Theory}
+
+\begin{theorem}[Indyk--Motwani]\label{thm:approx_lsh_quality}
+  With $k = \log_{1/p_2} n$ and $L = n^{\rho}$, the structure of
+  Algorithm~\ref{alg:approx_lsh} answers $(c, r)$-approximate near-neighbor
+  queries in $O(n^{\rho})$ expected time using $O(n^{1+\rho} + dn)$ space,
+  with constant probability \cite{indyk1998}.
+\end{theorem}
+
+The design amplifies: with $k$ hashes composed, a far point collides with a
+given query in one table with probability at most $1/n$, so the union bound
+over the $n$ points keeps expected far collisions at $O(1)$ per table; with
+$L = n^{\rho}$ independent tables, a near neighbor is missed with
+probability at most $(1 - p_1^k)^L \leq 1/2$. This mirrors the union-bound
+logic of Theorem~\ref{thm:approx_eps_net_bound}, with a hash function in
+place of a range.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Locality-Sensitive Hashing: Index and Query}
+\label{alg:approx_lsh}
+\begin{algorithmic}[1]
+\Require Data set $P$; parameters $k, L$; an $(r, cr, p_1, p_2)$-sensitive family $\mathcal{H}$.
+\Ensure An index answering $(c, r)$-approximate near-neighbor queries.
+\Function{BuildLSH}{$P$, $k$, $L$}
+  \For{$j = 1$ \textbf{to} $L$}
+    \State pick $g_j = (h_1, \dots, h_k)$, $h_i \in \mathcal{H}$ independent
+    \State build a hash table $T_j$ storing $g_j(p)$ for every $p \in P$
+  \EndFor
+\EndFunction
+\Function{QueryLSH}{$q$}
+  \State $S \gets \emptyset$
+  \For{$j = 1$ \textbf{to} $L$}
+    \State $S \gets S \cup \{p \in P : g_j(p) = g_j(q)\}$
+    \If{more than $2L$ points collected} \State break \EndIf
+  \EndFor
+  \State \Return the point of $S$ within distance $cr$ of $q$, or \textbf{null}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{$k = \log_{1/p_2} n$}: balances far-point collisions (down
+  with $k$) against near-point sensitivity (also down with $k$).
+\item \textbf{$L = n^{\rho}$}: gives constant success probability; a
+  constant-factor increase boosts it to $1 - \delta$.
+\item \textbf{Radius $r$}: run the structure at geometrically growing radii
+  $r, 2r, 4r, \dots$ to answer full ANN queries.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Preprocessing}: $O(dnL)$ time to hash, $O(n^{1+\rho} + dn)$
+  space.
+\item \textbf{Query}: $O(dkL)$ to hash plus $O(n^{\rho})$ expected scan --
+  strictly sublinear in $n$ for $\rho < 1$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Similarity search}: near-duplicate detection and retrieval,
+  and the shape matching of Chapter~\ref{ch:geometric_matching}
+  (Section~\ref{sec:matching_hashing}).
+\item \textbf{High-dimensional ANN}: with the dimension-reduction pipeline
+  of Section~\ref{sec:highdim_nearest_neighbor}.
+\item \textbf{Learning}: kernel pipelines where exact search is the
+  bottleneck (Chapter~\ref{ch:geometry_data_ml}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item Measure empirical recall as a function of $L$ and check it rises
+  toward $1$.
+\item Adversarial inputs (points clustered near the query radius) trigger
+  the break condition; test the abort path.
+\item Test points exactly at radii $r$ and $cr$; the guarantee is
+  probabilistic, so verify empirically.
+\end{itemize}
+
+\subsection{9. References}
+
+Indyk and Motwani \cite{indyk1998} introduced LSH and its analysis; the
+modern treatment and notation are in \cite{harpeled2011}.
+
+\index{locality-sensitive hashing}\index{random projection}
+
 \section{Well-Separated Pair Decomposition}
 \label{sec:approx_wsd}
+
+\subsection{1. Overview}
+
+$n$-body simulation, $k$-nearest-neighbor graphs, and spanner construction
+need information about all $n^2$ point pairs. Euclidean space admits a
+linear-size \textbf{well-separated pair decomposition} (WSPD)\index{well-separated pair decomposition}:
+$O(n)$ pairs of subsets, each far apart relative to its size, that together
+cover every pair of points. Callahan and Kosaraju introduced the concept
+\cite{callahan1995} and used it for $k$-nearest neighbors and $n$-body
+potential fields; the construction is quadtree-based.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Well-Separated Pair]\label{def:approx_ws_pair}
+  Non-empty sets $A, B \subset \mathbb{R}^d$ are \textbf{$s$-well-separated}
+  for $s > 2$ if
+  \[
+    \max\{\operatorname{diam}(A), \operatorname{diam}(B)\}
+    \leq s \cdot \operatorname{dist}(A, B),
+  \]
+  where $\operatorname{dist}(A, B) = \min_{a \in A, b \in B}\|a - b\|$. A
+  \textbf{well-separated pair decomposition} of $P$ with parameter $s$ is a
+  set of $s$-well-separated pairs of subsets of $P$ such that every unordered
+  point pair of $P$ lies in exactly one pair.
+\end{definition}
+
+The contract: for any $a \in A$, $b \in B$, the distance $\|a - b\|$ is
+within $1 + 2/s$ of $\operatorname{dist}(A, B)$, so smooth functions of the
+distances can be evaluated once per pair.
+
+\subsection{3. Theory}
+
+\begin{theorem}[Size and Construction of WSPD]\label{thm:approx_wspd_size}
+  For every $s > 2$ and every $n$-point set $P \subset \mathbb{R}^d$, a
+  well-separated pair decomposition with parameter $s$ containing
+  $O(s^d n)$ pairs exists and is constructed in $O(s^d n \log n)$ time
+  \cite{callahan1995}.
+\end{theorem}
+
+The construction runs on the \textbf{split tree}, a compressed quadtree
+(Section~\ref{sec:quadtree}, Theorem~\ref{thm:qt_subdivision}) whose nodes
+may split into children whose cells are pairwise separated. The recursion
+\Call{Wspd}{u, v} stops when the two node sets are $s$-well-separated and
+otherwise descends into the larger node. Separation forces each recursive
+thread to visit $O(1)$ nodes (packing bound), giving $O(s^d n)$ pairs.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Well-Separated Pair Decomposition from a Split Tree}
+\label{alg:approx_wspd_build}
+\begin{algorithmic}[1]
+\Require A split tree for $P \subset \mathbb{R}^d$ with root $T$; separation parameter $s > 2$.
+\Ensure A set $\mathcal{D}$ of $s$-well-separated pairs covering all pairs of $P$.
+\Function{Wspd}{$u$, $v$}
+  \If{$u$, $v$ are $s$-well-separated} \State add $(P_u, P_v)$ to $\mathcal{D}$
+  \ElsIf{$u$ and $v$ are both leaves} \State add $(P_u, P_v)$ to $\mathcal{D}$
+  \ElsIf{$\operatorname{radius}(u) \geq \operatorname{radius}(v)$}
+    \For{each child $u'$ of $u$} \State \Call{Wspd}{u', v} \EndFor
+  \Else \For{each child $v'$ of $v$} \State \Call{Wspd}{u, v'} \EndFor \EndIf
+\EndFunction
+\State $\mathcal{D} \gets \emptyset$
+\For{each pair $(u, v)$ of children of the root} \State \Call{Wspd}{u, v} \EndFor
+\State \Return $\mathcal{D}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{$s$}: larger $s$ improves the approximation ($2/s$ error) but
+  increases the pair count ($O(s^d n)$); $s = 4$ is the canonical choice.
+\item \textbf{Granularity}: single-point leaves keep the recursion shallow;
+  skip long chains of degree-one cells.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(s^d n \log n)$; \textbf{size}: $O(s^d n)$ pairs --
+  linear in $n$ for constant $s, d$, replacing the quadratic all-pairs scan.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{$n$-body problems}: evaluate potentials per well-separated
+  pair \cite{callahan1995}.
+\item \textbf{$k$-nearest neighbors}: report approximate nearest pairs
+  (cf.\ Section~\ref{sec:closest_pair}).
+\item \textbf{Spanners}: the application of
+  Section~\ref{sec:approx_distance_queries}.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item Verify that every point pair appears in exactly one pair of
+  $\mathcal{D}$, and spot-check the separation inequality.
+\item Clustered and collinear inputs stress the separation test; verify
+  termination.
+\end{itemize}
+
+\subsection{9. References}
+
+Callahan and Kosaraju \cite{callahan1995} introduced the WSPD; the quadtree
+machinery is in Chapter~\ref{ch:spatial_structures} and the spanner
+applications in \cite{harpeled2011}.
+
+\index{well-separated pair decomposition}\index{split tree}
 
 \section{Approximate Distance Queries}
 \label{sec:approx_distance_queries}
 
+\begin{definition}[Geometric Spanner]\label{def:approx_spanner}
+  A graph $G = (P, E)$ is a \textbf{$t$-spanner} of point set $P$ if for all
+  $p, q \in P$ the shortest-path length satisfies $d_G(p, q) \leq t \|p - q\|$;
+  $t \geq 1$ is the \textbf{stretch factor}\index{stretch factor}. A spanner
+  replaces the complete Euclidean graph (quadratic) with $O(n)$ edges that
+  preserve all distances up to $t$.
+\end{definition}
+
+Spanners are the data structure for \textbf{approximate distance
+queries}\index{distance oracle}: preprocess the points once, then answer any
+pairwise distance by a shortest-path computation on the small graph.
+
+\begin{theorem}[WSPD Spanner]\label{thm:approx_spanner_stretch}
+  Connecting each pair of a well-separated pair decomposition with parameter
+  $s \geq 4$ by one edge between arbitrary representatives yields a graph
+  with $O(s^d n)$ edges that is a $t$-spanner for
+  $t = \frac{s + 4}{s - 4}$ ($t \leq 3$ for $s = 8$)
+  \cite{callahan1995,harpeled2011}.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  For a point pair $(p, q)$ covered by the well-separated pair
+  $(A_i, B_i)$ with representatives $a_i, b_i$, $s$-separation bounds
+  $\|p - a_i\|$, $\|a_i - b_i\|$, and $\|b_i - q\|$ each by $O(1/s)\|p - q\|$,
+  so the path $p \to a_i \to b_i \to q$ has length at most
+  $\frac{s+4}{s-4}\|p - q\|$; the triangle inequality is used once, which is
+  why the constant is explicit.
+\end{proof}
+
+Once a $t$-spanner is available, approximate shortest paths follow from
+Dijkstra's algorithm (Chapter~\ref{ch:distance_paths},
+Section~\ref{sec:dijkstra}) in $O(n \log n)$ per query, or from an
+\emph{approximate distance oracle} answering in $O(1)$. Refinements require
+\emph{bounded-degree} and \emph{light} spanners (degree and total edge
+weight constant times the MST weight) while keeping constant stretch; the
+classical theory is surveyed in \cite{harpeled2011}.
+
+\index{spanner}
+
 \section{Geometric Clustering}
 \label{sec:approx_clustering}
+
+\textbf{Clustering}\index{clustering} partitions a point set into $k$
+groups with similar members. The geometric setting makes similarity a
+distance objective, and the objective determines both the algorithm and its
+guarantee. The three classical objectives are:
+\begin{enumerate}
+  \item \textbf{$k$-center}: cover $P$ by $k$ balls of minimum radius;
+  \item \textbf{$k$-median}: minimize the sum of point-to-nearest-center
+    distances;
+  \item \textbf{$k$-means}: minimize the sum of \emph{squared}
+    point-to-center distances.
+\end{enumerate}
+All three are NP-hard, even in the plane \cite{gonzalez1985}, and all three
+are workhorses of data analysis, so approximation is essential. Formal
+definitions and algorithms are in Section~\ref{sec:approx_k_center_median}.
+
+The objectives differ in their treatment of outliers and cluster sizes.
+$k$-center is the most conservative: a single far point sets the radius, so
+it is robust to cluster shape but sensitive to noise. $k$-median averages,
+so a small well-separated cluster hardly moves the optimum. $k$-means
+squares, amplifying large clusters and aligning with variance-based models;
+it is the objective of Lloyd's algorithm
+(Section~\ref{sec:approx_k_center_median}) that dominates practice
+(Chapter~\ref{ch:geometry_data_ml}, Section~\ref{sec:data_ml_clustering}).
+
+The algorithmic landscape mirrors the objectives. For $k$-center a greedy
+farthest-point rule achieves the tight factor $2$
+(Theorem~\ref{thm:approx_gonzalez_bound}). For $k$-median and $k$-means,
+\emph{Lloyd-style} iteration converges to a local optimum, and core-sets
+(Section~\ref{sec:approx_coresets}) reduce the input to
+$O(k \varepsilon^{-d} \log n)$ points, yielding $(1 + \varepsilon)$-approximations
+linear in $n$ for fixed $k, d, \varepsilon$ \cite{harpeled2004}. Clustering
+is thus the cleanest demonstration that the three tools of this chapter --
+sampling, core-sets, and greedy/local search -- compose into end-to-end
+guarantees. The number $k$ of clusters is part of the input; the guarantees
+hold for every $k$, and the application chooses it.
+
+\index{clustering}\index{k-center}\index{k-median}\index{k-means}
 
 \section{\texorpdfstring{$k$}{k}-Center and \texorpdfstring{$k$}{k}-Median Problems}
 \label{sec:approx_k_center_median}
 
+\subsection{1. Overview}
+
+This section develops approximations for the objectives of
+Section~\ref{sec:approx_clustering}. The centerpiece is the farthest-point
+algorithm of Gonzalez \cite{gonzalez1985}, which achieves the optimal factor
+$2$ for $k$-center. For $k$-median and $k$-means, a constant factor below
+that style of guarantee is impossible, but Lloyd-style iteration
+\cite{lloyd1982} plus core-sets deliver $(1 + \varepsilon)$-approximations
+in fixed dimension \cite{harpeled2004}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[$k$-Center]\label{def:approx_kcenter}
+  Given $P \subset \mathbb{R}^d$ and $k$, find $k$ centers $C$ minimizing the
+  \textbf{radius} $\max_{p \in P}\operatorname{dist}(p, C)$, where
+  $\operatorname{dist}(p, C) = \min_{c \in C}\|p - c\|$; the optimum is $r^*$.
+\end{definition}
+
+\begin{definition}[$k$-Median and $k$-Means]\label{def:approx_kmedian}
+  The \textbf{$k$-median} problem minimizes
+  $\sum_{p \in P}\operatorname{dist}(p, C)$ over all $k$-point center sets
+  $C$; \textbf{$k$-means} minimizes $\sum_{p \in P}\operatorname{dist}(p, C)^2$.
+  Both are NP-hard \cite{gonzalez1985}.
+\end{definition}
+
+\subsection{3. Theory}
+
+The farthest-point rule picks the first center arbitrarily and each further
+center as the point of $P$ farthest from the current centers.
+
+\begin{theorem}[Gonzalez's $2$-Approximation]\label{thm:approx_gonzalez_bound}
+  The farthest-point algorithm
+  (Algorithm~\ref{alg:approx_gonzalez_kcenter}) computes $k$ centers of
+  radius at most $2 r^*$ in $O(nk)$ time. No polynomial-time algorithm
+  achieves ratio below $2$ unless $\mathrm{P} = \mathrm{NP}$
+  \cite{gonzalez1985}.
+\end{theorem}
+
+\begin{proof}
+  If the returned radius exceeded $2 r^*$, the farthest point would be at
+  distance more than $2 r^*$ from all chosen centers, so by induction the
+  algorithm would have found $k + 1$ points with mutual distances exceeding
+  $2 r^*$. But the optimal solution covers $P$ with $k$ balls of radius
+  $r^*$, each of diameter at most $2 r^*$ by the triangle inequality, so two
+  such points cannot share a ball: they need $k + 1$ balls, a contradiction.
+  The lower bound reduces planar dominating set, which is NP-complete; see
+  \cite{gonzalez1985}.
+\end{proof}
+
+For $k$-median and $k$-means, Lloyd's algorithm
+(Algorithm~\ref{alg:approx_lloyd}) alternates assigning points to the
+nearest center and moving each center to the centroid of its assigned
+points.
+
+\begin{theorem}[Monotonicity of Lloyd's Algorithm]\label{thm:approx_lloyd_monotone}
+  Every iteration of Lloyd's algorithm
+  (Algorithm~\ref{alg:approx_lloyd}) does not increase the $k$-means
+  objective, and the center sequence converges to a fixed point that can be
+  arbitrarily worse than the global optimum \cite{lloyd1982}.
+\end{theorem}
+
+Core-sets upgrade the heuristic into an approximation: reducing to
+$O(k \varepsilon^{-d} \log n)$ weighted points and searching over candidate
+centers gives a $(1 + \varepsilon)$-approximation in time linear in $n$ for
+fixed $k, d, \varepsilon$ \cite{harpeled2004}. In practice the best of both
+worlds is achieved by seeding Lloyd's algorithm with the Gonzalez centers.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Farthest-Point $k$-Center (Gonzalez)}
+\label{alg:approx_gonzalez_kcenter}
+\begin{algorithmic}[1]
+\Require Point set $P \subset \mathbb{R}^d$; integer $k \geq 1$.
+\Ensure A set $C$ of at most $k$ centers with radius at most $2 r^*$.
+\Function{GonzalezKCenter}{$P$, $k$}
+  \State pick arbitrary $p_0 \in P$; $C \gets \{p_0\}$
+  \For{$i = 1$ \textbf{to} $k - 1$}
+    \State let $p$ be a point of $P$ maximizing $\min_{c \in C}\|p - c\|$
+    \State $C \gets C \cup \{p\}$
+  \EndFor
+  \State assign each $p \in P$ to its nearest center in $C$
+  \State \Return $C$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Lloyd's Algorithm ($k$-Means Heuristic)}
+\label{alg:approx_lloyd}
+\begin{algorithmic}[1]
+\Require Point set $P \subset \mathbb{R}^d$; integer $k \geq 1$; initial centers $C$.
+\Ensure A locally optimal set of $k$ centers for the $k$-means objective.
+\Function{Lloyd}{$P$, $C$}
+  \Repeat
+    \State $C' \gets C$
+    \For{each $p \in P$} assign $p$ to the nearest center of $C'$ \EndFor
+    \For{each non-empty cluster $P_i$} $c_i \gets \frac{1}{|P_i|}\sum_{p \in P_i} p$ \EndFor
+  \Until{no center changes}
+  \State \Return $C$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{$k$}: fixed by the application
+  (Section~\ref{sec:approx_clustering}); the guarantees hold for all $k$.
+\item \textbf{Seeding}: Gonzalez centers make good seeds for
+  Algorithm~\ref{alg:approx_lloyd}; randomized seeding rules reduce the
+  dependence on the first arbitrary center.
+\item \textbf{Termination}: Lloyd can cycle in degenerate cases; fix a
+  tolerance and a maximum iteration count.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Gonzalez}: $O(nk)$ time, $O(n)$ space.
+\item \textbf{Lloyd}: $O(nkt)$ for $t$ iterations; $t$ is not polynomially
+  bounded in the worst case but is small in practice.
+\item \textbf{Core-set schemes}: $O(n)$ time plus a term exponential in
+  $k$, $d$, and $1/\varepsilon$ \cite{harpeled2004}.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Facility location and quantization}: $k$-center models
+  emergency-response placement; $k$-means is the Lloyd--Max quantizer of
+  signal processing \cite{lloyd1982}.
+\item \textbf{Data analysis}: the default clustering engine of
+  Chapter~\ref{ch:geometry_data_ml} (Section~\ref{sec:data_ml_clustering}).
+\item \textbf{Preprocessing}: Gonzalez centers double as metric nets and
+  coarse summaries in many pipelines.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item Compare the Gonzalez radius with the optimum (exact for small $n$) and
+  verify the factor $2$.
+\item Lloyd can empty clusters; fix a re-seeding convention. Test
+  $k \geq n$ and coincident points as defined cases.
+\item Verify monotone objective decrease at every Lloyd iteration
+  (Theorem~\ref{thm:approx_lloyd_monotone}).
+\end{itemize}
+
+\subsection{9. References}
+
+Gonzalez's farthest-point algorithm \cite{gonzalez1985}, Lloyd's
+quantization algorithm \cite{lloyd1982}, and the core-set based
+$(1 + \varepsilon)$-approximations of Har-Peled and Mazumdar
+\cite{harpeled2004}; the textbook treatment is \cite{deberg2008,harpeled2011}.
+
+\index{k-center}\index{k-median}\index{Lloyd's algorithm}
+
 \section{Minimum Enclosing Shapes}
 \label{sec:approx_enclosing}
+
+\begin{definition}[Minimum Enclosing Ball]\label{def:approx_meb}
+  The \textbf{minimum enclosing ball} (MEB) of $P \subset \mathbb{R}^d$ is
+  the ball of minimum radius containing $P$; in the plane it is the smallest
+  enclosing circle (SEC) of Definition~\ref{def:sec}
+  (Chapter~\ref{ch:enclosure_convex_distance}). Its radius is the
+  $1$-center value $r^*$.
+\end{definition}
+
+The MEB is the $k = 1$ case of $k$-center
+(Definition~\ref{def:approx_kcenter}), and it is exceptional: it can be
+solved exactly in expected linear time by Welzl's randomized incremental
+algorithm (Chapter~\ref{ch:enclosure_convex_distance},
+Section~\ref{sec:welzls_algorithm}, Algorithm~\ref{alg:welzl},
+Theorem~\ref{thm:welzl_linear}) \cite{welzl1991,megiddo1983}. The catch is
+dimension: the exact algorithm's constant grows exponentially in $d$
+(the ball has up to $d + 1$ support points), so beyond a few dozen
+dimensions the problem is solved \emph{approximately} by the core-sets of
+Section~\ref{sec:approx_coresets}, whose size is independent of $n$ and $d$.
+
+\begin{algorithm}[htbp]
+\caption{Core-Set Based $(1 + \varepsilon)$-Approximate MEB}
+\label{alg:approx_meb_coreset}
+\begin{algorithmic}[1]
+\Require Point set $P \subset \mathbb{R}^d$; error $\varepsilon > 0$.
+\Ensure Center $c$ and radius $r$ with $P \subseteq B(c, (1 + \varepsilon) r)$ and $r \leq (1 + \varepsilon) r^*$.
+\Function{MEBCoreset}{$P$, $\varepsilon$}
+  \State pick arbitrary $c_1 \in P$; $S \gets \emptyset$; $t \gets 1$
+  \While{$P \nsubseteq B(c_t, (1 + \varepsilon) r_t)$}
+    \State let $p_t$ be the point of $P$ farthest from $c_t$; $r_t \gets \|p_t - c_t\|$
+    \State $S \gets S \cup \{p_t\}$
+    \State $(c_{t+1}, r_{t+1}) \gets$ exact MEB of $S$ \Comment{via Welzl; $|S| \leq 2/\varepsilon$}
+    \State $t \gets t + 1$
+  \EndWhile
+  \State \Return $(c_t, r_t)$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The loop is the farthest-point expansion of
+Theorem~\ref{thm:approx_meb_coreset_bound}: each round adds the point that
+best witnesses the current error and recomputes the exact ball on the small
+sample (cheap, since $|S| \leq \lceil 2/\varepsilon \rceil$), terminating
+once the inflated sample ball contains $P$. Termination is geometric: while
+the loop continues, every added point grows the sample ball's radius by a
+constant factor, so only $O(1/\varepsilon)$ points are ever added. Badoiu
+and Clarkson proved the size and time bounds \cite{badoiu2002}; Kumar,
+Mitchell, and Yildirim sharpened the running time to linear in $n$ and $d$
+for fixed $\varepsilon$ \cite{kumar2003}.
+
+\begin{remark}
+  The algorithm exploits the support-point theorem behind Welzl's exact
+  algorithm: the optimal ball is determined by at most $d + 1$ points on its
+  boundary. Approximating the MEB is thus a case study in how an exact
+  structural theorem converts into an approximation algorithm with mild
+  loss.
+\end{remark}
+
+\index{minimum enclosing ball}\index{smallest enclosing circle}
 
 \section{High-Dimensional Problems}
 \label{sec:approx_high_dimensional}
 
+In high dimensions the low-dimensional structures of this chapter fail in
+the worst case: quadtree methods carry factors $c^d$ or $s^d$, and the BBD
+tree's $O(c^d \log n)$ query time is exponential in $d$. The curse of
+dimensionality (Section~\ref{sec:highdim_curse}) is real. Three ideas
+survive it, and they are the three pillars built here:
+\begin{enumerate}
+  \item \textbf{Dimension reduction}: the Johnson--Lindenstrauss lemma
+    (Chapter~\ref{ch:high_dimensional}, Section~\ref{sec:highdim_jl})
+    embeds $n$ points into $O(\log n)$ dimensions while preserving distances
+    within $1 + \varepsilon$, and its random projections are the same ones
+    that power LSH (Section~\ref{sec:approx_lsh}).
+  \item \textbf{Core-sets}: the MEB admits core-sets whose size is
+    independent of $d$ (Theorem~\ref{thm:approx_meb_coreset_bound}), so
+    Section~\ref{sec:approx_enclosing} runs in time linear in $d$. The
+    solution can be summarized without the dimension, even though no space
+    decomposition can tame $\mathbb{R}^d$; the discrepancy bounds of
+    \cite{matousek1999} supply the matching sampling theory.
+  \item \textbf{Sublinear query structures}: LSH answers approximate
+    nearest-neighbor queries in time $n^{\rho}$ for $\rho < 1$ independent
+    of $d$, and the pipeline of
+    Section~\ref{sec:highdim_dimensionality_reduction} feeds reduced data
+    into Section~\ref{sec:approx_ann};
+    Section~\ref{sec:highdim_nearest_neighbor} surveys the interplay.
+\end{enumerate}
+
+The lesson is a hierarchy. Problems with geometric structure (balls,
+halfspaces) have dimension-free core-set guarantees; problems with metric
+structure (nearest neighbors, distance queries) have sublinear-time
+solutions via projections and hashing; and purely combinatorial problems
+(covering, packing; Chapter~\ref{ch:packing_algorithms}) let the dimension
+enter the approximation ratio itself. The practical high-dimensional
+systems -- the navigable small-world graphs of \cite{malkov2018} -- blend
+these ideas with engineering and remain heuristic; the theory of this
+chapter is the vocabulary in which their guarantees are stated.
+
+\index{curse of dimensionality}\index{dimension reduction}
+
 \section{Exercises}
 \label{sec:approx_exercises}
 
+\begin{enumerate}
+  \item Prove Theorem~\ref{thm:approx_gonzalez_bound} in full: show the
+    chosen $k$ centers have pairwise distances exceeding the returned radius
+    if it exceeds $2 r^*$, and conclude by the triangle inequality that the
+    optimal balls cannot separate them.
+  \item Argue that no polynomial-time algorithm approximates $k$-center
+    within a factor below $2$: show a $(2 - \delta)$-approximation would
+    decide the planar dominating-set problem exactly (see \cite{gonzalez1985}).
+  \item Exhibit a range space (points on a line, intervals as ranges) where
+    an $\varepsilon$-net of size $\Omega(\frac{1}{\varepsilon}
+    \log\frac{1}{\varepsilon})$ is necessary, and describe the worst-case
+    configuration.
+  \item Show that an $\varepsilon$-approximation is an $\varepsilon$-net:
+    prove that if $A$ is an $\varepsilon$-approximation of $(X,
+    \mathcal{R})$, then every range with $|R| \geq \varepsilon |X|$ contains
+    a point of $A$.
+  \item For Algorithm~\ref{alg:approx_meb_coreset}, prove that while the
+    loop continues, the sample radius grows by a constant factor per round,
+    and conclude $|S| \leq \lceil 2/\varepsilon \rceil$ (the bound of
+    Theorem~\ref{thm:approx_meb_coreset_bound}).
+  \item Derive the stretch bound of
+    Theorem~\ref{thm:approx_spanner_stretch}: for an $s$-well-separated pair
+    with $s \geq 4$, bound $\|p - a_i\|$, $\|a_i - b_i\|$, and
+    $\|b_i - q\|$ in terms of $\|p - q\|$ and assemble the path
+    $p \to a_i \to b_i \to q$ to get $(s + 4)/(s - 4)$.
+  \item Implement Algorithm~\ref{alg:approx_ann_quadtree} and
+    Algorithm~\ref{alg:approx_lsh} on the same random point sets; plot the
+    empirical approximation factor and query time against $d = 2, 4, 8, 16$
+    and identify where LSH overtakes the tree.
+  \item Use a random sample of size $m = O(1/\varepsilon^2)$
+    (Theorem~\ref{thm:approx_eps_approx_bound}) to estimate the fraction of
+    $n$ points in the unit square inside a fixed disk; compare the empirical
+    error with the bound of Definition~\ref{def:approx_eps_net} over $1000$
+    trials.
+\end{enumerate}
+
 \section{Project: Approximate Nearest-Neighbor Search}
 \label{sec:approx_project}
+
+Build a practical approximate nearest-neighbor search system and compare the
+guarantees of this chapter with engineering reality.
+\begin{enumerate}
+  \item \textbf{Input}: generate random point sets
+    (Chapter~\ref{ch:sampling}, Section~\ref{sec:uniform_random_points}) in
+    dimensions $d = 2, 4, 8, 16$ with $n = 10^4$ to $10^6$, and load a real
+    feature-vector data set if available.
+  \item \textbf{Exact baseline}: implement brute-force nearest neighbors to
+    compute ground truth for $100$ queries; this is the yardstick for ratio
+    and recall.
+  \item \textbf{BBD tree}: implement the balanced box decomposition and the
+    $c$-approximate query of Algorithm~\ref{alg:approx_ann_quadtree}; verify
+    the ratio bound on every query.
+  \item \textbf{LSH}: implement Algorithm~\ref{alg:approx_lsh} with random
+    hyperplane projections; tune $k$ and $L$ and record the
+    recall-versus-query-time curve.
+  \item \textbf{Comparison}: for each dimension report average
+    approximation factor, 95th percentile, recall, and query time for both
+    structures, and locate the crossover dimension.
+  \item \textbf{Engineering}: compare against a practical library (e.g.,
+    the navigable small-world graphs of \cite{malkov2018}) on the
+    high-dimensional data set.
+  \item \textbf{Verification}: plot the empirical tradeoff against
+    Theorems~\ref{thm:approx_ann_complexity} and \ref{thm:approx_lsh_quality},
+    and explain discrepancies in terms of $c$, $k$, $L$, and bucket size.
+\end{enumerate}
+The project exercises the sampling, space-decomposition, and hashing
+machinery of this chapter and of Chapters~\ref{ch:spatial_structures} and
+\ref{ch:high_dimensional}, and it surfaces the gap between worst-case
+guarantees and practical behavior that motivates the field.

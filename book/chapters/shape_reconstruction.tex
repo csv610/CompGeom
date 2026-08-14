@@ -1,31 +1,892 @@
 \chapter[Shape Representation and Reconstruction]{Shape Representation\\ and Reconstruction}
 \label{ch:shape_reconstruction}
 
-% Stub: outline only; content to be written.
-
 \section{Shape Representation}
 \label{sec:shape_representation}
+
+A \textbf{shape}\index{shape} in this chapter is a surface: a compact
+connected two-dimensional manifold embedded in $\mathbb{R}^3$, or, for terrain
+modeling, a height function over a planar region. \textbf{Shape
+representation}\index{shape representation} describes such a surface with a
+data structure supporting the queries and algorithms of the surrounding
+chapters: rendering, intersection, simplification, parameterization,
+simulation, and --- in the reverse direction --- reconstruction from
+measurements. Representations fall into two families. \textbf{Discrete
+representations} store a finite set of primitives: a point cloud stores an
+unorganized set of samples with no connectivity, while a mesh stores a
+piecewise-linear surface on a simplicial complex
+(Section~\ref{sec:meshgen_simplicial} in Chapter~\ref{ch:mesh_generation}).
+\textbf{Continuous representations} store a mathematical description: a
+parametric patch, an implicit equation $f(x, y, z) = 0$, a signed distance
+function (Section~\ref{sec:shape_sdf}), or a level set of a scalar field
+(Section~\ref{sec:shape_level_sets}).
+
+\begin{itemize}
+  \item \textbf{Point clouds}\index{point cloud} are the raw output of 3D
+    scanning and photogrammetry; they carry no topology, which must be
+    re-discovered (Section~\ref{sec:shape_reconstruction_point_clouds}).
+  \item \textbf{Meshes} add topology: a triangle mesh is a 2D simplicial
+    complex whose underlying space approximates the surface, stored with the
+    half-edge structure of Chapter~\ref{ch:half_edge} and validated by
+    Chapter~\ref{ch:mesh_analysis}.
+  \item \textbf{Parametric representations}
+    (Section~\ref{sec:shape_representation_implicit}) map a planar domain onto
+    the surface; they are native to CAD but do not easily guarantee
+    watertightness.
+  \item \textbf{Implicit representations} (Sections~\ref{sec:shape_sdf} and
+    \ref{sec:shape_poisson_reconstruction}) describe the surface as the zero
+    set of a function; they are watertight by construction and make
+    inside/outside and boolean operations trivial.
+\end{itemize}
+
+The choice follows the operations that come after it: a point cloud suffices
+for display and nearest-neighbor queries but not for finite-element assembly;
+an implicit function answers inside/outside queries and supports boolean CSG
+but resists direct manipulation; a mesh supports refinement, smoothing, and
+simulation but must be kept manifold and intersection-free. Because real
+acquisitions are point clouds, the central task of this chapter is the
+conversion from point data to a faithful, topologically correct surface.
 
 \section{Implicit and Parametric Representations}
 \label{sec:shape_representation_implicit}
 
+A \textbf{parametric surface}\index{parametric surface} is the image
+$x(D)$ of a map $x \colon D \to \mathbb{R}^3$ from a planar parameter domain
+$D$ (typically a set of patches). An \textbf{implicit surface}\index{implicit
+surface} is the zero set of a function $f \colon \mathbb{R}^3 \to \mathbb{R}$,
+$S = \{ x : f(x) = 0 \}$. The two are dual in a practical sense. A parametric
+surface is rendered and meshed directly (sample $D$ on a grid and connect the
+samples), and its points are enumerated cheaply; but the union or intersection
+of two patches requires numerical root finding, and inside/outside is
+ill-defined without an orientation convention. An implicit surface gives the
+test $f(x) \lessgtr 0$ for free, its boolean union is simply
+$\min(f_1, f_2)$ and its intersection $\max(f_1, f_2)$, and watertightness is
+automatic; the cost is that meshing requires a polygonization such as the
+marching cubes algorithm of Section~\ref{sec:shape_level_sets}
+\cite{lorensen1987}.
+
+CAD systems work overwhelmingly with parametric patches: tensor-product
+B\'ezier surfaces and their rational extension, non-uniform rational B-splines
+(NURBS)\index{NURBS}, are the standard primitives of the industry
+\cite{farin2002,piegl1997}. A NURBS surface of degree $(p, q)$ is
+\[
+x(u,v) = \frac{\sum_i \sum_j w_{ij} P_{ij} N_{i,p}(u) N_{j,q}(v)}
+                {\sum_i \sum_j w_{ij} N_{i,p}(u) N_{j,q}(v)},
+\]
+where $P_{ij}$ are control points, $w_{ij}$ weights, and $N_{i,p}$ the
+B-spline basis functions. The parametrization is the main asset: a designer
+controls the shape through a coarse control polygon, and exact refinement
+(knot insertion) produces dense meshes. The main liability is that a NURBS
+model is watertight only by explicit agreement of the boundary curves of
+neighboring patches.
+
+Implicit representations arise naturally from measurement rather than design:
+the signed distance functions of Section~\ref{sec:shape_sdf} and the indicator
+functions of Section~\ref{sec:shape_poisson_reconstruction} are both obtained
+from point clouds by fitting a function to the data, and both are regular
+enough (Lipschitz, often smooth) to be numerically well behaved; isosurface
+extraction (Section~\ref{sec:shape_level_sets}) turns them into meshes. The
+two families meet in parameterization: a triangle mesh has no intrinsic
+parameter domain, and Chapter~\ref{ch:surface_geometry} constructs one by
+mapping the mesh to a planar domain, after which patch-based methods apply.
+
+\index{B-spline}\index{watertight}
+
 \section{Reconstruction from Point Clouds}
 \label{sec:shape_reconstruction_point_clouds}
+
+\subsection{The Problem}
+
+The \textbf{surface reconstruction problem}\index{surface reconstruction}
+is: given a finite point set $P \subset \mathbb{R}^3$ sampled from an unknown
+surface $S$, compute a mesh $\hat{S}$ topologically and geometrically close to
+$S$. The problem is ill posed --- a finite sample is consistent with infinitely
+many surfaces --- so any solution must be guided by an a priori model: that $S$
+is smooth and that $P$ samples it densely enough relative to its features. The
+sampling conditions quantify density in terms of the geometry of $S$, so that a
+sphere and a thin tube of similar sampling density receive similar treatments.
+
+\begin{definition}[Local Feature Size]\label{def:shape_lfs}
+  Let $S$ be a surface and let $M$ be its medial axis
+  (Definition~\ref{def:medial_axis} in Chapter~\ref{ch:surface_geometry}). The
+  \textbf{local feature size} of $S$ at $x \in S$ is the distance from $x$ to
+  $M$: $\operatorname{lfs}(x) = \operatorname{dist}(x, M)$. It is a positive
+  continuous function on $S$ and is $1$-Lipschitz: $\operatorname{lfs}(x) \le
+  \operatorname{lfs}(y) + \operatorname{dist}(x, y)$.
+\end{definition}
+
+\begin{definition}[$\varepsilon$-Sample]\label{def:shape_epsilon_sample}
+  A point set $P \subset S$ is an \textbf{$\varepsilon$-sample} of $S$ if every
+  $x \in S$ is within distance $\varepsilon \cdot \operatorname{lfs}(x)$ of a
+  point of $P$, i.e. $\sup_{x \in S} \min_{p \in P}
+  \operatorname{dist}(x, p) / \operatorname{lfs}(x) \le \varepsilon$.
+\end{definition}
+
+\begin{definition}[$r$-Sample]\label{def:shape_r_sample}
+  A point set $P \subset S$ is an \textbf{$r$-sample} of $S$ if every $x \in S$
+  is within distance $r \cdot \operatorname{lfs}(p)$ of the sample $p$ nearest
+  to $x$: $\sup_{x \in S} \min_{p \in P} \operatorname{dist}(x, p) /
+  \operatorname{lfs}(p) \le r$.
+\end{definition}
+
+By the Lipschitz property the two conditions are equivalent up to a factor
+$1 + O(\varepsilon)$: an $\varepsilon$-sample is an $r$-sample for
+$r = \varepsilon / (1 - \varepsilon)$, and conversely. Both require more points
+where the surface is thin or curved (small $\operatorname{lfs}$) and fewer on
+flat regions --- the same feature-adaptive philosophy as the size-field meshing
+of Section~\ref{sec:meshgen_quality} --- in contrast to the uniform-density
+samples of the discrepancy theory of \cite{matousek1999}.
+
+\subsection{Voronoi-Based Sampling Guarantees}
+
+The sampling conditions translate into strong statements about the Voronoi
+diagram of $P$ (Chapter~\ref{ch:voronoi_diagrams}) and its dual Delaunay
+complex (Chapter~\ref{ch:delaunay_triangulations}). The key object is the
+restricted Delaunay complex, whose dual Voronoi faces meet the surface.
+
+\begin{definition}[Restricted Delaunay Complex]\label{def:shape_restricted_delaunay}
+  A Delaunay simplex $\sigma$ of $P$ belongs to the \textbf{restricted Delaunay
+  complex} $\operatorname{Del}(P, S)$ if its dual Voronoi face $V(\sigma)$
+  intersects $S$. It is a subcomplex of the Delaunay complex of $P$.
+\end{definition}
+
+\begin{theorem}[Sampling Guarantee]\label{thm:shape_sampling_guarantee}
+  Let $S$ be a compact smooth surface and $P$ an $\varepsilon$-sample of $S$.
+  There is a constant $\varepsilon_0$ such that for every $\varepsilon \le
+  \varepsilon_0$ the restricted Delaunay complex $\operatorname{Del}(P, S)$ is
+  a two-dimensional manifold complex homeomorphic to $S$ and within Hausdorff
+  distance $O(\varepsilon \cdot \max_S \operatorname{lfs})$ of $S$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  The proof has three steps. First, the poles of $P$
+  (Section~\ref{sec:shape_reconstruction_surface}) approximate the surface
+  normals: the two farthest Voronoi vertices of each cell lie on opposite sides
+  of $S$ at distance $\Omega(\operatorname{lfs})$ from it. Second, every simplex
+  of $\operatorname{Del}(P, S)$ has circumradius $O(\varepsilon \cdot
+  \operatorname{lfs})$, so its vertices lie in a thickening of $S$ of that
+  width, strictly between the two sheets of the medial axis. Third, projecting
+  the restricted triangles onto $S$ along the normals is a homeomorphism for
+  $\varepsilon$ below $\varepsilon_0$; the classical proofs establish
+  $\varepsilon_0 = 0.06$ for the crust and cocone filters
+  \cite{amentabern1999,amenta2000}.
+\end{proof}
+
+The theorem is the foundation of all Delaunay-based reconstruction: the surface
+is \emph{already present} as a subcomplex of the Delaunay complex, and the
+algorithms of Section~\ref{sec:shape_reconstruction_surface} differ only in
+how they select it. The same argument with the $r$-sample condition gives the
+provably good surface meshing theory of Boissonnat and Oudot
+\cite{boissonnat2005}: for $r \le 0.09$ the restricted Delaunay complex of an
+$r$-sample is homeomorphic to the surface and refinable with quality
+guarantees (Section~\ref{sec:delaunay_refinement}, \cite{shewchuk2002}).
+
+\subsection{Delaunay-Based Meshing Approaches}
+
+The Voronoi and Delaunay structures organize reconstruction into a four-stage
+pipeline:
+
+\begin{enumerate}
+  \item \textbf{Triangulation}: compute the Delaunay complex of $P$, a
+    tetrahedralization built by randomized incremental insertion in expected
+    $O(n \log n)$ time (worst-case size $\Theta(n^2)$ in $\mathbb{R}^3$,
+    Theorem~\ref{thm:high_dim_size}).
+  \item \textbf{Filtering}: select the triangles plausibly on $S$ --- by
+    empty-sphere radius (alpha complex, Definition~\ref{def:delaunay_alpha_complex}),
+    pole orientation (crust), cocone angle, or the ball-pivoting empty-ball rule
+    (Section~\ref{sec:shape_reconstruction_surface}).
+  \item \textbf{Cleaning}: remove non-manifold edges, delete small spurious
+    components, and fill holes, using the topological checks of
+    Chapter~\ref{ch:computational_topology}.
+  \item \textbf{Refinement}: re-mesh the output with the guaranteed-quality
+    Delaunay refinement of Section~\ref{sec:delaunay_refinement} \cite{shewchuk2002}.
+\end{enumerate}
+
+For terrain data the pipeline simplifies to two dimensions: samples of a height
+function $z = h(x, y)$ are projected to the plane, the 2D Delaunay triangulation
+of the projection is the triangulated irregular network (TIN) --- the natural
+choice by the maximin angle property (Chapter~\ref{ch:delaunay_triangulations})
+--- and rivers and breaklines enter as constraints of the constrained Delaunay
+triangulation, as in Chapter~\ref{ch:mesh_generation}.
+
+\subsection{Complexity}
+
+Reconstruction is dominated by the Delaunay tetrahedralization of stage~1:
+expected $O(n \log n)$ time and $O(n)$ space for well-distributed samples, and
+$O(n^2)$ worst case in $\mathbb{R}^3$ (Theorem~\ref{thm:high_dim_size});
+filtering, cleaning, and hole filling are linear in the $O(n)$ triangles. Noise
+and outliers are handled only partially by the filter-based methods of the next
+section; the least-squares methods of Sections~\ref{sec:shape_sdf} and
+\ref{sec:shape_poisson_reconstruction} are the robust alternatives.
+
+\index{epsilon-sample}\index{restricted Delaunay}\index{TIN}
 
 \section{Surface Reconstruction}
 \label{sec:shape_reconstruction_surface}
 
+\subsection{1. Overview}
+
+This section develops the four classical Delaunay-based algorithms that turn
+Theorem~\ref{thm:shape_sampling_guarantee} into working software. The
+\emph{alpha-shape} family \cite{edelsbrunner1983alpha,edelsbrunner1994}
+selects triangles by an empty-sphere radius; the \emph{crust}
+\cite{amenta1998,amentabern1999} selects triangles through the poles of the
+Voronoi cells, whose directions approximate the surface normals; the
+\emph{cocone} \cite{amenta2000} sharpens the crust filter to a thin cone
+around the pole direction and adds manifold checks that produce a watertight
+output; and the \emph{ball-pivoting algorithm} \cite{bernardini1999} grows a
+mesh directly from the points, without building the Delaunay complex, by
+pivoting a ball of fixed radius around the front. All four share the
+filter-and-clean pipeline of Section~\ref{sec:shape_reconstruction_point_clouds}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Pole and Pole Vector]\label{def:shape_pole}
+  A \textbf{pole} of a sample $p$ is a vertex of the Voronoi cell $V(p)$
+  farthest from $p$; when $V(p)$ is unbounded the pole is taken on the far side
+  of the surface, at distance $\ge \operatorname{lfs}(p)$ from $p$. The
+  \textbf{pole vector} $v_p = p^{+} - p$, where $p^{+}$ is the pole, approximates
+  the inward normal of $S$ at $p$ up to an angle $O(\varepsilon)$.
+\end{definition}
+
+\begin{definition}[Cocone]\label{def:shape_cocone}
+  Let $\theta \in (0, \pi/2)$, typically $\theta = \arcsin(\varepsilon)$. The
+  \textbf{cocone} of $p$ with pole vector $v_p$ is the subset of the Voronoi
+  cell
+  \[
+  C(p) = \left\{ x \in V(p) : \frac{(x - p) \cdot v_p}{\| x - p \|}
+          \ge \sin \theta \right\},
+  \]
+  a thin double cone around the pole direction containing the surface near $p$.
+\end{definition}
+
+\begin{definition}[Alpha Shape]\label{def:shape_alpha_shape}
+  The \textbf{alpha shape} of $P$ at $\alpha \ge 0$ is the union of the
+  simplices of the alpha complex at $\alpha$
+  (Definition~\ref{def:delaunay_alpha_complex}): those Delaunay simplices whose
+  smallest empty circumsphere has radius at most $\alpha$, with all their
+  faces. As $\alpha$ grows from $0$ to $\infty$ the alpha shape interpolates
+  from the point set to the convex hull of $P$ \cite{edelsbrunner1983alpha};
+  the family is studied in Section~\ref{sec:alpha_shapes} of
+  Chapter~\ref{ch:surface_modeling}.
+\end{definition}
+
+\begin{definition}[Empty-Ball Property]\label{def:shape_empty_ball}
+  A ball of radius $\rho$ through three points of $P$ is \emph{empty} if its
+  interior contains no point of $P$. The ball-pivoting algorithm accepts a
+  triangle only if some empty ball of radius $\rho$ passes through its three
+  vertices.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Crust and Cocone Guarantee]\label{thm:shape_crust_guarantee}
+  Let $S$ be a smooth surface and $P$ an $\varepsilon$-sample of $S$ with
+  $\varepsilon \le 0.06$. The crust of $P$ \cite{amentabern1999} and the cocone
+  of $P$ \cite{amenta2000} each contain a set of triangles forming a surface
+  homeomorphic to $S$ and within Hausdorff distance $O(\varepsilon \cdot
+  \operatorname{lfs})$ of $S$. The cocone output is additionally watertight,
+  and every cocone triangle has circumradius $O(\varepsilon \cdot
+  \operatorname{lfs})$ and makes an angle $O(\varepsilon)$ with the tangent
+  plane of $S$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  By Theorem~\ref{thm:shape_sampling_guarantee} the restricted Delaunay complex
+  $\operatorname{Del}(P, S)$ is homeomorphic to $S$. For the crust one shows
+  that a Delaunay triangle of $P \cup \{ \text{poles} \}$ with all three
+  vertices in $P$ is a triangle of the restricted complex, and conversely. For
+  the cocone one shows the circumcenter of every restricted triangle lies in
+  $C(p)$ for each of its vertices, because the pole direction makes an angle
+  $O(\varepsilon)$ with the normal. The umbrella property (every interior
+  vertex has one cycle of incident triangles) then yields the homeomorphism and
+  the watertightness \cite{amenta2000,dey2007}.
+\end{proof}
+
+\begin{theorem}[Ball-Pivoting Correctness]\label{thm:shape_ball_pivoting_correctness}
+  Let $S$ be a watertight surface and $P$ a sample of $S$ such that (i) no
+  feature of $S$ of diameter smaller than $\rho$ separates two of its points
+  (the ball of radius $\rho$ never crosses the medial axis) and (ii) the ball
+  can always be pivoted from any two adjacent samples to a third sample. Then
+  the ball-pivoting algorithm \cite{bernardini1999} produces a triangle mesh
+  homeomorphic to $S$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Condition (i) keeps the pivoted ball from ``jumping'' across a thin feature,
+  so the front advances without self-intersection; condition (ii) keeps the
+  front from stalling in gaps. Under both, each step adds a triangle whose
+  interior contains no other point of $P$, the front propagates over all of $S$
+  by connectivity, and the output is a triangulation of the same topological
+  type as $S$ \cite{bernardini1999}.
+\end{proof}
+
+The alpha-shape family has a corresponding guarantee in the $r$-sample model:
+for $r \le 0.09$ some value of $\alpha$ makes the alpha complex contain exactly
+the restricted Delaunay complex, so the alpha shape reconstructs the surface
+\cite{boissonnat2005}. In practice $\alpha$ is chosen by inspection: too small
+fragments the surface, too large fills the concavities of the convex hull.
+
+\emph{Noise and outliers.} The guarantees assume an ideal sample lying on $S$;
+real scans perturb each point with noise and add outliers away from $S$.
+Delaunay-based filters are fragile under both: an outlier is a legitimate
+Delaunay vertex whose triangles may survive the filter, and noise inflates
+circumradii, breaking the empty-sphere conditions. The remedies are
+pre-processing (project each point onto the local tangent plane fitted to its
+nearest neighbors; prune outliers by nearest-neighbor statistics) and
+post-processing (the implicit least-squares methods of
+Sections~\ref{sec:shape_sdf} and \ref{sec:shape_poisson_reconstruction} smooth
+by construction). Among the Delaunay methods the cocone is the most robust,
+because its manifold checks remove outlier-induced non-manifold structures
+\cite{amenta2000,dey2007}.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Crust (Amenta--Bern)}
+\label{alg:shape_crust}
+\begin{algorithmic}[1]
+\Require an $\varepsilon$-sample $P$ of a smooth surface $S$.
+\Ensure a triangle mesh homeomorphic to $S$.
+\Function{Crust}{$P$}
+  \State compute the Voronoi diagram of $P$ (Chapter~\ref{ch:voronoi_diagrams})
+  \For{each sample $p \in P$}
+    \State $p^{+} \gets$ pole of $V(p)$, the farthest Voronoi vertex of $V(p)$
+  \EndFor
+  \State $P' \gets P \cup \{ p^{+} : p \in P \}$
+  \State compute the Delaunay triangulation $DT(P')$
+  \State keep every triangle of $DT(P')$ whose three vertices all lie in $P$
+  \State remove small connected components of the retained triangles
+  \State \Return the retained triangles
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The 2D analogue of Algorithm~\ref{alg:shape_crust}, which reconstructs a planar
+curve, keeps the edges of $DT(P \cup \text{poles})$ whose endpoints both lie in
+$P$ and provably recovers the curve \cite{amenta1998}.
+
+\begin{algorithm}[htbp]
+\caption{Cocone (Amenta--Choi--Dey--Leekha)}
+\label{alg:shape_cocone}
+\begin{algorithmic}[1]
+\Require an $\varepsilon$-sample $P$ of a smooth surface $S$, angle $\theta = \arcsin(\varepsilon)$.
+\Ensure a watertight triangle mesh homeomorphic to $S$.
+\Function{Cocone}{$P$, $\theta$}
+  \State compute the Voronoi diagram of $P$
+  \For{each sample $p \in P$}
+    \State $p^{+} \gets$ pole of $V(p)$; \quad $v_p \gets$ unit pole vector
+    \State $C(p) \gets \{ x \in V(p) : (x - p) \cdot v_p \ge \sin\theta \, \| x - p \| \}$
+  \EndFor
+  \State keep every Delaunay triangle whose circumcenter lies in $C(p)$ for some vertex $p$
+  \State remove non-manifold edges (umbrella property)
+  \State fill small holes left by the filter
+  \State \Return the cleaned triangle mesh
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Ball-Pivoting Algorithm (Bernardini et al.)}
+\label{alg:shape_ball_pivoting}
+\begin{algorithmic}[1]
+\Require a point set $P$, ball radius $\rho$, a spatial grid for neighbor queries.
+\Ensure a triangle mesh of the surface sampled by $P$.
+\Function{BallPivot}{$P$, $\rho$}
+  \State $G \gets$ uniform grid over $P$ for neighbor queries
+  \State find a seed triangle $(a,b,c)$ whose three points admit an empty ball of radius $\rho$
+  \State $\text{front} \gets$ the three oriented edges of the seed triangle
+  \While{front is not empty}
+    \State pop an oriented edge $(a,b)$ from the front
+    \State pivot: rotate the ball of radius $\rho$ through $a$ and $b$ around
+           the edge $(a,b)$ until it touches a point of $P$
+    \If{a point $c$ is touched and the ball through $a,b,c$ is empty}
+      \State add triangle $(a,b,c)$ to the mesh
+      \State push the two new oriented edges of $(a,b,c)$ onto the front
+    \Else
+      \State mark $(a,b)$ as a boundary edge of the mesh
+    \EndIf
+  \EndWhile
+  \State \Return the triangle mesh
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+  \item \textbf{Alpha}: must exceed the sample spacing (so triangles span real
+    patches) but stay below the feature size (so the shape does not bridge
+    concavities); sweep $\alpha$ and stop at the smallest value for which the
+    output is a manifold of the expected genus
+    (Chapter~\ref{ch:computational_topology}).
+  \item \textbf{Ball radius $\rho$}: bounded below by the maximum distance
+    between adjacent samples (or the front stalls) and above by the minimum
+    feature size (or the ball jumps across a thin feature). Run several passes
+    with increasing $\rho$ to fill holes.
+  \item \textbf{Cocone angle $\theta$}: the theory calls for
+    $\theta = \arcsin(\varepsilon)$ with $\varepsilon$ estimated from the
+    maximum sample gap relative to the feature size; widen $\theta$ slightly to
+    tolerate noise.
+  \item \textbf{Cleaning thresholds}: the sizes of removed components and of
+    filled holes trade recall (more true surface) against precision (fewer
+    artifacts).
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+  \item \textbf{Crust and cocone}: dominated by the Delaunay tetrahedralization
+    (expected $O(n \log n)$, worst case $O(n^2)$ in $\mathbb{R}^3$,
+    Theorem~\ref{thm:high_dim_size}); pole computation and filtering are linear
+    passes over the $O(n)$ cells and triangles.
+  \item \textbf{Ball pivoting}: with a grid giving $O(1)$ expected neighbor
+    queries, each pivot inspects $O(1)$ candidates and the total is $O(n)$ for
+    a surface of $n$ samples \cite{bernardini1999}.
+  \item \textbf{Space}: $O(n)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+  \item \textbf{Reverse engineering}: scanned parts are reconstructed with the
+    crust, cocone, or ball pivoting, then refined and smoothed for CAD; this is
+    the front end of metrology and of the surface reconstruction of
+    Section~\ref{sec:shape_applications}.
+  \item \textbf{Scientific computing}: reconstructed surfaces seed the
+    mesh-generation pipeline of Chapter~\ref{ch:mesh_generation}, whose
+    refinement (Section~\ref{sec:delaunay_refinement}) produces quality meshes
+    for simulation.
+  \item \textbf{Multiscale analysis}: the alpha shape provides a one-parameter
+    family of reconstructions, the reference for evaluating the other filters.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+  \item \textbf{Synthetic verification}: sample a sphere and a torus
+    analytically, reconstruct, and verify homeomorphism via the Euler
+    characteristic and Betti numbers (Chapter~\ref{ch:computational_topology})
+    and the Hausdorff error against the known surface.
+  \item \textbf{Non-uniform sampling}: density varying by two orders of
+    magnitude defeats ball pivoting (one $\rho$ cannot fit all) but is handled
+    by the feature-adaptive filters; verify the cocone and crust degrade only
+    where the $\varepsilon$-condition is violated.
+  \item \textbf{Boundary, open surfaces, and sharp features}: the crust and
+    ball pivoting assume a closed surface, so on open patches boundary edges
+    must be reported, not filled as holes; near edges of zero local feature
+    size the $\varepsilon$-sample model fails, and the feature edges must
+    survive rather than be rounded away.
+  \item \textbf{Noise and outliers}: add Gaussian noise and outliers, and
+    verify that normal estimation and outlier pruning keep the reconstruction
+    valid; nearly flat regions should produce no surviving slivers.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+  \item Edelsbrunner, H., Kirkpatrick, D.~G., Seidel, R. \cite{edelsbrunner1983alpha},
+    alpha shapes.
+  \item Edelsbrunner, H., M\"ucke, E.~P. \cite{edelsbrunner1994}, 3D alpha shapes.
+  \item Amenta, N., Bern, M., Eppstein, D. \cite{amenta1998}, the curve crust.
+  \item Amenta, N., Bern, M. \cite{amentabern1999}, the surface crust.
+  \item Amenta, N., Choi, S., Dey, T.~K., Leekha, N. \cite{amenta2000}, the cocone.
+  \item Bernardini, F., Mittleman, J., Rushmeier, H., Silva, C., Taubin, G.
+    \cite{bernardini1999}, ball pivoting.
+  \item Dey, T.~K. \cite{dey2007}, curve and surface reconstruction.
+\end{itemize}
+
+\index{alpha-shape}\index{crust}\index{cocone}\index{poles}\index{ball pivoting}
+
 \section{Signed Distance Functions}
 \label{sec:shape_sdf}
+
+\begin{definition}[Signed Distance Function]\label{def:shape_sdf}
+  Let $\Omega \subset \mathbb{R}^3$ be a compact region with boundary
+  $\partial\Omega = S$. The \textbf{signed distance function} of $\Omega$ is
+  \[
+  \phi(x) = \begin{cases} \operatorname{dist}(x, S) & \text{if } x \in \Omega, \\
+                         -\operatorname{dist}(x, S) & \text{if } x \notin \Omega. \end{cases}
+  \]
+  The surface is the zero level set $\phi^{-1}(0)$; the interior of $\Omega$
+  is $\phi > 0$ and the exterior $\phi < 0$ (the sign convention varies).
+\end{definition}
+
+The signed distance function\index{signed distance function} is the canonical
+implicit representation because of three properties. It is $1$-Lipschitz and
+satisfies the \textbf{Eikonal equation}\index{Eikonal equation}
+$|\nabla \phi| = 1$ almost everywhere, so its gradients are unit vectors along
+the shortest paths to the surface. It is a solid representation: the sign test
+$\phi(x) > 0$ answers inside/outside queries in $O(1)$ time and boolean
+operations are $\min$ and $\max$. And the distance field itself is the data
+many applications need --- collision detection, closest-point queries, and the
+front propagation of Section~\ref{sec:shape_level_sets} all run on $\phi$.
+
+Signed distance functions are computed from every input type:
+
+\begin{description}
+  \item[From a mesh] The distance to a triangle mesh is the minimum over
+    vertices, edges, and faces; the fast marching method of
+    Section~\ref{sec:shape_level_sets} propagates it through a voxel grid in
+    $O(N \log N)$ time for $N$ voxels, with the sign decided once per voxel by
+    a ray-crossing or winding-number test.
+  \item[From a grid] A binary volume (a segmented CT or MRI scan, or a
+    rasterized solid) is converted to a signed distance by a linear-time
+    Euclidean distance transform over the grid.
+  \item[From a point cloud] Oriented points $p_i$ with normals $n_i$ define a
+    local tangent-plane field; $\phi$ is the signed distance to the plane
+    through the nearest sample (moving least squares), the bridge between the
+    raw scans of Section~\ref{sec:shape_reconstruction_point_clouds} and the
+    implicit world.
+\end{description}
+
+Once $\phi$ is available, a mesh is extracted as the isosurface $\phi^{-1}(0)$
+by marching cubes \cite{lorensen1987}; conversely, signed distance fields are
+computed from geometry and stored on a grid or octree to answer physical
+queries (penetration, proximity, closest point) directly --- the standard
+interface between CAD geometry and the rendering, robotics, and simulation
+stacks of this book.
 
 \section{Level Sets and Front Propagation}
 \label{sec:shape_level_sets}
 
+\begin{definition}[Level Set]\label{def:shape_level_set}
+  For a function $\phi \colon \mathbb{R}^3 \to \mathbb{R}$ and a value $c$, the
+  \textbf{level set} of $\phi$ at $c$ is $L_c = \{ x : \phi(x) = c \}$. When
+  $\phi$ is a signed distance function, the level sets $L_c$, $c \ne 0$, are
+  parallel surfaces to $S = L_0$.
+\end{definition}
+
+\index{level set}\textbf{Level-set methods} represent the surface as a level set
+of an evolving function and move the surface by evolving the function, not by
+moving points on it \cite{osher2003}. The evolution is governed by the
+\textbf{level-set equation}\index{level-set equation}
+\[
+\phi_t + F\,|\nabla \phi| = 0,
+\]
+where $F$ is a speed function in the normal direction, solved numerically with
+upwind finite differences that keep the front sharp. The advantage over
+explicit surface evolution is topological: a level set can split and merge (a
+contracting figure-eight curve splits into two components), which a
+parametrization cannot do without re-meshing. Level-set evolution drives shape
+carving, curvature-driven fairing ($F = -\kappa$), and segmentation of medical
+volumes \cite{osher2003,sethian1996}.
+
+When the speed $F$ is everywhere of one sign, the front moves monotonically and
+the arrival time $T(x)$ satisfies the \emph{Eikonal equation}
+$|\nabla T| = 1/F$ with $T = 0$ on the initial front --- a static problem
+solved once by the fast marching method \cite{sethian1996}.
+
+\begin{theorem}[Fast Marching]\label{thm:shape_fast_marching}
+  Let $\Gamma$ be an initial front and $F > 0$ a speed on a grid of $N$ points.
+  The fast marching method computes the arrival time of $|\nabla T| = 1/F$ at
+  every grid point in $O(N \log N)$ time using a heap-ordered front.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  The method maintains a heap of candidate points ordered by current arrival
+  time. The smallest candidate $x$ is accepted: by monotonicity of the front no
+  later candidate can lower its time. The accepted point updates its grid
+  neighbors by solving the local Eikonal equation with a first-order upwind
+  scheme. Each of the $N$ points is accepted once and updated a constant number
+  of times, giving $N$ heap operations at $O(\log N)$ each.
+\end{proof}
+
+\begin{example}[Arrival Time as Distance]
+  With speed $F \equiv 1$, the arrival time $T(x)$ is exactly the Euclidean
+  distance from $x$ to $\Gamma$; fast marching with $F = 1$ is how
+  Section~\ref{sec:shape_sdf} propagates distances into a volume grid, and the
+  same scheme on a surface mesh yields geodesic distances.
+\end{example}
+
+The level-set and fast marching ideas connect the whole chapter: the signed
+distance functions of Section~\ref{sec:shape_sdf} are the $F = 1$
+arrival-time fields; their isosurfaces are extracted by \textbf{marching
+cubes} \cite{lorensen1987}, which constructs surface triangles in each grid
+cell for the 15 configurations of how a level set crosses the cell and resolves
+their topological ambiguities; and the Poisson reconstruction of
+Section~\ref{sec:shape_poisson_reconstruction} produces a field whose isosurface
+is the output mesh.
+
+\index{fast marching}\index{marching cubes}
+
 \section{Poisson Surface Reconstruction}
 \label{sec:shape_poisson_reconstruction}
+
+\subsection{1. Overview}
+
+\index{Poisson reconstruction}Poisson surface reconstruction \cite{kazhdan2006}
+is an implicit method: it turns an oriented point cloud into a watertight
+surface by solving a global Poisson equation rather than by filtering a
+Delaunay complex. The input is a set of points $P$ with approximate outward
+normals $N$; the output is a smooth indicator function whose isosurface
+approximates the surface. Because the method fits one smooth field to
+\emph{all} the data, it is far more robust to noise than the Delaunay-based
+filters of Section~\ref{sec:shape_reconstruction_surface}, and it fills holes
+and produces watertight output automatically --- the de facto standard for
+reconstructing watertight models from real scans.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Indicator Function]\label{def:shape_indicator}
+  For a surface $S = \partial\Omega$, the \textbf{indicator function} of
+  $\Omega$ is $\chi_{\Omega}(x) = 1$ for $x \in \Omega$ and $0$ otherwise.
+  Reconstructing $S$ is equivalent to reconstructing the indicator: $S$ is the
+  level set $\chi = \tau$ for a threshold $\tau$ between the two sides.
+\end{definition}
+
+\begin{definition}[Oriented Point Set]\label{def:shape_oriented_points}
+  An \textbf{oriented point set} is a set of pairs $(p_i, n_i)$ where $p_i$ is
+  a sample and $n_i$ a unit vector approximating the outward normal of $S$ at
+  $p_i$. Normals are estimated by principal component analysis of the $k$
+  nearest neighbors (the smallest eigenvector of the covariance matrix), with
+  signs made globally consistent.
+\end{definition}
+
+\subsection{3. Theory}
+
+The method exploits a distributional identity. For a smooth surface $S$ with
+outward normal $n$ and surface measure $dA$,
+\[
+\nabla \chi_{\Omega} = -n(x)\,\delta_S(x),
+\]
+where $\delta_S$ is the surface Dirac measure: the gradient of the indicator
+is a vector field supported on $S$ and pointing inward. The oriented samples
+$(p_i, n_i)$ discretize this field; convolving with a smoothing kernel $F$ on
+the octree of the samples gives the vector field
+$V(x) = \sum_i n_i\,F(x - p_i)$, and the identity
+$\nabla \chi * F = V$ says the smoothed indicator solves a Poisson equation.
+
+\begin{theorem}[Poisson Reconstruction]\label{thm:shape_poisson}
+  Let $(P, N)$ be an oriented point set sampling a smooth surface $S$, and let
+  $V = \sum_i n_i F(x - p_i)$ be the induced vector field for a smoothing
+  kernel $F$. Then the indicator function $\chi$ of $S$ satisfies, in the
+  sense of distributions,
+  \[
+  \Delta \chi = \nabla \cdot V,
+  \]
+  and solving this equation and extracting the isosurface at the average of
+  $\chi$ at the sample points yields a surface approximating $S$ to within the
+  smoothing scale of $F$ \cite{kazhdan2006}.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Taking the divergence of both sides of $\nabla(\chi * F) = V$ gives
+  $\Delta(\chi * F) = \nabla \cdot V$. Convolution commutes with
+  differentiation and $F$ approximates the identity, so $\chi * F$ is a
+  smoothed indicator function whose isosurface at the threshold
+  $\tau = \chi * F(p_i)$ --- the mean value at the samples --- lies within one
+  smoothing radius of $S$; the threshold interpolates the value of $\chi$
+  across $S$ because the samples lie on the boundary.
+\end{proof}
+
+The practical system \cite{kazhdan2006} replaces the uniform grid by an
+octree: samples and normals live in the leaves, the kernel is a trilinear hat
+function scaled per cell, and the Poisson equation is solved by a multigrid
+solver on the tree. The later \emph{screened} variant adds the constraint
+$\chi(p_i) = 0$ at the samples, keeping the surface near the data; both share
+the theory above.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Poisson Surface Reconstruction}
+\label{alg:shape_poisson_reconstruction}
+\begin{algorithmic}[1]
+\Require oriented points $(p_i, n_i)$, octree depth $d$.
+\Ensure a watertight triangle mesh approximating the sampled surface.
+\Function{PoissonReconstruct}{$(P, N)$, $d$}
+  \State build an octree $\mathcal{O}$ of depth $d$, subdivided so each sample lies in a distinct leaf
+  \State $F \gets$ trilinear hat function on the octree cells
+  \State $V(x) \gets \sum_i n_i \, F(x - p_i)$ \Comment{smoothed normal field}
+  \State solve $\Delta \chi = \nabla \cdot V$ on $\mathcal{O}$ by a multigrid solver
+  \State $\tau \gets \frac{1}{|P|} \sum_i \chi(p_i)$
+  \State extract the isosurface $\{ x : \chi(x) = \tau \}$ by marching cubes on $\mathcal{O}$
+  \State \Return the extracted triangle mesh
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+  \item \textbf{Octree depth $d$}: controls resolution. Doubling $d$ halves the
+    cell size; the practical range is $d = 8$ to $12$ for typical scans, chosen
+    so the smallest cell matches the sample spacing. Larger $d$ captures more
+    detail but amplifies noise and memory use.
+  \item \textbf{Isovalue threshold}: the default $\tau$, the mean of $\chi$ at
+    the samples, is robust; it can be adjusted when the sampling is biased.
+  \item \textbf{Normal estimation}: the $k$-nearest-neighbor radius for normal
+    estimation trades sharpness against robustness; $k$ grows with the noise
+    level.
+  \item \textbf{Smoothing/screening}: the screened variant's weight controls
+    fidelity to the data versus smoothness; raise it for dense scans, lower it
+    for sparse or very noisy data.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+  \item \textbf{Time}: $O(N)$ for $N$ octree nodes with the multigrid solver of
+    \cite{kazhdan2006}, where $N$ is proportional to the number of samples at a
+    fixed depth; isosurface extraction is linear in the number of output
+    triangles.
+  \item \textbf{Space}: $O(N)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+  \item \textbf{Watertight reconstruction}: turning laser and photogrammetric
+    scans of objects, buildings, and terrain into closed models for 3D
+    printing, inspection, and rendering.
+  \item \textbf{Noisy data}: the smooth least-squares fit tolerates noise that
+    destroys the Delaunay-based filters of
+    Section~\ref{sec:shape_reconstruction_surface}; it is the method of choice
+    when the point set is not an $\varepsilon$-sample.
+  \item \textbf{Implicit interface}: the field output plugs directly into the
+    signed distance framework of Section~\ref{sec:shape_sdf} and the
+    learning-based pipelines of Chapter~\ref{ch:geometry_data_ml}.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+  \item \textbf{Watertightness}: verify the output is closed (every edge shared
+    by exactly two triangles) with the Euler characteristic of the expected
+    genus, using Chapter~\ref{ch:computational_topology}.
+  \item \textbf{Error measurement}: for synthetic surfaces, report the
+    Hausdorff distance to the true surface; the error should decrease with
+    depth until the sample spacing is resolved.
+  \item \textbf{Normals orientation}: inconsistent normal signs give a
+    self-canceling field and an empty or inverted reconstruction; test with a
+    scan of known orientation.
+  \item \textbf{Depth sensitivity}: a depth sweep should stabilize above a
+    minimum depth; instability at high depth indicates noise amplification.
+  \item \textbf{Holes and sparse regions}: large gaps should still reconstruct
+    watertight; verify the surface across a gap is smooth with no cusps.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+  \item Kazhdan, M., Bolitho, M., Hoppe, H. \cite{kazhdan2006}, Poisson
+    surface reconstruction.
+  \item Osher, S., Fedkiw, R. \cite{osher2003}, level-set methods and implicit
+    surfaces.
+  \item Lorensen, W.~E., Cline, H.~E. \cite{lorensen1987}, marching cubes.
+\end{itemize}
+
+\index{octree}\index{indicator function}\index{watertight}
 
 \section{Applications}
 \label{sec:shape_applications}
 
+\subsection{Scanning and Reverse Engineering}
+
+\textbf{3D scanning} systems --- laser triangulation, structured light,
+time-of-flight lidar, and photogrammetry --- produce point clouds whose
+density, accuracy, and coverage vary widely. The reconstruction pipeline of
+Sections~\ref{sec:shape_reconstruction_point_clouds} and
+\ref{sec:shape_reconstruction_surface} is their common back end: overlapping
+scans are registered into one frame (the methods of \cite{besl1992,chen1992}),
+outliers are pruned, normals are estimated, and a surface is fitted. Industrial
+reverse engineering then converts the mesh into a parametric CAD model using
+the patch machinery of Section~\ref{sec:shape_representation_implicit}. The
+algorithm follows the data: ball pivoting \cite{bernardini1999} is fastest and
+fits uniformly sampled mechanical parts; the cocone \cite{amenta2000} and the
+crust \cite{amentabern1999} reconstruct provably correct surfaces from
+feature-adaptive samples; Poisson reconstruction \cite{kazhdan2006} is the
+robust default for noisy or incomplete scans.
+
+\subsection{Surface Reconstruction}
+
+In medical imaging, segmented CT and MRI volumes are converted to signed
+distance functions (Section~\ref{sec:shape_sdf}) and polygonized by marching
+cubes \cite{lorensen1987} into the anatomical surfaces used for planning,
+simulation, and implant design; the level-set machinery of
+Section~\ref{sec:shape_level_sets} drives the segmentation itself. Tomographic
+and lidar acquisitions of fossils, terrain, and biological specimens follow the
+same pipeline: the sampling condition of
+Section~\ref{sec:shape_reconstruction_point_clouds} tells the operator the
+density needed to resolve a feature of a given size, and the topological
+checks of Chapter~\ref{ch:computational_topology} certify the output.
+
+\subsection{Terrain Modeling}
+
+Airborne lidar produces dense height samples of the ground and of buildings.
+Terrain reconstruction is the two-dimensional specialization: the samples are
+projected to the plane, outliers (vegetation, vehicles) are removed, and the
+Delaunay triangulation of the projection becomes the triangulated irregular
+network (TIN) backing digital elevation models, contouring, and visibility
+analysis \cite{deberg2008}. Breaklines and rivers enter as constraints of the
+constrained Delaunay triangulation, and the meshing machinery of
+Chapter~\ref{ch:mesh_generation} refines the TIN for flood and watershed
+simulation; see also Section~\ref{sec:voronoi_applications}.
+
+\subsection{Practical Tradeoffs}
+
+\begin{itemize}
+  \item \textbf{Fidelity versus watertightness}: the Delaunay-based filters
+    follow the data closely but leave holes and artifacts; the implicit methods
+    fill holes at the cost of smoothing sharp features. Watertight output is
+    mandatory for 3D printing, CFD, and FEM.
+  \item \textbf{Speed}: ball pivoting is $O(n)$ expected and fastest on uniform
+    scans; the Delaunay pipeline costs $O(n \log n)$ expected with $O(n^2)$
+    worst case (Theorem~\ref{thm:high_dim_size}); Poisson reconstruction is
+    linear in the octree size with a larger constant.
+  \item \textbf{Robustness}: the implicit least-squares methods
+    (Sections~\ref{sec:shape_sdf} and \ref{sec:shape_poisson_reconstruction})
+    degrade gracefully under noise; the Delaunay methods degrade quickly unless
+    the noise is removed first.
+  \item \textbf{Representation downstream}: reconstructed meshes feed the
+    simulation stacks of Chapter~\ref{ch:mesh_generation}, distance fields
+    feed the collision and robotics algorithms, and all three standard input
+    representations feed the geometry-aware machine-learning pipelines of
+    Chapter~\ref{ch:geometry_data_ml}.
+\end{itemize}
+
+\index{reverse engineering}\index{lidar}\index{terrain}
+
 \section{Exercises}
 \label{sec:shape_exercises}
+
+\begin{enumerate}
+  \item Let $S$ be a surface and $P$ an $\varepsilon$-sample of $S$. Prove
+    from the Lipschitz property of the local feature size
+    (Definition~\ref{def:shape_lfs}) that $P$ is an $r$-sample for
+    $r = \varepsilon / (1 - \varepsilon)$, and give an example where the two
+    conditions differ by a constant factor.
+  \item Compute the medial axis and the local feature size of a rectangle
+    (compare Example~\ref{ex:medial_axis_rectangle}) and of an annulus, and
+    describe the distribution of sample density an $\varepsilon$-sample must
+    have at the corners, on the long edges, and near the inner hole.
+  \item For samples of the unit circle, compute the Voronoi diagram, the poles
+    of each cell, and the pole vectors by hand; verify that each pole vector
+    points to the center and that the 2D crust
+    (Algorithm~\ref{alg:shape_crust} restricted to edges) recovers the convex
+    hull of the samples.
+  \item Simulate the ball-pivoting algorithm (Algorithm~\ref{alg:shape_ball_pivoting})
+    by hand on eight points evenly spaced around a circle, with a ball radius
+    equal to the chord length, and count the pivoting steps; repeat with a
+    smaller ball and explain where the front stalls.
+  \item Let $P$ be an $\varepsilon$-sample and $\theta = \arcsin(\varepsilon)$
+    the cocone angle. Show that the cocone $C(p)$ of
+    Definition~\ref{def:shape_cocone} contains the ball of radius
+    $\varepsilon \cdot \operatorname{lfs}(p)$ centered at $p$, and explain why
+    this guarantees that the circumcenter of every triangle of the restricted
+    Delaunay complex lies in the cocone of its vertices.
+  \item Implement the signed distance function of a triangle mesh on a voxel
+    grid (Section~\ref{sec:shape_sdf}) using fast marching
+    (Theorem~\ref{thm:shape_fast_marching}), and verify the Eikonal condition
+    $|\nabla \phi| = 1$ away from the surface.
+  \item Implement the level-set evolution $\phi_t + F|\nabla \phi| = 0$ for
+    $F \equiv 1$ (distance) and for $F = -\kappa$ (mean-curvature flow), and
+    verify that a non-convex curve splits into two components under the second
+    flow, demonstrating why level sets handle topology change.
+  \item Reconstruct the same synthetic point cloud of a sphere, a torus, and a
+    bumpy surface with (i) the alpha complex, (ii) the cocone, and (iii)
+    Poisson reconstruction; add Gaussian noise of increasing amplitude and
+    report for each method the watertightness, the genus, and the Hausdorff
+    distance to the true surface.
+\end{enumerate}

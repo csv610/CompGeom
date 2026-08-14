@@ -1,37 +1,1091 @@
 \chapter{Randomized Geometric Algorithms}
 \label{ch:randomized_algorithms}
 
-% Stub: outline only; content to be written.
-
 \section{Why Randomization Helps}
 \label{sec:randomized_why}
+
+Many geometric algorithms are fast on typical inputs yet slow on a small set of
+adversarial configurations. Deterministic algorithms must be correct on every
+input, so their analysis must cover the worst case. \textbf{Randomization}
+\index{randomization}\index{randomized algorithm} breaks this deadlock: the
+algorithm flips coins, and we analyze its \emph{expected} behavior over those
+coin flips. Because the randomness lives inside the algorithm rather than in
+the input, the expectation is meaningful for \emph{every} input.
+
+\begin{definition}[Expected Time]\label{def:rand_expected_time}
+  The \textbf{expected running time} of a randomized algorithm on input $I$ is
+  the expectation, over the algorithm's random choices, of its running time on
+  $I$. An algorithm whose expected time is $T(n)$ on all inputs of size $n$
+  runs in \textbf{expected time} $O(T(n))$.
+\end{definition}
+
+Expected time differs from worst-case time (the deterministic guarantee) and
+from average-case analysis (which averages over inputs): it is an
+adversarial-input guarantee averaged over the algorithm's own randomness. Two
+classes of randomized algorithms use this randomness differently.
+
+\begin{definition}[Las Vegas Algorithm]\label{def:rand_las_vegas}
+  A \textbf{Las Vegas algorithm} always produces a correct answer; only its
+  running time is random. It can be restarted to enforce a hard time bound at
+  the price of a tiny failure probability.
+\end{definition}
+
+\begin{definition}[Monte Carlo Algorithm]\label{def:rand_monte_carlo}
+  A \textbf{Monte Carlo algorithm} may produce an incorrect answer, but only
+  with probability at most a reported bound $\delta$; its running time is
+  typically deterministic.
+\end{definition}
+
+Nearly all algorithms in this chapter are Las Vegas: the randomized incremental
+constructions are correct for every permutation, and randomness only controls
+how fast they run. Monte Carlo behavior appears in the derived sampling
+structures ($\varepsilon$-nets, Section~\ref{sec:randomized_eps_nets}),
+analyzed with the concentration results of Section~\ref{sec:randomized_sampling}.
+The classical references are the monographs of Motwani and Raghavan
+\cite{motwani1995} and Mulmuley \cite{mulmuley1994}.
+
+Why does randomization help in geometry specifically? Three phenomena recur.
+First, many structures are \emph{order dependent}: an incremental construction
+is fast for most insertion orders and slow only for a measure-zero set that an
+adversary forces; a random order averages over equally likely orders. Second,
+geometry is \emph{sample friendly}: a small random sample resembles the whole
+input, so the sample can guide the computation (Section~\ref{sec:randomized_clarkson_shor}).
+Third, random orders are \emph{easier to analyze} than the worst order, thanks
+to Seidel's backward analysis (Section~\ref{sec:randomized_backward_analysis}).
+The payoff: randomized incremental constructions achieve the optimal expected
+bounds for Delaunay triangulations (Section~\ref{sec:randomized_delaunay}),
+convex hulls (Section~\ref{sec:randomized_convex_hulls}), and linear
+programming (Section~\ref{sec:randomized_linear_programming}), with simpler
+algorithms than their deterministic counterparts.
+
+\index{expected time}\index{worst-case time}\index{average-case analysis}
 
 \section{Randomized Incremental Construction}
 \label{sec:randomized_incremental}
 
+\subsection{1. Overview}
+
+\textbf{Randomized incremental construction}\index{randomized incremental
+construction} (RIC) inserts the input objects one at a time in a uniformly
+random order and repairs the current geometric structure locally after each
+insertion. Because the order is random, the repair cost at step $i$ is small in
+expectation, giving expected $O(n \log n)$ total time. The pattern covers the
+Delaunay triangulation (Section~\ref{sec:randomized_delaunay}), the trapezoidal
+map of Chapter~\ref{ch:point_location} (Sections~\ref{sec:pointloc_trapezoidal}
+--\ref{sec:pointloc_randomized}), convex hulls
+(Section~\ref{sec:randomized_convex_hulls}), and linear programming
+(Section~\ref{sec:randomized_linear_programming}); it is due to Clarkson and
+Shor \cite{clarkson1989}, Seidel \cite{seidel1993}, and Mulmuley
+\cite{mulmuley1994}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Incremental Construction]\label{def:rand_incremental_construction}
+  Let $\mathcal{F}(P)$ be a geometric structure on an object set $P$ of size
+  $n$. An \textbf{incremental construction} of $\mathcal{F}(P)$ fixes an
+  insertion order $p_1, \dots, p_n$ and builds
+  $\mathcal{F}(\{p_1,\dots,p_i\})$ for $i = 1, \dots, n$; it is
+  \textbf{randomized} if the order is a uniformly random permutation.
+\end{definition}
+
+The cost of one insertion splits into \textbf{locating} the new object
+(typically $O(\log i)$ via a history DAG, Section~\ref{sec:pointloc_search_dags}),
+\textbf{inserting} it (destroying and creating cells), and \textbf{updating} the
+conflict graph of Section~\ref{sec:randomized_conflict_graphs}. The insertion
+cost is proportional to the destroyed cells, which backward analysis
+(Section~\ref{sec:randomized_backward_analysis}) controls.
+
+\subsection{3. Theory}
+
+The accounting identity of RIC is that total work is proportional to the number
+of cells ever created. If $c_i$ is the number created by the $i$-th insertion
+and $C$ is the final structure, then
+\[
+  \sum_{i=1}^{n} \mathbb{E}[c_i]
+  = \sum_{T \in C} \sum_{i=1}^{n} \Pr[\text{$T$ is created by insertion $i$}].
+\]
+
+\begin{theorem}[Expected Cost of RIC]\label{thm:rand_ric_expected}
+  Consider a randomized incremental construction in which every cell of the
+  final structure is determined by a constant number $d$ of inserted objects,
+  and in which locating a new object costs $O(\log n)$ expected via a history
+  DAG. Then the expected total time is $O(n \log n)$ and the expected space is
+  $O(n)$ plus the size of the final structure.
+\end{theorem}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Generic Randomized Incremental Construction}
+\label{alg:rand_ric_generic}
+\begin{algorithmic}[1]
+\Require A set $S$ of geometric objects and a random source.
+\Ensure The structure $\mathcal{F}(S)$.
+\Function{RIC}{$S$}
+  \State $\sigma \gets$ uniformly random permutation of $S$
+  \State $\mathcal{F} \gets$ structure on the first $d$ objects of $\sigma$
+  \For{$i = d+1, \dots, |S|$}
+    \State $o \gets \sigma[i]$
+    \State locate $o$ in $\mathcal{F}$ (walk, history DAG, or conflict list)
+    \State insert $o$: destroy the conflicting cells, create the replacements
+    \State update the conflict graph for the created cells
+  \EndFor
+  \State \Return $\mathcal{F}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Random order}: draw one permutation up front with a reproducible
+  seed; multiple seeds are the standard variance-reduction tool for benchmarks.
+\item \textbf{Base case and location}: handle the first $d$ objects directly
+  (a big triangle in the Delaunay chapter); use a history DAG to preserve the
+  $O(\log n)$ location guarantee.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: expected $O(n \log n)$ (Theorem~\ref{thm:rand_ric_expected});
+  worst case $O(n^2)$ for adversarial orders.
+\item \textbf{Space}: expected $O(n)$ for the structure plus the history DAG.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item Delaunay triangulation, $O(n \log n)$ expected (Section~\ref{sec:randomized_delaunay}).
+\item Trapezoidal map and point location (Chapter~\ref{ch:point_location}).
+\item Linear programming and convex hulls (Sections~\ref{sec:randomized_linear_programming},
+  \ref{sec:randomized_convex_hulls}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Permutation invariance}: the output must be identical for every
+  random order; run several seeds and compare exactly.
+\item \textbf{Degenerate objects}: duplicates and collinear triples must not
+  create zero-area cells; use the exact predicates of
+  Chapter~\ref{ch:geometric_predicates}.
+\item \textbf{Reproducibility}: identical seeds must give identical runs.
+\end{itemize}
+
+\subsection{9. References}
+
+The framework is due to Clarkson and Shor \cite{clarkson1989}, Seidel
+\cite{seidel1993}, and Mulmuley \cite{mulmuley1994}; textbook treatments are in
+de Berg et al.\ \cite{deberg2008} (Ch.~9) and Motwani--Raghavan
+\cite{motwani1995}.
+
 \section{Backward Analysis}
 \label{sec:randomized_backward_analysis}
+
+The most widely used tool for analyzing randomized incremental algorithms is
+Seidel's \textbf{backward analysis}\index{backward analysis} \cite{seidel1993}:
+instead of analyzing step $i$ \emph{forward}, analyze the random process
+\emph{backwards}. The insertion of the points of $P$ in a random order is, in
+reverse, a process that deletes points one at a time from a set whose elements
+are uniformly distributed among the remaining points, so conditioning on the
+remaining set is trivial: it is always a uniformly random subset of $P$.
+
+\begin{definition}[Backward Analysis]\label{def:rand_backward_analysis}
+  Let the points of $P$ be inserted in a uniformly random order and let
+  $\mathcal{F}_i$ be the structure after $i$ insertions. A cell $T$ of the
+  final structure is \textbf{created at step $i$} if $T \in \mathcal{F}_i$ but
+  $T \notin \mathcal{F}_{i-1}$. \textbf{Backward analysis} estimates
+  $\Pr[T \text{ created at step } i]$ by conditioning on the reverse process,
+  where the defining objects of $T$ form a uniformly random $d$-tuple among the
+  $i$ remaining objects.
+\end{definition}
+
+\begin{theorem}[Seidel's Backward-Analysis Lemma]\label{thm:rand_backward_analysis}
+  Let $T$ be a cell of the final structure determined by exactly $d$ objects of
+  the input, where $d$ is a constant. Inserting the input objects in a
+  uniformly random order, the probability that $T$ is created at step $i$ is
+  $O(d/i)$. Hence the expected number of cells created during step $i$ is
+  $O(1)$ when every final cell is determined by a constant number of objects.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  In the reverse process, $T$ is created (in forward time) at the moment its
+  last defining object is deleted. Conditioning on $T$ being present when $i$
+  objects remain, the next deleted object is uniform among the $i$, and $T$ is
+  created only if that object is one of the $d$ defining $T$: probability $d/i$.
+  Summing over the $O(n)$ cells of the final structure, the expected number of
+  creations per step is $O(1)$, and the total expected creations are $O(n)$.
+\end{proof}
+
+\begin{example}[Expected Creations in Delaunay]\label{ex:rand_backward_delaunay}
+  Each final Delaunay triangle is determined by its three vertices, so a fixed
+  triangle is created at step $i$ with probability $O(3/i)$ by
+  Theorem~\ref{thm:rand_backward_analysis}. Summing over the $O(n)$ final
+  triangles gives expected creation work $O(n)$; with $O(\log n)$ expected
+  location per insertion through the history DAG
+  (Section~\ref{sec:pointloc_search_dags}) this yields the $O(n \log n)$
+  expected construction time.
+\end{example}
+
+Backward analysis was introduced by Seidel for the trapezoidal map
+\cite{seidel1991}, developed into a general methodology in his survey
+\cite{seidel1993}, and used by Guibas, Knuth, and Sharir for the randomized
+incremental Delaunay triangulation \cite{guibas1992}.
+
+\begin{remark}
+  The same principle---analyze the moment a structure is \emph{created} by
+  looking at the reverse deletion process---applies verbatim to convex hulls (a
+  hull edge is created when its last vertex is deleted) and to linear
+  programming (a constraint becomes binding when it is deleted).
+\end{remark}
+
+\index{backward analysis}\index{Seidel's lemma}
 
 \section{Conflict Graphs}
 \label{sec:randomized_conflict_graphs}
 
+\subsection{1. Overview}
+
+A randomized incremental construction must know, when a new object is inserted,
+which cells it destroys. The \textbf{conflict graph}\index{conflict graph}
+maintains this information explicitly, linking every uninserted object to the
+cells it would destroy, and is updated as cells are created. It was introduced
+in this form by Clarkson and Shor \cite{clarkson1989} and makes the RIC
+template of Section~\ref{sec:randomized_incremental} concrete.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Conflict]\label{def:rand_conflict}
+  An uninserted object $o$ \textbf{conflicts} with a cell $T$ of the current
+  structure if inserting $o$ would destroy $T$. The set of cells conflicting
+  with $o$ is its \textbf{conflict zone}.
+\end{definition}
+
+\begin{definition}[Conflict Graph]\label{def:rand_conflict_graph}
+  The \textbf{conflict graph} is a bipartite graph whose left vertices are the
+  uninserted objects, whose right vertices are the cells of the current
+  structure, and whose edges are exactly the conflicts.
+\end{definition}
+
+For the Delaunay triangulation the conflict relation is the in-circle test of
+Definition~\ref{def:incircle} (Section~\ref{sec:delaunay_incremental}); for
+convex hulls a point conflicts with the hull facets it lies outside
+(Section~\ref{sec:randomized_convex_hulls}).
+
+\subsection{3. Theory}
+
+\begin{theorem}[Correctness of the Conflict-Graph Update]\label{thm:rand_conflict_update}
+  Maintaining the conflict graph through a randomized incremental construction
+  is correct, provided (i) the conflicts of every newly created cell are
+  computed by checking each uninserted object in its neighborhood, and (ii)
+  destroyed cells and their edges are removed.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Induction over insertions. Inserting $o$ destroys exactly the cells of its
+  conflict zone (verified for each application, e.g., the cavity theorem of
+  Section~\ref{sec:delaunay_incremental}), so those cells are removed
+  correctly. A cell $T$ newly created by the insertion can be destroyed only by
+  an object in the conflict zone of the destroyed cells spanning $T$; checking
+  those objects restores the exact adjacency of $T$.
+\end{proof}
+
+The update cost is proportional to the sum over destroyed cells of their
+conflict-graph neighbors, which backward analysis bounds by $O(1)$ per created
+cell in expectation.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Conflict-Graph Maintenance}
+\label{alg:rand_conflict_update}
+\begin{algorithmic}[1]
+\Require The current structure $\mathcal{F}$, the conflict graph $G$, an uninserted object $o$.
+\Ensure $\mathcal{F}$ and $G$ updated after inserting $o$.
+\Function{InsertWithConflicts}{$\mathcal{F}, G, o$}
+  \State $\mathcal{Z} \gets$ conflict zone of $o$ in $G$
+  \State $\mathcal{B} \gets$ boundary of the cells in $\mathcal{Z}$
+  \State remove $\mathcal{Z}$ and their edges from $\mathcal{F}$ and $G$
+  \State create the replacement cells from $o$ and $\mathcal{B}$
+  \For{each new cell $T$}
+    \For{each $q$ adjacent to a destroyed cell meeting $T$}
+      \If{$q$ conflicts with $T$} \State add edge $(q, T)$ to $G$ \EndIf
+    \EndFor
+  \EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Conflict predicate}: evaluated exactly with the robust predicates
+  of Section~\ref{sec:robust_predicates} (in-circle for Delaunay, outside-facet
+  for hulls).
+\item \textbf{Neighborhood pruning}: test only objects near the destroyed cells
+  against new cells, keeping the update local.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: expected $O(1)$ amortized per created cell; total expected
+  $O(n \log n)$ for the applications of this chapter.
+\item \textbf{Space}: expected $O(n)$ conflicts at any time.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item The Delaunay conflict graph of Section~\ref{sec:delaunay_randomized}.
+\item Hull facets store the points outside them
+  (Section~\ref{sec:randomized_convex_hulls}).
+\item The vertical-decomposition counterpart in point location
+  (Section~\ref{sec:pointloc_randomized}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Exactness check}: recompute the conflict zone of a random
+  uninserted object by brute force after each insertion and compare.
+\item \textbf{Boundary ties and empty zones}: an object on a cell boundary
+  conflicts with both adjacent cells; an object inside the hull has an empty
+  zone and must be a no-op.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Clarkson, K.~L., Shor, P.~W. \cite{clarkson1989}.
+\item Mulmuley, K. \cite{mulmuley1994}, Ch.~3, the theory of conflict
+  maintenance.
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~9.4.
+\end{itemize}
+
 \section{Clarkson--Shor Technique}
 \label{sec:randomized_clarkson_shor}
+
+\subsection{1. Overview}
+
+The \textbf{Clarkson--Shor technique}\index{Clarkson--Shor technique} uses
+random sampling to bound the number of geometric configurations: a random
+sample of the input ``resembles'' the whole input, so the configurations
+determined by the sample bound the number at a related ``level''. This yields
+the classical $O(nk)$ bound on the number of $k$-sets in the plane and the
+first optimal expected-time algorithms for convex hulls and Delaunay
+triangulations \cite{clarkson1989}. It is the probabilistic counterpart of the
+deterministic method of Chazelle and Friedman \cite{chazellefriedman1990}
+(Section~\ref{sec:randomized_sampling}).
+
+\subsection{2. Definitions}
+
+\begin{definition}[$k$-Set]\label{def:rand_k_set}
+  Let $P$ be a set of $n$ points in the plane in general position. A
+  \textbf{$k$-set} of $P$ is a subset of size $k$ separable by a half-plane
+  (equivalently, cut off by a level-$k$ line of the dual arrangement; see
+  Definition~\ref{def:point_level}).
+\end{definition}
+
+\begin{definition}[Configurations Determined by a Sample]\label{def:rand_configuration_space}
+  Let $\mathcal{C}(P)$ be the set of \textbf{configurations} (cells) determined
+  by $P$, each determined by a fixed constant number $d$ of objects. For
+  $R \subseteq P$ and $T \in \mathcal{C}(P)$, $T$ is \textbf{crossing} $R$ if
+  it is determined by a set meeting both $R$ and $P \setminus R$.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Clarkson--Shor Sampling Lemma]\label{thm:rand_clarkson_shor}
+  Let $\mathcal{C}$ be a configuration space as in
+  Definition~\ref{def:rand_configuration_space}, and let $g_r(m)$ be the
+  maximum, over sets of $m$ objects, of the expected number of configurations
+  determined by a uniform random sample of size $r$. Then the number of
+  configurations crossed by at most $k$ objects is $O(g_{n/(k+1)}(n))$. In
+  particular, the number of $(\le k)$-sets of an $n$-point planar set is
+  $O(nk)$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Let $R$ be a uniform random $r$-subset of $P$ and $X$ the number of
+  configurations it determines, so $\mathbb{E}[X] \le g_r(n)$. A configuration
+  $T$ is determined by $R$ exactly when $R$ contains the $d$ objects of $T$ and
+  none of the (at most $k$) objects crossing $T$, with probability
+  \[
+    \binom{n-d-k}{r-d} \Big/ \binom{n}{r} \approx (r/n)^d (1 - r/n)^k.
+  \]
+  For $r = n/(k+1)$ both factors are $\Omega(1)$, so every ``level-$k$''
+  configuration is counted with probability $\Omega(1)$; hence their number is
+  $O(g_{n/(k+1)}(n))$. For planar point sets the sample's hull and
+  triangulation are linear, so $g_r(n) = O(r)$ and the count is $O(nk)$.
+\end{proof}
+
+The combinatorial corollary is the $O(nk)$ bound on the $k$-level of a planar
+line arrangement for each $k$ \cite{clarkson1989}, the basis of the complexity
+analysis of arrangements (Chapter~\ref{ch:envelopes}). Choosing the sample as
+the recursive input gives the expected-time bounds for hulls and Delaunay
+triangulations.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Clarkson--Shor Sampling for Convex Hulls}
+\label{alg:rand_clarkson_shor_hull}
+\begin{algorithmic}[1]
+\Require point set $P$ in the plane.
+\Ensure the convex hull of $P$.
+\Function{SampledHull}{$P$}
+  \If{$|P|$ is small} \State \Return HullByAnyMethod($P$) \EndIf
+  \State $R \gets$ uniform random sample of $P$ of size $\lceil |P|/2 \rceil$
+  \State $H \gets$ SampledHull($R$)
+  \State find the points of $P$ outside $H$ by the walk of Section~\ref{sec:pointloc_triangulations}
+  \State insert the outside points into $H$ one at a time
+  \State \Return the resulting hull
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Sample size}: $r = n/(k+1)$ balances the two factors in the
+  probability; a half-and-half split is a convenient recursion choice.
+\item \textbf{Point location}: the walk locates the outside points in expected
+  linear time.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Combinatorial}: $O(nk)$ $(\le k)$-sets and $O(nk)$ $(\le
+  k)$-levels of a planar arrangement.
+\item \textbf{Algorithmic}: expected $O(n \log n)$ for convex hulls and Voronoi
+  diagrams \cite{clarkson1989,clarkson1993}.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item The $k$-level complexity of arrangements (Chapter~\ref{ch:envelopes}).
+\item Output-sensitive hull constructions
+  (Section~\ref{sec:randomized_convex_hulls}).
+\item Randomized closest-pair and Voronoi algorithms \cite{clarkson1993}.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Combinatorial verification}: enumerate $k$-sets on small random
+  sets by brute force and compare counts with the $O(nk)$ bound.
+\item \textbf{Sampling bias}: verify sample uniformity by statistical tests
+  when the random source is suspect.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Clarkson, K.~L., Shor, P.~W. \cite{clarkson1989}.
+\item Clarkson, K.~L. \cite{clarkson1993}.
+\item Chazelle, B., Friedman, J. \cite{chazellefriedman1990}.
+\end{itemize}
 
 \section{Random Sampling}
 \label{sec:randomized_sampling}
 
+Random sampling is the source of the randomness in this chapter: a small,
+uniformly chosen subset of the input is used as a surrogate for the whole. The
+justification is \textbf{concentration}: with high probability the relative
+frequencies of every combinatorial range in the sample match those of the
+input. This is the content of the Chernoff bound and its geometric refinements,
+and it is what makes randomized construction and $\varepsilon$-nets
+(Section~\ref{sec:randomized_eps_nets}) correct with high probability.
+
+\begin{definition}[Range Space]\label{def:rand_range_space}
+  A \textbf{range space} is a pair $(\mathcal{X}, \mathcal{R})$ of a ground set
+  $\mathcal{X}$ and a family of subsets $\mathcal{R} \subseteq
+  2^{\mathcal{X}}$, the \textbf{ranges}; the most important geometric examples
+  are the half-plane ranges in the plane and half-space ranges in
+  $\mathbb{R}^d$.
+\end{definition}
+
+\begin{definition}[VC Dimension]\label{def:rand_vc_dimension}
+  A set $S \subseteq \mathcal{X}$ is \textbf{shattered} by $\mathcal{R}$ if
+  every subset of $S$ equals $S \cap R$ for some range $R$. The \textbf{VC
+  dimension} of the range space is the size of the largest shattered set.
+  Half-planes in the plane have VC dimension 3; half-spaces in $\mathbb{R}^d$
+  have VC dimension $d + 1$ \cite{hausslerwelzl1987}.
+\end{definition}
+
+\begin{theorem}[Chernoff Bound]\label{thm:rand_chernoff}
+  Let $X_1, \dots, X_r$ be independent Bernoulli trials with $\Pr[X_j = 1] = p$
+  and $\bar{X} = (1/r) \sum_j X_j$. For every $\delta \in (0,1)$,
+  \[
+    \Pr[\bar{X} \le (1-\delta)p] \le e^{-\delta^2 p r / 2},
+    \qquad
+    \Pr[\bar{X} \ge (1+\delta)p] \le e^{-\delta^2 p r / 3}.
+  \]
+\end{theorem}
+
+Chernoff bounds control the number of ``bad'' events in a randomized
+construction (a union bound converts them into a failure probability $\delta$
+at the cost of a $O(\log 1/\delta)$ factor in the sample size) and the
+deviation of sample statistics from their expectation. The geometric refinement
+is the \textbf{random sampling lemma}.
+
+\begin{theorem}[Random Sampling Lemma]\label{thm:rand_sampling_lemma}
+  Let $(\mathcal{X}, \mathcal{R})$ be a range space of VC dimension $d$ and let
+  $R$ be a uniform random sample of $r$ points of $\mathcal{X}$. With
+  probability at least $1 - \delta$, simultaneously for all ranges $T \in
+  \mathcal{R}$,
+  \[
+    \left| \frac{|R \cap T|}{r} - \frac{|T|}{n} \right| \le
+    O\!\left( \sqrt{\frac{d}{r}\log\frac{r}{d}} +
+    \sqrt{\frac{1}{r}\log\frac{1}{\delta}} \right).
+  \]
+  This is the uniform bound of Haussler and Welzl \cite{hausslerwelzl1987}.
+\end{theorem}
+
+The lemma is the bridge to the structures of the next section: an
+$\varepsilon$-approximation is a sample in which every range deviates by at
+most $\varepsilon$, and an $\varepsilon$-net is a sample intersecting every
+range of measure at least $\varepsilon$. Both have size independent of $n$ for
+constant $d$, which is why they reduce large geometric problems to small random
+ones \cite{harpeled2011}.
+
+\textbf{Derandomization}\index{derandomization} recovers the same guarantees
+deterministically. The Chazelle--Friedman method \cite{chazellefriedman1990}
+replaces the random sample by a \emph{deterministic} sample built so that no
+range of a canonical family contains an extreme number of points, using a
+discrepancy bound; the derandomized $\varepsilon$-nets and the optimal
+deterministic convex-hull algorithm of Chazelle \cite{chazelle1993} rest on
+this principle. The price is complexity and constants, which is why randomized
+sampling remains the default in implementations.
+
+\begin{remark}
+  The discrepancy viewpoint is developed by Matou\v{s}ek \cite{matousek1999};
+  the half-plane discrepancy of the sampling chapter
+  (Definition~\ref{def:halfplane_discrepancy}) is exactly the deviation
+  controlled by the sampling lemma.
+\end{remark}
+
+\index{random sampling}\index{Chernoff bound}\index{VC dimension}\index{derandomization}
+
 \section{\texorpdfstring{$\varepsilon$}{epsilon}-Nets}
 \label{sec:randomized_eps_nets}
+
+\subsection{1. Overview}
+
+An \textbf{$\varepsilon$-net}\index{epsilon-net} is a small subset of the input
+that hits every large range. If a problem is solved correctly whenever the
+solution set is an $\varepsilon$-net of the input, then a tiny random sample
+suffices, independent of $n$. This is the engine of many approximation
+algorithms in geometric data structures (Chapter~\ref{ch:range_searching}) and
+was introduced by Haussler and Welzl \cite{hausslerwelzl1987} to support range
+searching.
+
+\subsection{2. Definitions}
+
+\begin{definition}[$\varepsilon$-Net]\label{def:rand_eps_net}
+  Let $(\mathcal{X}, \mathcal{R})$ be a range space and $P \subseteq
+  \mathcal{X}$ finite. A subset $N \subseteq P$ is an \textbf{$\varepsilon$-net}
+  of $P$ if every range $R \in \mathcal{R}$ with $|R \cap P| \ge \varepsilon
+  |P|$ contains a point of $N$.
+\end{definition}
+
+\begin{definition}[$\varepsilon$-Approximation]\label{def:rand_eps_approximation}
+  A subset $A \subseteq P$ is an \textbf{$\varepsilon$-approximation} of $P$ if
+  for every range $R \in \mathcal{R}$,
+  \[
+    \left| \frac{|R \cap A|}{|A|} - \frac{|R \cap P|}{|P|} \right| \le
+    \varepsilon.
+  \]
+  An $\varepsilon$-approximation is in particular an $\varepsilon$-net.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Small Nets by Random Sampling]\label{thm:rand_eps_net_small}
+  Let $(\mathcal{X}, \mathcal{R})$ be a range space of VC dimension $d$. A
+  uniform random sample $N$ of size
+  \[
+    r = O\!\left( \frac{d}{\varepsilon}\log\frac{d}{\varepsilon} +
+    \frac{1}{\varepsilon}\log\frac{1}{\delta} \right)
+  \]
+  is an $\varepsilon$-net of $P$ with probability at least $1 - \delta$; a
+  sample of size $O(\frac{d}{\varepsilon^2}\log\frac{1}{\delta})$ is an
+  $\varepsilon$-approximation with the same probability
+  \cite{hausslerwelzl1987}.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Fix a range $R$ with $|R \cap P| \ge \varepsilon |P|$. The sample misses $R$
+  with probability $(1 - \varepsilon)^r \le e^{-\varepsilon r}$. The packing
+  argument of Haussler and Welzl bounds the number of ranges relevant at this
+  scale by $O(r^d)$, so the union bound gives failure probability
+  $r^d e^{-\varepsilon r} \le \delta$ for the stated size. The approximation
+  claim follows from Theorem~\ref{thm:rand_sampling_lemma} and a similar union
+  bound.
+\end{proof}
+
+For half-plane ranges ($d = 3$) the bound is $O(\frac{1}{\varepsilon}
+\log\frac{1}{\varepsilon})$, independent of $n$; the deterministic construction
+of Matou\v{s}ek \cite{matousek1990} achieves the same size in time
+$O(n \operatorname{poly}(1/\varepsilon))$.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Randomized $\varepsilon$-Net Construction}
+\label{alg:rand_eps_net_sampling}
+\begin{algorithmic}[1]
+\Require point set $P$ in the plane, parameter $\varepsilon$, failure probability $\delta$.
+\Ensure An $\varepsilon$-net of $P$ (half-plane ranges) with probability at least $1 - \delta$.
+\Function{EpsilonNet}{$P, \varepsilon, \delta$}
+  \State $r \gets \big\lceil \tfrac{3}{\varepsilon}\log\tfrac{3}{\varepsilon} + \tfrac{1}{\varepsilon}\log\tfrac{1}{\delta} \big\rceil$
+  \State $N \gets$ uniform random sample of $P$ of size $r$
+  \If{some half-plane contains $> \varepsilon |P|$ points and none of $N$}
+    \State resample, or fall back to the construction of \cite{matousek1990}
+  \EndIf
+  \State \Return $N$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{$\varepsilon$}: the sample size is governed by the
+  $O(\frac{1}{\varepsilon}\log\frac{1}{\varepsilon})$ term; $\varepsilon$
+  trades accuracy against sample size.
+\item \textbf{Failure probability $\delta$}: the
+  $\frac{1}{\varepsilon}\log\frac{1}{\delta}$ term grows logarithmically, so
+  very small failure probabilities are cheap.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Size}: $O(\frac{d}{\varepsilon}\log\frac{d}{\varepsilon})$,
+  independent of $n$.
+\item \textbf{Time}: $O(n + r \log r)$ randomized; $O(n
+  \operatorname{poly}(1/\varepsilon))$ deterministic \cite{matousek1990}.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item Approximate simplex range counting (Section~\ref{sec:rangesearch_simplex})
+  and range searching (Chapter~\ref{ch:range_searching}).
+\item The coresets of Har-Peled and Mazumdar \cite{harpeled2004} are
+  $\varepsilon$-approximations under geometric distances.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Brute-force verification}: on small inputs enumerate all ranges
+  and assert the net property holds for every one.
+\item \textbf{Small $\varepsilon$}: verify the $O(\frac{1}{\varepsilon}\log
+  \frac{1}{\varepsilon})$ growth of the net size empirically.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Haussler, D., Welzl, E. \cite{hausslerwelzl1987}, the original theorem.
+\item Matou\v{s}ek, J. \cite{matousek1990}, deterministic construction.
+\item Matou\v{s}ek, J. \cite{matousek1999} and Har-Peled, S. \cite{harpeled2011}.
+\end{itemize}
 
 \section{Applications to Convex Hulls}
 \label{sec:randomized_convex_hulls}
 
+\subsection{1. Overview}
+
+The randomized incremental convex hull inserts the points in a random order and
+maintains the hull of the inserted prefix, using the conflict graph to find,
+for every point still outside, the hull edge it lies in front of. Backward
+analysis shows each hull edge is created with probability $O(2/i)$ at step $i$,
+giving expected $O(n \log n)$ total time, matching the optimal deterministic
+bound of Chan's algorithm (Theorem~\ref{thm:chans_complexity}) and the methods
+of Chapter~\ref{ch:convex_hulls} (Section~\ref{sec:quickhull}).
+
+\subsection{2. Definitions}
+
+\begin{definition}[Hull Conflict]\label{def:rand_hull_conflict}
+  Let $\operatorname{conv}(Q)$ be the convex hull of the inserted points $Q$.
+  An uninserted point $p$ \textbf{conflicts} with a hull edge $e$ if $p$ lies
+  in the open half-plane on the outside of $e$; the conflict zone of $p$ is the
+  contiguous chain of hull edges visible from $p$. Points inside the hull have
+  an empty conflict zone.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Randomized Incremental Hull]\label{thm:rand_hull_expected}
+  Inserting the points of a planar $n$-point set in a uniformly random order,
+  maintaining the hull and its conflict graph, computes the convex hull in
+  expected $O(n \log n)$ time and $O(n)$ space.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  The total work is the number of hull edges ever created. A final hull edge is
+  determined by its two endpoints, so by Theorem~\ref{thm:rand_backward_analysis}
+  with $d = 2$ it is created at step $i$ with probability $O(2/i)$. The final
+  hull has at most $n$ edges, giving expected creations $\sum_i O(2/i) \cdot
+  O(i) = O(n \log n)$; locating each inserted point through the conflict list
+  costs $O(1)$ amortized.
+\end{proof}
+
+In $\mathbb{R}^3$ the same argument gives expected $O(n \log n)$; the
+Clarkson--Shor analysis \cite{clarkson1989} yields the same bound with optimal
+constants for random inputs.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Randomized Incremental Convex Hull}
+\label{alg:rand_convex_hull}
+\begin{algorithmic}[1]
+\Require point set $P$ in the plane.
+\Ensure the convex hull of $P$.
+\Function{RandomizedHull}{$P$}
+  \State $\sigma \gets$ uniformly random permutation of $P$
+  \State $H \gets$ convex hull of the first two points of $\sigma$
+  \State initialize the conflict graph of the remaining points
+  \For{$i = 3, \dots, n$}
+    \State $p \gets \sigma[i]$
+    \If{$p$'s conflict zone is empty} \State continue \Comment{$p$ is inside $H$}
+    \Else
+      \State remove the visible chain of $H$; add the two tangent edges from $p$
+      \State repartition the conflicts of the removed edges onto the two new edges
+    \EndIf
+  \EndFor
+  \State \Return $H$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Initialization}: start from the first two points as a degenerate
+  ``hull''; collinear prefixes are handled by the tangency routine.
+\item \textbf{Tangents and predicates}: walk the hull from the visible chain to
+  find the two tangents; use the robust orientation predicate of
+  Chapter~\ref{ch:geometric_predicates}.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: expected $O(n \log n)$; worst case $O(n^2)$ for
+  adversarial deterministic orders.
+\item \textbf{Space}: $O(n)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item A testing oracle for the deterministic hulls of
+  Chapter~\ref{ch:convex_hulls} (Sections~\ref{sec:graham_scan}--\ref{sec:quickhull}).
+\item Extends to $\mathbb{R}^3$ with the same conflict-graph machinery; linked
+  to LP by point-line duality (Section~\ref{sec:randomized_linear_programming}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Cross-validation}: compare with the monotone chain and Graham
+  scan outputs for many permutations.
+\item \textbf{Degenerate inputs}: drop duplicates, tolerate collinear boundary
+  points, and assign points on a hull edge a consistent conflict zone.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Clarkson, K.~L., Shor, P.~W. \cite{clarkson1989}.
+\item Seidel, R. \cite{seidel1990}, convex hulls made easy.
+\item Chazelle, B. \cite{chazelle1993}, the optimal deterministic hull.
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~11.2.
+\end{itemize}
+
 \section{Applications to Delaunay Triangulations}
 \label{sec:randomized_delaunay}
+
+\subsection{1. Overview}
+
+The Delaunay triangulation is the flagship example of randomized incremental
+construction: inserting the points in a random order and repairing the
+triangulation by edge flips yields the expected $O(n \log n)$ construction of
+Section~\ref{sec:delaunay_randomized} (Theorem~\ref{thm:randomized_delaunay}).
+This section re-derives that bound from the backward-analysis and
+conflict-graph machinery of this chapter, and discusses higher-dimensional
+behavior.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Delaunay Conflict]\label{def:rand_delaunay_conflict}
+  In the Delaunay setting the conflict relation of
+  Definition~\ref{def:rand_conflict} is the in-circle test
+  (Definition~\ref{def:incircle}): an uninserted point $p$ conflicts with a
+  triangle $T$ if $p$ lies strictly inside the circumcircle of $T$. The
+  conflict zone of $p$ is exactly the cavity of
+  Section~\ref{sec:delaunay_incremental} (Definition~\ref{def:conflict_graph}).
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Expected Delaunay Cost]\label{thm:rand_delaunay_expected}
+  The randomized incremental construction of the Delaunay triangulation of an
+  $n$-point set in the plane runs in expected $O(n \log n)$ time and expected
+  $O(n)$ space; the expected number of triangles ever created is $O(n)$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  A final triangle is determined by its three vertices, so by
+  Theorem~\ref{thm:rand_backward_analysis} it is created at step $i$ with
+  probability $O(3/i)$ and the expected number of created triangles is $O(n)$
+  (Example~\ref{ex:rand_backward_delaunay}). The expected conflict-graph size is
+  $O(n)$ by the same backward argument, and point location through the history
+  DAG (Section~\ref{sec:pointloc_search_dags}) costs expected $O(\log n)$ per
+  insertion, giving the claimed time.
+\end{proof}
+
+In $\mathbb{R}^d$ the Delaunay complex has worst-case size
+$\Theta(n^{\lceil d/2 \rceil})$, and the randomized incremental construction
+runs in expected $O(n^{\lceil d/2 \rceil})$ time
+(Section~\ref{sec:delaunay_higher_dimensional}); the planar case is the only
+one with a clean $O(n \log n)$ bound.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Randomized Incremental Delaunay (Walk Variant)}
+\label{alg:rand_delaunay_insert}
+\begin{algorithmic}[1]
+\Require point set $P$, an enclosing ``big triangle''.
+\Ensure the Delaunay triangulation of $P$.
+\Function{RandomizedDelaunayWalk}{$P$}
+  \State $\sigma \gets$ uniformly random permutation of $P$
+  \State $\mathcal{T} \gets$ big triangle
+  \For{$i = 1, \dots, n$}
+    \State $p \gets \sigma[i]$
+    \State $T \gets$ triangle of $\mathcal{T}$ containing $p$, found by the visibility walk of Section~\ref{sec:pointloc_triangulations}
+    \State split $T$ into three triangles; flip illegal edges of the neighborhood (Section~\ref{sec:delaunay_randomized})
+  \EndFor
+  \State remove triangles incident to the big triangle
+  \State \Return $\mathcal{T}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+This is the version used in practice; the history-DAG version of
+Algorithm~\ref{alg:randomized_delaunay} (Section~\ref{sec:delaunay_randomized})
+replaces the walk by a guaranteed $O(\log n)$ search.
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Walk vs.\ DAG}: the visibility walk
+  (Section~\ref{sec:pointloc_triangulations}) is simpler and faster in practice
+  but has no worst-case guarantee; use the DAG when a provable bound is needed.
+\item \textbf{Flip strategy}: the legalization pass of
+  Section~\ref{sec:delaunay_edge_flipping} repairs only the insertion
+  neighborhood, keeping the per-insertion cost proportional to the created
+  triangles.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: expected $O(n \log n)$ (Theorem~\ref{thm:rand_delaunay_expected});
+  expected $O(n^{\lceil d/2 \rceil})$ in $\mathbb{R}^d$; worst case $O(n^2)$
+  without a DAG.
+\item \textbf{Space}: expected $O(n)$ (planar).
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item The engine of Delaunay meshing (Chapter~\ref{ch:mesh_generation}).
+\item A reference oracle for deterministic Delaunay algorithms
+  (Section~\ref{sec:delaunay_randomized}); the dual Voronoi diagram is obtained
+  for free (Chapter~\ref{ch:delaunay_triangulations}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Permutation tests}: the output must agree with a divide-and-conquer
+  construction for every permutation.
+\item \textbf{Cocircularity and duplicates}: break cocircular ties consistently
+  (Section~\ref{sec:delaunay_randomized}) and skip coincident points with the
+  exact predicate.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Guibas, L., Knuth, D.~E., Sharir, M. \cite{guibas1992}.
+\item Clarkson, K.~L. \cite{clarkson1993}, randomized closest-point and Voronoi
+  constructions.
+\item Mulmuley, K. \cite{mulmuley1990}; de Berg, M., et al. \cite{deberg2008},
+  Sec.~9.4.
+\end{itemize}
 
 \section{Applications to Linear Programming}
 \label{sec:randomized_linear_programming}
 
+\subsection{1. Overview}
+
+Seidel's randomized algorithm \cite{seidel1990} solves a linear program in
+$\mathbb{R}^d$ with $n$ constraints in expected $O(d!\,n)$ time, hence expected
+linear time in any fixed dimension. Its principle is the boundary reduction of
+Section~\ref{sec:low_dimensional_lp}: when a random constraint is violated by
+the current optimum, the new optimum must lie on the boundary of that
+constraint, reducing the dimension by one. The analysis is a canonical
+backward-analysis argument.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Linear Program]\label{def:rand_lp}
+  A \textbf{linear program} in $\mathbb{R}^d$ maximizes $c^{\mathsf T} x$
+  subject to a set $H$ of $n$ linear constraints $a_j^{\mathsf T} x \le b_j$,
+  each a half-space (Section~\ref{sec:geometric_linear_programs} of
+  Chapter~\ref{ch:linear_programming}). The \textbf{optimum} is the feasible
+  point maximizing the objective.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Seidel's Algorithm]\label{thm:rand_lp_expected}
+  For a linear program in $\mathbb{R}^d$ with $n$ constraints in general
+  position and a bounded feasible region, Seidel's randomized algorithm
+  computes the optimum in expected $O(d!\,n)$ time; in particular, expected
+  $O(n)$ time for $d = 2$ and every fixed $d$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Let $E(n,d)$ be the expected time. The algorithm processes the constraints in
+  random order, maintaining the optimum $v$ of the prefix. With probability at
+  most $d/(n-d+1)$ the next constraint violates $v$ (by backward analysis: the
+  optimum of the remaining constraints is determined by at most $d$ of them),
+  giving the recurrence
+  \[
+    E(n,d) \le E(n-1,d) + O(1) + \frac{d}{n}\,E(n-1,d-1),
+  \]
+  whose solution is $E(n,d) = O(d!\,n)$.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Seidel's Randomized Linear Programming}
+\label{alg:rand_lp_seidel}
+\begin{algorithmic}[1]
+\Require constraints $H$ in $\mathbb{R}^d$, objective $c$.
+\Ensure The optimum $v$, or a certificate of infeasibility/unboundedness.
+\Function{SeidelLP}{$H, d$}
+  \If{$d = 1$}
+    \State \Return the extreme feasible point (a one-dimensional scan)
+  \EndIf
+  \State $v \gets$ a vertex of the feasible region of a constant-size subset of $H$
+  \State $\sigma \gets$ uniformly random permutation of $H$
+  \For{$i = 1, \dots, |H|$}
+    \State $h \gets \sigma[i]$
+    \If{$v$ violates $h$}
+      \State \Comment{the optimum lies on the hyperplane of $h$}
+      \State $v \gets$ SeidelLP($\{ h' \cap \partial h : h' \in H \}$, $d - 1$)
+    \EndIf
+  \EndFor
+  \State \Return $v$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Random order}: draw one permutation per recursion level; reusing
+  it preserves the analysis.
+\item \textbf{Base case and predicates}: $d = 1$ is a sorted scan with
+  infeasibility certificates; feasibility tests use the orientation predicates
+  of Chapter~\ref{ch:geometric_predicates}.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: expected $O(d!\,n)$, i.e., $O(n)$ for fixed $d$; worst
+  case $O(nd)$.
+\item \textbf{Space}: $O(n)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item Welzl's smallest-enclosing-circle algorithm \cite{welzl1991} is the
+  LP-type specialization of the recursion, in expected $O(n)$ time.
+\item Support queries, largest empty circle, and collision separation in
+  $\mathbb{R}^2$, $\mathbb{R}^3$ (Section~\ref{sec:low_dimensional_lp}); the
+  implementation of choice up to dimension three, where Megiddo's
+  \cite{megiddo1983} has no simpler competitor.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Cross-validation}: compare the randomized optimum with
+  Algorithm~\ref{alg:halfplane_intersection} (Chapter~\ref{ch:linear_programming}).
+\item \textbf{Infeasible, unbounded, and parallel constraints}: detect an empty
+  intersection at dimension 1 and handle parallel half-planes in the base case.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Seidel, R. \cite{seidel1990}, the randomized LP and hull algorithm.
+\item Welzl, E. \cite{welzl1991}, smallest enclosing disks.
+\item Megiddo, N. \cite{megiddo1983}, deterministic linear-time LP in
+  $\mathbb{R}^3$.
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~4.4.
+\end{itemize}
+
 \section{Exercises}
 \label{sec:randomized_exercises}
+
+\begin{enumerate}
+  \item Define expected time, worst-case time, and average-case time, and give
+    an input family on which the deterministic incremental Delaunay
+    construction (Section~\ref{sec:delaunay_incremental}) runs in quadratic time
+    while its randomized version is expected linear.
+  \item Prove that the probability that a specific edge of the final Delaunay
+    triangulation is created at step $i$ of the randomized incremental
+    construction is at most $3/i$ (Theorem~\ref{thm:rand_backward_analysis}),
+    and use it to bound the expected number of triangles ever created by $O(n)$.
+  \item Derive the recurrence $E(n,d) \le E(n-1,d) + O(1) +
+    \frac{d}{n}\,E(n-1,d-1)$ for Seidel's linear-programming algorithm and solve
+    it to obtain $E(n,d) = O(d!\,n)$.
+  \item Show that the number of $k$-sets of an $n$-point planar set is $O(nk)$
+    using the Clarkson--Shor sampling lemma
+    (Theorem~\ref{thm:rand_clarkson_shor}); identify where the planarity of the
+    range space is used.
+  \item Prove that a uniform random sample of size $O(\frac{1}{\varepsilon}
+    \log\frac{1}{\varepsilon} + \frac{1}{\varepsilon}\log\frac{1}{\delta})$ of a
+    planar point set is an $\varepsilon$-net for half-plane ranges with
+    probability at least $1 - \delta$ (Theorem~\ref{thm:rand_eps_net_small}).
+  \item Explain why the conflict graph of a randomized incremental Delaunay
+    construction has expected $O(n)$ edges, and describe how the graph is
+    updated when a point inside the hull of the current points is inserted.
+  \item Contrast Las Vegas and Monte Carlo algorithms, and give one geometric
+    algorithm of each type from this chapter; argue which class the randomized
+    incremental algorithms belong to and why.
+  \item Describe how Chazelle--Friedman derandomization
+    \cite{chazellefriedman1990} replaces the random sample of the
+    $\varepsilon$-net construction by a deterministic one, and state the price
+    paid in constants and simplicity relative to
+    Algorithm~\ref{alg:rand_eps_net_sampling}.
+\end{enumerate}

@@ -1,37 +1,928 @@
 \chapter{Geometric Matching}
 \label{ch:geometric_matching}
 
-% Stub: outline only; content to be written.
-
 \section{Comparing Geometric Objects}
 \label{sec:matching_intro}
+
+\index{matching problem}Geometric matching is the algorithmic discipline of
+deciding how well two geometric objects agree, and of finding the
+\emph{transformation} that makes them agree. The objects can be point sets,
+polygonal curves, polygonal regions, or surfaces; the transformation is
+usually a rigid motion, a similarity, or an affine map; and the agreement is
+measured by a distance between the transformed object and its target. The
+three ingredients --- objects, transformations, and measures --- determine a
+family of problems with very different algorithmic flavors, unified by a
+single question: how much computation does it take to align one shape with
+another?
+
+\begin{definition}[Matching Instance]\label{def:match_instance}
+  A \textbf{matching instance} is a triple $(\mathcal{A}, \mathcal{B},
+  \mathcal{T})$, where $\mathcal{A}$ and $\mathcal{B}$ are geometric objects
+  (point sets, curves, or polygons) and $\mathcal{T}$ is a family of
+  admissible transformations $T$ of the plane or of space. A solution is a
+  transformation $T \in \mathcal{T}$ together with a correspondence
+  $\pi$ between the features of $T(\mathcal{A})$ and those of
+  $\mathcal{B}$, minimizing a prescribed distance $d(T(\mathcal{A}),
+  \mathcal{B})$.
+\end{definition}
+
+The correspondence $\pi$ is usually a bipartite matching between the
+features (points, vertices, segments) of the two objects. When both objects
+are point sets of equal size and $\pi$ must be a bijection, the problem is a
+\textbf{bipartite matching problem in the geometric plane}; the two classical
+objective functions are the \textbf{minimum-weight matching}
+(Definition~\ref{def:match_min_weight}), which minimizes the sum of the
+matched distances, and the \textbf{bottleneck matching}
+(Definition~\ref{def:match_bottleneck}), which minimizes the largest matched
+distance. When the correspondence is free to omit parts of either set, the
+problem is \textbf{partial matching}, discussed in
+Section~\ref{sec:matching_shape}.
+
+A useful taxonomy organizes the field along three axes:
+\begin{itemize}
+  \item \textbf{Exact versus approximate}: \emph{exact} matching decides
+    whether two objects are congruent (Section~\ref{sec:matching_rigid});
+    \emph{approximate} matching minimizes a distance such as the Hausdorff
+    distance (Section~\ref{sec:matching_hausdorff}) or the Fr\'echet distance
+    (Section~\ref{sec:matching_frechet}).
+  \item \textbf{Transformation class}: rigid motions (translations,
+    rotations, reflections), similarities (rigid motions plus scaling), and
+    affine maps. Larger classes make matching easier but the decision less
+    discriminative; Sections~\ref{sec:matching_rigid} and
+    \ref{sec:matching_hashing} develop this trade-off.
+  \item \textbf{Structure of the objects}: point sets admit the
+    combinatorial machinery of matchings and of arrangements
+    (Sections~\ref{sec:matching_shape} and \ref{sec:matching_registration});
+    curves require order-respecting measures such as the Fr\'echet distance
+    and its discrete variant (Sections~\ref{sec:matching_frechet} and
+    \ref{sec:matching_discrete_frechet}).
+\end{itemize}
+
+\index{matching problem}The chapter proceeds from measures to algorithms.
+Sections~\ref{sec:matching_hausdorff}--\ref{sec:matching_discrete_frechet}
+define the two principal similarity measures for shapes and curves.
+Sections~\ref{sec:matching_shape} and \ref{sec:matching_registration} develop
+matching over point sets, including partial matching, outlier handling, the
+assignment problem, and the Hungarian algorithm
+\cite{kuhn1955,cormen2009}. Sections~\ref{sec:matching_rigid} and
+\ref{sec:matching_hashing} treat exact congruence and the model-based
+geometric hashing scheme. The iterative closest point algorithm of
+Section~\ref{sec:matching_icp} and the applications of
+Section~\ref{sec:matching_vision} close the chapter. Throughout, the
+robustness questions raised in Section~\ref{sec:math_norms_metrics} of the
+mathematical foundations and the nearest-neighbor machinery of
+Chapter~\ref{ch:proximity} recur as the computational primitives.
+
+\index{bipartite matching}\index{minimum-weight matching}\index{bottleneck matching}
 
 \section{Hausdorff Distance}
 \label{sec:matching_hausdorff}
 
+\index{Hausdorff distance}The \textbf{Hausdorff distance} is the most
+important measure of proximity between two sets, and it is the canonical
+criterion for approximate point-set matching: it measures the largest
+distance a point of either set has to travel to meet the other set.
+
+\begin{definition}[Directed Hausdorff Distance]\label{def:match_directed_hausdorff}
+  Let $P$ and $Q$ be two nonempty compact sets of $\mathbb{R}^d$. The
+  \textbf{directed Hausdorff distance} from $P$ to $Q$ is
+  \[
+    h(P, Q) = \max_{p \in P} \min_{q \in Q} \|p - q\| .
+  \]
+\end{definition}
+
+\begin{definition}[Undirected Hausdorff Distance]\label{def:match_hausdorff}
+  The \textbf{Hausdorff distance} between $P$ and $Q$ is the maximum of the
+  two directed distances:
+  \[
+    H(P, Q) = \max\{ h(P,Q),\; h(Q,P) \} .
+  \]
+\end{definition}
+
+\begin{theorem}[Hausdorff Distance is a Metric]\label{thm:match_hausdorff_metric}
+  Restricted to nonempty compact sets, $H$ is a metric: it is nonnegative,
+  symmetric, vanishes exactly on equal sets, and satisfies the triangle
+  inequality $H(P, R) \le H(P,Q) + H(Q,R)$.
+\end{theorem}
+
+\begin{proof}
+  Symmetry and nonnegativity are immediate. If $H(P,Q) = 0$ then every point
+  of $P$ is at distance $0$ from $Q$, so $P \subseteq Q$; symmetrically
+  $Q \subseteq P$, hence $P = Q$. For the triangle inequality, fix $p \in P$
+  and let $q \in Q$ attain $\min_{q} \|p - q\|$; then for any $r \in R$,
+  \[
+    \|p - r\| \le \|p - q\| + \|q - r\| ,
+  \]
+  and taking the minimum over $r \in R$ and then the maximum over $p \in P$
+  gives $h(P,R) \le h(P,Q) + h(Q,R)$; the symmetric inequality is identical
+  and $H$ satisfies the triangle inequality.
+\end{proof}
+
+For point sets the directed distance is computable from the nearest-neighbor
+structure of the target set.
+
+\begin{theorem}[Computing the Hausdorff Distance]\label{thm:match_hausdorff_complexity}
+  Let $P$ and $Q$ be point sets with $|P| = n$ and $|Q| = m$. The directed
+  distance $h(P, Q)$ can be computed in $O((n + m) \log m)$ time by
+  constructing the Voronoi diagram of $Q$ and performing a nearest-neighbor
+  query for each $p \in P$ (Section~\ref{sec:proximity_queries} of
+  Chapter~\ref{ch:proximity}); the undirected distance $H(P,Q)$ therefore
+  takes $O((n + m) \log(n + m))$ time.
+\end{theorem}
+
+\begin{proof}
+  The Voronoi diagram of $Q$ can be constructed in $O(m \log m)$ time and
+  supports nearest-neighbor queries in $O(\log m)$ time each
+  (Chapter~\ref{ch:proximity} and \cite{preparata1985,deberg2008}). Querying
+  each point of $P$ costs $O(n \log m)$ in total, giving the bound. For the
+  undirected distance the roles of $P$ and $Q$ are swapped and the maximum of
+  the two directed values is taken.
+\end{proof}
+
+\index{Hausdorff distance}\index{min-Hausdorff matching}When a transformation
+is allowed, the \textbf{minimum Hausdorff matching} problem asks for the
+transformation minimizing the distance after transformation.
+
+\begin{definition}[Minimum Hausdorff Matching]\label{def:match_min_hausdorff}
+  Let $P$, $Q$ be point sets and $\mathcal{T}$ a family of transformations.
+  The \textbf{minimum Hausdorff distance} is
+  \[
+    \min_{T \in \mathcal{T}} H(T(P), Q) .
+  \]
+  A transformation attaining the minimum is a \textbf{min-Hausdorff
+  matching} of $P$ into $Q$.
+\end{definition}
+
+For translations, the objective function is minimized on an arrangement. Fix
+$T$ to be a translation by the vector $t$. For each $p \in P$ the directed
+distance to $Q$ is
+\[
+  \phi_p(t) = \min_{q \in Q} \|p + t - q\| ,
+\]
+which is the distance from the translated point $p + t$ to its nearest
+neighbor in $Q$. The maximum over $p$ of the functions $\phi_p$ is an
+\emph{upper envelope of Voronoi surfaces} \cite{alt1999}, and the minimum
+Hausdorff distance under translations is the minimum value of this envelope.
+The envelope is piecewise defined over the arrangement of the bisectors of
+the pairs $(p, q)$ \cite{alt1999}:
+
+\begin{theorem}[Min-Hausdorff under Translations]\label{thm:match_min_hausdorff_translation}
+  For point sets $P$ and $Q$ with $|P| = n$ and $|Q| = m$, the minimum of
+  $H(t + P, Q)$ over translations $t$ is attained at a vertex of the
+  arrangement induced by the distance functions $\phi_p$, and the optimum can
+  be found in $O((nm)^2 \log(nm))$ time in the worst case.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Each function $\phi_p$ is the pointwise minimum of the $m$ functions
+  $\|p + t - q\|$, each of which is a translate of the origin-centered
+  distance function; the maximum over $p$ is an upper envelope whose
+  breakpoints lie on bisectors of the form $\|p + t - q\| = \|p' + t - q'\|$.
+  Over any cell of the arrangement of these $O(nm)$ bisectors the envelope is
+  a fixed linear distance function, so the minimum over each cell is at a
+  cell vertex; a sweep over the arrangement evaluates all vertices. See
+  \cite{alt1999} for the exact construction and the refined bounds for
+  convex polygons.
+\end{proof}
+
+\begin{remark}[Measures for matching]
+  The Hausdorff distance does \emph{not} respect the ordering of points on
+  curves, which is why curve matching uses the Fr\'echet distance of
+  Section~\ref{sec:matching_frechet}. It is also sensitive to outliers,
+  since a single stray point of $P$ dominates $h(P,Q)$; the partial matching
+  measures of Section~\ref{sec:matching_shape} repair this.
+\end{remark}
+
+\index{Hausdorff distance}\index{min-Hausdorff matching}\index{Voronoi surface}
+
 \section{Fr\'echet Distance}
 \label{sec:matching_frechet}
+
+\index{Fr\'echet distance}The Hausdorff distance compares curves as
+\emph{sets} of points and ignores their parameterization. The
+\textbf{Fr\'echet distance} measures instead how far two curves are when a
+point moves along one while a leash, held at the other, stays taut: the
+distance is the minimal leash length over all monotone ways of walking both
+curves from start to finish \cite{frechet1906}. Formally, for polygonal
+curves $P = (p_1, \dots, p_n)$ and $Q = (q_1, \dots, q_m)$, the Fr\'echet
+distance is
+\[
+  d_F(P,Q) = \min_{\alpha,\beta \in [0,1]^{[0,1]}} \max_{t} \| P(\alpha(t)) - Q(\beta(t)) \| ,
+\]
+where the minimum is over all continuous monotone reparameterizations
+$\alpha, \beta$ of the two curves.
+
+The Fr\'echet distance is the correct similarity measure for trajectories,
+GPS tracks, and any ordered data, precisely because it enforces that the
+correspondence between the two curves is order-preserving: two curves that
+run in opposite directions are far apart even if their point sets coincide.
+The full algorithmic treatment --- the dog-leash analogy, the free-space
+diagram, the decision procedure, and the $O(nm \log nm)$ algorithms for
+polygonal curves \cite{alt1995} --- is developed in
+Section~\ref{sec:frechet_distance} of Chapter~\ref{ch:distance_paths}, to
+which we refer. This chapter mentions the measure only to place it in the
+matching landscape: for curves it plays the role that the Hausdorff distance
+plays for point sets, and it is the natural objective for the ordered point
+matching of Section~\ref{sec:matching_shape}.
+
+\index{Fr\'echet distance}\index{free-space diagram}
 
 \section{Discrete Fr\'echet Distance}
 \label{sec:matching_discrete_frechet}
 
+\index{discrete Fr\'echet distance}For polygonal curves given by their vertex
+sequences, the continuous Fr\'echet distance can be approximated by its
+\textbf{discrete} variant, in which the walker and the dog may jump only
+between consecutive vertices. The discrete Fr\'echet distance is defined by
+monotone couplings of the two vertex sequences \cite{eiter1994}; see
+Definition~\ref{def:discrete_frechet} of Chapter~\ref{ch:distance_paths} for
+the formal statement.
+
+\begin{definition}[Discrete Fr\'echet Distance, Grid Form]\label{def:match_discrete_frechet_grid}
+  Let $P = (p_1, \dots, p_n)$ and $Q = (q_1, \dots, q_m)$ be polygonal
+  curves. A \textbf{coupling} is a monotone path in the $n \times m$ grid
+  from $(1,1)$ to $(n,m)$ moving only right, down, or diagonally down-right.
+  The \textbf{cost} of a coupling $\{(i_k, j_k)\}_{k}$ is
+  $\max_k \|p_{i_k} - q_{j_k}\|$, and the \textbf{discrete Fr\'echet
+  distance} is the minimum cost over all couplings.
+\end{definition}
+
+The grid formulation yields a dynamic program. Let $D(i,j)$ be the discrete
+Fr\'echet distance between the prefixes $(p_1, \dots, p_i)$ and $(q_1,
+\dots, q_j)$. The recurrence is
+\[
+  D(i,j) = \max\bigl( \|p_i - q_j\| ,\; \min\{ D(i-1,j),\; D(i,j-1),\;
+  D(i-1,j-1) \} \bigr) ,
+\]
+with $D(1,1) = \|p_1 - q_1\|$, which computes the distance in $O(nm)$ time
+and space by filling the grid one diagonal at a time; the coupling achieving
+the optimum is recovered by tracing the min-edges backward. The decision
+version --- whether the distance is at most $\varepsilon$ --- is the
+reachability question in the $\varepsilon$-version of the grid, in which a
+cell is \emph{free} when $\|p_i - q_j\| \le \varepsilon$, exactly the
+free-space diagram of Section~\ref{sec:frechet_distance}. This is the point
+where the discrete and continuous theories meet: the discrete distance
+bounds the continuous one from above, and the free-space diagram turns both
+into grid reachability problems \cite{alt1995,eiter1994}.
+
+\index{discrete Fr\'echet distance}\index{coupling}
+
 \section{Shape Matching}
 \label{sec:matching_shape}
+
+\index{shape matching}\index{partial matching}Shape matching is the general
+problem of deciding, for two shapes $\mathcal{A}$ and $\mathcal{B}$, how
+similar they are and finding the aligning transformation. Point-set shape
+matching subsumes three decisions: which transformation family to admit,
+which distance to minimize, and whether all points of one set must be
+matched. This section treats the distance and the partial-matching
+dimensions; the transformation dimension is developed in
+Sections~\ref{sec:matching_rigid}--\ref{sec:matching_hashing}.
+
+\index{bottleneck matching}The two standard objectives for point-set matching
+are the minimum-weight matching and the bottleneck matching of the underlying
+bipartite distance graph.
+
+\begin{definition}[Minimum-Weight Matching]\label{def:match_min_weight}
+  Let $P$ and $Q$ be point sets with $|P| = |Q| = n$. The
+  \textbf{minimum-weight matching} is a bijection $\pi \colon P \to Q$
+  minimizing
+  \[
+    \sum_{p \in P} \|p - \pi(p)\| .
+  \]
+\end{definition}
+
+\begin{definition}[Bottleneck Matching]\label{def:match_bottleneck}
+  The \textbf{bottleneck matching} of two point sets of equal size is a
+  bijection $\pi$ minimizing the maximum matched distance
+  \[
+    \max_{p \in P} \|p - \pi(p)\| .
+  \]
+  Equivalently, it is the smallest radius $r$ for which the bipartite graph
+  of pairs $(p,q)$ with $\|p - q\| \le r$ admits a perfect matching.
+\end{definition}
+
+The bottleneck version admits a clean decision procedure: sort all
+$O(n^2)$ pairwise distances, and find the smallest threshold $r$ for which
+the graph $G_r$ has a perfect matching, by a binary search over the sorted
+distances combined with a bipartite matching algorithm
+\cite{preparata1985,cormen2009}. The minimum-weight version is the
+assignment problem of Section~\ref{sec:matching_registration}, solved by the
+Hungarian algorithm in $O(n^3)$ time \cite{kuhn1955,cormen2009}. When the
+points of $P$ and $Q$ are \emph{ordered} (polygonal curves, sequences of
+landmarks), the bijection is constrained to be order preserving and the
+problem becomes the sequence matching solved by dynamic programming, with
+the Fr\'echet distance of Sections~\ref{sec:matching_frechet} and
+\ref{sec:matching_discrete_frechet} as the natural cost
+\cite{alt1995,eiter1994}.
+
+\index{outliers}\index{partial Hausdorff distance}Real data rarely consists
+of two cleanly aligned point sets: there are \textbf{outliers} (points that
+belong to one set but have no counterpart in the other) and
+\textbf{clutter}. Partial matching handles this by allowing the matching to
+skip points.
+
+\begin{definition}[Partial Matching and Partial Hausdorff]\label{def:match_partial_matching}
+  Let $P$ and $Q$ be point sets. A \textbf{partial matching} matches a
+  subset $P' \subseteq P$ to $Q$; points of $P \setminus P'$ are
+  \textbf{outliers} and pay no cost. The \textbf{partial directed Hausdorff
+  distance} $h_k(P,Q)$ is the $k$-th smallest of the distances
+  $\min_{q \in Q} \|p - q\|$ over $p \in P$: all but the worst $|P| - k$
+  outliers are ignored.
+\end{definition}
+
+For the partial distance $h_k(P,Q)$, the outlier sensitivity of the Hausdorff
+distance disappears: a set with $|P| - k$ outliers has the same partial
+distance as if the outliers were removed. The partial variants of the
+minimum-weight and bottleneck matchings, in which a prescribed number of
+pairs are dropped, are solved by the same assignment machinery with dummy
+rows and columns (Section~\ref{sec:matching_registration}).
+
+\index{matching via the arrangement}Matching also connects to the theory of
+arrangements. Fix a translation $t$ and consider the pairs
+$(p,q) \in P \times Q$; the translation $t$ maps $p$ within distance $r$ of
+$q$ exactly when $t$ lies in the disk $D(p,q,r) = \{ t : \|p + t - q\| \le
+r \}$. A perfect matching of radius $r$ exists exactly when the translation
+graph defined by these disks has a perfect matching. Varying $r$ and $t$
+sweeps an arrangement-like structure --- the same bisector arrangement that
+underlies Theorem~\ref{thm:match_min_hausdorff_translation} --- so the
+min-Hausdorff, bottleneck, and min-weight problems for translations are all
+reducible to searches over the cells of one arrangement
+\cite{alt1999}. This is the sense in which ``matching via the arrangement''
+unifies the algorithms of this section with the level and envelope machinery
+of Chapter~\ref{ch:envelopes} (Section~\ref{sec:arrangement_levels}).
+
+\index{shape matching}\index{partial matching}\index{outliers}\index{bottleneck matching}
 
 \section{Point-Set Registration}
 \label{sec:matching_registration}
 
+\index{registration}Point-set registration is the workhorse of the
+applications: given two point clouds representing the same scene --- two
+scans of a surface, two satellite images, two MRI volumes --- find the
+transformation that aligns them, using the pointwise correspondence as an
+intermediate structure.
+
+\begin{definition}[Registration]\label{def:match_registration}
+  Let $P$ and $Q$ be point sets and $\mathcal{T}$ a family of
+  transformations. A \textbf{registration} of $P$ into $Q$ is a
+  transformation $T \in \mathcal{T}$ together with a partial matching
+  $\pi$ of $T(P)$ into $Q$ minimizing a cost such as
+  \[
+    \sum_{p} \|T(p) - \pi(p)\|^2
+    \qquad\text{or}\qquad
+    \max_{p} \|T(p) - \pi(p)\| ,
+  \]
+  over all admissible $T$ and all matchings $\pi$.
+\end{definition}
+
+The optimization over $T$ and $\pi$ jointly is what makes registration hard:
+each is easy once the other is fixed. Given the correspondence $\pi$, the
+best rigid transformation $T$ is computed by the least-squares alignment of
+Section~\ref{sec:matching_rigid}; given $T$, the best correspondence is the
+nearest-neighbor matching of each transformed point, i.e., a
+\emph{minimum-weight matching} in the bipartite distance graph. The two
+optimizations are intertwined, and every practical algorithm --- the
+iterative closest point method of Section~\ref{sec:matching_icp} and its
+many variants --- alternates between the two, an instance of
+alternating-optimization heuristics.
+
+When the correspondence is a bijection and the cost is additive, the
+correspondence problem is the classical \textbf{assignment problem}.
+
+\begin{definition}[Assignment Problem]\label{def:match_assignment_problem}
+  Given a square matrix $C = (c_{ij})$ of costs $c_{ij} = \|p_i - q_j\|^p$,
+  the \textbf{assignment problem} asks for a permutation $\pi$ of
+  $\{1,\dots,n\}$ minimizing $\sum_i c_{i\pi(i)}$.
+\end{definition}
+
+\begin{theorem}[Hungarian Algorithm]\label{thm:match_hungarian}
+  The assignment problem is solvable in $O(n^3)$ time and $O(n^2)$ space by
+  the \textbf{Hungarian algorithm} (Kuhn--Munkres), which maintains a set of
+  dual variables and finds a perfect matching among the zero-cost edges of
+  the transformed cost matrix \cite{kuhn1955,cormen2009}.
+\end{theorem}
+
+\begin{algorithm}[htbp]
+\caption{Hungarian Algorithm for the Assignment Problem}
+\label{alg:match_hungarian}
+\begin{algorithmic}[1]
+\Require an $n \times n$ cost matrix $C = (c_{ij})$.
+\Ensure a permutation $\pi$ minimizing $\sum_i c_{i\pi(i)}$.
+\Function{Hungarian}{$C$}
+  \State subtract the row minimum from each row, then the column minimum from each column
+  \State $\pi \gets \emptyset$ \Comment{partial assignment of zero-cost edges}
+  \While{$\pi$ is not a perfect assignment}
+    \State mark the rows and columns reachable by alternating zero-cost paths from the unassigned rows
+    \State $\Delta \gets \min\{ c_{ij} : i \text{ unmarked}, j \text{ marked} \}$
+    \State subtract $\Delta$ from the unmarked rows; add $\Delta$ to the marked columns
+    \State augment $\pi$ along a zero-cost augmenting path, if one exists
+  \EndWhile
+  \State \Return $\pi$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+In geometric settings the costs $c_{ij} = \|p_i - q_j\|$ are Euclidean
+distances, which gives the problem exploitable structure: the closest-pair
+and nearest-neighbor machinery of Chapter~\ref{ch:proximity} can prune the
+dense cost matrix, and greedy nearest-neighbor matching provides the
+excellent initialization that makes the alternating algorithms of
+Section~\ref{sec:matching_icp} converge fast in practice. The bottleneck
+variant of the assignment problem (minimize $\max_i c_{i\pi(i)}$, cf.\
+Definition~\ref{def:match_bottleneck}) is solved by binary search over
+thresholds with a bipartite matching feasibility test, in time
+$O(n^{2.5} \log n)$ for dense graphs \cite{cormen2009}. Both the min-weight
+and the bottleneck assignment problems are used as the correspondence
+step of registration pipelines.
+
+\index{assignment problem}\index{Hungarian algorithm}\index{registration}
+
 \section{Rigid Transformations}
 \label{sec:matching_rigid}
+
+\index{rigid transformation}Exact matching asks whether two point sets are
+\emph{congruent}: whether one can be moved onto the other by an isometry.
+The isometries of the plane are the translations, rotations, and reflections
+(together with their compositions), and they form the \textbf{Euclidean
+group} $E(2)$; in space the analogous group is $E(3)$.
+
+\begin{definition}[Rigid Transformation and Isometry]\label{def:match_isometry}
+  A map $T \colon \mathbb{R}^d \to \mathbb{R}^d$ is \textbf{rigid} if it
+  preserves all distances: $\|T(x) - T(y)\| = \|x - y\|$ for all $x, y$. The
+  set of rigid transformations is the group of \textbf{isometries}. Each
+  isometry is a composition of an orthogonal map and a translation; it is
+  \textbf{orientation-preserving} (a rotation composed with a translation)
+  or \textbf{orientation-reversing} (composed with a reflection).
+\end{definition}
+
+Two point sets are congruent if there is an isometry mapping one onto the
+other.
+
+\begin{definition}[Congruence]\label{def:match_congruence}
+  Point sets $P$ and $Q$ are \textbf{congruent} if there is an isometry $T$
+  with $T(P) = Q$ as sets. If $T$ is restricted to translations, the
+  appropriate notion is that of \emph{translational congruence}; adding
+  rotations gives \emph{rotational congruence}.
+\end{definition}
+
+\index{congruence}\index{symmetry}Deciding congruence is fast because
+isometries preserve distances. The classical approach sorts the points by
+distance to the centroid and matches invariants:
+
+\begin{theorem}[Congruence Testing of Point Sets]\label{thm:match_congruence_test}
+  Two point sets $P$ and $Q$ of size $n$ can be tested for congruence in
+  $O(n \log n)$ time: after translating both centroids to the origin, the
+  multiset of squared distances $\{\|p\|^2 : p \in P\}$ is an invariant, and
+  the angular order of the points on their convex hulls
+  (Section~\ref{sec:convex_hull_peeling}) resolves the remaining rotations
+  and reflections.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Any isometry fixing the centroid and preserving distances must map the
+  points of $P$ to the points of $Q$ at equal distances from the origin, so
+  the sorted distance lists must agree. The points at the maximum distance
+  (the outer hull vertices) are permuted by the isometry, and the cyclic
+  order of the neighbors on the hull fixes the rotation angle; comparing the
+  resulting cyclic signatures decides congruence. The sorting dominates, so
+  the bound is $O(n \log n)$ \cite{atallah1985symmetry,highnam1986}.
+\end{proof}
+
+Symmetries are the congruence tests where $P = Q$: a \emph{symmetry} of a
+point set is an isometry mapping the set onto itself. Detecting all
+symmetries of a planar point set, and the rotational symmetries of a
+polygon, are solved by the same invariant machinery, with optimal
+$O(n \log n)$ algorithms \cite{atallah1985symmetry,wolter1985,highnam1986}.
+
+The exact congruences serve two purposes in this chapter. First, they are
+the decision problem underlying all approximate matching: an approximate
+matching with distance $0$ is a congruence, so the complexity of exact
+matching is a lower benchmark for the approximate algorithms. Second, the
+least-squares alignment used inside the iterative closest point algorithm
+(Section~\ref{sec:matching_icp}) is itself an exercise in rigid
+transformations: given a correspondence, the best rigid map is computed
+from the singular value decomposition of the cross-covariance of the
+matched points, a closed-form computation that is the linear-algebra core of
+every registration pipeline.
+
+\index{rigid transformation}\index{isometry}\index{congruence}\index{symmetry}
 
 \section{Iterative Closest Point}
 \label{sec:matching_icp}
 
+\subsection{1. Overview}
+
+\textbf{Iterative Closest Point} (ICP) is the dominant algorithm for
+registering two point clouds under a rigid transformation. It alternates two
+cheap steps --- compute the closest-point correspondences under the current
+transform, then compute the rigid transform that best aligns the
+correspondences --- and iterates to convergence. First proposed by Besl and
+McKay \cite{besl1992} and developed for range-image modeling by Chen and
+Medioni \cite{chen1992}, ICP is the standard engine behind surface
+reconstruction from range scans
+(Section~\ref{sec:shape_reconstruction_point_clouds}) and object
+registration in computer vision.
+
+\subsection{2. Definitions}
+
+\begin{definition}[ICP Correspondence]\label{def:match_icp}
+  Let $P$ be a \textbf{source} point set and $Q$ a \textbf{target} point
+  set. Given a transform $T$, the \textbf{ICP correspondence} matches each
+  $p \in P$ to its nearest neighbor in $T(Q)$ (or in $Q$, depending on the
+  convention), i.e., to a point $\pi(p)$ minimizing $\|T(p) - \pi(p)\|$.
+\end{definition}
+
+\begin{definition}[Alignment Error]\label{def:match_icp_error}
+  The \textbf{least-squares alignment error} of a transform $T$ with respect
+  to a correspondence $\pi$ is
+  \[
+    E(T, \pi) = \sum_{p \in P} \|T(p) - \pi(p)\|^2 .
+  \]
+\end{definition}
+
+\subsection{3. Theory}
+
+The convergence of ICP rests on the fact that each half of the alternation
+can only decrease the error.
+
+\begin{theorem}[Monotone Convergence of ICP]\label{thm:match_icp_convergence}
+  Let $E_k$ be the alignment error after iteration $k$ of the closest-point
+  step followed by the least-squares rigid alignment step. Then the sequence
+  $E_k$ is nonincreasing, and the algorithm converges to a local minimum of
+  the registration objective \cite{besl1992}.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  In the closest-point step the correspondence is recomputed so that each
+  matched target point is at least as close as before, so the error with the
+  \emph{old} transform cannot increase; in the alignment step the rigid
+  transform minimizing the error for the \emph{fixed} correspondence cannot
+  increase it either. The error sequence is thus nonincreasing and bounded
+  below, hence convergent. The limit is a local, not global, optimum, which
+  is why ICP initialization and its variants matter (Section~5).
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Iterative Closest Point}
+\label{alg:match_icp}
+\begin{algorithmic}[1]
+\Require source point set $P$, target point set $Q$, initial transform $T_0$.
+\Ensure a rigid transform $T$ approximately minimizing the registration error.
+\Function{ICP}{$P$, $Q$, $T_0$}
+  \State $T \gets T_0$
+  \Repeat
+    \State build a kd-tree or Voronoi query structure for $Q$
+    \For{each $p \in P$}
+      \State $\pi(p) \gets$ nearest neighbor of $T(p)$ in $Q$ \Comment{closest-point step}
+    \EndFor
+    \State $T \gets$ least-squares rigid alignment of $\{(p, \pi(p))\}$
+           \Comment{via the singular value decomposition}
+  \Until{the decrease in alignment error is below a tolerance}
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Initialization}: ICP converges only locally
+  (Theorem~\ref{thm:match_icp_convergence}), so $T_0$ must already be close;
+  coarse registration by matching invariants (centroids, principal axes,
+  geometric hashing of Section~\ref{sec:matching_hashing}) is standard.
+\item \textbf{Distance threshold}: pairs farther than a threshold are
+  rejected as outliers before the alignment step; a threshold of a few
+  multiples of the target resolution is typical.
+\item \textbf{Point selection}: uniform downsampling, or sampling the most
+  salient points (high curvature), speeds the algorithm up with little loss
+  of accuracy.
+\item \textbf{Query structure}: the nearest-neighbor queries dominate, so
+  the kd-tree of Section~\ref{sec:kd_tree} (Chapter~\ref{ch:spatial_structures})
+  or the Voronoi structure of Chapter~\ref{ch:proximity} is essential.
+\item \textbf{Point-to-plane variants}: replacing the point-to-point cost by
+  the distance to the tangent plane at $\pi(p)$ (Chen--Medioni
+  \cite{chen1992}) yields faster convergence on smooth surfaces.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Per iteration}: $O(|P| \log |Q|)$ for the nearest-neighbor
+  queries with a kd-tree (Section~\ref{sec:rangesearch_kd_trees}), plus
+  $O(|P|)$ for the closed-form alignment via the singular value
+  decomposition.
+\item \textbf{Iterations}: the number of iterations until convergence is
+  data dependent (often tens), so the total cost is $O(k\,|P| \log |Q|)$
+  with $k$ the iteration count.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Range-image registration}: aligning consecutive scans of a
+  surface into a single model
+  \cite{besl1992,chen1992,deberg2008} (Section~\ref{sec:shape_reconstruction_point_clouds}).
+\item \textbf{Computer vision}: object tracking, surgical registration, and
+  the rigid part of many simultaneous localization and mapping pipelines
+  (Section~\ref{sec:matching_vision}).
+\item \textbf{Global optimization}: as the local refinement engine inside
+  global registration schemes that add loops to the pairwise alignments.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Synthetic alignment}: generate $Q$ as a known rigid image of
+  $P$ with noise, run ICP, and verify the recovered transform.
+\item \textbf{Local minima}: test with adversarial initializations far from
+  the optimum and verify the algorithm stops at a local, not global, optimum.
+\item \textbf{Outliers and partial overlap}: ICP should be tested when only
+  a fraction of the points overlap, verifying the threshold rejection.
+\item \textbf{Symmetry}: objects with rotational symmetries can converge to
+  an alternative valid alignment; verify the error, not the parameters.
+\item \textbf{Degenerate clouds}: collinear or coplanar point sets make the
+  alignment step ill-conditioned; tests should exercise the SVD-based
+  fallback.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Besl, P.~J., McKay, N.~D. \cite{besl1992} introduced ICP and proved
+  its monotone convergence.
+\item Chen, Y., Medioni, G. \cite{chen1992} developed the point-to-plane
+  variant for range images.
+\item Alt, H., Guibas, L.~J. \cite{alt1999} survey registration within the
+  broader matching literature.
+\end{itemize}
+
+\index{iterative closest point}\index{ICP}\index{least-squares alignment}
+
 \section{Geometric Hashing}
 \label{sec:matching_hashing}
+
+\subsection{1. Overview}
+
+\textbf{Geometric hashing} \cite{wolfson1997} is a model-based object
+recognition scheme that finds an object in a cluttered scene without
+explicitly searching the transformation space. The idea is to preprocess a
+library of models so that \emph{invariant} properties of small point
+configurations are stored in a hash table, and then to recognize a scene by
+voting: every minimal ``basis'' configuration of scene points casts votes for
+the models whose invariants match. The scheme is famous for being
+transformation-invariant (rigid, similarity, or affine, depending on the
+invariant used) and robust to clutter and partial occlusion, at the price of
+a statistical trade-off between the hash bin size and the false-positive
+rate.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Geometric Hashing Scheme]\label{def:match_geometric_hashing}
+  A \textbf{geometric hashing scheme} consists of
+  \begin{itemize}
+    \item a family of \textbf{bases}: ordered tuples of points defining a
+      coordinate frame (two points for the planar rigid/similarity case,
+      three for the affine case);
+    \item a \textbf{normalizing map} $F_B$ that maps the basis $B$ onto a
+      canonical frame (e.g., the unit segment or unit triangle);
+    \item a \textbf{hash function} that quantizes the normalized
+      coordinates of the remaining points.
+  \end{itemize}
+\end{definition}
+
+\subsection{3. Theory}
+
+The correctness of geometric hashing rests on invariance: if the scene is a
+rigid (or similarity, or affine) image of a model, then normalizing by the
+corresponding basis maps the rest of the model to the same canonical
+coordinates regardless of the transformation, so the same hash entries are
+reproduced. A scene basis votes for exactly those model bases whose
+canonical coordinates coincide under the quantization.
+
+\begin{theorem}[Voting Correctness]\label{thm:match_hashing_voting}
+  If the scene contains a subset congruent to a model under the admissible
+  transformations, then the basis realizing that congruence accumulates the
+  full set of votes of the model, one per matched point, and any threshold
+  below the model size separates it from spurious matches with high
+  probability when the bins are chosen randomly.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  For the true basis, normalization is exact up to quantization, so every
+  scene point that is the image of a model point hashes to the model's bin;
+  the number of votes equals the number of matched points. A random model
+  point hashes into a given bin with probability proportional to the bin
+  area, so the vote count of a wrong model is a binomial random variable
+  whose mean is small when the bins are fine. Choosing the bin size and
+  threshold to separate the means gives the claim; see \cite{wolfson1997,
+  alt1999}.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Geometric Hashing (Recognition)}
+\label{alg:match_geometric_hashing}
+\begin{algorithmic}[1]
+\Require a library of models $M_1, \dots, M_K$; a scene point set $S$; a
+       basis size $b$ (2 for rigid/similarity, 3 for affine).
+\Ensure the models present in $S$ and the aligning transformations.
+\Function{GeometricHashingPreprocess}{$M_1, \dots, M_K$}
+  \State $\text{HT} \gets$ empty hash table
+  \For{each model $M_i$}
+    \For{each ordered basis $B$ of $M_i$}
+      \State $F \gets$ normalizing map of $B$
+      \For{each remaining model point $p$}
+        \State $\text{HT}[ \operatorname{quant}(F(p)) ] \gets
+               \text{HT}[ \cdot ] \cup \{ (i, B) \}$
+      \EndFor
+    \EndFor
+  \EndFor
+  \State \Return $\text{HT}$
+\EndFunction
+\Function{GeometricHashingRecognize}{$S$, $\text{HT}$, $\tau$}
+  \State $\text{votes} \gets$ counter over model--basis pairs
+  \For{each ordered basis $B'$ of $S$}
+    \State $F' \gets$ normalizing map of $B'$
+    \For{each remaining scene point $p$}
+      \State increment $\text{votes}[(i, B)]$ for all $(i, B)$ in
+             $\text{HT}[ \operatorname{quant}(F'(p)) ]$
+    \EndFor
+    \State report the pairs $(i, B)$ with $\text{votes} \ge \tau$ and the
+           aligning transform $F'^{-1} \circ F$
+  \EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Basis size}: two points for rigid and similarity matching,
+  three for affine matching \cite{wolfson1997}; the basis is the 
+  ``minimal index'' that determines the transformation class.
+\item \textbf{Bin size}: the quantization of the canonical coordinates sets
+  the tolerance of the matching; too coarse a bin merges distinct
+  configurations (false positives), too fine a bin rejects valid matches.
+\item \textbf{Voting threshold $\tau$}: must exceed the expected vote count
+  of a wrong model-basis pair; $\tau$ is set from the target false-positive
+  rate by the binomial analysis of Theorem~\ref{thm:match_hashing_voting}.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Preprocessing}: for a model with $n$ points and basis size
+  $b$, there are $O(n^b)$ bases and $O(n)$ remaining points each, so
+  $O(n^{b+1})$ expected hash entries per model.
+\item \textbf{Recognition}: for a scene with $m$ points, $O(m^{b+1})$
+  hash lookups in the worst case; with balanced hash tables each lookup is
+  expected $O(1)$.
+\item \textbf{Space}: the hash table stores $O(\sum_i n_i^{b+1})$ entries.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Model-based object recognition}: recognizing known objects in
+  cluttered images despite occlusion and noise \cite{wolfson1997}.
+\item \textbf{Coarse registration}: geometric hashing provides the
+  transformation-invariant initialization that ICP
+  (Section~\ref{sec:matching_icp}) refines, combining global search with
+  local precision.
+\item \textbf{Biometry}: fingerprint and face recognition pipelines use
+  hashed invariant point configurations.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Occlusion}: hide a fraction of the model points in the scene
+  and verify that the vote count tracks the visible fraction.
+\item \textbf{Clutter}: add random points to the scene and measure the
+  false-positive rate against the binomial prediction of
+  Theorem~\ref{thm:match_hashing_voting}.
+\item \textbf{Transformation classes}: test rigid, similarity, and affine
+  scenes to verify the correct basis size and invariant.
+\item \textbf{Degenerate bases}: collinear or coincident basis points give
+  degenerate frames; they must be rejected during preprocessing.
+\item \textbf{Bin sensitivity}: sweep the bin size and verify the
+  precision--recall trade-off is monotone as predicted.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item Wolfson, H.~J., Rigoutsos, I. \cite{wolfson1997} give the standard
+  overview of geometric hashing, its invariants, and its applications.
+\item Alt, H., Guibas, L.~J. \cite{alt1999} place geometric hashing in the
+  general theory of transformation-invariant matching.
+\item The invariant and symmetry machinery of Section~\ref{sec:matching_rigid}
+  provides the underlying congruence theory.
+\end{itemize}
+
+\index{geometric hashing}\index{voting}\index{invariant}
 
 \section{Applications in Computer Vision}
 \label{sec:matching_vision}
 
+\index{computer vision}Geometric matching is the computational core of shape
+alignment and registration across vision, medical imaging, and geographic
+information systems. The tools of this chapter --- Hausdorff and Fr\'echet
+distances, min-weight and bottleneck matchings, the Hungarian algorithm, ICP,
+and geometric hashing --- each serve a distinct application profile.
+
+\index{shape alignment}\textbf{Shape alignment} in vision takes a
+two-dimensional template and seeks its occurrence in an image. The template
+and the image feature points are matched by a min-weight matching or by a
+min-Hausdorff matching under rigid and similarity transformations
+(Sections~\ref{sec:matching_shape} and \ref{sec:matching_hausdorff}); the
+Hausdorff criterion is favored when the image is cluttered, and the
+order-respecting Fr\'echet distance
+(Section~\ref{sec:matching_frechet}) is used for contour and trajectory
+matching. When the transformation class is large or the object can be
+occluded, the voting scheme of geometric hashing
+(Section~\ref{sec:matching_hashing}) replaces the exhaustive search.
+
+\index{registration}Registration pipelines \cite{besl1992,chen1992,
+alt1999} align point clouds acquired at different times, from different
+sensors, or from different viewpoints: range scans of an object are merged
+into a single model
+(Section~\ref{sec:shape_reconstruction_point_clouds} of
+Chapter~\ref{ch:shape_reconstruction}), successive frames are stitched into
+maps, and medical volumes from different modalities are brought into a
+common coordinate frame. The workhorse is ICP
+(Section~\ref{sec:matching_icp}) initialized by invariant matching or
+geometric hashing, with the assignment problem of
+Section~\ref{sec:matching_registration} providing the correspondence step in
+feature-based pipelines. In all of these applications the geometric setting
+matters: the nearest-neighbor queries inside every iteration are answered by
+the kd-trees and Voronoi structures of Chapters~\ref{ch:spatial_structures}
+and \ref{ch:proximity}, and robustness to outliers is provided by the
+partial matching measures of Section~\ref{sec:matching_shape}.
+
+\index{GIS}\textbf{Geographic information systems} (Chapter~\ref{ch:applications_gis})
+use the same machinery to align maps and imagery: registering a satellite
+image to a vector map, conflation of road networks from different sources,
+and change detection between surveys. Here the transformations are usually
+rigid or similarity transforms of image patches, the features are detected
+road crossings, building corners, or coastlines, and the matchings are the
+min-Hausdorff and bottleneck matchings of
+Sections~\ref{sec:matching_hausdorff}--\ref{sec:matching_shape}; the
+Fr\'echet distance (Section~\ref{sec:matching_frechet} and
+Chapter~\ref{ch:distance_paths}) is the measure of choice for aligning the
+ordered sequences of points along roads and rivers.
+
+Across all applications two recurring principles emerge. First,
+\emph{initialization and refinement} split the problem: a robust global
+method (matching invariants, geometric hashing) produces a coarse alignment
+that a local method (ICP) refines. Second, the \emph{measure determines the
+algorithm}: outlier-prone data demands the partial and bottleneck measures,
+ordered data demands the Fr\'echet family, and clean, fully overlapping data
+can use the fastest least-squares and min-weight machinery.
+
+\index{computer vision}\index{shape alignment}\index{registration}\index{GIS}
+
 \section{Exercises}
 \label{sec:matching_exercises}
+
+\begin{enumerate}
+  \item Prove Theorem~\ref{thm:match_hausdorff_metric} in full detail,
+    including the triangle inequality for the undirected Hausdorff distance.
+  \item Implement the computation of the Hausdorff distance between two
+    point sets (Theorem~\ref{thm:match_hausdorff_complexity}) using a kd-tree
+    (Section~\ref{sec:kd_tree}) and verify the running time on random inputs.
+  \item Show that the partial Hausdorff distance $h_k(P,Q)$
+    (Definition~\ref{def:match_partial_matching}) equals the directed
+    Hausdorff distance of the subset of $P$ obtained by deleting the $|P|-k$
+    points with the largest nearest-neighbor distances, and use this to give
+    an $O((n + m) \log m)$ algorithm for it.
+  \item Implement the Hungarian algorithm
+    (Algorithm~\ref{alg:match_hungarian}) for the assignment problem and
+    verify it against brute force for $n \le 8$ with random cost matrices.
+    Then apply it to the Euclidean bottleneck matching
+    (Definition~\ref{def:match_bottleneck}) via binary search over the
+    pairwise distances.
+  \item Prove that the discrete Fr\'echet distance grid recurrence
+    (Section~\ref{sec:matching_discrete_frechet}) is correct, and show how
+    the free-space diagram decides the $\varepsilon$-reachability question.
+  \item Simulate the iterative closest point algorithm
+    (Algorithm~\ref{alg:match_icp}) on two congruent copies of a small point
+    set under a known rotation and translation, and verify monotone
+    convergence of the alignment error (Theorem~\ref{thm:match_icp_convergence}).
+  \item For a point set with a rotational symmetry, show that the min-Hausdorff
+    distance of Section~\ref{sec:matching_hausdorff} over rotations is
+    attained at an angle that is a multiple of the symmetry's angle, and
+    test the claim with geometric hashing
+    (Section~\ref{sec:matching_hashing}).
+  \item Compare, experimentally, the Hausdorff, bottleneck, and min-weight
+    matching criteria on a synthetic pair of point sets with $10\%$ outliers
+    (Definition~\ref{def:match_partial_matching}): which criterion is most
+    robust, and by how much does the running time of the Hungarian algorithm
+    (Algorithm~\ref{alg:match_hungarian}) grow with $n$?
+\end{enumerate}
+
+\index{exercises}
