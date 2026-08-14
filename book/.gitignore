@@ -11,5 +11,9 @@
 *.bbl
 *.blg
 texput.log
+*.fdb_latexmk
+*.fls
+*.synctex.gz
 algtest2.*
 v2test.*
+cgal_codes/build/
