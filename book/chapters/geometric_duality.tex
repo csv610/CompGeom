@@ -1,31 +1,1243 @@
 \chapter{Geometric Duality}
 \label{ch:geometric_duality}
 
-% Stub: outline only; content to be written.
-
 \section{Point-Line Duality}
 \label{sec:duality_point_line}
+
+\index{point-line duality}\index{dual transform}Geometric duality is a
+systematic correspondence that swaps the roles of points and lines (in the
+plane) or, more generally, of points and hyperplanes (in $\mathbb{R}^d$),
+while \emph{preserving incidence and order}. Its value is algorithmic: many
+problems that are hard for points become easy for lines, and vice versa, so a
+duality transform lets us solve a problem on whichever side of the
+correspondence is more convenient. The fundamental planar transform,
+developed in Section~\ref{sec:math_duality} of the mathematical foundations,
+maps the point $p = (a,b)$ to the non-vertical line
+\[
+  p^* : \quad y = ax - b,
+\]
+and maps a non-vertical line $\ell : y = mx + c$ to the point
+\[
+  \ell^* = (m, -c).
+\]
+The choice of the \emph{negative} intercept $-b$ is what makes the transform
+its own inverse up to the sign convention, so that ``dualizing twice''
+returns the original object.
+
+\begin{definition}[Dual Transform]\label{def:geo_duality_transform}
+  Let $p = (a,b)$ be a point and $\ell : y = mx + c$ a non-vertical line of
+  the plane. The \textbf{dual line} of $p$ is $p^*: y = ax - b$, and the
+  \textbf{dual point} of $\ell$ is $\ell^* = (m, -c)$. The map $p \mapsto
+  p^*$ on points and $\ell \mapsto \ell^*$ on lines is the \textbf{dual
+  transform}. A property that refers to the original plane is said to hold
+  in the \textbf{primal}; the transform maps primal objects to
+  \textbf{dual} objects.
+\end{definition}
+
+\begin{theorem}[Involution]\label{thm:geo_duality_involution}
+  The dual transform is an involution on the set of points together with
+  non-vertical lines: for every point $p$ and every non-vertical line
+  $\ell$,
+  \[
+    (p^*)^* = p \qquad\text{and}\qquad (\ell^*)^* = \ell .
+  \]
+\end{theorem}
+
+\begin{proof}
+  For a point $p = (a,b)$, the dual line is $p^* : y = ax - b$, i.e., the
+  line of slope $a$ and intercept $-b$. The dual of that line is the point
+  $(a, -(-b)) = (a,b) = p$. For a line $\ell : y = mx + c$, the dual point
+  is $(m, -c)$; its dual line is $y = m x - (-c) = mx + c = \ell$.
+\end{proof}
+
+\begin{example}[Basic Dual Pairs]\label{ex:geo_duality_basic}
+  The point $p = (2,3)$ has dual line $p^* : y = 2x - 3$; the line
+  $\ell : y = -x + 1$ has dual point $\ell^* = (-1, -1)$. Dually, the line
+  through the dual points $(2,3)$ and $(-1,-1)$ in the dual plane is
+  $y = 2x - 3$ restricted to the two coordinates --- the point $(-1,-1)$
+  lies on $p^*$ because $-1 = 2(-1) - 3$, which is exactly the incidence
+  property that Section~\ref{sec:duality_incidence} makes precise.
+\end{example}
+
+The transform as stated applies only to non-vertical lines and to points of
+finite coordinates. Vertical lines $\ell : x = c$ have no finite slope and
+are mapped, in the projective closure, to \emph{points at infinity} of the
+dual plane; conversely a point with a prescribed dual line of the form
+$x = \text{const}$ corresponds, in the primal, to a direction. The standard
+workarounds are to rotate the whole configuration so that no relevant line
+is vertical, or to use the homogeneous-coordinate machinery of
+Section~\ref{sec:math_homogeneous}, where a vertical line is represented by
+a vector whose slope component vanishes and the dual point has an infinite
+coordinate. In this chapter we assume, unless stated otherwise, that the
+input is in general position: no two input points share an $x$-coordinate
+and no dual line is vertical.
+
+\begin{remark}[Conventions and Variants]\label{rem:geo_duality_conventions}
+  There are several sign conventions for duality. The convention
+  $p = (a,b) \mapsto (y = ax - b)$ used here has the property that the dual
+  of a \emph{line} stores its slope in the first coordinate and the negative
+  of its intercept in the second; interchanging the sign of the intercept
+  (e.g., $y = ax + b$) reverses the above/below relations and flips upper
+  and lower hulls into one another. A different and equally useful family of
+  transforms is the \emph{normal-form} or \emph{polar} duality
+  $p = (a,b) \mapsto \{ x : a x + b y = 1 \}$, which treats all lines
+  symmetrically at the price of the point $(0,0)$ being sent to infinity;
+  the polar duality is the subject of
+  Section~\ref{sec:duality_linear_programming}. The choice of convention
+  never changes the complexity of the resulting algorithms, only the
+  direction in which inequalities and ``above/below'' relations are read.
+\end{remark}
+
+\index{dual line}\index{dual point}\index{duality}
 
 \section{Incidence Preservation}
 \label{sec:duality_incidence}
 
+The defining property of the dual transform --- the property that makes it a
+duality rather than a mere parameterization --- is that it turns
+\emph{point-line incidence} into itself.
+
+\begin{definition}[Incidence]\label{def:geo_duality_incidence}
+  A point $p$ and a line $\ell$ are \textbf{incident} if $p$ lies on
+  $\ell$. Two lines are \textbf{concurrent} if they share a point; a set of
+  points is \textbf{collinear} if all of them lie on one line.
+\end{definition}
+
+\begin{theorem}[Incidence Preservation]\label{thm:geo_duality_incidence}
+  Let $p = (a,b)$ be a point and $\ell : y = mx + c$ a non-vertical line.
+  Then
+  \[
+    p \in \ell \iff \ell^* \in p^* .
+  \]
+  That is, the primal statement ``the point $p$ lies on the line $\ell$''
+  is true if and only if the dual statement ``the point $\ell^*$ lies on the
+  line $p^*$'' is true.
+\end{theorem}
+
+\begin{proof}
+  Both statements are the equation $b = ma + c$. Indeed, $p \in \ell$ means
+  $b = ma + c$. The dual point is $\ell^* = (m, -c)$ and the dual line is
+  $p^* : y = ax - b$; the incidence $\ell^* \in p^*$ means
+  $-c = a m - b$, which rearranges to exactly $b = ma + c$.
+\end{proof}
+
+The power of incidence preservation is that it lifts to any configuration
+that is described by incidences. Two primal points $p,q$ determine the line
+$\overline{pq}$; dually, the two dual lines $p^*, q^*$ intersect at the
+single point $\overline{pq}^*$. A primal line through $k$ points becomes a
+dual point common to $k$ lines. This is the first of the two great
+translation rules of duality:
+
+\begin{corollary}[Collinearity and Concurrence]\label{cor:geo_duality_collinear_concurrent}
+  A set $\{p_1, \dots, p_k\}$ of points is collinear in the primal if and
+  only if the dual lines $\{p_1^*, \dots, p_k^*\}$ are concurrent in the
+  dual. In particular, three points are collinear if and only if their dual
+  lines are concurrent, i.e., pass through one common point.
+\end{corollary}
+
+\begin{example}[Detecting Collinearity by Hand]\label{ex:geo_duality_collinearity}
+  Consider the points $p_1 = (0,0)$, $p_2 = (1,1)$, and $p_3 = (2,2)$.
+  Their dual lines are $p_1^* : y = 0$, $p_2^* : y = x - 1$, and
+  $p_3^* : y = 2x - 2$. The three dual lines all pass through the point
+  $(1,0)$, since $0 = 1 - 1$ and $0 = 2 \cdot 1 - 2$; hence they are
+  concurrent, and by the corollary the primal points are collinear. Indeed
+  they lie on $y = x$. The dual of that line is $\ell^* = (1, -0) = (1,0)$,
+  the concurrence point.
+\end{example}
+
+Two further remarks complete the incidence picture. First, the incidence
+theorem extends to \emph{segments}: a primal segment $s = pq$ consists of
+all points of the segment, so its set of \emph{lines crossing it} is, in
+the dual, the union of the dual lines of all points of $s$ --- a
+\emph{double wedge} bounded by $p^*$ and $q^*$, with the vertex
+$\overline{pq}^*$ at the crossing point of the two boundary lines. Two
+primal segments cross if and only if some primal line meets both, which by
+duality happens if and only if the two corresponding double wedges overlap.
+This translation is the basis of the duality reductions for segment
+intersection and for the red--blue problems of
+Section~\ref{sec:segint_red_blue}. Second, incidence alone already makes
+duality a tool for \emph{verification}: any combinatorial statement that
+asserts ``these points lie on these lines'' has an exactly equivalent dual
+statement, so a checkable certificate in one plane is automatically a
+checkable certificate in the other.
+
+\index{incidence}\index{collinear}\index{concurrent}\index{double wedge}
+
 \section{Order Reversal}
 \label{sec:duality_order_reversal}
+
+Incidence is preserved, but \emph{order} is reversed in a precise sense,
+and this reversal is the second great translation rule of duality. We need
+two order facts: the local order of a point and a line, and the global
+order of a chain of points versus a chain of lines.
+
+\begin{lemma}[Point--Line Order]\label{lem:geo_duality_point_line_order}
+  Let $p = (a,b)$ be a point and $\ell : y = mx + c$ a non-vertical line.
+  The point $p$ lies \emph{above} $\ell$ if and only if the dual point
+  $\ell^*$ lies \emph{above} the dual line $p^*$ at $x = m$. Symmetrically,
+  $p$ lies below $\ell$ if and only if $\ell^*$ lies below $p^*$.
+\end{lemma}
+
+\begin{proof}
+  The point $p$ is above $\ell$ when $b > ma + c$. The dual point has
+  $y$-coordinate $-c$, and the dual line evaluated at $x = m$ has value
+  $am - b$; the point is above the line when $-c > am - b$, which
+  rearranges to $b > ma + c$. The ``below'' statement is the same
+  inequality reversed.
+\end{proof}
+
+The lemma says that, for a fixed pair $(p, \ell)$, the above/below relation
+is preserved by duality. The reversal appears once we compare \emph{many}
+points against \emph{many} lines, because the sign convention makes the
+dual value $a_i m - b_i$ the \emph{negative} of the signed intercept
+$b_i - ma_i$.
+
+\begin{theorem}[Order Reversal]\label{thm:geo_duality_order_reversal}
+  Let $P$ be a set of points in general position and fix a slope $m$. Sort
+  the points of $P$ by the signed distance $b_i - m a_i$ to the line of
+  slope $m$ through the origin, smallest first (the point ``lowest'' in the
+  direction perpendicular to slope $m$ comes first). Then the dual lines
+  $p_i^*$, sorted by their value $a_i m - b_i$ at $x = m$, appear in
+  \emph{exactly the reverse order}, largest first. In particular, the point
+  of $P$ lowest in the direction of slope $m$ corresponds to the dual line
+  attaining the \emph{largest} value at $x = m$, and vice versa.
+\end{theorem}
+
+\begin{proof}
+  For each point $p_i = (a_i, b_i)$ let $c_i = b_i - m a_i$, the intercept of
+  the line of slope $m$ through $p_i$. The value of the dual line at
+  $x = m$ is $a_i m - b_i = -c_i$. Sorting the points by $c_i$ increasing
+  is therefore the same as sorting the dual values $-c_i$ decreasing, which
+  is exactly the claimed reversal.
+\end{proof}
+
+The theorem is the mechanism behind every hull--envelope duality. At a fixed
+slope $m$, the lowest primal point is dual to the top of the dual
+arrangement at $x = m$; letting $m$ range over all slopes, the chain of
+lowest points --- the lower convex hull --- traces the upper envelope of the
+dual lines, and the upper hull traces the lower envelope. We record the
+statement in the form that is used throughout the rest of the book.
+
+\begin{corollary}[Upper Hull and Lower Envelope]\label{cor:geo_duality_hull_envelope}
+  For a point set $P$ in general position, a point $p \in P$ is a vertex of
+  the \emph{upper} convex hull of $P$ if and only if its dual line $p^*$
+  appears on the \emph{lower} envelope of the dual lines $\{q^* : q \in
+  P\}$; the upper-hull vertices, read left to right, appear on the lower
+  envelope in the reverse order. Symmetrically, the lower-hull vertices,
+  read left to right, appear on the \emph{upper} envelope of the dual lines
+  in the same order.
+\end{corollary}
+
+\begin{proof}
+  A point $p$ is a vertex of the upper hull exactly when it is the highest
+  point of $P$ in the direction perpendicular to the slope of some
+  supporting line of the upper hull. By Theorem~\ref{thm:geo_duality_order_reversal},
+  ``highest in that direction'' is dual to ``largest value at $x = m$'',
+  which means that $p^*$ is the topmost line at $x = m$, i.e., a segment of
+  the lower envelope. The reversal of the order follows because the slopes
+  of the supporting lines of the upper hull increase from the leftmost to
+  the rightmost vertex, while the envelope is read from left to right. The
+  lower-hull statement is symmetric.
+\end{proof}
+
+\begin{example}[Envelope Duality on a Triangle]\label{ex:geo_duality_width}
+  Let $P = \{(0,0), (1,1), (2,0)\}$. The upper hull is the chain
+  $(0,0), (1,1), (2,0)$. The dual lines are $y = 0$, $y = x - 1$, and
+  $y = 2x$. The lower envelope of these three lines is $y = 2x$ for
+  $x < -1$, $y = x - 1$ for $-1 < x < 1$, and $y = 0$ for $x > 1$, i.e., the
+  lines dual to $(2,0), (1,1), (0,0)$ in that order --- exactly the upper
+  hull read from right to left, confirming the corollary. The vertical
+  distance between the upper and lower envelopes at $x = 0$ is
+  $0 - (-1) = 1$, which is the width of the triangle in the vertical
+  direction; the general formula is derived in
+  Section~\ref{sec:duality_optimization}.
+\end{example}
+
+The order-reversal machinery is what connects duality to the theory of
+$k$-sets and levels. A \emph{separating line} with exactly $k$ points of $P$
+below it defines a $k$-set (Definition~\ref{def:kset}); by the lemma, a line
+$\ell$ with $k$ points below it is dual to a point $\ell^*$ that has exactly
+$k$ dual lines \emph{below} it, i.e., a point on the \emph{k-level} of the
+dual arrangement. The boundary of a $k$-set is therefore the dual of a
+$k$-level, and the whole family of $k$-sets of $P$ is encoded in the single
+arrangement of the dual lines. Section~\ref{sec:duality_dual_arrangements}
+develops this correspondence, and
+Section~\ref{sec:arrangement_levels} of the envelopes chapter studies the
+levels themselves.
+
+\index{order reversal}\index{upper hull}\index{lower envelope}\index{k-set}
 
 \section{Dual Arrangements}
 \label{sec:duality_dual_arrangements}
 
+Given a set $P$ of $n$ points in general position, the dual lines
+$\{p^* : p \in P\}$ form an \textbf{arrangement} in the dual plane: the
+decomposition of the plane into vertices (intersection points of two dual
+lines), edges (the maximal open segments of dual lines between vertices),
+and faces (the open cells between consecutive edges). The arrangement is a
+single, global object that encodes \emph{all} incidences and order
+relations among the points of $P$, and the theory of arrangements developed
+in the envelopes chapter (Section~\ref{sec:arrangement_levels} and the
+level structure it introduces) applies verbatim.
+
+\begin{definition}[Dual Arrangement]\label{def:geo_duality_dual_arrangement}
+  Let $P$ be a set of $n$ points in general position in the primal plane.
+  The \textbf{dual arrangement} $A(P) = A(\{p^* : p \in P\})$ is the
+  planar arrangement formed by the $n$ dual lines. Each face of $A(P)$
+  corresponds to a set of primal lines sharing the same ``profile'': every
+  primal line whose dual point lies in a given face has exactly $k$ points
+  of $P$ below it, for a value of $k$ that depends only on the face.
+\end{definition}
+
+\begin{definition}[Level of the Dual Arrangement]\label{def:geo_duality_level}
+  For an integer $k$, the \textbf{k-level} of the dual arrangement is the
+  set of points of $A(P)$ that have exactly $k$ dual lines strictly below
+  them; it is a polygonal chain made of one segment per dual line. The
+  $0$-level is the lower envelope and the $(n-1)$-level is the upper
+  envelope of the dual lines (Definition~\ref{def:lower_envelope}).
+\end{definition}
+
+The correspondence between the primal configuration and the dual arrangement
+can be read off directly:
+
+\begin{itemize}
+  \item each dual line $p^*$ is the set of dual points corresponding to all
+    primal lines through $p$;
+  \item each vertex $p^* \cap q^*$ is the dual point of the line
+    $\overline{pq}$ through $p$ and $q$;
+  \item the cells above (respectively below) a segment of $p^*$ correspond
+    to the primal lines passing above (respectively below) $p$;
+  \item the $k$-level separates the cells whose primal lines have $k$
+    points below them from the cells whose primal lines have $k+1$ points
+    below them;
+  \item by Corollary~\ref{cor:geo_duality_collinear_concurrent}, $k$
+    collinear points of the primal correspond to a vertex of the dual
+    arrangement where $k$ lines meet.
+\end{itemize}
+
+The arrangement is the complete \emph{signature} of the point set: two point
+sets have combinatorially isomorphic dual arrangements if and only if all
+their order and incidence relations agree, which is precisely the notion of
+an order type. This makes arrangements the right data structure for
+problems in which many points and many lines interact simultaneously.
+
+The complexity and algorithmic questions about arrangements are classical
+and have simple answers for lines.
+
+\begin{theorem}[Arrangement Complexity]\label{thm:geo_duality_arrangement_complexity}
+  The arrangement of $n$ lines in the plane has at most $n(n-1)/2$
+  vertices, $n^2$ edges, and $n(n+1)/2 + 1$ faces; all of these bounds are
+  tight for lines in general position. The arrangement can be constructed in
+  $O(n^2)$ time and stored in $O(n^2)$ space. The worst-case complexity of
+  the $k$-level is $\Theta(n\sqrt{k+1})$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Every pair of lines intersects at most once, giving the vertex bound;
+  each line is split by the $n-1$ other lines into $n$ edges, giving $n^2$
+  edges total; the face count follows from Euler's formula. The $O(n^2)$
+  construction is a standard sweep of the arrangement; the zone-based
+  refinement of the sweep is the classical algorithm
+  (Edelsbrunner--O'Rourke--Seidel \cite{edelsbrunner1986}). The $k$-level
+  bound is due to the theory of levels (Theorem~\ref{thm:level_complexity}
+  in the envelopes chapter): the upper bound is $\Theta(n\sqrt{k})$ via the
+  ``exponential decay'' argument, and point sets for which the level has
+  $\Omega(n\sqrt{k})$ vertices exist; the modern treatment appears in
+  Edelsbrunner \cite{edelsbrunner1987}.
+\end{proof}
+
+\begin{theorem}[Zone of a Line]\label{thm:geo_duality_zone}
+  In an arrangement of $n$ lines, the \emph{zone} of any line $\ell$
+  --- the set of cells of the arrangement crossed by $\ell$ --- has
+  complexity $O(n)$, and the zone can be constructed in $O(n)$ time once
+  the arrangement is available.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Add $\ell$ to the arrangement as the last line. Each edge of the zone is
+  bounded by at most two vertices of the original arrangement, and a
+  charging argument (each zone vertex is charged to a distinct vertex of the
+  arrangement left of it on its level) shows that the zone has at most
+  $O(n)$ vertices; hence it has $O(n)$ edges and faces. See
+  \cite{edelsbrunner1986}.
+\end{proof}
+
+In the dual, the zone theorem has a natural reading: any line of the primal
+crossing $k$ of the cells of the dual arrangement corresponds to a line
+whose ``order profile'' (the sequence of points above it) changes $O(n)$
+times as it moves. The zone theorem is what makes incremental constructions
+in arrangements efficient, and it is the structural reason that duality
+reductions for problems such as red--blue segment intersection
+(Section~\ref{sec:segint_red_blue}) run in near-linear time.
+
+Finally, the dual arrangement viewpoint extends to the paraboloid lifting of
+Chapter~\ref{ch:delaunay_triangulations}: the arrangement of the dual lines
+of a point set is the 2D analogue of the arrangement of tangent planes to
+the paraboloid, and the Voronoi diagram is the projection of the upper
+envelope of that tangent-plane arrangement
+(Definition~\ref{def:lifting_upper_envelope},
+Theorem~\ref{thm:voronoi_upper_hull}, and
+Section~\ref{sec:delaunay_lifting}). The dual arrangement is thus the
+common ancestor of the envelope, level, and Voronoi structures used
+throughout the book.
+
+\index{arrangement}\index{k-level}\index{zone theorem}
+
 \section{Convex Hulls through Duality}
 \label{sec:duality_convex_hulls}
+
+\subsection{1. Overview}
+
+The order-reversal theorems of Section~\ref{sec:duality_order_reversal}
+turn the convex-hull problem into an envelope problem and back. Because the
+convex hull of $n$ points can be computed in $O(n \log n)$ time
+(Chapter~\ref{ch:convex_hulls}) and the lower/upper envelope of $n$ lines
+can be computed in $O(n \log n)$ time (Chapter~\ref{ch:envelopes}), duality
+gives a second family of algorithms for both problems, with the two
+complexities coinciding. The same correspondence, lifted one dimension to
+the paraboloid, is the mechanism behind the duality of the Delaunay
+triangulation and the Voronoi diagram of
+Chapter~\ref{ch:delaunay_triangulations}: the ``hull of lifted points'' view
+of Section~\ref{sec:delaunay_lifting} is literally a hull--envelope duality
+in one dimension higher.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Upper and Lower Hull]\label{def:geo_duality_upper_lower_hull}
+  Let $P$ be a point set in general position. The \textbf{upper hull} of
+  $P$ is the chain of vertices of $\operatorname{conv}(P)$ visible from
+  above, ordered by increasing $x$-coordinate; the \textbf{lower hull} is
+  the complementary chain ordered by increasing $x$-coordinate
+  (Definition~\ref{def:upper_lower_hull}). Together they form the boundary
+  of the convex hull.
+\end{definition}
+
+\begin{definition}[Envelope Pair]\label{def:geo_duality_envelope_pair}
+  For a family of dual lines $L = \{p^* : p \in P\}$, the \textbf{lower
+  envelope} $L_{\text{low}}$ is the pointwise minimum of the lines and the
+  \textbf{upper envelope} $L_{\text{up}}$ their pointwise maximum
+  (Definitions~\ref{def:lower_envelope} and \ref{def:upper_envelope} of the
+  envelopes chapter). Each envelope is a piecewise-linear convex chain.
+\end{definition}
+
+\subsection{3. Theory}
+
+The central theorem is the formal version of
+Corollary~\ref{cor:geo_duality_hull_envelope}.
+
+\begin{theorem}[Hull--Envelope Duality]\label{thm:geo_duality_upper_hull_lower_envelope}
+  Let $P$ be a set of points in general position and let $L = \{p^* : p \in
+  P\}$ be their dual lines. Then:
+  \begin{itemize}
+    \item the vertices of the \emph{upper hull} of $P$, read left to right,
+      are exactly the dual lines of the segments of the \emph{lower
+      envelope} of $L$, read right to left;
+    \item the vertices of the \emph{lower hull} of $P$, read left to right,
+      are exactly the dual lines of the segments of the \emph{upper
+      envelope} of $L$, read left to right.
+  \end{itemize}
+  In particular $p$ is an upper-hull vertex if and only if $p^*$ is on the
+  lower envelope of the dual lines.
+\end{theorem}
+
+\begin{proof}
+  A point $p_i$ is an upper-hull vertex exactly when it maximizes the signed
+  distance $b_i - m a_i$ for all supporting lines of slope $m$ over an open
+  interval of slopes. By Theorem~\ref{thm:geo_duality_order_reversal},
+  maximizing $b_i - ma_i$ is equivalent to minimizing the dual value
+  $a_i m - b_i$ at $x = m$, so $p_i^*$ is the line attaining the pointwise
+  minimum over that interval of slopes --- a segment of the lower envelope.
+  The order reversal along the chains follows by the monotonicity of the
+  supporting slopes along the upper hull.
+\end{proof}
+
+\begin{corollary}[Computational Equivalence]\label{cor:geo_duality_hull_by_duality}
+  The convex hull of $n$ points can be computed from the lower and upper
+  envelopes of the $n$ dual lines, and the envelopes can be computed from
+  the hull of the dual points, with no overhead beyond the $O(n)$ transform.
+  Both problems therefore admit algorithms of the same asymptotic
+  complexity.
+\end{corollary}
+
+\begin{proof}
+  Theorem~\ref{thm:geo_duality_upper_hull_lower_envelope} gives both
+  hull chains from both envelopes. Conversely, given the hull of the dual
+  points $\{p^*\}$ as points, its upper and lower chains dualize back to the
+  lower and upper envelopes of the primal dual lines by the same theorem
+  applied to the point set $\{p^*\}$.
+\end{proof}
+
+The same duality, in one higher dimension, underlies the Delaunay--Voronoi
+duality. Lifting each primal point $p = (x,y)$ to
+$p^+ = (x, y, x^2 + y^2)$ on the paraboloid, the Delaunay triangulation of
+$P$ is the projection of the \emph{lower} hull of the lifted points, and the
+Voronoi diagram is dual to it; equivalently the Voronoi diagram is the
+projection of the \emph{upper envelope} of the tangent planes to the
+paraboloid at the lifted points. This is developed in full in
+Section~\ref{sec:delaunay_lifting} of Chapter~\ref{ch:delaunay_triangulations},
+where the lifting theorem
+(Theorem~\ref{thm:voronoi_upper_hull}) is proved by computing the vertical
+gap $\|x - p\|^2$ between the tangent plane and the paraboloid. The hull in
+that chapter is a hull in $\mathbb{R}^3$; the duality here is the same
+envelope duality as in Theorem~\ref{thm:geo_duality_upper_hull_lower_envelope},
+with planes replacing lines.
+
+\subsection{4. Pseudocode}
+
+The algorithm computes the hull of $P$ by computing the two envelopes of the
+dual lines and reading off the vertices.
+
+\begin{algorithm}[htbp]
+\caption{Convex Hull via Dual Envelopes}
+\label{alg:geo_duality_hull_by_envelopes}
+\begin{algorithmic}[1]
+\Require a set $P$ of $n$ points in general position.
+\Ensure the vertices of $\operatorname{conv}(P)$ in counterclockwise order.
+\Function{ConvexHullByDuality}{$P$}
+  \State $L \gets \emptyset$
+  \For{each point $p = (a,b) \in P$}
+    \State add the line $y = ax - b$ to $L$ \Comment{dual line $p^*$}
+  \EndFor
+  \State $\text{low} \gets \text{LowerEnvelope}(L)$ \Comment{recursive divide and conquer}
+  \State $\text{high} \gets \text{UpperEnvelope}(L)$ \Comment{negate and repeat}
+  \State $H_{\text{up}} \gets $ dual lines of the segments of $\text{low}$,
+         read right to left \Comment{upper hull, left to right}
+  \State $H_{\text{low}} \gets $ dual lines of the segments of $\text{high}$,
+         read left to right \Comment{lower hull, left to right}
+  \State \Return $H_{\text{low}}$ followed by $H_{\text{up}}$ minus its
+         first and last vertices
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The subroutines \text{LowerEnvelope} and \text{UpperEnvelope} are the
+divide-and-conquer envelope algorithms of Chapter~\ref{ch:envelopes}
+(Algorithm~\ref{alg:compute_lower_envelope}); they run in $O(n \log n)$
+time. The dual direction --- computing the envelopes from a convex hull ---
+uses any hull algorithm of Chapter~\ref{ch:convex_hulls} on the point set
+$\{p^*\}$ and reads off the chains as in the proof of
+Corollary~\ref{cor:geo_duality_hull_by_duality}.
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Sign convention}: the transform $y = ax - b$ and its ``upper
+  hull to lower envelope'' correspondence are tied together; switching to
+  $y = ax + b$ exchanges upper and lower. Pick one convention and keep it
+  consistent across the hull and envelope subroutines.
+\item \textbf{General position}: points with equal $x$-coordinates produce
+  parallel dual lines, whose envelope has vertical segments; either perturb
+  the input slightly, or break ties by a consistent rule in the hull and
+  envelope algorithms.
+\item \textbf{Exact predicates}: the envelope merges and the hull computations
+  both rest on orientation and ordering predicates; the robust predicates of
+  Chapter~\ref{ch:convex_hulls} and the geometric-predicates chapter
+  (Section~\ref{sec:incircle_predicate} and its orientation test) should be
+  used.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$, the cost of the two envelope
+  computations (each $O(n \log n)$) or, dually, of the hull computation on
+  the dual points. This matches the direct hull algorithms of
+  Chapter~\ref{ch:convex_hulls}.
+\item \textbf{Space}: $O(n)$ for the envelopes and the resulting hull.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Envelope-based hulls}: when the input is naturally given as
+  lines (visibility, kinetic configurations), computing the hull of the dual
+  points is the efficient route.
+\item \textbf{Delaunay and Voronoi via lifting}: the same duality one
+  dimension higher computes the Delaunay triangulation as the lower hull of
+  lifted points and the Voronoi diagram as the upper envelope of tangent
+  planes (Section~\ref{sec:delaunay_lifting}, Chapter~\ref{ch:delaunay_triangulations});
+  the connection to the farthest-point Voronoi diagram is made in
+  Section~\ref{sec:farthest_point_voronoi} of Chapter~\ref{ch:voronoi_diagrams}.
+\item \textbf{Hull peeling}: onion peeling (Section~\ref{sec:convex_hull_peeling}
+  of Chapter~\ref{ch:convex_hulls}) can be run in the dual by peeling levels
+  of the arrangement, one level per hull layer.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Cross-check}: compare the output against a direct hull
+  algorithm (e.g., monotone chain) on random and degenerate inputs.
+\item \textbf{Collinear and coincident points}: verify the envelope
+  routines handle parallel and identical dual lines without producing
+  zero-length chain segments.
+\item \textbf{Extreme coordinates}: points with large coordinates make the
+  dual intercepts large; verify the predicates used in the envelope merge
+  are robust.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item de Berg, M., et al. \cite{deberg2008}, Ch.~8 and Sec.~11.4.
+\item Preparata, F.~P., Shamos, M.~I. \cite{preparata1985}, Ch.~3 and
+  Ch.~7.
+\item Edelsbrunner, H. \cite{edelsbrunner1987}, Ch.~6.
+\item Chazelle, B., Guibas, L.~J., Lee, D.~T. \cite{chazelle1985power}.
+\end{itemize}
+
+\index{convex hull}\index{envelope}\index{duality}
 
 \section{Half-Plane Intersection}
 \label{sec:duality_half_plane_intersection}
 
+\subsection{1. Overview}
+
+The half-plane intersection problem asks for the intersection
+$R = \cap_i h_i$ of a set of $n$ half-planes $h_i$; the region $R$ is empty,
+or a convex (possibly unbounded) polygon. This is the dual problem to the
+convex hull: by the order-reversal theorems of
+Section~\ref{sec:duality_order_reversal}, the intersection of the lower
+half-planes of the dual lines is a convex region whose boundary is the lower
+envelope, and the lower envelope is the dual of the upper hull. Hence every
+algorithm for convex hulls yields an algorithm for half-plane intersection
+and conversely. The problem is also the geometric form of a linear program:
+testing whether $R$ is nonempty is feasibility, and optimizing a linear
+function over $R$ is optimization; both are treated in
+Section~\ref{sec:duality_linear_programming} and
+Chapter~\ref{ch:linear_programming}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Half-Plane]\label{def:geo_duality_halfplane}
+  A \textbf{half-plane} is a set of the form
+  \[
+    h : \quad y \le mx + c \quad \text{or} \quad y \ge mx + c ,
+  \]
+  together with its boundary line $\ell : y = mx + c$. The
+  \textbf{intersection region} of a family of half-planes is
+  $R = \cap_i h_i$. The half-plane $h$ is \emph{lower} if it is of the form
+  $y \le mx + c$ and \emph{upper} otherwise; half-planes with vertical
+  boundary lines are handled by rotating the input.
+\end{definition}
+
+\begin{definition}[Region of Lines above a Point Set]\label{def:geo_duality_above_lines}
+  Let $P$ be a set of points and $L = \{p^* : p \in P\}$ the dual lines. The
+  region
+  \[
+    H = \{ (u,v) : v \le a_p u - b_p \text{ for all } (a_p,b_p) \in P \}
+  \]
+  is the intersection of the lower half-planes of the dual lines. A dual
+  point $(u,v)$ belongs to $H$ exactly when the primal line
+  $y = ux - v$ has every point of $P$ on or below it.
+\end{definition}
+
+\subsection{3. Theory}
+
+The duality between the two problems is exact.
+
+\begin{theorem}[Half-Plane Intersection is Dual to the Convex Hull]\label{thm:geo_duality_hpi}
+  Let $P$ be a point set in general position and let $H$ be the intersection
+  of the lower half-planes of the dual lines $\{p^*\}$.
+  \begin{itemize}
+    \item The upper boundary of $H$ is the lower envelope of the dual lines,
+      which by Theorem~\ref{thm:geo_duality_upper_hull_lower_envelope} is
+      the dual of the upper hull of $P$.
+    \item More generally, let $R$ be the intersection of a set of half-planes
+      whose boundary lines are in general position. The edges of the lower
+      chain of $R$ correspond to the vertices of the \emph{upper} convex hull
+      of the dual points of the boundary lines of the lower half-planes; the
+      edges of the upper chain of $R$ correspond to the vertices of the
+      \emph{lower} convex hull of the dual points of the boundary lines of
+      the upper half-planes.
+    \item $R$ is bounded if and only if both chains are nonempty and the two
+      envelopes cross; $R$ is empty if and only if the two chains do not
+      cross.
+  \end{itemize}
+\end{theorem}
+
+\begin{proof}
+  A dual point $(u,v)$ is on the boundary of $H$ when
+  $v = \min_i (a_i u - b_i)$, i.e., when $(u,v)$ lies on the lower envelope
+  of the dual lines. Theorem~\ref{thm:geo_duality_upper_hull_lower_envelope}
+  identifies the lines of the lower envelope with the upper-hull vertices of
+  $P$, giving the first statement. For the general case, let $R$ be cut into
+  a lower chain (from the lower half-planes) and an upper chain (from the
+  upper half-planes). The lower chain is the lower envelope of the boundary
+  lines of the lower half-planes; applying the hull--envelope duality to the
+  point set $\{\ell_i^*\}$ of the dual points of those boundary lines shows
+  the lower envelope is the dual of the upper hull of $\{\ell_i^*\}$, and
+  similarly for the upper chain. $R$ is the set of points between the two
+  chains over the $x$-interval where the lower chain is below the upper
+  chain; the interval is empty exactly when the chains do not cross.
+\end{proof}
+
+\begin{corollary}[Hull and Half-Plane Intersection are Equivalent]\label{cor:geo_duality_hpi_hull}
+  Computing the convex hull of $n$ points and computing the intersection of
+  $n$ half-planes are computationally equivalent: each reduces to the other
+  in linear time via the dual transform.
+\end{corollary}
+
+\begin{proof}
+  By Theorem~\ref{thm:geo_duality_hpi}, the vertices of the intersection of
+  half-planes are the duals of the vertices of the convex hull of the dual
+  points, and conversely by Theorem~\ref{thm:geo_duality_upper_hull_lower_envelope}.
+  Both transforms cost $O(n)$.
+\end{proof}
+
+This equivalence is the classical content of Chazelle--Guibas--Lee's study
+of ``the power of geometric duality'' \cite{chazelle1985power}: every
+algorithm and every lower bound for convex hulls transfers, through duality,
+to half-plane intersection, and both problems are LP-feasibility problems in
+the sense of Section~\ref{sec:duality_linear_programming}.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Half-Plane Intersection via the Dual Hull}
+\label{alg:geo_duality_halfplane_intersection}
+\begin{algorithmic}[1]
+\Require $n$ half-planes $h_i$ in general position, each with boundary line
+       $\ell_i : y = m_i x + c_i$ and an orientation (lower or upper).
+\Ensure the convex region $R = \cap_i h_i$, or a certificate that $R$ is empty.
+\Function{IntersectHalfPlanes}{$\{h_i\}$}
+  \State $\text{low} \gets \emptyset$;\quad $\text{high} \gets \emptyset$
+  \For{each half-plane $h_i$}
+    \State $q_i \gets (m_i, -c_i)$ \Comment{dual point of the boundary line}
+    \If{$h_i$ is a lower half-plane ($y \le m_i x + c_i$)}
+      \State add $q_i$ to $\text{low}$
+    \Else
+      \State add $q_i$ to $\text{high}$
+    \EndIf
+  \EndFor
+  \State $C_{\text{up}} \gets $ upper convex hull of the points of
+         $\text{low}$ \Comment{dual of the lower chain of $R$}
+  \State $C_{\text{down}} \gets $ lower convex hull of the points of
+         $\text{high}$ \Comment{dual of the upper chain of $R$}
+  \State dualize the edges of $C_{\text{up}}$ to the lower chain and the
+         edges of $C_{\text{down}}$ to the upper chain of $R$
+  \State $R \gets $ the region between the two chains over the $x$-interval
+         where lower $\le$ upper
+  \If{the interval is empty}
+    \State \Return $R = \emptyset$
+  \EndIf
+  \State clip the chains at their crossing points and \Return $R$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The two hull computations are any $O(n \log n)$ hull algorithm of
+Chapter~\ref{ch:convex_hulls}. An alternative that avoids duality entirely
+is the divide-and-conquer half-plane intersection of
+Chapter~\ref{ch:linear_programming} (Section~\ref{sec:halfplane_intersection}),
+which merges two convex polygons in linear time and has the same $O(n \log
+n)$ bound; the randomized incremental variant is analyzed in
+Section~\ref{sec:duality_linear_programming}.
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Orientation classes}: the algorithm separates lower and upper
+  half-planes; half-planes with vertical boundary lines must be rotated out
+  of the input first, or handled by a preliminary $y$-sweep.
+\item \textbf{Parallel boundary lines}: parallel lines are the degenerate
+  case of general position; the hull of the dual points must tolerate
+  coincident points (duplicate dual points).
+\item \textbf{Boundedness}: to obtain a bounded region, the input must
+  contain both lower and upper half-planes in every relevant direction;
+  otherwise $R$ is an unbounded slab and the algorithm reports it as such.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ worst case, dominated by the two hull
+  computations; the merging of the two chains is $O(n)$.
+\item \textbf{Space}: $O(n)$.
+\item \textbf{Lower bounds}: matching the convex hull, $\Omega(n \log n)$
+  comparisons are required to compute the intersection of $n$ half-planes in
+  the comparison model (by Corollary~\ref{cor:geo_duality_hpi_hull} and the
+  hull lower bounds of Chapter~\ref{ch:convex_hulls}).
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Linear programming feasibility}: deciding whether $R \ne
+  \emptyset$ and, if so, finding a point of $R$ is the geometric form of LP
+  feasibility (Section~\ref{sec:duality_linear_programming} and
+  Section~\ref{sec:geometric_linear_programs} of
+  Chapter~\ref{ch:linear_programming}).
+\item \textbf{Visibility and kernels}: the kernel of a simple polygon is
+  the intersection of half-planes defined by its edges; duality transfers
+  the hull machinery to kernel computation.
+\item \textbf{Smallest enclosing circle}: the smallest enclosing circle of
+  a point set can be computed through the farthest-point Voronoi diagram
+  (Section~\ref{sec:farthest_point_voronoi}), whose vertices are dual to
+  half-plane constraints; the two views meet in the LP formulation of
+  Section~\ref{sec:duality_linear_programming}.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Empty intersection}: construct inputs whose two envelope chains
+  do not cross (e.g., half-planes with no common point) and verify the empty
+  certificate.
+\item \textbf{Unbounded regions}: parallel ``open'' configurations give an
+  unbounded slab; verify the algorithm does not emit spurious vertices at
+  infinity.
+\item \textbf{Cross-validation}: compare the output polygon against the
+  divide-and-conquer intersection of Section~\ref{sec:halfplane_intersection}
+  on random inputs.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~4.2 and Ch.~8.
+\item Preparata, F.~P., Shamos, M.~I. \cite{preparata1985}, Ch.~7.
+\item Chazelle, B., Guibas, L.~J., Lee, D.~T. \cite{chazelle1985power}.
+\end{itemize}
+
+\index{half-plane intersection}\index{convex region}
+
 \section{Linear Programming through Duality}
 \label{sec:duality_linear_programming}
+
+\subsection{1. Overview}
+
+A linear program (LP) asks for a point maximizing (or minimizing) a linear
+objective over a set of linear constraints. In the plane, both the
+constraints and the objective are geometric: the feasible region is the
+intersection of $n$ half-planes, and the optimum of a bounded objective is a
+vertex of that region. Duality serves three distinct purposes in this
+setting. First, the \emph{primal--dual} correspondence of linear programming
+gives certificates: an infeasibility or optimality claim is witnessed by a
+convex combination of the constraints, and in the plane these certificates
+are exactly the polar-duality statements of the point--line transform.
+Second, the randomized incremental algorithms of Seidel solve fixed-dimension
+LPs in expected linear time by maintaining the optimal vertex and repairing
+it only when a new constraint violates it. Third, the polar (point--hyperplane)
+duality extends the planar theory to all dimensions and is the language in
+which high-dimensional hulls and their certificates are phrased. This
+section develops these three uses; the algebraic LP theory and its dual
+program are treated in Chapter~\ref{ch:linear_programming}
+(Section~\ref{sec:lp_duality_applications}).
+
+\subsection{2. Definitions}
+
+\begin{definition}[Geometric Linear Program]\label{def:geo_duality_lp}
+  Let $H = \{h_1, \dots, h_n\}$ be half-planes and let $c \in
+  \mathbb{R}^2$ be an objective direction. The \textbf{2D linear program}
+  is
+  \[
+    \operatorname{minimize}\; c \cdot x \qquad \text{subject to } x \in
+    \cap_{i=1}^n h_i .
+  \]
+  The program is \textbf{infeasible} if the intersection is empty,
+  \textbf{unbounded} if the objective is unbounded below over the region, and
+  otherwise has an optimal vertex $x^*$ of the feasible polygon.
+\end{definition}
+
+\begin{definition}[Polar Body]\label{def:geo_duality_polar}
+  Let $K \subseteq \mathbb{R}^d$ be a convex set containing the origin in
+  its interior. The \textbf{polar} of $K$ is
+  \[
+    K^\circ = \{ y \in \mathbb{R}^d : \langle x, y \rangle \le 1 \text{ for
+    all } x \in K \} .
+  \]
+  For a finite set $S = \{s_1, \dots, s_n\}$, the polar of the polytope
+  $\operatorname{conv}(S)$ is the intersection of the half-spaces
+  $\{ y : \langle s_i, y \rangle \le 1 \}$.
+\end{definition}
+
+The polar is the higher-dimensional analogue of the point--line transform:
+a point $s$ is mapped to the half-space of the dual hyperplane
+$\{y : \langle s, y \rangle = 1\}$ containing the origin. Where the planar
+transform swaps points and lines, polarity swaps points and hyperplanes,
+and it inverts the face lattice.
+
+\subsection{3. Theory}
+
+The fundamental structural facts are the bipolar theorem, the Farkas
+separation statement, and the face-lattice inversion.
+
+\begin{theorem}[Bipolar Theorem]\label{thm:geo_duality_polar_duality}
+  Let $K$ be a closed convex set containing the origin. Then
+  $(K^\circ)^\circ = K$. If $K$ is a polytope with the origin in its
+  interior, then polarity is a bijection between the faces of $K$ and the
+  faces of $K^\circ$ that \emph{reverses dimension}: a $k$-dimensional face
+  of $K$ corresponds to a $(d-1-k)$-dimensional face of $K^\circ$. In
+  particular, the vertices of $K$ correspond to the facets of $K^\circ$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  The inclusion $K \subseteq (K^\circ)^\circ$ is immediate from the
+  definition; the reverse inclusion follows from the hyperplane separation
+  theorem (Theorem~\ref{thm:math_separation} of the foundations chapter):
+  if $x \notin K$, a strictly separating hyperplane yields a dual vector $y$
+  with $\langle x, y \rangle > 1 \ge \langle z, y \rangle$ for all
+  $z \in K$, so $y \in K^\circ$ and $x \notin (K^\circ)^\circ$. The
+  face-lattice statement follows because a face $F$ of $K$ is the set where
+  a supporting hyperplane is tight, and the supporting hyperplane's normal
+  is a vertex of $K^\circ$ whose polar facet is the dual of $F$; the
+  dimension count is the rank of the tight constraints.
+\end{proof}
+
+\begin{theorem}[Zero in a Convex Hull by Polarity]\label{thm:geo_duality_zero_in_conv}
+  Let $S = \{s_1, \dots, s_n\} \subseteq \mathbb{R}^d$. Then
+  \[
+    0 \in \operatorname{conv}(S)
+    \iff
+    \bigcap_{i=1}^n \{ x : \langle s_i, x \rangle \ge 1 \} = \emptyset .
+  \]
+  Equivalently, $0 \notin \operatorname{conv}(S)$ if and only if there
+  exists a point $x$ with $\langle s_i, x \rangle \ge 1$ for all $i$, i.e.,
+  a hyperplane strictly separating $0$ from $\operatorname{conv}(S)$.
+\end{theorem}
+
+\begin{proof}
+  If $0 \in \operatorname{conv}(S)$ then $0 = \sum_i \lambda_i s_i$ for
+  convex weights $\lambda_i \ge 0$, $\sum_i \lambda_i = 1$. For any $x$,
+  multiplying $\langle s_i, x \rangle \ge 1$ by $\lambda_i$ and summing
+  gives $0 \ge 1$, a contradiction, so the intersection is empty.
+  Conversely, if $0 \notin \operatorname{conv}(S)$, the strong separation
+  theorem gives a vector $v$ and a scalar $\alpha > 0$ with
+  $\langle v, s_i \rangle \ge \alpha$ for all $i$; scaling, the point
+  $v/\alpha$ satisfies the system, so the intersection is nonempty.
+\end{proof}
+
+The theorem is the certificate machinery behind LP duality: an infeasible
+dual constraint system is witnessed by the convex combination (the dual
+variables $\lambda_i$), and the dual LP of
+Section~\ref{sec:lp_duality_applications} is exactly the search for such a
+combination. This is the sense in which polarity is the
+higher-dimensional dual transform, and it is the mechanism behind the
+high-dimensional hull and polarity algorithms of
+Chapter~\ref{ch:convex_polytopes}.
+
+For the algorithmic side, the 2D LP has a simple randomized incremental
+solution.
+
+\begin{theorem}[Randomized Incremental LP]\label{thm:geo_duality_seidel}
+  The 2D linear program of Definition~\ref{def:geo_duality_lp} can be
+  solved in $O(n)$ expected time by Seidel's randomized incremental
+  algorithm: insert the half-planes in random order, maintain the optimal
+  vertex of the current intersection, and when the new half-plane violates
+  the current optimum, solve a one-dimensional subproblem on the new
+  boundary line. For any fixed dimension $d$, the algorithm runs in
+  $O(d! \, n)$ expected time.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Maintain the feasible region $R_i = \cap_{j \le i} h_{\pi(j)}$ and its
+  optimal vertex $x_i$ for a random permutation $\pi$. If the next
+  half-plane $h_{\pi(i)}$ does not contain $x_{i-1}$, the new optimum $x_i$
+  must lie on the boundary line of $h_{\pi(i)}$, so the problem reduces to a
+  1D LP on that line over the previous constraints --- an interval, whose
+  optimum is an endpoint. By backward analysis, the probability that
+  $h_{\pi(i)}$ violates $x_{i-1}$ is $O(1/i)$ (for fixed dimension $d$, the
+  $d$ constraints binding at the optimum of a random $i$-set are a uniformly
+  random $d$-subset, so the new one binds with probability $d/i$). The
+  expected total work is therefore $O(\sum_i d/i \cdot i + n) = O(n)$.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Seidel's Randomized Incremental 2D LP}
+\label{alg:geo_duality_seidel_lp}
+\begin{algorithmic}[1]
+\Require half-planes $H = \{h_1, \dots, h_n\}$ and an objective direction $c$.
+\Ensure an optimal point $x^*$ over $\cap H$, or a certificate of
+       infeasibility or unboundedness.
+\Function{SeidelLP}{$H$, $c$}
+  \State $\pi \gets$ uniformly random permutation of $\{1, \dots, n\}$
+  \State $x^* \gets$ an arbitrary feasible point of the initial bounding
+         half-planes
+  \For{$i = 1, \dots, n$}
+    \If{$x^*$ violates $h_{\pi(i)}$}
+      \State $x^* \gets \text{OptimumOnLine}(\partial h_{\pi(i)}, c,
+             \{h_{\pi(1)}, \dots, h_{\pi(i-1)}\})$
+      \Comment{1D LP on the boundary line}
+      \If{the 1D subproblem is infeasible}
+        \State \Return infeasible
+      \EndIf
+    \EndIf
+  \EndFor
+  \State \Return $x^*$
+\EndFunction
+\Function{OptimumOnLine}{$\ell$, $c$, constraints}
+  \State $[u, v] \gets (-\infty, +\infty)$ \Comment{interval of feasible points of $\ell$}
+  \For{each half-plane $h$ in constraints}
+    \State clip $[u,v]$ by the intersection of $\ell$ with $h$
+  \EndFor
+  \If{$u > v$}
+    \State \Return infeasible
+  \EndIf
+  \State \Return the point of $[u,v]$ minimizing $c \cdot x$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The bounding half-planes of the initialization can be taken as four faraway
+constraints enclosing the input; they are also how unboundedness is
+detected (the interval $[u,v]$ stays unbounded in the direction of $c$).
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Feasibility as a subproblem}: when only a point of $R$ is
+  needed, take $c$ to be any direction and accept the returned optimum;
+  alternatively run the same algorithm with $c = 0$ (any point of the
+  intersection is optimal) to test feasibility.
+\item \textbf{Degenerate constraints}: a new half-plane containing the
+  current optimum is skipped; coincident and parallel boundary lines must
+  be deduplicated so that the 1D subproblem sees a clean interval.
+\item \textbf{Exact arithmetic}: the predicate ``does $x^*$ violate $h$''
+  and the interval clipping use orientation tests; the robust predicates of
+  Chapter~\ref{ch:convex_hulls} should be used to avoid near-degenerate
+  misclassification.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n)$ expected for fixed dimension $d$ (e.g., $d=2$);
+  $O(n \log n)$ deterministic by divide-and-conquer half-plane intersection
+  (Section~\ref{sec:halfplane_intersection}); the expected number of
+  violated constraints is $O(d \log n)$, each costing $O(nd)$ for the 1D
+  repair.
+\item \textbf{Space}: $O(n)$.
+\item \textbf{Certificates}: infeasibility and optimality are certified by
+  the convex combinations of Theorem~\ref{thm:geo_duality_zero_in_conv},
+  computable from the binding constraints; the certificate size is $O(d)$.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Feasibility and optimization}: the 2D LP solves feasibility
+  of half-plane intersection and hence, by
+  Theorem~\ref{thm:geo_duality_hpi}, convex-hull inclusion and separation
+  queries in the primal (Section~\ref{sec:geometric_linear_programs}).
+\item \textbf{Smallest enclosing circle and Chebyshev center}: the smallest
+  enclosing circle of a point set is a 2D LP over the (dual) constraints
+  of the farthest-point Voronoi diagram
+  (Section~\ref{sec:farthest_point_voronoi}), and the largest empty circle
+  centered in a region is the corresponding maximization.
+\item \textbf{High-dimensional certificates}: polar duality
+  (Theorem~\ref{thm:geo_duality_polar_duality}) provides the certificates
+  for high-dimensional hulls and for the LP duality treated in
+  Chapter~\ref{ch:linear_programming} (Section~\ref{sec:lp_duality_applications}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Infeasibility}: verify the algorithm reports infeasible on
+  half-planes with empty intersection (e.g., $y \le 0$ and $y \ge 1$).
+\item \textbf{Unboundedness}: an objective pointing into an open slab must
+  return the unbounded certificate rather than a spurious optimum.
+\item \textbf{Degenerate vertices}: when the optimum is a vertex of degree
+  $> 2$ (three half-planes through one point), the algorithm must still
+  terminate with the correct value.
+\end{itemize}
+
+\subsection{9. References}
+
+\begin{itemize}
+\item de Berg, M., et al. \cite{deberg2008}, Sec.~4.4 and Ch.~4 (randomized
+  LP).
+\item Preparata, F.~P., Shamos, M.~I. \cite{preparata1985}, Ch.~4.
+\item Matou\v{s}ek, J. \cite{matousek1999} treats the discrepancy and
+  approximation sides of the same duality.
+\item Chazelle, B., Guibas, L.~J., Lee, D.~T. \cite{chazelle1985power}.
+\end{itemize}
+
+\index{linear programming}\index{polar duality}\index{polar body}
+\index{separation theorem}
 
 \section{Applications to Optimization}
 \label{sec:duality_optimization}
 
+Duality is not merely a reformulation technique: it reduces a family of
+optimization problems over point sets to structurally simpler problems over
+arrangements and envelopes, for which the near-linear algorithms of
+Chapter~\ref{ch:envelopes} apply. This section collects the classical
+applications.
+
+\index{collinearity}\index{concurrence}
+\paragraph{Detecting collinearities and concurrences.}
+By Corollary~\ref{cor:geo_duality_collinear_concurrent}, a set of $k$
+collinear primal points is a set of $k$ concurrent dual lines, i.e., a
+vertex of the dual arrangement of degree $k$. Counting or detecting
+collinear triples among $n$ points therefore reduces to detecting vertices
+of the arrangement of the $n$ dual lines at which three lines meet; in the
+dual arrangement these are the vertices of the arrangement lying on levels
+$k - 1$ to $k - 1$ measured from the bottom (Definition~\ref{def:geo_duality_level}).
+The reduction is the subject of the classic ``power of geometric duality''
+paper of Chazelle, Guibas, and Lee \cite{chazelle1985power}, which uses
+duality to reduce several point-set problems --- including the detection of
+collinearities, of intersections, and of certain optimization queries --- to
+arrangement and envelope computations. In the algebraic sense, detecting
+collinear triples is a 3SUM-hard problem, and the dual formulation exposes
+exactly why: a three-line concurrence is the triple meeting condition of an
+arrangement vertex, and no subquadratic algorithm is known in the
+comparison model.
+
+\index{width}\index{envelope}
+\paragraph{Computing envelopes and the width of a point set.}
+The order-reversal theorem reduces envelope computation to convex hulls
+(Section~\ref{sec:duality_convex_hulls}) and gives duality a direct role in
+the width problem.
+
+\begin{theorem}[Width by Envelope Distance]\label{thm:geo_duality_width}
+  Let $P$ be a point set, and let $L_{\text{low}}$ and $L_{\text{up}}$ be
+  the lower and upper envelopes of the dual lines of $P$. The width of $P$
+  in the direction perpendicular to the line of slope $m$ is
+  \[
+    w(m) = \frac{L_{\text{up}}(m) - L_{\text{low}}(m)}{\sqrt{1 + m^2}} .
+  \]
+  The minimum of $w(m)$ is attained at an $x$-coordinate of a vertex of the
+  envelopes, i.e., at the slope of a line through two hull vertices.
+\end{theorem}
+
+\begin{proof}
+  The lowest and highest lines of slope $m$ supporting
+  $\operatorname{conv}(P)$ have intercepts
+  $c_{\min} = \min_i (b_i - m a_i)$ and $c_{\max} = \max_i (b_i - m a_i)$,
+  and the width perpendicular to slope $m$ is
+  $(c_{\max} - c_{\min})/\sqrt{1 + m^2}$. By
+  Theorem~\ref{thm:geo_duality_order_reversal}, the dual values at $x = m$
+  are $a_i m - b_i = -c_i$, so $L_{\text{up}}(m) = -c_{\min}$ and
+  $L_{\text{low}}(m) = -c_{\max}$, giving the formula. Since both envelopes
+  are piecewise linear and the denominator is fixed between consecutive
+  arrangement vertices, the function $w$ is minimized on a segment where it
+  is the quotient of a linear by a convex function; its minimum over a
+  segment is at an endpoint, which is a vertex of the envelopes, dual to a
+  line through two hull vertices.
+\end{proof}
+
+The theorem is the duality version of the rotating-calipers width
+computation: instead of rotating two parallel supporting lines around the
+hull, one reads the vertical gap between the two envelopes of the dual
+lines and minimizes the scaled gap over the arrangement vertices. This is a
+concrete instance of the general phenomenon that envelope algorithms
+(Section~\ref{sec:lower_envelopes} and the Davenport--Schinzel theory of
+Section~\ref{sec:davenport_schinzel} of Chapter~\ref{ch:envelopes}) solve
+optimization problems whose objective is a minimum or maximum of linear
+functions.
+
+\index{ham-sandwich}\index{level}
+\paragraph{Ham-sandwich cuts and level-set problems.}
+The dual of a line that splits a point set is a point on a fixed level of
+the dual arrangement. Concretely, a line $\ell$ with exactly $k$ points of
+$P$ below it is dual to a point $\ell^*$ with exactly $k$ dual lines below
+it, i.e., a point of the $k$-level (Section~\ref{sec:arrangement_levels}
+and Definition~\ref{def:geo_duality_level}). A \emph{bisecting} line for a
+set of $n$ points (the median in every direction) therefore corresponds to
+the \emph{median level} of the dual arrangement, and the ham-sandwich
+theorem for two point sets $A$ and $B$ is a statement about the intersection
+of two median levels.
+
+\begin{theorem}[Ham-Sandwich via Median Levels]\label{thm:geo_duality_ham_sandwich}
+  Let $A$ and $B$ be two finite point sets with $|A|$ and $|B|$ even. The
+  median levels of the dual arrangements of $A$ and of $B$ intersect, and a
+  point of their intersection is the dual of a line that simultaneously
+  bisects $A$ and bisects $B$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  For each slope $m$, let $\ell_A(m)$ be the line of slope $m$ with
+  $|A|/2$ points of $A$ below it; its dual point lies on the median level of
+  the $A$-arrangement at $x = m$. The function $f(m) = b_A(m) - b_B(m)$,
+  where $b_A(m)$ and $b_B(m)$ are the intercepts of the two bisecting lines,
+  changes sign as $m$ runs from $-\infty$ to $+\infty$ (at $m \to \pm
+  \infty$ the two bisecting lines are ordered by the projections of $A$ and
+  $B$ on the horizontal axis). By continuity, $f$ has a zero, at which the
+  bisecting lines coincide; that common line is the ham-sandwich cut, and
+  its dual point lies on both median levels.
+\end{proof}
+
+\begin{example}[A Ham-Sandwich Cut by Duality]\label{ex:geo_duality_ham_sandwich}
+  Let $A = \{(0,0), (2,2)\}$ and $B = \{(0,2), (2,0)\}$. The line $y = 1$
+  has one point of $A$ below it ($(0,0)$) and one point of $B$ below it
+  ($(2,0)$), so it bisects both sets. Its dual point is $(0,-1)$. The dual
+  lines of $A$ are $y = 0$ and $y = 2x - 2$; at $x = 0$ exactly one of them
+  ($y = 2x - 2$, value $-2$) lies below $(0,-1)$, so $(0,-1)$ is on the
+  median level of $A$. The dual lines of $B$ are $y = -2$ and $y = 2x$;
+  at $x = 0$ the line $y = -2$ lies below $(0,-1)$, again exactly one line,
+  so $(0,-1)$ is on the median level of $B$ as well --- the dual point is on
+  both median levels, exactly as the theorem predicts.
+\end{example}
+
+The level-set view also underlies the theory of $k$-sets and discrepancy
+studied in Chapter~\ref{ch:envelopes}: the $k$-set boundaries
+(Definition~\ref{def:kset}) are dual to the $k$-levels, and the half-plane
+discrepancy of a point set (Definition~\ref{def:halfplane_discrepancy}) is
+a statement about how far all the levels of the dual arrangement deviate
+from being evenly spaced. The discrepancy chapter of Matou\v{s}ek
+\cite{matousek1999} develops the deep connections between levels,
+discrepancy, and the balance of point sets; the duality here is the
+geometric bridge between the two theories.
+
+\index{duality}\index{level-set problem}\index{discrepancy}
+\paragraph{The power of geometric duality in optimization.}
+The reductions of this section have a common structure: an optimization
+problem over a set of points is transformed into a problem over the 
+arrangement of the dual lines, where envelope and level algorithms run in
+near-linear or near-quadratic time, and where certificates are read off
+from local structure (vertices, zone edges, level crossings) rather than
+from global searches. Chazelle, Guibas, and Lee \cite{chazelle1985power}
+formalized this scheme for a broad family of problems --- collinearity
+detection, nearest and farthest neighbor statistics, convex-hull and
+intersection queries --- establishing duality as one of the primary
+algorithmic paradigms of computational geometry, alongside the
+divide-and-conquer and sweeping paradigms of Chapters
+\ref{ch:convex_hulls} and \ref{ch:segment_intersection}.
+
 \section{Exercises}
 \label{sec:duality_exercises}
+
+\begin{enumerate}
+  \item Verify Theorem~\ref{thm:geo_duality_involution} and
+    Theorem~\ref{thm:geo_duality_incidence} algebraically for the points
+    $(1,2)$, $(3,-1)$ and the line $y = 2x - 1$: compute both duals and
+    check all four incidence statements by hand.
+  \item Prove Lemma~\ref{lem:geo_duality_point_line_order} in full detail,
+    and show that if the sign of the intercept in the transform is changed
+    (i.e., $p^* : y = ax + b$), the above/below relation is reversed instead
+    of preserved.
+  \item Let $P$ be a set of points in general position. Prove that a point
+    $p \in P$ is a vertex of the upper hull of $P$ if and only if $p^*$ is on
+    the lower envelope of the dual lines, and that the order of the upper-hull
+    vertices is the reverse of the order of the envelope segments
+    (Corollary~\ref{cor:geo_duality_hull_envelope}).
+  \item Use Theorem~\ref{thm:geo_duality_zero_in_conv} to show that the
+    point $(0,0)$ lies in the convex hull of $S = \{(1,0),(0,1),(-1,-1)\}$
+    but not in the convex hull of $S' = \{(1,0),(0,1)\}$, by writing down the
+    dual systems and checking infeasibility directly.
+  \item Describe how the width of a point set is computed from the two
+    envelopes of the dual lines, and prove that the minimizing slope
+    corresponds to a vertex of the envelopes
+    (Theorem~\ref{thm:geo_duality_width}). Compute the width of the triangle
+    $\{(0,0),(1,1),(2,0)\}$ this way.
+  \item Show that two segments in the primal intersect if and only if their
+    dual double wedges overlap, and explain how this reduces red--blue
+    segment intersection (Section~\ref{sec:segint_red_blue}) to an
+    arrangement or envelope problem in the dual plane.
+  \item Implement Algorithm~\ref{alg:geo_duality_halfplane_intersection}
+    (half-plane intersection via the dual hull) and cross-validate it against
+    the divide-and-conquer intersection of
+    Section~\ref{sec:halfplane_intersection} on random and degenerate
+    inputs, including empty and unbounded cases.
+  \item Verify the ham-sandwich statement of
+    Theorem~\ref{thm:geo_duality_ham_sandwich} computationally: for random
+    even-size sets $A$ and $B$, compute the median levels of the two dual
+    arrangements, find an intersection point, dualize it back, and check that
+    the resulting line bisects both sets.
+\end{enumerate}
+
+\index{exercises}

@@ -1,40 +1,964 @@
 \chapter{Convex Polytopes}
 \label{ch:convex_polytopes}
 
-% Stub: outline only; content to be written.
-
 \section{Convex Polytopes}
 \label{sec:polytopes_intro}
+
+A \textbf{convex polytope}\index{convex polytope} is the $d$-dimensional
+generalization of a convex polygon: a bounded convex set whose boundary is
+made of finitely many flat pieces, the \emph{facets}. Convex polytopes are
+the feasible regions of linear programs (Chapter~\ref{ch:linear_programming}),
+the cells of hyperplane arrangements, and the convex hulls built by
+Chapter~\ref{ch:convex_hulls} and used by the computational and polyhedral
+geometry of Chapters~\ref{ch:polyhedral_geometry}
+and~\ref{ch:computational_topology}. In the plane a convex polytope is a
+convex polygon; in $\mathbb{R}^3$ it is a convex polyhedron, and the cube
+and the tetrahedron are the models to keep in mind throughout.
+
+\begin{definition}[Polytope]\label{def:polytopes_polytope}
+  A \textbf{convex polytope} in $\mathbb{R}^d$ is a bounded convex set that
+  is the convex hull of finitely many points
+  (Section~\ref{sec:math_convex_combinations}), equivalently the bounded
+  intersection of finitely many closed halfspaces
+  (Section~\ref{sec:math_half_spaces}); the equivalence is the
+  Minkowski--Weyl theorem of the next section. A polytope of dimension $d$
+  is a \textbf{$d$-polytope}.
+\end{definition}
+
+Two complementary descriptions drive the subject. The \textbf{V-description}
+lists the extreme points (vertices); the \textbf{H-description} lists the
+defining linear inequalities (facets). This chapter develops the dictionary
+between them, the combinatorial structure they share (the \emph{face
+lattice}), the extremal question of how many facets a polytope with $n$
+vertices can have, and the algorithms that compute hulls and enumerate
+vertices in three and higher dimensions. A running thread is
+\textbf{polarity}, the duality that interchanges vertices with facets and
+V- with H-descriptions (Section~\ref{sec:polytopes_polarity}), closely
+related to the point--hyperplane duality of Chapter~\ref{ch:geometric_duality}.
+
+The subject has classical roots: Euler's 1758 counting formula
+$V - E + F = 2$ \cite{euler1758} predates the modern computational questions
+by two centuries, and the affine theorems of Carath\'eodory, Helly, and
+Radon (Sections~\ref{sec:polytopes_caratheodory}--\ref{sec:polytopes_radon})
+organize higher-dimensional convexity into three clean statements.
+Computationally, the three-dimensional hull is built in $O(n \log n)$ time,
+while the higher-dimensional theory is governed by the upper bound theorem:
+a $d$-polytope with $n$ vertices has $\Theta(n^{\lfloor d/2 \rfloor})$
+facets in the worst case (Section~\ref{sec:polytopes_faces}), separating the
+tractable three-dimensional case from the combinatorial explosion of
+dimension four and above.
+
+\index{V-description}\index{H-description}\index{face lattice}\index{polarity}
 
 \section{V-Representations and H-Representations}
 \label{sec:polytopes_representations}
 
+Every polytope admits two canonical descriptions, each with its own data
+structure and its own algorithmic tasks. The \textbf{V-representation}
+specifies the polytope as the convex hull of a finite point set; the
+\textbf{H-representation} specifies it as the intersection of a finite set
+of halfspaces. The fundamental structural theorem states that the two
+coincide.
+
+\begin{definition}[V-Polytope and H-Polytope]\label{def:polytopes_v_h}
+  A \textbf{V-polytope} is the convex hull
+  $\operatorname{conv}(S) = \{ \sum_i \lambda_i p_i : p_i \in S, \lambda_i
+  \ge 0, \sum_i \lambda_i = 1 \}$ of a finite set $S \subset \mathbb{R}^d$
+  (Section~\ref{sec:math_convex_combinations}). An \textbf{H-polytope} is a
+  bounded set of the form $\{ x : Ax \le b \}$, a finite intersection of
+  closed halfspaces (Section~\ref{sec:math_half_spaces}).
+\end{definition}
+
+\begin{theorem}[Minkowski--Weyl Theorem]\label{thm:polytopes_minkowski_weyl}
+  A subset of $\mathbb{R}^d$ is a V-polytope if and only if it is an
+  H-polytope.
+\end{theorem}
+
+The proof has two halves. The convex hull of finitely many points is the
+intersection of the halfspaces supporting it (Theorem~\ref{thm:polytopes_supporting}),
+so it is an H-polytope. Conversely, every point of the bounded polyhedron
+$\{x : Ax \le b\}$ is a convex combination of finitely many extreme points:
+move from $x$ along a line to the boundary, recurse on the
+lower-dimensional faces, and the dimension drops at every step. The
+equivalence is treated in \cite{edelsbrunner1987,preparata1985}.
+
+\begin{definition}[Extreme Point]\label{def:polytopes_vertex}
+  A point $p$ of a convex set $C$ is \textbf{extreme} (a \textbf{vertex}) if
+  it cannot be written as a nontrivial convex combination of two distinct
+  points of $C$; the vertex set is $\operatorname{vert}(P)$.
+\end{definition}
+
+The standard examples organize the picture. The \textbf{simplex}
+$\Delta_d = \operatorname{conv}\{e_1, \dots, e_{d+1}\}$ has $d+1$ vertices
+and $d+1$ facets, the fewest possible. The \textbf{cube} $[0,1]^d$ has
+$2^d$ vertices and $2d$ facets. The \textbf{cross-polytope}
+$\operatorname{conv}\{\pm e_1, \dots, \pm e_d\}$ has $2d$ vertices and
+$2^d$ facets; it is the polar dual of the cube
+(Section~\ref{sec:polytopes_polarity}). The \textbf{cyclic polytope}, the
+convex hull of points on the moment curve $\gamma(t) = (t, t^2, \dots,
+t^d)$, maximizes the number of faces among all $d$-polytopes with the same
+number of vertices (Theorem~\ref{thm:polytopes_upper_bound}).
+
+Each description has its own hard problem. Given a V-representation,
+computing the facets is \textbf{facet enumeration}; given an
+H-representation, computing the vertices is \textbf{vertex enumeration}
+(Definition~\ref{def:polytopes_vertex_enumeration}); both are the same
+problem up to polarity and are treated in
+Section~\ref{sec:polytopes_computation}. Deciding whether a candidate point
+is a vertex, and evaluating a linear objective, are the tasks of
+Chapter~\ref{ch:linear_programming}. The point--hyperplane duality of
+Section~\ref{sec:duality_convex_hulls} converts convex hull problems into
+halfplane intersection problems, a transformation whose power is analyzed in
+\cite{chazelle1985power}.
+
+\index{V-representation}\index{H-representation}\index{Minkowski--Weyl theorem}
+\index{extreme point}\index{cyclic polytope}\index{cross-polytope}
+
 \section{Faces and Face Lattices}
 \label{sec:polytopes_faces}
+
+\begin{definition}[Faces]\label{def:polytopes_face}
+  A \textbf{face} of a polytope $P$ is the intersection $P \cap H$ with a
+  supporting hyperplane $H$ (Section~\ref{sec:polytopes_supporting_hyperplanes}),
+  together with $P$ itself and the empty set. A face of dimension $k$ is a
+  \textbf{$k$-face}: $0$-faces are \textbf{vertices}, $1$-faces are
+  \textbf{edges}, $(d-2)$-faces are \textbf{ridges}, and $(d-1)$-faces are
+  \textbf{facets}. Faces other than $P$ itself are \textbf{proper faces}.
+\end{definition}
+
+\begin{definition}[Face Lattice]\label{def:polytopes_face_lattice}
+  The \textbf{face lattice} $\mathcal{L}(P)$ is the set of all faces of $P$
+  ordered by inclusion, with the empty face at the bottom and $P$ at the
+  top.
+\end{definition}
+
+\begin{theorem}[Face Lattice Structure]\label{thm:polytopes_face_lattice}
+  The face lattice of a $d$-polytope is a finite \textbf{graded lattice} of
+  rank $d+1$: the meet of two faces is their intersection, the join is the
+  convex hull of their union, and the rank of a face is its dimension plus
+  one. Every face is the join of its vertices.
+\end{theorem}
+
+The face lattice is what graphics, mesh processing, and topological
+algorithms pass around implicitly: the half-edge and winged-edge data
+structures of Chapter~\ref{ch:half_edge} store the rank-two incidences of a
+three-dimensional polytope, and the Betti-number checks of
+Chapter~\ref{ch:computational_topology} read the topological invariants of
+the boundary off the lattice. Because the boundary of a $3$-polytope is a
+planar graph, the lattice is equivalently that planar graph together with
+its embedding; by Steinitz's theorem the planar 3-connected graphs are
+exactly the graphs of convex polytopes in $\mathbb{R}^3$.
+
+\begin{definition}[Simple and Simplicial Polytopes]\label{def:polytopes_simple_simplicial}
+  A $d$-polytope is \textbf{simplicial} if all its facets are simplices (in
+  $\mathbb{R}^3$: all facets are triangles), and \textbf{simple} if every
+  vertex has degree $d$. Polarity interchanges the two classes
+  (Theorem~\ref{thm:polytopes_polar_reversal}).
+\end{definition}
+
+\subsection{Combinatorial complexity}
+
+How many facets can a polytope with $n$ vertices have? In
+$\mathbb{R}^3$ the answer is linear --- at most $2n - 4$ --- by Euler's
+formula (Theorem~\ref{thm:polytopes_euler}). In higher dimensions the answer
+is polynomial in $n$ with a dimension-dependent exponent, and the extremal
+shapes are the cyclic polytopes.
+
+\begin{definition}[Cyclic Polytope]\label{def:polytopes_cyclic}
+  The \textbf{cyclic polytope} $C(d,n)$ is the convex hull of $n$ distinct
+  points on the moment curve $\gamma(t) = (t, t^2, \dots, t^d)$. It is
+  \textbf{neighborly}: every set of at most $\lfloor d/2 \rfloor$ vertices
+  spans a face.
+\end{definition}
+
+\begin{theorem}[Upper Bound Theorem]\label{thm:polytopes_upper_bound}
+  A $d$-polytope with $n$ vertices has $O(n^{\lfloor d/2 \rfloor})$ facets,
+  and the cyclic polytope $C(d,n)$ attains the bound: $\Phi(d,n) =
+  \Theta(n^{\lfloor d/2 \rfloor})$. By polarity, a $d$-polytope with $n$
+  facets has at most $\Theta(n^{\lfloor d/2 \rfloor})$ vertices.
+\end{theorem}
+
+The upper bound theorem settles the \emph{size} of every higher-dimensional
+hull, hence the output complexity of every hull algorithm
+(Section~\ref{sec:polytopes_computation}). In $\mathbb{R}^3$ the hull is
+linear in size, which is why three-dimensional hull algorithms
+(Chapter~\ref{ch:polyhedral_geometry}) run in $O(n \log n)$ time. In
+$\mathbb{R}^4$ and above the output size $\Theta(n^{\lfloor d/2 \rfloor})$
+is superlinear, so no algorithm can be linear in the input size alone. The
+combinatorial complexity of polytopes and arrangement cells, and its role in
+discrepancy lower bounds, are treated in \cite{matousek1999} and
+\cite{edelsbrunner1987}.
+
+\textbf{The dual of a triangulated surface.} The boundary of a simplicial
+$3$-polytope is a triangulated sphere, and its dual graph --- one node per
+triangular facet, edges across shared edges --- is again planar.
+
+\begin{example}[Dual of a Triangulated Surface]\label{ex:polytopes_dual_triangulation}
+  A triangulated surface that bounds a convex polytope with $V$ vertices has
+  $F = 2V - 4$ triangles and $E = 3V - 6$ edges
+  (Theorem~\ref{thm:polytopes_upper_bound_3d}). Its dual graph has $F$ nodes,
+  each of degree $3$, and $E$ edges; it is exactly the 1-skeleton of the
+  \emph{polar} polytope, which is simple
+  (Theorem~\ref{thm:polytopes_polar_reversal}). Duality swaps vertices and
+  facets, and $F = 2V - 4$ is the identity behind the linear-size storage of
+  triangular meshes in Chapter~\ref{ch:mesh_analysis}.
+\end{example}
+
+\index{face lattice}\index{facet}\index{ridge}\index{simplicial polytope}
+\index{simple polytope}\index{upper bound theorem}\index{cyclic polytope}
 
 \section{Supporting Hyperplanes}
 \label{sec:polytopes_supporting_hyperplanes}
 
+\begin{definition}[Supporting Hyperplane]\label{def:polytopes_supporting_hyperplane}
+  A hyperplane $H = \{ x : \langle x, u \rangle = c \}$ \textbf{supports} a
+  polytope $P$ if $\langle x, u \rangle \le c$ for all $x \in P$ and
+  equality holds for at least one point of $P$. Every face of $P$ other than
+  the empty face is exposed by a supporting hyperplane.
+\end{definition}
+
+\begin{theorem}[Supporting Hyperplane Theorem]\label{thm:polytopes_supporting}
+  Let $P$ be a polytope and $u$ any direction. The linear functional
+  $x \mapsto \langle x, u \rangle$ attains its maximum on $P$ in the face
+  $F_P(u) = \{ x \in P : \langle x, u \rangle = h_P(u) \}$, where
+  \[
+    h_P(u) = \max_{x \in P} \langle x, u \rangle
+  \]
+  is the \textbf{support function} of $P$ in direction $u$. Every boundary
+  point of $P$ lies on a supporting hyperplane, and a face is a vertex iff
+  it is the unique maximizer in some direction.
+\end{theorem}
+
+The support function $h_P$ is exactly the support function of
+Section~\ref{sec:convexint_support_functions}, and it packages the whole
+polytope: $P = \{ x : \langle x, u \rangle \le h_P(u) \text{ for all } u \}$
+is the H-representation re-parametrized by directions. Evaluating $h_P(u)$ is
+the oracle behind the support-function algorithms of
+Chapter~\ref{ch:convex_intersection}, and for an H-polytope it is a linear
+program, solved by the methods of Chapter~\ref{ch:linear_programming}.
+
+The supporting hyperplanes organize the ambient space into the
+\textbf{normal fan} of the polytope.
+
+\begin{definition}[Normal Cone and Normal Fan]\label{def:polytopes_normal_cone}
+  The \textbf{normal cone} of a face $F$ of $P$ is the cone of directions
+  $u$ for which $F_P(u) = F$. The \textbf{normal fan} $\mathcal{N}(P)$ is
+  the collection of the normal cones of all faces; it is a complete fan of
+  polyhedral cones whose union is $\mathbb{R}^d$, ordered by inclusion in
+  exactly the reverse of the face lattice.
+\end{definition}
+
+The normal fan is where polytopes meet arrangements and duality: each
+full-dimensional normal cone is a cell of the arrangement of the facet
+hyperplanes of the \emph{polar} polytope (Section~\ref{sec:polytopes_polarity}),
+and the point--hyperplane duality of Section~\ref{sec:math_duality} and
+Chapter~\ref{ch:geometric_duality} realizes the normal fan as a section of a
+hyperplane arrangement --- the mechanism behind the duality-based hull and
+Voronoi algorithms \cite{edelsbrunner1987,chazelle1985power}. For a convex
+polygon the normal fan is the subdivision of the plane by the vertex
+outward normals; for the cube $[0,1]^d$ it is the arrangement of coordinate
+hyperplanes.
+
+\index{supporting hyperplane}\index{support function}\index{normal fan}
+\index{normal cone}
+
 \section{Separating Hyperplane Theorems}
 \label{sec:polytopes_separating}
+
+Separation theorems assert that disjoint convex sets can be told apart by a
+hyperplane; they are the geometric form of duality and the source of
+certificates in optimization.
+
+\begin{theorem}[Strict Separation]\label{thm:polytopes_strict_separation}
+  Let $A, B \subset \mathbb{R}^d$ be disjoint compact convex sets. Then
+  there is a vector $u$ and a scalar $c$ with
+  $\langle a, u \rangle < c < \langle b, u \rangle$ for all $a \in A$ and
+  $b \in B$: a \textbf{strictly separating} hyperplane.
+\end{theorem}
+
+\begin{proof}
+  The distance $\operatorname{dist}(A,B) = \min_{a \in A, b \in B}
+  \|a-b\|$ is attained at $(a^*, b^*)$ because the sets are compact
+  (Section~\ref{sec:convexint_distance}). Set $u = b^* - a^*$ and
+  $c = \langle (a^*+b^*)/2, u \rangle$. If some $a \in A$ satisfied
+  $\langle a, u \rangle \ge c$, the segment from $a^*$ to $a$, which lies in
+  $A$ by convexity, would approach $b^*$ more closely than $a^*$ does,
+  contradicting the minimality of $\|a^* - b^*\|$; symmetrically
+  $\langle b, u \rangle \le c$ is impossible for $b \in B$.
+\end{proof}
+
+The affine separation theorem
+(Theorem~\ref{thm:math_separation} of Section~\ref{sec:math_separating_surfaces})
+is the general formulation for arbitrary convex sets; strictness holds here
+because polytopes are compact. Separation underlies the separating axis
+theorem (Theorem~\ref{thm:convexint_sat}): for two disjoint polytopes the
+separating hyperplane can be tilted until it supports both, yielding the
+finite set of candidate axes. It is also the certificate machinery of linear
+programming, made explicit by the Farkas lemma.
+
+\begin{theorem}[Farkas Lemma]\label{thm:polytopes_farkas}
+  Let $A \in \mathbb{R}^{m \times n}$ and $b \in \mathbb{R}^m$. Exactly one
+  of the following two systems is solvable:
+  \begin{enumerate}
+    \item $Ax \le b$ for some $x \in \mathbb{R}^n$;
+    \item $y \ge 0$, $y^{\top} A = 0$, and $y^{\top} b < 0$ for some
+      $y \in \mathbb{R}^m$.
+  \end{enumerate}
+\end{theorem}
+
+Farkas' lemma \cite{farkas1902} is the infeasibility certificate for linear
+systems: when $Ax \le b$ has no solution, the nonnegative combination $y$
+proves it, since multiplying the system by $y \ge 0$ gives
+$0 = y^{\top} A x \le y^{\top} b < 0$, a contradiction. It follows from
+strict separation applied to the polyhedron $\{Ax \le b\}$ and the origin,
+and it is the primal--dual bridge behind the duality theory of
+Section~\ref{sec:lp_duality_applications}. Section~\ref{sec:polytopes_computation}
+returns to the lemma as the pivot test underlying polytope traversal and
+vertex enumeration.
+
+\index{separation theorem}\index{separating hyperplane}\index{Farkas lemma}
 
 \section{Carath\'eodory's Theorem}
 \label{sec:polytopes_caratheodory}
 
+Carath\'eodory's theorem bounds how many points of a set are needed to
+represent any point of its convex hull: the dimension $d$, not the size of
+the set, is all that matters.
+
+\begin{theorem}[Carath\'eodory]\label{thm:polytopes_caratheodory}
+  Let $S \subset \mathbb{R}^d$ and let $x \in \operatorname{conv}(S)$. Then
+  $x$ lies in the convex hull of at most $d + 1$ points of $S$.
+\end{theorem}
+
+\begin{proof}
+  Write $x = \sum_{i=1}^{k} \lambda_i p_i$ with $p_i \in S$, $\lambda_i > 0$,
+  $\sum \lambda_i = 1$, and $k$ minimal. If $k > d + 1$, the points are
+  affinely dependent (Section~\ref{sec:math_affine_combinations}): there are
+  $\mu_i$, not all zero, with $\sum \mu_i p_i = 0$ and $\sum \mu_i = 0$. For
+  small $\varepsilon$ the coefficients $\lambda_i + \varepsilon \mu_i$ still
+  sum to $1$, are nonnegative, and represent the same point; choosing the
+  largest $|\varepsilon|$ keeping them nonnegative kills at least one
+  positive coefficient, contradicting minimality. Hence $k \le d + 1$.
+\end{proof}
+
+The bound is tight: the center of the simplex spanned by $d+1$ affinely
+independent points requires all of them. The version stated here is also
+recorded as Theorem~\ref{thm:math_caratheodory} of the mathematical
+background chapter.
+
+The algorithmic content is that convex hulls are determined by their
+$(d+1)$-subsets: every point of $\operatorname{conv}(S)$ lies in a
+$d$-simplex spanned by $d+1$ points of $S$. This is why all hull algorithms
+of Section~\ref{sec:polytopes_computation} restrict attention to
+$(d+1)$-tuples and $(d-1)$-faces: a facet of $\operatorname{conv}(S)$ is
+spanned by $d$ points of $S$ and is a facet exactly when all other points
+lie on one side of its hyperplane. Carath\'eodory's theorem also supplies
+the $d+1$ in Helly's and Radon's theorems
+(Sections~\ref{sec:polytopes_helly} and~\ref{sec:polytopes_radon}), the two
+pillars of the local theory of higher-dimensional convexity.
+
+\index{Carath\'eodory's theorem}\index{convex combination}
+
 \section{Helly's Theorem}
 \label{sec:polytopes_helly}
+
+\begin{theorem}[Helly]\label{thm:polytopes_helly}
+  Let $\mathcal{F} = \{C_1, \dots, C_m\}$ be a finite family of convex sets
+  in $\mathbb{R}^d$. If every subfamily of $d + 1$ sets has nonempty
+  intersection, then the entire family has nonempty intersection.
+\end{theorem}
+
+\begin{proof}
+  Induct on the number of sets, assuming every proper subfamily intersects;
+  then each $D_j = \bigcap_{i \neq j} C_i$ is nonempty, so choose
+  $p_j \in D_j$. If $m \ge d + 2$, Radon's theorem
+  (Section~\ref{sec:polytopes_radon}) gives a Radon partition $A \cup B$ of
+  $\{p_1, \dots, p_m\}$ with $x \in \operatorname{conv}(A) \cap
+  \operatorname{conv}(B)$. Every point of $A$ lies in all $C_i$ except its
+  own index; by convexity $\operatorname{conv}(A)$ lies in the intersection
+  of all $C_i$ except those indexed by $A$, and the analogous claim holds
+  for $B$. The two subfamilies together cover all of $\mathcal{F}$, so $x$
+  lies in every $C_i$.
+\end{proof}
+
+The proof shows the precise relation of the companion theorems: Helly's
+$d+1$ is Radon's $d+2$ shifted by one, and Radon's theorem rests on affine
+dependence, the same fact underlying Carath\'eodory's bound. Helly's
+theorem is the finite combinatorial counterpart of the separation theorems:
+the family has empty intersection iff some $d+1$ of its members already do,
+so infeasibility of a convex system is always witnessed by a small
+subsystem --- at most $d+1$ constraints. This is the geometry behind
+linear-programming infeasibility certificates
+(Section~\ref{sec:polytopes_separating}) and the low-dimensional witness
+principle of Chapter~\ref{ch:linear_programming}.
+
+\begin{example}[Helly in the Plane]
+  For $d = 1$, Helly's theorem says that a family of intervals on the line
+  with pairwise intersection has total intersection. For $d = 2$, a family
+  of convex figures in the plane any three of which share a point share a
+  common point --- the form used to bound witnesses in planar piercing
+  problems.
+\end{example}
+
+\index{Helly's theorem}\index{intersection of convex sets}
 
 \section{Radon's Theorem}
 \label{sec:polytopes_radon}
 
+\begin{theorem}[Radon]\label{thm:polytopes_radon}
+  Any set of $d + 2$ points in $\mathbb{R}^d$ can be partitioned into two
+  disjoint sets $A$ and $B$ such that
+  $\operatorname{conv}(A) \cap \operatorname{conv}(B) \neq \emptyset$.
+\end{theorem}
+
+\begin{proof}
+  The $d + 2$ points are affinely dependent
+  (Section~\ref{sec:math_affine_combinations}): there are $\alpha_i$, not
+  all zero, with $\sum \alpha_i p_i = 0$ and $\sum \alpha_i = 0$. Let $A$
+  collect the points with $\alpha_i > 0$ and $B$ the rest; both are
+  nonempty. Then $\sum_{i \in A} \alpha_i = -\sum_{j \in B} \alpha_j =
+  \sigma > 0$ and
+  \[
+    x = \sum_{i \in A} \frac{\alpha_i}{\sigma} \, p_i
+      = \sum_{j \in B} \frac{-\alpha_j}{\sigma} \, p_j
+  \]
+  is a common point of $\operatorname{conv}(A)$ and $\operatorname{conv}(B)$.
+\end{proof}
+
+\begin{definition}[Radon Partition]\label{def:polytopes_radon_partition}
+  A partition of a set of $d + 2$ points in $\mathbb{R}^d$ into two parts
+  with intersecting convex hulls is a \textbf{Radon partition}, and the
+  common point of the two hulls is a \textbf{Radon point} of the set.
+\end{definition}
+
+Radon's theorem is sharp: $d+1$ affinely independent points form a simplex,
+whose vertices cannot be separated into parts with intersecting hulls. In
+the plane, four points are either in convex position, the crossing diagonals
+giving the Radon partition, or one lies inside the triangle of the other
+three, the Radon point being that point itself. The partition read along
+the moment curve is the combinatorial seed of the neighborliness of cyclic
+polytopes (Definition~\ref{def:polytopes_cyclic}).
+
+Radon partitions are the local combinatorial step of higher-dimensional
+algorithms. In the randomized incremental hull of
+Section~\ref{sec:polytopes_computation}, the conflicted facets of a new
+point in $\mathbb{R}^3$ form a topological disk whose boundary (the horizon)
+is a single cycle --- a planar Radon statement about the facets the point
+sees. Radon's theorem is also the engine of the proof of Helly's theorem
+above and underlies the perturbation arguments that put higher-dimensional
+inputs into general position.
+
+\index{Radon's theorem}\index{Radon partition}\index{affine dependence}
+
 \section{Euler--Poincar\'e Relations}
 \label{sec:polytopes_euler_poincare}
+
+The oldest theorem of polytope combinatorics counts the faces of a convex
+polytope in $\mathbb{R}^3$.
+
+\begin{theorem}[Euler's Formula]\label{thm:polytopes_euler}
+  For every convex polytope in $\mathbb{R}^3$ with $V$ vertices, $E$ edges,
+  and $F$ facets,
+  \[
+    V - E + F = 2 .
+  \]
+\end{theorem}
+
+Euler announced the formula in 1758 \cite{euler1758}; the modern view
+\cite{poincare1895} sees the boundary of the polytope as a triangulated
+sphere and $V - E + F$ as its Euler characteristic (compare
+Section~\ref{sec:math_topology} and Chapter~\ref{ch:computational_topology}).
+The $d$-dimensional generalization counts all dimensions at once.
+
+\begin{definition}[Face Vector]\label{def:polytopes_f_vector}
+  The \textbf{face vector} (f-vector) of a $d$-polytope is the tuple
+  $(f_0, f_1, \dots, f_{d-1})$, where $f_k$ is the number of $k$-faces.
+\end{definition}
+
+\begin{theorem}[Euler--Poincar\'e Formula]\label{thm:polytopes_euler_poincare}
+  For every $d$-polytope,
+  \[
+    \sum_{k=0}^{d-1} (-1)^k f_k
+      = 1 + (-1)^{d-1}
+      = \chi(S^{d-1}),
+  \]
+  the Euler characteristic of the $(d-1)$-sphere, the boundary of the
+  polytope.
+\end{theorem}
+
+For $d = 3$ this reads $f_0 - f_1 + f_2 = 2$; for $d = 2$ (a polygon) it
+reads $f_0 = f_1$; for $d = 4$ it reads $f_0 - f_1 + f_2 - f_3 = 0$. The
+formula is proved by induction on the dimension: attaching a new vertex to
+the boundary triangulation changes the alternating sum by $0$ because the
+boundary is a triangulated sphere. It is the most useful check in
+higher-dimensional computing: every face lattice, mesh, and hull satisfies
+it, and violations signal exactly the degenerate inputs that robust
+implementations must reject.
+
+For a \textbf{simplicial} $3$-polytope, $3F = 2E$ (each facet has three
+edges, each edge borders two facets); for a \textbf{simple} one, $3V = 2E$.
+Substituting into Euler's formula gives the sharp counting bound.
+
+\begin{theorem}[Facets of a 3-Polytope]\label{thm:polytopes_upper_bound_3d}
+  A convex polytope in $\mathbb{R}^3$ with $V$ vertices has $F \le 2V - 4$
+  facets, with equality iff all facets are triangles; dually, a simple
+  polytope with $F$ facets has $V = 2F - 4$ vertices. A triangulated surface
+  with $V$ vertices has $E = 3V - 6$ edges and $F = 2V - 4$ triangular
+  faces.
+\end{theorem}
+
+These identities are why triangular meshes consume linear storage
+(Chapter~\ref{ch:mesh_analysis}): the edge and face counts of a triangular
+surface are determined by its vertex count up to constants. The
+dimensional generalization is the upper bound theorem
+(Theorem~\ref{thm:polytopes_upper_bound}), whose linear three-dimensional
+case is exactly $F \le 2V - 4$.
+
+\index{Euler's formula}\index{Euler--Poincar\'e formula}\index{face vector}
+\index{f-vector}\index{Euler characteristic}
 
 \section{Polarity}
 \label{sec:polytopes_polarity}
 
+\textbf{Polarity} is the geometric duality that interchanges the two
+descriptions of a polytope: the polar of a V-polytope is an H-polytope, and
+vertices and facets are exchanged along with them.
+
+\begin{definition}[Polar]\label{def:polytopes_polar}
+  For a set $P \subset \mathbb{R}^d$ with $0 \in P$, the \textbf{polar} of
+  $P$ is
+  \[
+    P^{\circ} = \{ y \in \mathbb{R}^d : \langle x, y \rangle \le 1
+      \text{ for all } x \in P \} .
+  \]
+\end{definition}
+
+\begin{theorem}[Polar Duality]\label{thm:polytopes_polar_duality}
+  If $P$ is a full-dimensional polytope with $0 \in \operatorname{int} P$,
+  then $P^{\circ}$ is again a full-dimensional polytope with
+  $0 \in \operatorname{int} P^{\circ}$, and polarity is an involution:
+  $(P^{\circ})^{\circ} = P$.
+\end{theorem}
+
+The theorem follows from the Minkowski--Weyl theorem: if
+$P = \operatorname{conv}\{v_1, \dots, v_n\}$, then
+$P^{\circ} = \{ y : \langle v_i, y \rangle \le 1 \text{ for all } i \}$, an
+H-polytope, and applying the step again returns $P$ by separation
+(Section~\ref{sec:polytopes_separating}). Polarity therefore converts every
+V-representation into an H-representation and back, which makes it the
+geometric engine of facet and vertex enumeration
+(Section~\ref{sec:polytopes_computation}). It is related to, but distinct
+from, the projective point--hyperplane duality of Section~\ref{sec:math_duality}
+and Chapter~\ref{ch:geometric_duality}: both interchange points and
+hyperplanes, but polarity is an involution on polytopes that preserves
+incidence, whereas projective duality reverses order. The computational
+power of the projective form is analyzed in \cite{chazelle1985power}.
+
+\begin{theorem}[Polarity Reverses the Face Lattice]\label{thm:polytopes_polar_reversal}
+  Let $P$ be a full-dimensional polytope with $0 \in \operatorname{int} P$.
+  Polarity induces an inclusion-reversing bijection between the faces of $P$
+  and of $P^{\circ}$: the polar of a $k$-face $F$ of $P$ is the
+  $(d - 1 - k)$-face
+  \[
+    \widehat{F} = \{ y \in P^{\circ} : \langle x, y \rangle = 1
+      \text{ for all } x \in F \} .
+  \]
+  In particular, facets of $P$ correspond to vertices of $P^{\circ}$, and
+  vertices of $P$ to facets of $P^{\circ}$.
+\end{theorem}
+
+The dimension reversal $k \leftrightarrow d-1-k$ is why a simplicial
+polytope becomes a simple one under polarity
+(Definition~\ref{def:polytopes_simple_simplicial}), and the normal fan of $P$
+is the face fan of $P^{\circ}$ --- the normal cone of $F$ is the cone over
+the polar face $\widehat{F}$ --- so the normal-fan picture of
+Section~\ref{sec:polytopes_supporting_hyperplanes} and the polarity picture
+coincide. The polar of the cube is the cross-polytope, the polar of a
+simplex is a simplex, and the polar of the icosahedron is the dodecahedron.
+
+\index{polar}\index{polarity}\index{dual polytope}
+
+\begin{example}[Polar of the Cube]
+  Let $P = [-1, 1]^3$. Then $P^{\circ} = \{ y : |y_1| + |y_2| + |y_3| \le 1
+  \}$ is the octahedron with vertices $\pm e_1, \pm e_2, \pm e_3$: the eight
+  vertices of $P$ become the eight facets of $P^{\circ}$, and the six facets
+  of $P$ become the six vertices of $P^{\circ}$.
+\end{example}
+
 \section{Computing Higher-Dimensional Hulls}
 \label{sec:polytopes_computation}
 
+\subsection{1. Overview}
+
+This section treats the computation of convex hulls in $\mathbb{R}^3$ and
+above, together with the dual traversal problems of vertex and facet
+enumeration. Three families of algorithms are central.
+
+\textbf{Divide and conquer.} Preparata and Hong \cite{preparata1977} split
+the point set by a plane, build the two subhulls recursively, and glue them
+by a ``belt'' of triangles wrapping around the union, giving a deterministic
+$O(n \log n)$ three-dimensional hull algorithm.
+
+\textbf{Randomized incremental.} Add the points in random order, maintaining
+a conflict graph between points and current facets; a new point either lies
+inside the hull or destroys a connected patch of facets that is replaced by
+new triangles. The paradigm is due to Clarkson and Shor \cite{clarkson1989}
+and Seidel \cite{seidel1991}, who established the expected $O(n \log n)$
+bound in three dimensions; the same machinery extends to fixed dimension
+$d \ge 4$, where its complexity is governed by the upper bound theorem.
+
+\textbf{Output-sensitive.} \textbf{Gift wrapping} \cite{chand1970} revolves a
+plane around an edge to generate the next facet, in $O(n h)$ time for a
+hull of $h$ facets; Chan's algorithm \cite{chan1996} achieves the optimal
+$O(n \log h)$ by wrapping hulls of random samples.
+
+The dual computational problem is \textbf{vertex enumeration}: given the
+H-representation, list the vertices. Traversing the adjacency graph of
+vertices by pivoting --- moving along an edge to improve a linear objective
+--- is the combinatorial face of the simplex method
+(Chapter~\ref{ch:linear_programming}), and its correctness rests on the
+Farkas lemma (Theorem~\ref{thm:polytopes_farkas}) and the Fourier--Motzkin
+elimination theorem (Theorem~\ref{thm:polytopes_fourier_motzkin}). The
+section closes with these connections, which unify polytope theory with
+linear programming.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Adjacency Graph]\label{def:polytopes_adjacency_graph}
+  The \textbf{adjacency graph} (1-skeleton) of a polytope is the graph whose
+  vertices are the vertices of $P$ and whose edges are the 1-faces of $P$.
+  For a simple polytope the graph is $d$-regular, and for a 3-polytope it is
+  planar and 3-connected (Steinitz's theorem).
+\end{definition}
+
+\begin{definition}[Conflict and Conflict Graph]\label{def:polytopes_conflict}
+  A point $p$ \textbf{conflicts} with a facet $f$ of
+  $\operatorname{conv}(S)$ if $p$ lies strictly outside the closed halfspace
+  bounded by $f$ that contains $\operatorname{conv}(S)$. The \textbf{conflict
+  graph} stores, for every facet, the input points conflicting with it, and
+  for every point, the conflicting facets.
+\end{definition}
+
+\begin{definition}[Horizon]\label{def:polytopes_horizon}
+  Let $p$ be a point outside the current hull. The \textbf{horizon} of $p$
+  is the cycle of edges bounding the union of the facets that conflict with
+  $p$; the facets spanned by $p$ and the horizon edges are the new facets
+  created by inserting $p$.
+\end{definition}
+
+\begin{definition}[Vertex Enumeration]\label{def:polytopes_vertex_enumeration}
+  \textbf{Vertex enumeration} is the problem of listing all vertices of the
+  H-polytope $P = \{ x : Ax \le b \}$; \textbf{facet enumeration} is the
+  dual problem of listing all facets of $P = \operatorname{conv}(S)$. By
+  polarity (Section~\ref{sec:polytopes_polarity}) the two problems are
+  equivalent.
+\end{definition}
+
+The algorithms assume \textbf{general position}: no four input points are
+coplanar in $\mathbb{R}^3$ (no $d+1$ in $\mathbb{R}^d$), so every facet is a
+simplex spanned by exactly $d$ points. Degenerate inputs are handled by
+symbolic perturbation or by the exact predicates of
+Section~\ref{sec:robust_predicates}.
+
+\subsection{3. Theory}
+
+\textbf{Divide and conquer in 3D.} Preparata--Hong \cite{preparata1977}
+recursively computes the hulls $H_1, H_2$ of the two halves, then merges
+them by finding the two supporting planes that touch both hulls, tracing the
+``visible'' band of edges on each, and connecting the bands by a belt of
+triangular facets. Each merge runs in $O(n)$ time because the hulls are
+convex and the bands are found by walking, giving the recurrence
+$T(n) = 2T(n/2) + O(n)$ and $T(n) = O(n \log n)$. Correctness rests on the
+observation that every facet of the merged hull is either a facet of a
+subhull or a new triangle spanning the two bands, validated by the
+orientation tests of Section~\ref{sec:three_dimensional_predicates}.
+
+\textbf{Randomized incremental.} The randomized incremental algorithm
+(Algorithm~\ref{alg:polytopes_incremental_hull}) inserts the points in a
+random order and maintains the conflict graph. When $p_i$ is inserted, its
+conflicting facets are deleted and replaced by the fan of triangles over its
+horizon; the key geometric fact is that the conflicting facets form a
+topological disk in $\mathbb{R}^3$, so the horizon is a single cycle. The
+analysis is by \textbf{backward analysis}: a facet created at step $i$
+survives until the insertion of a point conflicting with it, and summing the
+expected creation times bounds the total work.
+
+\begin{theorem}[Randomized Incremental Hull, 3D]\label{thm:polytopes_incremental_3d}
+  For $n$ points in general position in $\mathbb{R}^3$, the randomized
+  incremental algorithm constructs the convex hull in expected
+  $O(n \log n)$ time and $O(n)$ space, and the expected number of facets
+  created over the run is $O(n)$.
+\end{theorem}
+
+The accounting is in \cite{clarkson1989,deberg2008}. The same scheme works
+in higher dimensions, where it is governed by the upper bound theorem.
+
+\begin{theorem}[Randomized Incremental Hull, Higher Dimensions]\label{thm:polytopes_incremental_d}
+  For points in general position in fixed dimension $d \ge 4$, the
+  randomized incremental algorithm runs in expected
+  $O(n^{\lfloor d/2 \rfloor} \log n)$ time, and this is optimal in the
+  worst case: the output hull can have $\Theta(n^{\lfloor d/2 \rfloor})$
+  facets (Theorem~\ref{thm:polytopes_upper_bound}). Chazelle's deterministic
+  algorithm achieves $O(n^{\lfloor d/2 \rfloor} + n \log n)$
+  \cite{chazelle1993}.
+\end{theorem}
+
+\textbf{Output-sensitive algorithms.} When the hull is small, both of the
+above are wasteful. \textbf{Gift wrapping} \cite{chand1970}
+(Algorithm~\ref{alg:polytopes_gift_wrapping}) generates the facets one at a
+time by pivoting a supporting plane around each facet edge, choosing the
+point minimizing the angle with the current facet; each facet costs $O(n)$,
+giving $O(n h)$ time. Chan's algorithm \cite{chan1996} computes the hulls of
+random samples of size $h$ and wraps their union, iterating on the estimate
+of $h$, in $O(n \log h)$ time, the optimal output-sensitive bound (the
+planar version is Section~\ref{sec:chans_algorithm},
+Algorithm~\ref{alg:chans_hull}).
+
+\textbf{Traversal and vertex enumeration.} Given an H-representation, the
+vertices can be visited by traversing the adjacency graph: from a vertex,
+each admissible pivoting direction leads across an edge to an adjacent
+vertex, and the simplex method of Chapter~\ref{ch:linear_programming}
+performs exactly this traversal under a linear objective. Two classical
+exact tools are complementary. \textbf{Fourier--Motzkin elimination}
+eliminates one variable at a time by combining every pair of constraints
+with opposite coefficient signs, deciding feasibility and projecting
+polytopes exactly.
+
+\begin{theorem}[Fourier--Motzkin Elimination]\label{thm:polytopes_fourier_motzkin}
+  Projecting the polyhedron $P = \{ x : Ax \le b \} \subset \mathbb{R}^d$
+  onto $\mathbb{R}^{d-1}$ (deleting one coordinate) yields the polyhedron
+  defined by the linear system produced by
+  Algorithm~\ref{alg:polytopes_fourier_motzkin}. In particular $P$ is
+  feasible iff the eliminated system is feasible, so feasibility is decided
+  by iterated elimination.
+\end{theorem}
+
+The \textbf{double description} method \cite{motzkin1953} maintains a
+V-and-H pair $(V, H)$ for the same polytope, inserting halfspaces one at a
+time and adding the vertices each new halfspace cuts off; the Farkas lemma
+certifies that a candidate point is a new vertex. For output-polynomial
+guarantees in the worst case, the \textbf{reverse search} of Avis and
+Fukuda \cite{avis1992} walks the adjacency graph in a deterministic
+cycle-free order (each vertex points to its unique parent), enumerating
+every vertex in time polynomial in the input size per vertex. Together, the
+Farkas lemma and Fourier--Motzkin elimination are the polytopal form of
+linear-programming duality: feasibility, infeasibility certificates, and
+vertex description are one story, told in the language of
+Section~\ref{sec:halfplane_intersection}.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Randomized Incremental 3D Convex Hull}
+\label{alg:polytopes_incremental_hull}
+\begin{algorithmic}[1]
+\Require A point set $S \subset \mathbb{R}^3$ in general position.
+\Ensure The facets of $\operatorname{conv}(S)$, oriented so normals point outward.
+\Function{IncrementalHull}{$S$}
+  \State choose a random permutation $p_1, \dots, p_n$ of $S$
+  \State $\mathcal{F} \gets$ the facets of the hull of the first 4 points (a tetrahedron)
+  \State build the conflict lists of all points against $\mathcal{F}$
+  \For{$i = 5$ \textbf{to} $n$}
+    \State $\mathcal{C} \gets$ facets of $\mathcal{F}$ conflicting with $p_i$
+    \If{$\mathcal{C}$ is empty}
+      \State continue  \Comment{$p_i$ lies inside the current hull}
+    \EndIf
+    \State delete $\mathcal{C}$ from $\mathcal{F}$; trace the horizon cycle bounding $\mathcal{C}$
+    \For{each horizon edge $e$}
+      \State add the triangle $\operatorname{conv}(\{p_i\} \cup e)$ to $\mathcal{F}$
+    \EndFor
+    \State update the conflict lists of the remaining points against the new facets
+  \EndFor
+  \State \Return $\mathcal{F}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Gift Wrapping in 3D}
+\label{alg:polytopes_gift_wrapping}
+\begin{algorithmic}[1]
+\Require A point set $S \subset \mathbb{R}^3$ in general position and a facet $f_0$ of $\operatorname{conv}(S)$.
+\Ensure All facets of $\operatorname{conv}(S)$.
+\Function{GiftWrap}{$S$, $f_0$}
+  \State $\mathcal{F} \gets \emptyset$; $Q \gets \{ f_0 \}$; mark $f_0$ discovered
+  \While{$Q$ is not empty}
+    \State pop $f$ from $Q$; add $f$ to $\mathcal{F}$
+    \For{each edge $e$ of $f$}
+      \If{$e$ is shared with a discovered facet}
+        \State continue  \Comment{the edge is already wrapped}
+      \EndIf
+      \State $H \gets$ plane through $e$ and the third vertex of $f$
+      \State $p \gets$ point of $S$ minimizing the angle of $\operatorname{conv}(\{e\} \cup \{p\})$ with $H$
+      \State $g \gets \operatorname{conv}(\{e\} \cup \{p\})$; mark $g$ discovered; push $g$ onto $Q$
+    \EndFor
+  \EndWhile
+  \State \Return $\mathcal{F}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Fourier--Motzkin Elimination of One Variable}
+\label{alg:polytopes_fourier_motzkin}
+\begin{algorithmic}[1]
+\Require A system $Ax \le b$ in variables $x_1, \dots, x_d$ and an index $j$.
+\Ensure A system in the remaining $d-1$ variables whose solutions are exactly the projections of the solutions of $Ax \le b$.
+\Function{FourierMotzkin}{$A$, $b$, $j$}
+  \State partition the rows by the sign of $\alpha_i = A_{ij}$, the coefficient of $x_j$
+  \State $L \gets$ rows with $\alpha_i > 0$; $E \gets$ rows with $\alpha_i = 0$; $U \gets$ rows with $\alpha_i < 0$
+  \For{each pair $(\ell, u)$ of a row from $L$ and a row from $U$}
+    \State add the scaled sum of the two rows that cancels $x_j$
+  \EndFor
+  \State \Return the system of all rows of $E$ plus the combination rows
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Random permutation}: correctness is independent of the order,
+  but the expected time depends on randomness; a fixed seed gives
+  reproducible runs, and adversarial orders are the failure mode that
+  randomization avoids.
+\item \textbf{General position}: coplanar points break the ``horizon is a
+  cycle'' and ``facet is a triangle'' invariants; symbolic perturbation
+  restores the assumptions without moving the output.
+\item \textbf{Conflict maintenance}: the full conflict graph uses expected
+  $O(n)$ space in 3D and is the standard choice; alternatively, locate each
+  new point inside a facet by walking (Section~\ref{sec:incremental_3d_hull}),
+  trading space for the point-location cost.
+\item \textbf{Output-sensitivity}: for hulls small compared with the input,
+  gift wrapping or Chan's algorithm should be selected on the basis of an
+  estimate of $h$, the number of output facets.
+\item \textbf{Exact arithmetic}: orientation and incircle-style tests
+  (Sections~\ref{sec:three_dimensional_predicates} and
+  \ref{sec:robust_predicates}) must be exact or certified; a wrong
+  orientation sign converts a valid facet into a non-facet and corrupts the
+  entire output.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Preparata--Hong divide and conquer}: $O(n \log n)$ time,
+  $O(n)$ space, deterministic, in $\mathbb{R}^3$.
+\item \textbf{Randomized incremental}: expected $O(n \log n)$ time and
+  $O(n)$ space in $\mathbb{R}^3$ (Theorem~\ref{thm:polytopes_incremental_3d});
+  expected $O(n^{\lfloor d/2 \rfloor} \log n)$ time in fixed dimension
+  $d \ge 4$ (Theorem~\ref{thm:polytopes_incremental_d}).
+\item \textbf{Gift wrapping}: $O(n h)$ time for a hull with $h$ facets,
+  $O(n + h)$ space.
+\item \textbf{Chan}: $O(n \log h)$ time, the optimal output-sensitive bound
+  \cite{chan1996}.
+\item \textbf{Vertex enumeration}: output-polynomial by reverse search
+  \cite{avis1992} --- each vertex in time polynomial in the input size;
+  Fourier--Motzkin decides feasibility exactly but may square the constraint
+  count per elimination step (Theorem~\ref{thm:polytopes_fourier_motzkin}).
+\end{itemize}
+
+The lower bounds are information-theoretic: the output hull has up to
+$\Theta(n^{\lfloor d/2 \rfloor})$ facets
+(Theorem~\ref{thm:polytopes_upper_bound}), so every correct algorithm in
+dimension $d \ge 4$ takes $\Omega(n^{\lfloor d/2 \rfloor})$ time in the
+worst case, which the algorithms above attain.
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Mesh generation and geometric computing}: the three-dimensional
+  hull is the boundary representation of convex meshes and of the Delaunay
+  and Voronoi structures of Chapter~\ref{ch:delaunay_triangulations}; the
+  algorithms here are the ancestors of the incremental polyhedral
+  constructions of Chapter~\ref{ch:polyhedral_geometry}.
+\item \textbf{Linear programming and optimization}: vertex enumeration and
+  the Farkas/Fourier--Motzkin machinery are the geometric skeleton of the
+  simplex method and of the duality certificates of
+  Chapter~\ref{ch:linear_programming} (Section~\ref{sec:halfplane_intersection}).
+\item \textbf{Higher-dimensional data}: hulls and support functions of
+  high-dimensional point clouds are primitives of the statistics and
+  learning pipelines of Chapter~\ref{ch:high_dimensional}.
+\item \textbf{Visibility and duality}: point--hyperplane duality turns
+  convex hull problems into halfplane intersection problems
+  (Section~\ref{sec:duality_convex_hulls}), so the algorithms here solve
+  both.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Euler check}: verify $V - E + F = 2$ on every output hull
+  (Theorem~\ref{thm:polytopes_euler}); for a triangulated hull, verify
+  $F = 2V - 4$. Any violation signals a duplicate or a mis-oriented facet.
+\item \textbf{Dual agreement}: build the polar of the output and verify the
+  face-lattice reversal of Theorem~\ref{thm:polytopes_polar_reversal}, then
+  run vertex enumeration on the polar to recover the input vertices.
+\item \textbf{Algorithm agreement}: compare the facet sets produced by the
+  randomized incremental and gift-wrapping algorithms on the same inputs;
+  they must coincide up to orientation and order.
+\item \textbf{Degenerate inputs}: collinear and coplanar sets, duplicate
+  points, and points on the hull boundary must be absorbed by the
+  general-position convention and must not create zero-area facets.
+\item \textbf{Conflict consistency}: after every insertion, the removed
+  facets must be exactly the conflict set of $p_i$; assert that the horizon
+  is a single cycle and that no new facet conflicts with an unprocessed
+  point that does not see it.
+\item \textbf{Stress dimensions}: in $\mathbb{R}^4$, hulls of points on the
+  moment curve must realize the upper bound
+  $\Theta(n^{\lfloor d/2 \rfloor})$ facets, testing the output-size handling
+  of the higher-dimensional machinery.
+\end{itemize}
+
+\subsection{9. References}
+
+The divide-and-conquer hull is due to Preparata and Hong
+\cite{preparata1977}, with the full treatment in \cite{preparata1985}; the
+randomized incremental paradigm and its analysis to Clarkson and Shor
+\cite{clarkson1989} and Seidel \cite{seidel1991}, with the textbook
+presentation in \cite{deberg2008}. Gift wrapping is due to Chand and Kapur
+\cite{chand1970}, and Chan's output-sensitive algorithm to Chan
+\cite{chan1996}. The combinatorial background --- the upper bound theorem
+and the structure of face lattices --- is in \cite{edelsbrunner1987,
+matousek1999}, and the deterministic optimal algorithm in fixed dimension in
+\cite{chazelle1993}. Vertex enumeration by double description is due to
+Motzkin et al.\ \cite{motzkin1953}, its output-polynomial reformulation to
+Avis and Fukuda \cite{avis1992}, and the Farkas lemma to Farkas
+\cite{farkas1902}; its linear-programming consequences are the subject of
+Chapter~\ref{ch:linear_programming}.
+
 \section{Exercises}
 \label{sec:polytopes_exercises}
+
+\begin{enumerate}
+  \item Prove the Minkowski--Weyl theorem in the plane: show that a bounded
+    intersection of halfplanes is the convex hull of its vertices, and
+    conversely that the convex hull of a finite planar point set is a
+    bounded intersection of halfplanes.
+  \item Using Euler's formula, prove that a $3$-polytope has $F \le 2V - 4$
+    facets, with equality iff all facets are triangles, and derive the dual
+    statement $V = 2F - 4$ for simple polytopes.
+  \item State and prove Radon's theorem for four points in the plane
+    explicitly: the four points either form a convex quadrilateral, whose
+    crossing diagonals give the Radon partition, or have one point inside
+    the triangle of the other three.
+  \item Compute the polar of the cube $[-1,1]^3$ and verify (i) that it is
+    the octahedron, (ii) that $(P^{\circ})^{\circ} = P$, and (iii) the
+    face-lattice reversal of Theorem~\ref{thm:polytopes_polar_reversal} by
+    matching facets of $P$ to vertices of $P^{\circ}$.
+  \item Prove Carath\'eodory's theorem by the minimal-convex-combination
+    argument, and show the bound $d+1$ is tight by exhibiting a point of a
+    $d$-simplex that cannot be represented with fewer points.
+  \item Use Helly's theorem to prove that a finite family of convex sets in
+    $\mathbb{R}^d$ has empty intersection iff some $d+1$ members already do,
+    and derive from this the size of the infeasibility certificate for a
+    linear system in $\mathbb{R}^2$.
+  \item Simulate Algorithm~\ref{alg:polytopes_incremental_hull} by hand on
+    six points in general position in $\mathbb{R}^3$, inserting them in a
+    fixed order, and verify that the conflicted facets form a single cycle
+    (the horizon) and that $V - E + F = 2$ holds after every step.
+  \item Implement Algorithm~\ref{alg:polytopes_fourier_motzkin} for $d = 2$
+    and use it to decide feasibility of a system of halfplanes; compare your
+    answers with the halfplane intersection algorithm of
+    Section~\ref{sec:halfplane_intersection}.
+\end{enumerate}

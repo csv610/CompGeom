@@ -1,37 +1,1128 @@
 \chapter{Half-Edge Data Structure}
 \label{ch:half_edge}
 
-% Stub: outline only; content to be written.
-
 \section{Half-Edge Representation}
 \label{sec:halfedge_representation}
+
+Almost every algorithm in this book operates on geometry that is
+combinatorial as well as numeric: a planar subdivision, a polygon with
+holes, or a polyhedral surface is a collection of vertices joined by edges
+into faces, and the algorithms repeatedly ask \emph{adjacency questions}
+--- which face lies across this edge, which edges bound this face, which
+edges meet at this vertex. The simplest representation, the
+\index{indexed face set}\textbf{indexed face set} (a list of vertex
+coordinates plus, for each face, the indices of its vertices), answers none
+of these questions directly: finding the face on the other side of an edge
+requires scanning every face, and walking around a vertex requires
+reassembling the incident edges from all faces that mention the vertex. An
+indexed face set is a good \emph{input format}; it is a poor
+\emph{working structure} for algorithms that traverse the mesh.
+
+\begin{definition}[Planar Subdivision]\label{def:hed_subdivision}
+A \textbf{planar subdivision} is a partition of a connected region of the
+plane (or of the entire plane) into vertices, edges, and faces by a
+straight-line planar embedding of a planar graph: edges meet only at
+vertices, and each bounded face is a polygonal region bounded by a cycle of
+edges. A \textbf{polyhedral surface} is the analogous 2-manifold embedded
+in $\mathbb{R}^3$, built from planar polygonal faces.
+\end{definition}
+
+The \index{doubly connected edge list}\textbf{doubly connected edge list}
+(DCEL), introduced in the planar-subdivision chapter of de Berg et al.
+\cite{deberg2008}, and the \index{half-edge}\textbf{half-edge} structure of
+the polygon-mesh literature \cite{botsch2010} are the same object under two
+names. The central idea is to abandon the undirected edge and store, for
+every edge, two directed \textbf{half-edges}\index{half-edge}, one for each
+side of the edge. Each half-edge owns a pointer to the face on its side and
+to the half-edge that precedes and follows it around that face. With this
+single change, every adjacency query becomes either $O(1)$ or a short walk,
+and local topological edits --- splitting an edge, inserting a vertex,
+merging two faces --- become $O(1)$ pointer surgery rather than global
+reconstruction.
+
+The half-edge structure appears throughout this book. It is the substrate
+on which polygon booleans (Chapter~\ref{ch:polygon_ops}), mesh-analysis
+validity checks (Chapter~\ref{ch:mesh_analysis}), Delaunay edge flips and
+insertion legalization (Chapter~\ref{ch:delaunay_triangulations}), walking
+point location (Chapter~\ref{ch:point_location}), and the topological
+counting of Chapter~\ref{ch:computational_topology} are built. This chapter
+develops the representation itself: its elements
+(Section~\ref{sec:halfedge_elements}), its operators
+(Section~\ref{sec:halfedge_operators}), its treatment of boundaries and
+manifolds (Section~\ref{sec:halfedge_boundary}), the adjacency and
+traversal queries it supports (Sections~\ref{sec:halfedge_adjacency} and
+\ref{sec:halfedge_traversal}), its relation to the winged-edge, quad-edge,
+and half-face structures (Section~\ref{sec:halfedge_comparison}), its
+storage cost (Section~\ref{sec:halfedge_complexity}), its construction from
+unstructured input (Section~\ref{sec:halfedge_construction}), and its role
+in mesh-processing applications (Section~\ref{sec:halfedge_applications}).
 
 \section{Vertices, Half-Edges, and Faces}
 \label{sec:halfedge_elements}
 
+\begin{definition}[Half-Edge]\label{def:hed_halfedge}
+A \textbf{half-edge} is a directed edge of the subdivision. It records a
+start vertex (its \emph{origin}), the face on its left (its \emph{incident
+face}), and references to the next and previous half-edges in the boundary
+cycle of that face. Each undirected edge of the subdivision is realized by
+exactly two half-edges, one for each of its two sides.
+\end{definition}
+
+\begin{definition}[DCEL / Half-Edge Structure]\label{def:hed_dcel}
+A \textbf{doubly connected edge list} (equivalently a \textbf{half-edge
+structure}) over a planar subdivision or polyhedral surface consists of:
+\begin{itemize}
+  \item a set of \textbf{vertices}, each storing coordinates and one
+    incident half-edge;
+  \item a set of \textbf{half-edges}, each storing an origin vertex, a twin
+    half-edge, a next half-edge, a prev half-edge, and an incident face;
+  \item a set of \textbf{faces}, each storing one boundary half-edge and,
+    for a face with holes, the extra boundary cycles.
+\end{itemize}
+The half-edges of a face are linked by \texttt{next} into one closed cycle
+per boundary component.
+\end{definition}
+
+\begin{definition}[Boundary Cycle]\label{def:hed_boundary_cycle}
+The \textbf{boundary cycle} of a face $f$ is the cyclic sequence of
+half-edges reached by repeatedly applying \texttt{next}, starting from any
+half-edge of $f$. For a face without holes this is a single cycle; the
+length of the cycle is the \textbf{face degree} of $f$, written $|f|$.
+\end{definition}
+
+The orientation convention fixes the geometry-to-topology link: in the
+plane, half-edges run counterclockwise around bounded faces and clockwise
+around the unbounded outer face, so that the interior of every face lies
+consistently to the left (or right) of its directed boundary. On a closed
+polyhedral surface the same rule orients every face so that the outward
+normal is consistently on one side (see Section~\ref{sec:halfedge_boundary}
+and Chapter~\ref{ch:polyhedral_geometry}).
+
+The half-edge data is redundant, and the redundancy is the structure's
+invariant: it can be checked after every edit, exactly as the adjacency
+invariants of a graph can be checked via the Handshaking Lemma
+\cite{diestel2017}.
+
+\begin{theorem}[Half-Edge Incidence Identity]\label{thm:hed_incidence}
+Let $H$ be the number of half-edges of a subdivision with $E$ edges,
+$V$ vertices, and faces $F$ (including the unbounded face in the planar
+case). Then
+\[
+H = 2E = \sum_{v \in V} \deg(v) = \sum_{f \in F} |f| ,
+\]
+where $\deg(v)$ counts the number of half-edges whose origin is $v$.
+\end{theorem}
+
+\begin{proof}
+Each undirected edge is realized by exactly two half-edges, one per side,
+so $H = 2E$. Each half-edge has exactly one origin vertex, so summing the
+incident-half-edge count over all vertices counts every half-edge exactly
+once: $H = \sum_v \deg(v)$. Similarly each half-edge is traversed by exactly
+one face (it lies on the boundary of its incident face), and the face
+degrees count exactly the half-edges of that face, so $H = \sum_f |f|$.
+\end{proof}
+
+\begin{example}[A Single Triangle]\label{ex:hed_triangle}
+The subdivision of a triangle has $V = 3$ vertices, $E = 3$ edges, and
+$F = 2$ faces (the bounded triangle and the unbounded outer face). Its
+$H = 2E = 6$ half-edges split into three pairs: the three CCW half-edges
+$(v_0, v_1), (v_1, v_2), (v_2, v_0)$ bound the triangle, and their twins
+bound the outer face clockwise. Hence $\sum_v \deg(v) = 2 + 2 + 2 = 6$ and
+$\sum_f |f| = 3 + 3 = 6$, matching Theorem~\ref{thm:hed_incidence}.
+\end{example}
+
+\begin{remark}
+For a closed polyhedral surface (a sphere-like mesh, no boundary), every
+edge has two sides and $H = 2E$ still holds, but there is no unbounded
+face. The incidence identity is dimension-independent: it is the
+combinatorial core of the Euler-characteristic machinery of
+Chapter~\ref{ch:computational_topology}.
+\end{remark}
+
+\index{half-edge}\index{doubly connected edge list}\index{boundary cycle}
+\index{face degree}
+
 \section{Twin, Next, and Prev Operators}
 \label{sec:halfedge_operators}
+
+The three core operators are what make the half-edge structure a
+\emph{navigational} structure rather than a static list.
+
+\begin{definition}[Twin Operator]\label{def:hed_twin}
+The \textbf{twin} operator $\operatorname{twin}(h)$ returns the half-edge
+of the same undirected edge that runs in the opposite direction and lies on
+the other side of the edge. It is an involution: $\operatorname{twin}(h) =
+h'$ if and only if $\operatorname{twin}(h') = h$, and
+$\operatorname{twin}(\operatorname{twin}(h)) = h$.
+\end{definition}
+
+\begin{definition}[Next and Prev Operators]\label{def:hed_next_prev}
+The \textbf{next} operator $\operatorname{next}(h)$ returns the half-edge
+that follows $h$ in the boundary cycle of its face, and the \textbf{prev}
+operator $\operatorname{prev}(h)$ returns the half-edge that precedes it.
+Both are defined within a face: $\operatorname{next}$ and
+$\operatorname{prev}$ are inverse to each other on the same face cycle.
+\end{definition}
+
+\begin{lemma}[Inverse on Face Cycles]\label{lem:hed_inverse}
+For every half-edge $h$,
+$\operatorname{prev}(h) = \operatorname{next}^{-1}(h)$; in particular
+$\operatorname{next}(\operatorname{prev}(h)) = h$ and
+$\operatorname{prev}(\operatorname{next}(h)) = h$.
+\end{lemma}
+
+\begin{proof}
+By definition both $\operatorname{next}$ and $\operatorname{prev}$ restrict
+to cyclic successor and predecessor permutations of the same face boundary
+cycle, and the successor permutation's inverse is the predecessor
+permutation.
+\end{proof}
+
+Two derived queries are used constantly and are worth naming. The
+\index{origin vertex}\textbf{origin} function $\operatorname{org}(h)$
+returns the start vertex of $h$; the \index{target vertex}\textbf{target}
+is $\operatorname{org}(\operatorname{twin}(h))$, the vertex the half-edge
+points to. The \index{incident face}\textbf{incident face}
+$\operatorname{face}(h)$ returns the face whose boundary contains $h$. Every
+adjacency primitive in Sections~\ref{sec:halfedge_adjacency} and
+\ref{sec:halfedge_traversal} is a short composition of
+$\operatorname{twin}$, $\operatorname{next}$, $\operatorname{prev}$, and the
+origin/face accessors.
+
+The two compositions that matter most are those that cross between the
+\emph{face} world and the \emph{vertex} world. A face cycle is traced by
+iterating $\operatorname{next}$; a \index{vertex star}\textbf{vertex star}
+--- the set of faces or edges incident to a vertex --- is traced by the
+composition $\operatorname{next} \circ \operatorname{twin}$, which walks
+from one incident face of $v$ to the next one around $v$.
+
+\begin{theorem}[Cycle Structure]\label{thm:hed_cycles}
+The $\operatorname{next}$ cycles partition the half-edges, one cycle for
+each boundary component of each face. The cycles of
+$\operatorname{next} \circ \operatorname{twin}$ partition the half-edges
+around vertices: each cycle visits exactly the half-edges whose origin is
+a fixed vertex, once each.
+\end{theorem}
+
+\begin{proof}
+Every half-edge has exactly one $\operatorname{next}$ and one
+$\operatorname{prev}$, and the two are inverses
+(Lemma~\ref{lem:hed_inverse}), so the functional graph of
+$\operatorname{next}$ decomposes into disjoint cycles; since each half-edge
+lies on exactly one face boundary, these are the face cycles. For the
+second claim, fix $v$ and consider the map $h \mapsto
+\operatorname{next}(\operatorname{twin}(h))$ on the set $S_v$ of half-edges
+with origin $v$. If $h$ has origin $v$, then $\operatorname{twin}(h)$ has
+origin $\operatorname{org}(h)$'s neighbor $w$, and
+$\operatorname{next}(\operatorname{twin}(h))$ is the half-edge of the next
+face around $v$ that shares $v$; its origin is again $v$, so the map sends
+$S_v$ into itself, and it is a bijection on the finite set $S_v$, hence a
+permutation whose cycles visit every half-edge of $S_v$. Distinct vertices
+have disjoint origin sets, so the cycles partition all half-edges.
+\end{proof}
+
+\begin{remark}
+Guibas and Stolfi \cite{guibas1985} formalized this algebra for their
+\index{quad-edge}\textbf{quad-edge} structure, in which the operators
+form a group algebra on each geometric edge; the half-edge structure is
+exactly the restriction of the quad-edge algebra to the primal side of a
+subdivision. We return to this comparison in
+Section~\ref{sec:halfedge_comparison}.
+\end{remark}
+
+\index{twin}\index{next operator}\index{prev operator}\index{vertex star}
 
 \section{Boundary and Manifold Handling}
 \label{sec:halfedge_boundary}
 
+Most real meshes --- a scanned surface, a finite-element domain, a terrain
+--- are not closed polyhedra: they have a \index{boundary}boundary. The
+half-edge structure must represent boundaries explicitly, because an edge
+that is incident to only one face has no second half-edge to pair with.
+
+\begin{definition}[Boundary Edge and Boundary Half-Edge]\label{def:hed_boundary_edge}
+A \textbf{boundary edge} is an edge incident to exactly one face. The
+half-edge of a boundary edge that belongs to the incident face is a
+\textbf{boundary half-edge}; it has no twin among the half-edges of the
+other side, because no face exists there.
+\end{definition}
+
+\begin{definition}[Manifold Edge and Manifold Vertex]\label{def:hed_manifold}
+An edge is \textbf{edge-manifold} if it is incident to at most two faces; a
+vertex is \textbf{vertex-manifold} if its incident faces form a single
+connected fan (a topological disk, or half-disk at the boundary) rather
+than two or more cones meeting only at the vertex. A mesh is a
+\index{manifold mesh}\textbf{manifold mesh} if every edge and vertex is
+manifold. Non-manifold edges (three or more incident faces) cannot be
+represented faithfully by a structure in which every edge has exactly two
+sides.
+\end{definition}
+
+The boundary behavior is forced by the twin involution:
+
+\begin{theorem}[Twin Boundary Dichotomy]\label{thm:hed_twin_boundary}
+Let $h$ be a half-edge of a manifold mesh. If $h$ is an interior half-edge,
+then $\operatorname{twin}(h)$ is a distinct half-edge belonging to the
+unique other face on the edge. If $h$ is a boundary half-edge, then no such
+half-edge exists, and implementations either leave
+$\operatorname{twin}(h)$ null or link it to a synthetic
+\index{dummy half-edge}\textbf{dummy boundary half-edge}.
+\end{theorem}
+
+\begin{proof}
+By edge-manifoldness each edge has at most two incident faces. An interior
+half-edge's edge has exactly two incident faces, so it has exactly one
+partner half-edge on the other side, which is its twin. A boundary
+half-edge's edge has exactly one incident face, so no partner exists.
+\end{proof}
+
+Boundary half-edges are not isolated: they chain together.
+
+\begin{theorem}[Boundary Cycles]\label{thm:hed_boundary_loops}
+In a manifold mesh with boundary, the boundary half-edges that are not
+paired (i.e., those with null or dummy twins) decompose into a unique set
+of disjoint closed chains, each oriented consistently, one chain per
+\index{boundary component}\textbf{boundary component} of the mesh.
+\end{theorem}
+
+\begin{proof}
+Each boundary half-edge has exactly one $\operatorname{next}$, which is
+again a boundary half-edge: walking forward along the boundary keeps the
+single incident face on one side, and the successor half-edge of that face
+can only leave the boundary when the boundary makes a closed turn, which by
+definition continues the chain. Since there are finitely many boundary
+half-edges and every boundary vertex has exactly one incoming and one
+outgoing boundary half-edge (vertex-manifoldness), the chains are disjoint
+cycles. Each cycle bounds one connected component of the boundary, and
+distinct cycles cannot belong to the same boundary component because the
+components are disjoint sets of vertices and edges.
+\end{proof}
+
+The boundary cycle count $b$ enters the \index{Euler characteristic}Euler
+characteristic, the fundamental numerical invariant of a subdivision
+(Theorem~\ref{thm:hed_euler} in Section~\ref{sec:halfedge_complexity}). It
+also drives the boundary-detection routines of
+Chapter~\ref{ch:mesh_analysis}: with a half-edge structure, an edge is a
+boundary edge exactly when its twin is null (or dummy), a test that costs
+$O(1)$ and needs no hashing.
+
+\begin{example}[Square with a Hole]\label{ex:hed_boundary}
+A square region with a square hole is a subdivision with two boundary
+components --- the outer perimeter and the hole's perimeter --- so $b = 2$,
+and every edge on either cycle is a boundary edge by
+Theorem~\ref{thm:hed_boundary_loops}. The region's single face is bounded
+by two cycles: its outer boundary runs counterclockwise and the hole's
+boundary runs clockwise, so the face interior lies consistently on one side
+of both; the structure stores both cycles in the face record
+(Definition~\ref{def:hed_dcel}).
+\end{example}
+
+\begin{remark}
+Two degenerate situations defeat the manifold assumptions:
+\index{T-junction}\textbf{T-junctions} (a vertex lying on the interior of
+an edge of another face) and \index{pinched vertex}\textbf{pinched}
+(non-manifold) vertices where two fans meet only at the vertex. Both must
+be detected and repaired before a half-edge structure is built; the
+verification algorithms of Chapter~\ref{ch:mesh_analysis} and the
+manifold concepts of Section~\ref{sec:math_topology} provide the tests.
+\end{remark}
+
+\index{boundary edge}\index{boundary component}\index{manifold}
+
 \section{Adjacency and Neighborhood Queries}
 \label{sec:halfedge_adjacency}
+
+\subsection{1. Overview}
+
+The half-edge structure exists to answer \index{adjacency query}adjacency
+queries. This section catalogues the standard queries a mesh algorithm
+asks, states their costs, and gives the pointer expressions that answer
+them. All of them reduce to a constant number of operator applications plus
+one cyclic walk, which is why mesh-analysis and mesh-editing algorithms are
+built on this structure \cite{deberg2008,botsch2010}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Adjacency Query]\label{def:hed_adjacency_query}
+An \textbf{adjacency query} takes one element of the subdivision (vertex,
+edge, half-edge, or face) and returns a related element or a list of
+related elements, such as ``the face across edge $e$'' or ``all edges
+incident to vertex $v$''.
+\end{definition}
+
+\subsection{3. Theory}
+
+The cost of a query is governed by Theorem~\ref{thm:hed_cycles}: constant
+compositions of $\operatorname{twin}$, $\operatorname{next}$, and
+$\operatorname{prev}$ step from one element to a unique neighbor in $O(1)$,
+while enumeration queries walk an entire cycle and cost the cycle length.
+
+\begin{theorem}[Query Complexity]\label{thm:hed_query}
+Each of the single-element adjacency queries (face across an edge, face of
+a half-edge, origin and target of a half-edge, twin, next, prev, boundary
+test) costs $O(1)$. Each enumeration query (faces or edges around a vertex,
+edges or vertices of a face, faces around a face) costs $O(1)$ per returned
+element, hence $O(\deg(v))$ or $O(|f|)$ in total.
+\end{theorem}
+
+\begin{proof}
+The single-element queries apply one or two of the operators defined in
+Section~\ref{sec:halfedge_operators}, each an $O(1)$ pointer dereference;
+the boundary test reads the twin field once. An enumeration query iterates
+the relevant cycle of Theorem~\ref{thm:hed_cycles}, performing $O(1)$ work
+per element and visiting each element of the star or face exactly once, for
+$O(\deg(v))$ or $O(|f|)$ work.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+The neighborhood queries are one-line compositions of the operators; the
+following is the canonical enumeration of the faces incident to a vertex,
+using the cycle of Theorem~\ref{thm:hed_cycles}.
+
+\begin{algorithm}[htbp]
+\caption{Enumerate Faces Around a Vertex}
+\label{alg:hed_neighbors}
+\begin{algorithmic}[1]
+\Require A half-edge structure and a vertex $v$.
+\Ensure The list of faces incident to $v$.
+\Function{IncidentFaces}{$v$}
+  \State $h \gets v.\textit{halfedge}$ \Comment{any half-edge with origin $v$}
+  \State $h_0 \gets h$; $\mathit{faces} \gets [\,]$
+  \Loop
+    \State $\mathit{faces}.\text{append}(\operatorname{face}(h))$
+    \State $h \gets \operatorname{twin}(\operatorname{prev}(h))$
+    \State \textbf{if} $h = h_0$ \textbf{then break}
+  \EndLoop
+  \State \Return $\mathit{faces}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{remark}
+The step $h \leftarrow \operatorname{twin}(\operatorname{prev}(h))$ rotates
+the half-edge to the next face around $v$; the equivalent step
+$h \leftarrow \operatorname{next}(\operatorname{twin}(h))$ rotates in the
+opposite direction. Both visit every incident face exactly once by
+Theorem~\ref{thm:hed_cycles}.
+\end{remark}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+  \item \textbf{Origin pointer}: storing the origin vertex per half-edge
+    makes $\operatorname{org}$ free; a variant that stores only the
+    \emph{target} vertex changes the derived expressions but not their cost.
+    Store whichever the dominant algorithms read most.
+  \item \textbf{Null versus dummy twins}: a null twin halves the boundary
+    test to one comparison but breaks code that assumes
+    $\operatorname{twin}(h)$ is always valid; dummy boundary half-edges
+    keep the twin involution total at the price of $2b$ extra half-edge
+    records (one per boundary half-edge) and the explicit handling of the
+    dummy's operators.
+  \item \textbf{Prev pointer}: $\operatorname{prev}$ can be derived from
+    $\operatorname{next}$ by storing the face cycles in circular arrays, but
+    a direct pointer doubles the storage of the operator fields and halves
+    the walking distance; most library implementations store both
+    \cite{botsch2010,ericson2004}.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+  \item \textbf{Per-query time}: $O(1)$ for single-element queries,
+    $O(\deg(v))$ or $O(|f|)$ for enumerations (Theorem~\ref{thm:hed_query}).
+  \item \textbf{Space}: the operator fields dominate; see the detailed
+    accounting in Section~\ref{sec:halfedge_complexity}.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+  \item \textbf{Point location by walking} (Chapter~\ref{ch:point_location})
+    advances from triangle to triangle by repeatedly answering ``which face
+    is across this edge?'' in $O(1)$.
+  \item \textbf{Delaunay legalization} (Chapter~\ref{ch:delaunay_triangulations})
+    tests an edge's two incident faces and relinks the four half-edges of a
+    quadrilateral, both $O(1)$.
+  \item \textbf{Mesh analysis} (Chapter~\ref{ch:mesh_analysis}) computes
+    valence, boundary loops, and orientability by enumerating the vertex
+    stars and face cycles of this section.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+  \item \textbf{Invariant audit}: after building any half-edge structure,
+    verify $\operatorname{twin}(\operatorname{twin}(h)) = h$,
+    $\operatorname{next}(\operatorname{prev}(h)) = h$, and the counts of
+    Theorem~\ref{thm:hed_incidence}.
+  \item \textbf{Star enumeration}: for every vertex, assert that
+    IncidentFaces (Algorithm~\ref{alg:hed_neighbors}) returns each incident
+    face exactly once and terminates.
+  \item \textbf{Boundary vertices}: on an open disk, boundary vertices must
+    yield the half-disk fan; the traversal must not leave the structure
+    through a null twin.
+  \item \textbf{Isolated and non-manifold cases}: isolated vertices have an
+    empty star; non-manifold vertices break the single-cycle property and
+    must be rejected at construction time
+    (Section~\ref{sec:halfedge_construction}).
+\end{itemize}
+
+\subsection{9. References}
+
+The DCEL treatment follows de Berg et al. \cite{deberg2008}; the pointer
+expressions, the boundary conventions, and the storage trade-offs follow
+Botsch et al. \cite{botsch2010} and the data-structure overview of Ericson
+\cite{ericson2004}. The graph-theoretic counting arguments use
+Diestel \cite{diestel2017} and the dictionary organization of
+Cormen et al. \cite{cormen2009}.
+
+\index{adjacency query}\index{vertex star}\index{valence}
 
 \section{Traversal Operations}
 \label{sec:halfedge_traversal}
 
+\subsection{1. Overview}
+
+Traversal is the algorithmic use of the navigation operators: walking the
+boundary of a face, walking the star of a vertex, and walking a boundary
+cycle. A traversal is any algorithm that visits the elements of a cycle of
+Theorem~\ref{thm:hed_cycles} in order. Traversals are the loops inside the
+mesh-analysis routines of Chapter~\ref{ch:mesh_analysis} --- valence
+counting, boundary detection, orientability propagation --- and the
+per-vertex stencils of mesh processing \cite{botsch2010}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Face Walk]\label{def:hed_face_walk}
+A \textbf{face walk} from a half-edge $h$ visits the half-edges
+$h, \operatorname{next}(h), \operatorname{next}^2(h), \dots$ until it
+returns to $h$. It visits exactly the boundary cycle of
+$\operatorname{face}(h)$.
+\end{definition}
+
+\begin{definition}[Vertex Walk]\label{def:hed_vertex_walk}
+A \textbf{vertex walk} from a half-edge $h$ with origin $v$ visits the
+half-edges $h, \operatorname{next}(\operatorname{twin}(h)),
+\operatorname{next}(\operatorname{twin}(\operatorname{next}(\operatorname{twin}(h)))), \dots$
+until it returns to $h$; by Theorem~\ref{thm:hed_cycles} this visits every
+half-edge with origin $v$ exactly once.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Cycle Cover]\label{thm:hed_cycle_cover}
+Every half-edge is visited by exactly one face walk and exactly one vertex
+walk, so the walks partition the half-edges into $\sum_f b_f$ face cycles
+($b_f$ boundary components of face $f$) and $V$ vertex cycles.
+\end{theorem}
+
+\begin{proof}
+This is the combinatorial content of Theorem~\ref{thm:hed_cycles}
+restated: the next-permutation decomposes the half-edges into the face
+cycles, and the $\operatorname{next} \circ \operatorname{twin}$ permutation
+decomposes them into the vertex cycles. Each half-edge appears in exactly
+one cycle of each type.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Walk a Face Boundary}
+\label{alg:hed_face_traversal}
+\begin{algorithmic}[1]
+\Require A half-edge $h$.
+\Ensure The half-edge sequence of the boundary cycle of $\operatorname{face}(h)$.
+\Function{WalkFace}{$h$}
+  \State $h_0 \gets h$; $\mathit{cycle} \gets [\,]$
+  \Loop
+    \State $\mathit{cycle}.\text{append}(h)$
+    \State $h \gets \operatorname{next}(h)$
+    \State \textbf{if} $h = h_0$ \textbf{then break}
+  \EndLoop
+  \State \Return $\mathit{cycle}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Walk Around a Vertex}
+\label{alg:hed_vertex_traversal}
+\begin{algorithmic}[1]
+\Require A half-edge $h$ and a flag $\mathit{emit\_faces}$.
+\Ensure The incident faces (or incident edges) of $\operatorname{org}(h)$ in cyclic order.
+\Function{WalkVertex}{$h$, $\mathit{emit\_faces}$}
+  \State $h_0 \gets h$; $\mathit{cycle} \gets [\,]$
+  \Loop
+    \State append $\operatorname{face}(h)$ if $\mathit{emit\_faces}$, else append $h$
+    \State $h \gets \operatorname{twin}(\operatorname{prev}(h))$
+    \State \textbf{if} $h = h_0$ \textbf{then break}
+  \EndLoop
+  \State \Return $\mathit{cycle}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{remark}
+To walk the boundary cycles of an open mesh, start at any unvisited
+boundary half-edge (twin null or dummy) and apply
+Algorithm~\ref{alg:hed_face_traversal}; the returned cycle is exactly one
+boundary component (Theorem~\ref{thm:hed_boundary_loops}).
+\end{remark}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+  \item \textbf{Direction}: walking with $\operatorname{next}$ traverses a
+    face in the stored orientation; the opposite orientation is obtained by
+    swapping $\operatorname{next}$ and $\operatorname{prev}$.
+  \item \textbf{Termination test}: comparing against the start half-edge is
+    the only safe termination test; counting steps is a bug source when
+    faces have varying degrees.
+  \item \textbf{Boundary walk seeding}: boundary walks must be seeded from
+    a boundary half-edge; seeds are cheaply found by keeping a single
+    boundary half-edge per component (Section~\ref{sec:halfedge_boundary}).
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+  \item \textbf{Face walk}: $O(|f|)$ steps, $O(1)$ per step.
+  \item \textbf{Vertex walk}: $O(\deg(v))$ steps, $O(1)$ per step.
+  \item \textbf{Full traversal} of all faces or all vertices: $O(H) =
+    O(V + E)$, because the walks partition the half-edges
+    (Theorem~\ref{thm:hed_cycle_cover}) and each half-edge is touched $O(1)$
+    times.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+  \item \textbf{Valence and degree computation}: the vertex walk of
+    Algorithm~\ref{alg:hed_vertex_traversal} implements the degree loop of
+    Chapter~\ref{ch:mesh_analysis}.
+  \item \textbf{Boundary detection and hole filling}: boundary walks
+    (Theorem~\ref{thm:hed_boundary_loops}) enumerate the loops to be filled
+    or parameterized.
+  \item \textbf{Orientation propagation}: the face walk carries the
+    orientation consistency check of Section~\ref{sec:halfedge_boundary}
+    across adjacent faces.
+  \item \textbf{Geodesic and area queries}: walking the faces around a
+    vertex accumulates the angle defect used in discrete curvature
+    (Chapter~\ref{ch:mesh_analysis}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+  \item \textbf{Cycle closure}: assert every walk returns to its start
+    half-edge; a walk that escapes indicates broken
+    $\operatorname{next}$/$\operatorname{twin}$ links.
+  \item \textbf{Partition test}: run all walks and verify that every
+    half-edge is visited exactly once (Theorem~\ref{thm:hed_cycle_cover}).
+  \item \textbf{Boundary}: on an open mesh, a vertex walk must stop at a
+    boundary half-edge and must visit each boundary face once.
+  \item \textbf{Edge cases}: a 2-gon (two half-edges, degenerate face), a
+    lone edge, and a mesh of one triangle are minimal inputs on which the
+    termination test must still fire.
+\end{itemize}
+
+\subsection{9. References}
+
+The traversal primitives and their use in mesh algorithms are described in
+Botsch et al. \cite{botsch2010}; the walking queries are the workhorses of
+the triangulation walk in Chapter~\ref{ch:point_location} and the
+Delaunay insertion of Chapter~\ref{ch:delaunay_triangulations}.
+
+\index{traversal}\index{face walk}\index{vertex walk}\index{valence}
+
 \section{Comparison with Other Representations}
 \label{sec:halfedge_comparison}
+
+The half-edge structure is one point on a spectrum of mesh representations
+differing in which adjacencies are stored explicitly and whether duality is
+exposed \cite{ericson2004,botsch2010}.
+
+\begin{description}
+  \item[Indexed face set] Vertices plus per-face index lists. Minimum
+    storage and the universal file format, but no adjacency: every
+    neighbor query costs a scan, and local edits require global rebuilds.
+    It is the \emph{input} format for the construction pipeline of
+    Section~\ref{sec:halfedge_construction}.
+  \item[Winged edge]\index{winged-edge} The precursor of the half-edge
+    structure, from the solid-modeling literature. Every undirected edge
+    stores the two faces it borders and four half-edge links (the
+    successors and predecessors of both halves). It answers the same
+    queries as the half-edge structure but with more fields per edge and
+    without the symmetric twin/next pairing; the half-edge structure is
+    essentially a pointer-slimmed winged edge.
+  \item[Half-edge / DCEL]\index{half-edge} This chapter's structure: two
+    half-edges per edge, each with origin, twin, next, prev, and face.
+    Exactly the adjacency needed by the planar algorithms of this book, at
+    roughly two to three times the storage of an indexed face set.
+  \item[Quad edge]\index{quad-edge} The structure of Guibas and Stolfi
+    \cite{guibas1985} stores each geometric edge with \emph{four} directed
+    edges: the two primal half-edges and the two dual half-edges crossing
+    the edge. Its algebra (operators $\operatorname{rot}$,
+    $\operatorname{sym}$, $\operatorname{flip}$, $\operatorname{next}$)
+    handles the Voronoi--Delaunay duality uniformly, supports subdivisions
+    of arbitrary topology (including non-manifold edge incidences via
+    edge rings), and degrades gracefully to a half-edge structure when
+    only the primal is needed. It is the representation of choice when an
+    algorithm must navigate the dual subdivision, as in
+    Chapter~\ref{ch:delaunay_triangulations}.
+  \item[Half-face]\index{half-face} The 3D analogue for volumetric cell
+    complexes. A face of a 3D mesh is shared by up to two cells; a
+    \textbf{half-face} is the restriction of a face to one incident
+    volume, and the twin relation pairs half-faces across interior faces.
+    Tetrahedral meshes implement the same idea more directly as four
+    neighbor pointers per tetrahedron. Volumetric half-edge
+    generalizations (the radial-edge family) additionally support
+    non-manifold boundaries by cycling the faces around each edge.
+\end{description}
+
+\begin{remark}[Choosing a Representation]\label{rem:hed_choice}
+As a rule of thumb: use an indexed face set for I/O and archival, the
+half-edge structure for 2D subdivisions and polyhedral \emph{surfaces} on
+which the algorithms of Chapters
+\ref{ch:polygon_ops}, \ref{ch:delaunay_triangulations}, and
+\ref{ch:mesh_analysis} run, the quad-edge structure when primal--dual
+duality is part of the algorithm, and half-faces or tetrahedral adjacency
+for volumetric meshes (Chapter~\ref{ch:mesh_generation}). The structures
+are freely convertible in linear time in either direction
+(Section~\ref{sec:halfedge_construction} gives the hard direction).
+\end{remark}
+
+\index{quad-edge}\index{winged-edge}\index{half-face}\index{radial-edge}
 
 \section{Incidence and Storage Complexity}
 \label{sec:halfedge_complexity}
 
+A half-edge structure stores one record per vertex, per half-edge, and per
+face. With the fields of Definition~\ref{def:hed_dcel}, a half-edge holds
+the twin, next, and prev pointers, the origin vertex, and the incident
+face; a vertex holds its coordinates and one incident half-edge; a face
+holds one boundary half-edge (plus one per extra boundary cycle). The
+counts are exact:
+
+\begin{theorem}[Storage Counts]\label{thm:hed_storage}
+For a subdivision with $V$ vertices, $E$ edges, and $F$ faces, the
+half-edge structure stores exactly $H = 2E$ half-edge records, $V$ vertex
+records, and $F$ face records. The total storage is $O(V + E + F)$ and, for
+a fixed record size, $O(V + E)$.
+\end{theorem}
+
+\begin{proof}
+Every undirected edge contributes exactly two half-edges, one per side
+(Theorem~\ref{thm:hed_twin_boundary}); no other half-edges exist. Vertices
+and faces are stored one per element of the subdivision by
+Definition~\ref{def:hed_dcel}. For a connected planar subdivision
+$E = O(V)$ by the planar Euler formula of Theorem~\ref{thm:hed_euler}, and
+in general $E \leq 3V$ for planar triangulations (and for surface meshes of
+bounded genus), so the bound follows.
+\end{proof}
+
+In a triangular mesh the numbers are explicit: $H = 2E$, and by the
+Handshaking Lemma for triangle meshes \cite{diestel2017},
+$3F = 2E$, so $E \approx 3V$ and $H \approx 6V$ for large closed meshes. The
+half-edge structure therefore costs roughly $6$ half-edge records plus $1$
+vertex record per vertex, against $3$ face records and $1$ vertex record
+for an indexed face set: a constant factor, not an asymptotic change. This
+is the standard price of $O(1)$ adjacency
+\cite{botsch2010,ericson2004}.
+
+The counting invariants of Theorem~\ref{thm:hed_incidence} are the mesh's
+\textbf{topological checksum}: any inconsistency in the pointers changes
+one of the sums, so the identity
+\[
+\sum_{v} \deg(v) = 2E = \sum_{f} |f|
+\]
+catches almost every corrupted structure. The deepest such invariant is
+the Euler characteristic.
+
+\begin{theorem}[Euler--Poincar\'e Formula]\label{thm:hed_euler}
+Let $M$ be a connected 2-manifold mesh with $V$ vertices, $E$ edges,
+$F$ faces, $b$ boundary components, and genus $g$ (see
+Section~\ref{sec:math_topology} and Chapter~\ref{ch:computational_topology}).
+Then
+\[
+V - E + F = 2 - 2g - b .
+\]
+In particular, a closed surface of genus $g$ has $V - E + F = 2 - 2g$, and
+a disk has $V - E + F = 1$ \cite{euler1758,poincare1895}.
+\end{theorem}
+
+\begin{proof}
+Sketch. Euler's classical result \cite{euler1758} gives $V - E + F = 2$
+for convex polyhedra, which are closed surfaces of genus $0$. Removing a
+disk (opening one boundary component) reduces $F$ by 1, giving the $-b$
+term; attaching a handle raises $g$ by 1 and reduces $V - E + F$ by 2, by
+triangulating the added tube with $V'$ new vertices and checking
+$V' - E' + F' = 0$. A full proof is the induction presented in
+Chapter~\ref{ch:mesh_analysis} (Theorem~\ref{thm:euler_poincare}) and the
+algebraic-topology formulation of Section~\ref{sec:math_topology}.
+\end{proof}
+
+\begin{remark}[Planar Subdivisions]
+For a connected planar subdivision one conventionally counts the unbounded
+face as an extra face, which adds exactly 1 to $F$ and yields the classical
+$V - E + F = 2$ of Euler's planar formula \cite{deberg2008}. The two
+conventions differ by exactly the outer face: the surface version above
+gives $V - E + F = 2 - b$ for a disk-like region with $b$ boundary
+components, and adding the outer face turns this into
+$V - E + F = 2$. Keep the convention fixed when checking a mesh.
+\end{remark}
+
+\begin{example}[Checking a Mesh]
+A closed tetrahedron mesh has $V = 4$, $E = 6$, $F = 4$, hence
+$V - E + F = 2$, matching $g = 0$, $b = 0$. An open triangulated disk with
+$V = 6$, $E = 9$, $F = 4$ satisfies $V - E + F = 1 = 2 - b$, so $b = 1$:
+exactly one boundary component. If an edit corrupts the mesh, one of these
+counts changes and the invariant test fails; this is why
+Chapter~\ref{ch:mesh_analysis} runs the Euler test as a validity check.
+\end{example}
+
+\begin{remark}
+Because $V - E + F$ is a \index{topological invariant}topological
+invariant, it is constant across \emph{remeshing}: retriangulating a
+surface without changing its topology preserves $V - E + F$, which is how
+topology-preservation is tested in simplification and remeshing pipelines
+(Chapter~\ref{ch:mesh_analysis} and Chapter~\ref{ch:computational_topology}).
+\end{remark}
+
+\index{Euler characteristic}\index{topological invariant}\index{valence}
+\index{Handshaking Lemma}
+
 \section{Construction from Polygon Soup}
 \label{sec:halfedge_construction}
+
+\subsection{1. Overview}
+
+Real inputs --- an STL file, an OBJ export, the output of a
+reconstruction algorithm --- arrive as an \index{polygon soup}\textbf{polygon
+soup}: an unordered list of oriented polygon loops with no shared
+structure. Building a half-edge structure from such a soup is a two-step
+process: \textbf{vertex welding} merges coincident coordinates into shared
+vertex records, and \textbf{edge pairing} matches the half-edges of each
+face to the half-edges of its neighbors \cite{botsch2010,deberg2008}. The
+same pipeline converts an indexed face set into the working structure used
+by every other chapter.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Polygon Soup]\label{def:hed_polygon_soup}
+A \textbf{polygon soup} is a list of faces, each given by an oriented
+sequence of point coordinates (or of indices into an unshared coordinate
+list). There is no requirement that vertices, edges, or faces be shared
+between any two faces.
+\end{definition}
+
+\begin{definition}[Vertex Welding]\label{def:hed_welding}
+\textbf{Vertex welding} replaces the points of a polygon soup by a set of
+\index{welded vertex}welded vertex records: two soup points map to the same
+vertex if their distance is at most a tolerance $\epsilon$ (in practice,
+below the coordinate quantization of the file format).
+\end{definition}
+
+\subsection{3. Theory}
+
+The correctness condition for the pairing step is exact:
+
+\begin{theorem}[Pairing Condition]\label{thm:hed_pairing}
+Let the faces of a soup be consistently oriented. The unordered vertex
+pairs $\{u,v\}$ of the soup's edges are the undirected edges of a manifold
+mesh if and only if every pair is used exactly twice. In that case each
+bucket of size two contains one half-edge from each of the two adjacent
+faces, and these two half-edges are each other's twins. An edge used once
+is a boundary edge; an edge used three or more times is non-manifold and
+cannot be represented.
+\end{theorem}
+
+\begin{proof}
+A manifold mesh has every edge incident to exactly one or two faces
+(Definition~\ref{def:hed_manifold}). Each incidence of face $f$ with edge
+$\{u,v\}$ contributes one half-edge of that face over $\{u,v\}$, so an edge
+appears in the soup once per incident face: once for a boundary edge, twice
+for an interior edge. Hence the bucket size of $\{u,v\}$ equals the number
+of incident faces. Two occurrences with the same face would duplicate a
+half-edge and are impossible for a well-formed face. If the faces are
+consistently oriented, the two half-edges of a size-two bucket traverse
+$\{u,v\}$ in opposite directions and are twins. Conversely, bucket sizes
+outside $\{1,2\}$ witness a boundary-less non-manifold edge or a duplicated
+face.
+\end{proof}
+
+Consistency of orientation is required for the conclusion; a soup with
+mixed orientations still welds and pairs, but the extracted faces have
+inconsistent normals, which the orientability pass of
+Chapter~\ref{ch:mesh_analysis} then repairs.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Weld Polygon-Soup Vertices}
+\label{alg:hed_vertex_weld}
+\begin{algorithmic}[1]
+\Require A list $P$ of points and a tolerance $\epsilon > 0$.
+\Ensure A map from soup points to welded vertex indices.
+\Function{WeldVertices}{$P$, $\epsilon$}
+  \State $G \gets$ uniform grid of cell size $\epsilon$; $\mathit{map} \gets [\,]$; $k \gets 0$
+  \For{each point $p \in P$}
+    \State $c \gets$ grid cell of $p$; $\mathit{found} \gets \text{None}$
+    \For{each vertex $q$ in $c$ or in the 8 neighboring cells}
+      \If{$\|p - q\| \leq \epsilon$}
+        \State $\mathit{found} \gets \text{index}(q)$; \textbf{break}
+      \EndIf
+    \EndFor
+    \If{$\mathit{found} \neq \text{None}$}
+      \State $\mathit{map}.\text{append}(\mathit{found})$
+    \Else
+      \State insert $p$ as vertex $k$; $\mathit{map}.\text{append}(k)$; $k \gets k + 1$
+    \EndIf
+  \EndFor
+  \State \Return $\mathit{map}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Build Half-Edge Structure from a Polygon Soup}
+\label{alg:hed_build_dcel}
+\begin{algorithmic}[1]
+\Require Welded, consistently oriented faces, each an index cycle.
+\Ensure A valid half-edge structure.
+\Function{BuildDCEL}{$\mathit{faces}$}
+  \State create one half-edge per directed face edge; set origin and face fields
+  \State $\mathit{buckets} \gets$ hash map on unordered vertex pairs
+  \For{each half-edge $h$ from $u$ to $v$}
+    \State $\mathit{buckets}[\{u,v\}].\text{append}(h)$
+  \EndFor
+  \For{each bucket $\{h_i, h_j\}$}
+    \If{$\lvert \mathit{bucket} \rvert = 2$}
+      \State $\operatorname{twin}(h_i) \gets h_j$; $\operatorname{twin}(h_j) \gets h_i$
+    \ElsIf{$\lvert \mathit{bucket} \rvert = 1$}
+      \State leave the twin null (boundary half-edge)
+    \Else
+      \State \textbf{error}: non-manifold edge $\{u,v\}$
+    \EndIf
+  \EndFor
+  \For{each face}
+    \State link its half-edges cyclically with $\operatorname{next}$ and $\operatorname{prev}$
+  \EndFor
+  \State extract boundary cycles and append a dummy boundary half-edge per cycle \Comment{optional}
+  \State \Return the structure
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+  \item \textbf{Welding tolerance}: choose $\epsilon$ slightly larger than
+    the coordinate quantization (e.g., $10^{-6}$ relative units for
+    single-precision STL), but small enough not to merge genuinely
+    distinct vertices. Too large a tolerance collapses thin features.
+  \item \textbf{Bucket key}: canonicalize each edge as
+    $(\min(u,v), \max(u,v))$ so both orientations hash to the same bucket;
+    a key on the oriented pair would fail to pair twins.
+  \item \textbf{Boundary half-edges}: keep twins null and fix the boundary
+    convention before any traversal (Sections
+    \ref{sec:halfedge_boundary} and \ref{sec:halfedge_traversal}).
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+  \item \textbf{Welding}: $O(n)$ expected time and space with the uniform
+    grid of Algorithm~\ref{alg:hed_vertex_weld}, $O(n \log n)$ with a
+    balanced-tree variant; each point touches a constant number of cells
+    for fixed $\epsilon$.
+  \item \textbf{Pairing}: $O(n)$ expected, dominated by one hash insert and
+    one lookup per half-edge.
+  \item \textbf{Total}: $O(n)$ expected time and space for a soup with $n$
+    directed edges; the output satisfies the storage bounds of
+    Theorem~\ref{thm:hed_storage}.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+  \item \textbf{File loading}: STL, OBJ, and PLY importers run exactly this
+    pipeline \cite{botsch2010,ericson2004}.
+  \item \textbf{Scan reconstruction}: the triangle soup produced by
+    surface-reconstruction algorithms is welded and paired before any
+    analysis (Chapter~\ref{ch:mesh_generation} consumes such meshes).
+  \item \textbf{Repair}: the pairing stage reports non-manifold edges and
+    inconsistent orientations, which is the first repair pass of
+    Chapter~\ref{ch:mesh_analysis}.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+  \item \textbf{Closed mesh}: a welded tetrahedron or sphere must produce
+    zero boundary half-edges and satisfy
+    $V - E + F = 2$ (Theorem~\ref{thm:hed_euler}).
+  \item \textbf{Open mesh}: a single triangle must yield one boundary cycle
+    of three half-edges and $V - E + F = 1$.
+  \item \textbf{Duplicate vertices}: faces whose coordinates are identical
+    to 12 decimals must weld to a single shared vertex record.
+  \item \textbf{Coordinate noise}: perturb the coordinates by $10^{-5}$
+    before welding and verify the tolerance merges them back.
+  \item \textbf{Non-manifold soup}: an edge shared by three faces must
+    raise the error branch of Algorithm~\ref{alg:hed_build_dcel}.
+  \item \textbf{Duplicate faces}: two identical triangles use each edge
+    twice but generate two half-edge pairs with the same face on both
+    sides; the structure must flag or reject this.
+\end{itemize}
+
+\subsection{9. References}
+
+The welding-and-pairing pipeline follows Botsch et al. \cite{botsch2010}
+and the file-import discussion of Ericson \cite{ericson2004}; the
+underlying hashing and graph-construction techniques are standard
+dictionary algorithms \cite{cormen2009}. The DCEL construction for planar
+subdivisions is described by de Berg et al. \cite{deberg2008}.
+
+\index{polygon soup}\index{vertex welding}\index{non-manifold edge}
 
 \section{Applications in Mesh Processing}
 \label{sec:halfedge_applications}
 
+The half-edge structure pays for its storage in the local, $O(1)$
+topological edits called \index{Euler operation}\textbf{Euler operations}.
+These are the primitives from which every topology-changing mesh edit ---
+extruding, bridging, deleting a handle, subdividing --- is assembled
+\cite{botsch2010,deberg2008}. The classical set, drawn from the
+solid-modeling tradition, includes:
+
+\begin{itemize}
+  \item \textbf{Make vertex, face, solid (MVFS)}: creates a new component
+    with one vertex and one face.
+  \item \textbf{Make edge, vertex (MEV)}: adds an edge from a vertex to a
+    new vertex on a face.
+  \item \textbf{Make edge, face (MEF)}: adds an edge inside a face,
+    splitting it into two faces.
+  \item The inverse operations \textbf{Kill edge, face (KEF)}, \textbf{Kill
+    edge, vertex (KEV)}, and \textbf{Kill vertex, face, solid (KVFS)}.
+\end{itemize}
+
+\begin{theorem}[Euler Operations Preserve the Invariant]\label{thm:hed_euler_ops}
+Each of MEV, MEF, KEV, and KEF changes $(V, E, F)$ by one of
+$(1,1,0)$, $(0,1,1)$, $(-1,-1,0)$, $(0,-1,-1)$, and therefore leaves
+$V - E + F$ unchanged. Every connected orientable manifold mesh can be
+built from a single MVFS by a sequence of MEV and MEF operations, and
+every edit that preserves the Euler characteristic of
+Theorem~\ref{thm:hed_euler} is a sequence of these operations.
+\end{theorem}
+
+\begin{proof}
+The count changes follow directly from the operation definitions. For
+generation: a connected mesh's dual graph is connected, so its faces can be
+ordered so that each new face shares an edge with a previous one; adding
+faces one at a time by MEF (after placing the first face's vertices with
+MEV) constructs the mesh. Conversely, any sequence of the four operations
+preserves $V - E + F$ by direct inspection of the increments, and since
+these operations span the local relinking moves (edge split, edge collapse,
+face split, edge flip, vertex split), any topology-preserving edit
+decomposes into them.
+\end{proof}
+
+The pointer surgery for an edge split, for example, creates two new
+half-edges, reassigns two twin pointers and the $\operatorname{next}$/
+$\operatorname{prev}$ links of four neighbors, and never touches any other
+half-edge: $O(1)$ work with no global reindexing. This locality is what
+makes interactive \index{mesh editing}mesh editing --- the vertex-painting,
+extrusion, and Boolean workflows of modern modeling tools --- practical on
+million-face meshes \cite{botsch2010,ericson2004}.
+
+\textbf{Boolean operations} on polyhedra (union, intersection,
+difference) combine the classification of Chapter~\ref{ch:polygon_ops}
+with half-edge surgery: intersecting faces are split along the
+intersection polygons, the faces inside each operand are classified, and
+the surviving pieces are stitched by pairing twin half-edges at the cut
+\cite{ericson2004}. The result is reassembled by the construction of
+Section~\ref{sec:halfedge_construction} run on the subdivided soup, and
+its validity is verified with the Euler test
+(Theorem~\ref{thm:hed_euler}) and the manifold checks of
+Chapter~\ref{ch:mesh_analysis}.
+
+\begin{example}[Edge Flip in Delaunay Legalization]\label{ex:hed_flip}
+In a Delaunay triangulation, the legality test of
+Chapter~\ref{ch:delaunay_triangulations} examines the two faces on either
+side of an interior edge; when the edge is illegal, it is replaced by the
+other diagonal of the quadrilateral. In half-edge terms the flip re-links
+four half-edges' $\operatorname{next}$/$\operatorname{prev}$ pointers and
+the two twin pairs: four pointer assignments per half-edge, $O(1)$ total,
+which is why incremental Delaunay insertion (Algorithm~\ref{alg:hed_build_dcel}
+supplies the structure it runs on) achieves expected $O(\log n)$ per point.
+\end{example}
+
+Beyond booleans and editing, the half-edge structure is the substrate of
+the traversal-heavy algorithms throughout this book and its companion
+chapters:
+
+\begin{itemize}
+  \item \textbf{Mesh analysis} (Chapter~\ref{ch:mesh_analysis}): connected
+    components, boundary detection, orientability, and manifold
+    verification are exactly the walks and twin tests of Sections
+    \ref{sec:halfedge_adjacency}--\ref{sec:halfedge_traversal}.
+  \item \textbf{Polygon operations} (Chapter~\ref{ch:polygon_ops}): polygon
+    booleans and clipping resample the boundary cycles
+    (Theorem~\ref{thm:hed_boundary_loops}) of the input subdivisions.
+  \item \textbf{Delaunay triangulations} (Chapter~\ref{ch:delaunay_triangulations}):
+    point insertion, legalization flips, and the walking point location of
+    Chapter~\ref{ch:point_location} are half-edge walks.
+  \item \textbf{Computational topology} (Chapter~\ref{ch:computational_topology}):
+    the Euler characteristic, Betti numbers, and homology computations read
+    the incidence information encoded by the twin and face links, and
+    Section~\ref{sec:math_topology} supplies the manifold background that
+    the boundary machinery of Section~\ref{sec:halfedge_boundary} assumes.
+  \item \textbf{Mesh generation} (Chapter~\ref{ch:mesh_generation}): the
+    output of a conforming mesher is delivered as a half-edge (or
+    index-based) structure with the exact adjacency that refinement and
+    adaptation need.
+\end{itemize}
+
+\index{Euler operation}\index{edge split}\index{edge flip}
+\index{mesh editing}\index{boolean operations}
+
 \section{Exercises}
 \label{sec:halfedge_exercises}
+
+\begin{enumerate}
+  \item Draw the half-edge structure of a square subdivided into two
+    triangles by a diagonal. List all ten half-edges (five undirected
+    edges, two half-edges each) with their origin, twin, next, and prev
+    links, and verify $\sum_v \deg(v) = 2E = \sum_f |f|$
+    (Theorem~\ref{thm:hed_incidence}).
+  \item Prove that in a half-edge structure, $\operatorname{org}(h) =
+    \operatorname{org}(\operatorname{twin}(\operatorname{next}(h)))$
+    holds for every half-edge $h$, and interpret the equality in words.
+  \item Show that a face walk that counts steps instead of testing for the
+    start half-edge can loop forever, and give a concrete small mesh where
+    this happens.
+  \item Let $T$ be a triangulated connected surface with $V$ vertices,
+    $F$ triangular faces, $E$ edges, $B$ boundary edges, and $b$ boundary
+    components. Prove $3F = 2E - B$ (each triangle contributes three
+    directed edge incidences; interior edges are counted twice, boundary
+    edges once) and combine it with Theorem~\ref{thm:hed_euler} to derive
+    $F = 2V - 4 + 2b - B$. Check the formula on a square with one interior
+    vertex ($V = 5$, $B = 4$, $b = 1$) and on a plain square.
+  \item Design a linear-time algorithm, using
+    Algorithm~\ref{alg:hed_face_traversal}, that lists the boundary
+    components of an open mesh from the null-twin half-edges alone, and
+    prove it visits every boundary edge exactly once
+    (Theorem~\ref{thm:hed_boundary_loops}).
+  \item Convert the indexed face set of a tetrahedron into a half-edge
+    structure by hand, following Algorithm~\ref{alg:hed_build_dcel}, and
+    confirm that every twin is paired and that $V - E + F = 2$.
+  \item Implement vertex welding with tolerance $\epsilon$ on a soup of
+    noisy coordinates, then apply the Euler test
+    ($V - E + F$) to the output and explain which failures the test can
+    and cannot detect.
+  \item Give the half-edge pointer assignments for an edge flip in a
+    triangulated quadrilateral, as in Example~\ref{ex:hed_flip}, and verify
+    that only the four half-edges of the two faces change their links.
+\end{enumerate}

@@ -1,34 +1,838 @@
 \chapter{Visibility}
 \label{ch:visibility}
 
-% Stub: outline only; content to be written.
-
 \section{Visibility Problems}
 \label{sec:visibility_problems}
+
+The geometric notion of \textbf{visibility}\index{visibility} formalizes the
+everyday question ``what can be seen from here?'': two points see each other
+when the straight segment joining them is not blocked by intervening
+obstacles. Visibility is at the heart of a surprising fraction of
+computational geometry. Guarding an art gallery, rendering a scene, guiding
+a robot, and finding the shortest route around a building all reduce, in
+one way or another, to questions about which points see which other points.
+
+\begin{definition}[Mutual Visibility]\label{def:vis_mutual}
+  Let $\mathcal{O}$ be a finite set of pairwise-disjoint closed polygonal
+  obstacles, or a simple polygon $P$ regarded as the only obstacle (so the
+  free space is $P$ itself). Two points $p$ and $q$ that do not lie in the
+  interior of an obstacle are \textbf{mutually visible} if the open segment
+  between them does not intersect the interior of any obstacle; for a
+  polygon, this is $\overline{pq} \subseteq P$.
+\end{definition}
+
+Visibility comes in several strengths, because the objects whose visibility
+is of interest are usually segments, edges, or regions rather than bare
+points.
+
+\begin{definition}[Point, Edge, and Strong Visibility]\label{def:vis_edge}
+  A point $p$ \textbf{sees} a segment $e$ if it sees at least one point of
+  $e$. The point $p$ \textbf{strongly} (or \textbf{fully}) sees $e$ if it
+  sees every point of $e$. Two segments $e_1$ and $e_2$ are mutually visible
+  if some point of $e_1$ sees some point of $e_2$, and strongly visible if
+  every point of $e_1$ sees every point of $e_2$.
+\end{definition}
+
+Guarding uses point visibility (every polygon point must be seen by a
+guard), rendering needs the first surface hit along each viewing ray, and
+shortest paths use edge visibility between obstacle vertices. The chapter
+develops these in turn:
+
+\begin{itemize}
+  \item \textbf{Visibility inside polygons} (Section~\ref{sec:visibility_in_polygons}):
+    the visibility relation within a simple polygon and its kernel;
+  \item \textbf{Visibility polygons} (Sections~\ref{sec:visibility_polygons}
+    --\ref{sec:visibility_from_point}): the region seen from a point and the
+    algorithms that compute it;
+  \item \textbf{Guarding} (Section~\ref{sec:visibility_guarding}): how many
+    points suffice to see all of a polygon (the art gallery theorem);
+  \item \textbf{Visibility graphs} (Section~\ref{sec:visibility_graphs}): the
+    graph of mutually visible obstacle vertices, its complexity, and its
+    computation;
+  \item \textbf{Shortest and geodesic paths} (Sections~\ref{sec:visibility_shortest_paths}
+    --\ref{sec:visibility_geodesic_paths}): visible-edge chains in the plane
+    and inside polygons;
+  \item \textbf{Applications} (Section~\ref{sec:visibility_applications}):
+    hidden surface removal and visibility roadmaps.
+\end{itemize}
+
+The chapter connects to the rest of the book: the art gallery theorem is
+developed fully in Chapter~\ref{ch:art_gallery}, visibility roadmaps are a
+basic tool of Chapter~\ref{ch:motion_planning}, the rendering algorithms
+reuse the machinery of Chapter~\ref{ch:applications_graphics}, the
+envelopes of Chapter~\ref{ch:envelopes} describe a surface's silhouette
+from a viewpoint, and the shortest-path results sit beside those of
+Chapter~\ref{ch:distance_paths}.
 
 \section{Visibility inside Polygons}
 \label{sec:visibility_in_polygons}
 
+Fix a simple polygon $P$ with $n$ vertices, its boundary oriented
+counterclockwise. Inside $P$, visibility is the relation of
+Definition~\ref{def:vis_mutual}: two points are visible when their
+connecting segment lies in $P$. The relation is reflexive and symmetric but
+\emph{not} transitive --- a point around a corner may see two points that do
+not see each other --- which is why visibility is geometrically interesting
+and algorithmically nontrivial.
+
+A central structural object is the set of points from which \emph{everything}
+is visible.
+
+\begin{definition}[Kernel]\label{def:vis_kernel}
+  The \textbf{kernel} $\operatorname{ker}(P)$ of a simple polygon $P$ is the
+  set of points of $P$ that see every point of $P$. A polygon whose kernel is
+  nonempty is called \textbf{star-shaped}.
+\end{definition}
+
+\begin{theorem}[Kernel Structure]\label{thm:vis_kernel}
+  The kernel of a simple polygon $P$ is the intersection of the closed
+  half-planes to the left of every directed edge of $P$ (edges oriented
+  counterclockwise). It can be computed in $O(n)$ time, and $P$ is
+  star-shaped if and only if its kernel is nonempty.
+\end{theorem}
+
+\begin{proof}
+  A point $p$ sees an edge $e$ of $P$ if and only if $p$ lies in the
+  half-plane determined by $e$ that is on the interior side of $P$; if $p$
+  saw the interior side of every edge it would see the entire polygon, since
+  $P$ is the intersection of those half-planes locally along the boundary.
+  The kernel is therefore the intersection of the $n$ interior half-planes.
+  Intersecting half-planes in the plane takes $O(n \log n)$ time in general;
+  for a polygon the linear-time kernel algorithm of Lee and Preparata
+  \cite{lee1979} exploits the cyclic order of the edges and runs in $O(n)$.
+\end{proof}
+
+The kernel is the ``point-visibility'' extremum: it is the largest set of
+guards of size one, and star-shaped polygons are exactly the polygons that a
+single guard can cover. The art gallery theorem of
+Section~\ref{sec:visibility_guarding} asks how many points are needed when
+one is not enough.
+
+Between the kernel (one point) and all points lies the vertex-pair relation:
+two vertices of $P$ are visible if the segment between them is a
+\textbf{diagonal} of $P$, lying inside $P$ and meeting the boundary only at
+its endpoints. Diagonals are the edges of every triangulation, the backbone
+of visibility computation, because visibility questions inside a polygon
+can be answered by walking across its triangles.
+
+\begin{theorem}[Triangulation]\label{thm:vis_triangulation}
+  Every simple polygon with $n$ vertices has a triangulation with exactly
+  $n-2$ triangles and $n-3$ diagonals. Such a triangulation can be computed
+  in $O(n \log n)$ time by the monotone-decomposition method
+  (Chapter~\ref{ch:triangulations}) and in linear time by Chazelle's
+  algorithm \cite{chazelle1991}.
+\end{theorem}
+
+Testing whether two vertices are mutually visible reduces to checking that
+the segment between them is a diagonal: it must not cross any boundary edge
+(the segment-intersection machinery of Chapter~\ref{ch:segment_intersection})
+and must locally lie inside $P$ at both endpoints, a test using the
+orientation predicates of Chapter~\ref{ch:geometric_predicates}. A simple
+$O(n)$-per-pair check follows, so the visibility relation on the vertices is
+computable in $O(n^2)$ after triangulation.
+
+\index{visibility}\index{kernel}\index{star-shaped polygon}
+
 \section{Visibility Polygons}
 \label{sec:visibility_polygons}
+
+\begin{definition}[Visibility Polygon]\label{def:vis_visibility_polygon}
+  Let $p$ be a point of a simple polygon $P$ (or a point in the free space
+  bounded by a set of obstacles). The \textbf{visibility polygon} of $p$,
+  written $\operatorname{VP}(p)$, is the set of points $q$ that $p$ sees:
+  \[
+    \operatorname{VP}(p) = \{ q \in P : \overline{pq} \subseteq P \}.
+  \]
+\end{definition}
+
+The visibility polygon is the exact region a viewer sees and a guard covers;
+it is the query object underlying the guarding and navigation problems of
+the next sections, and its structure is highly constrained.
+
+\begin{theorem}[Structure of the Visibility Polygon]\label{thm:vis_vp_structure}
+  Let $P$ be a simple polygon and $p \in P$ a point. Then
+  $\operatorname{VP}(p)$ is a simple polygon, star-shaped with $p$ in its
+  kernel. Its boundary consists of two kinds of edges:
+  \begin{itemize}
+    \item \textbf{boundary pieces}: maximal portions of edges of $P$ that
+      are visible from $p$;
+    \item \textbf{windows}: segments not lying on the boundary of $P$.
+  \end{itemize}
+  Every window is an open segment whose inner endpoint is a reflex vertex
+  $v$ of $P$, which lies on the ray from $p$ through $v$, and which extends
+  from $v$ to the first point of the boundary of $P$ met by that ray.
+\end{theorem}
+
+\begin{proof}
+  The set $\operatorname{VP}(p)$ is star-shaped by definition: for every
+  $q \in \operatorname{VP}(p)$ the segment $\overline{pq}$ is contained in
+  $\operatorname{VP}(p)$, so $p$ lies in its kernel. The boundary of the
+  region seen from $p$ consists of points at which the segment from $p$
+  just grazes an obstacle. Along an edge of $P$ the visible part is a
+  contiguous interval, since the boundary between two visible points of one
+  edge is straight and unblocked. Where the visible boundary leaves
+  $\partial P$, it does so at a reflex vertex $v$ (at a convex vertex the
+  ray from $p$ continues to hug the boundary); the departing edge lies on
+  the ray from $p$ through $v$ and extends until that ray hits $\partial P$
+  again, beyond which $\overline{pq}$ is blocked. These are exactly the
+  window edges of the statement.
+\end{proof}
+
+\begin{remark}\label{rem:vis_holes}
+  If the obstacles are polygons with holes, or arbitrary disjoint segments,
+  then $\operatorname{VP}(p)$ remains a star-shaped (hence simply connected)
+  region: every visible point is joined to $p$ by a segment inside the
+  region. The boundary now includes windows through reflex vertices of the
+  obstacle polygons, and also segments joining the boundary of a hole to
+  itself, but the star-shaped structure and the window characterization
+  persist.
+\end{remark}
+
+\begin{example}[Visibility in a Staircase Polygon]\label{exa:vis_staircase}
+  In a rectangular ``staircase'' of two steps, place the viewer $p$ at the
+  bottom-left corner of the lower step. The visibility polygon contains the
+  two horizontal boundary segments directly ahead, the vertical walls
+  opposite, and the portion of the upper step's floor not occluded by the
+  lower step's wall. The occlusion ends at a window: a segment through the
+  reflex corner atop that wall, running along the ray from $p$ through that
+  corner until it hits the far wall, beyond which the upper floor is visible
+  again --- the prototypical ``see around a corner.''
+\end{example}
+
+\index{visibility polygon}\index{window}
 
 \section{Computing Visibility from a Point}
 \label{sec:visibility_from_point}
 
+\subsection{1. Overview}
+
+Two algorithms dominate the computation of $\operatorname{VP}(p)$:
+\begin{itemize}
+  \item \textbf{Lee's algorithm} \cite{lee1983} computes
+    $\operatorname{VP}(p)$ for a simple polygon in $O(n)$ time by processing
+    the vertices in the rotational order induced by the polygon and
+    maintaining a stack of currently visible vertices; it is the historical
+    first optimal algorithm.
+  \item \textbf{The rotational sweep} sweeps a ray around $p$ and records
+    the closest obstacle along each direction. It runs in $O(n \log n)$
+    time and, unlike Lee's algorithm, generalizes to polygons with holes and
+    to arbitrary sets of disjoint segments.
+\end{itemize}
+Guibas, Hershberger, Leven, Sharir, and Tarjan \cite{guibas1987vis} showed
+that after triangulation the visibility polygons of \emph{all} vertices of a
+simple polygon can be computed in $O(n)$ total time, and Laszlo
+\cite{laszlo1996} gives an implementer-oriented account. This section
+presents the rotational sweep and how Lee's algorithm sharpens it to linear
+time for simple polygons.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Radial Order]\label{def:vis_radial_order}
+  The \textbf{radial order} of a set of points around $p$ is their cyclic
+  order by polar angle around $p$. Two points at the same angle are ordered
+  by distance from $p$.
+\end{definition}
+
+\begin{definition}[Front]\label{def:vis_front}
+  During a sweep of a ray rotating about $p$, the \textbf{front} is the
+  obstacle segment that intersects the ray at the smallest distance from $p$,
+  i.e., the segment currently occluding the view along the ray. The front
+  changes only at \textbf{events}, the angles at which the ray passes an
+  endpoint of an obstacle segment.
+\end{definition}
+
+The window edges of Theorem~\ref{thm:vis_vp_structure} are the records of
+front changes: when the front jumps discontinuously from one segment to
+another at a reflex vertex, the jump is a window.
+
+\subsection{3. Theory}
+
+The rotational sweep is correct because visibility is radial: $q$ is
+visible from $p$ if and only if no obstacle lies strictly between $p$ and
+$q$ on the ray through $q$, so in every angular direction the boundary of
+$\operatorname{VP}(p)$ is the closest obstacle point. Between consecutive
+event angles the set of segments crossed by the ray is fixed, so the visible
+boundary is one straight piece of the front, clipped to that interval. At an
+event the front may change; if the hit point jumps from $a$ to $b$, the
+segment $\overline{ab}$ is a window (through a reflex vertex, by
+Theorem~\ref{thm:vis_vp_structure}). Sweeping all $O(n)$ events and emitting
+the visible pieces and windows therefore yields exactly
+$\operatorname{VP}(p)$.
+
+Lee's linear-time algorithm \cite{lee1983} removes the sorting step using
+two structural facts about simple polygons: (i) the radial order of the
+vertices around an interior point is obtainable in linear time without
+sorting, because the polygon's edges restrict how that order can change; and
+(ii) each polygon edge contributes only a bounded number of changes to the
+stack of visible vertices. Processing vertices in that order with a stack
+reproduces the sweep's output in $O(n)$ total time: the correctness transfers
+from the sweep, and only the bound is sharpened.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Rotational Sweep for the Visibility Polygon}
+\label{alg:vis_rotational_sweep}
+\begin{algorithmic}[1]
+\Require A point $p$ and the edges of a simple polygon (or of disjoint obstacle polygons), in general position.
+\Ensure The visibility polygon $\operatorname{VP}(p)$ as a cyclic sequence of boundary points.
+\Function{VP\_Sweep}{$p$, edges of the scene}
+  \State $E \gets$ all edge endpoints sorted by angle around $p$ (ties by distance)
+  \State $\ell \gets$ the front segment at the initial sweep angle
+  \State $B \gets \emptyset$ \Comment{visible boundary, emitted in angular order}
+  \For{event vertex $v \in E$, in angular order}
+    \State $\theta \gets$ angle of $v$
+    \State $a \gets$ hit point of the front $\ell$ with the ray at angle $\theta$
+    \State update the front: insert the segment(s) incident to $v$, delete the segment whose angular interval ended
+    \State $b \gets$ hit point of the updated front with the ray at angle $\theta$
+    \If{$a \neq b$}
+      \State emit the window $\overline{ab}$ (passing through a reflex vertex)
+    \EndIf
+    \State emit the visible piece of the front between angle $\theta$ and the next event
+  \EndFor
+  \State emit the final front piece and close the polygon
+  \State \Return $B$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{General position}: the sweep assumes no two events coincide
+  and no event lies exactly at the sweep start angle. Coincident angles are
+  ordered by distance; the case of the ray passing exactly through a vertex
+  is resolved by a fixed convention (treat the vertex as reached by the ray,
+  then reprocessed after updating the front).
+\item \textbf{Tie-breaking}: when several vertices share an angle, they must
+  be processed in distance order from $p$; the closest reflex vertex is the
+  one that can create a window.
+\item \textbf{Robust predicates}: all front updates and hit-point
+  computations are orientation and intersection tests; they must use the
+  exact predicates of Chapter~\ref{ch:geometric_predicates} to avoid
+  inconsistent front states.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n \log n)$ for the rotational sweep, dominated by
+  the radial sort of $n$ endpoints; $O(n)$ for Lee's algorithm on a simple
+  polygon \cite{lee1983}.
+\item \textbf{Space}: $O(n)$ for both algorithms (the sorted event list and
+  the output polygon).
+\item \textbf{Lower bound}: $\Omega(n)$ trivially, since the output may have
+  $\Theta(n)$ vertices, so Lee's algorithm is optimal for simple polygons.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Guarding}: $\operatorname{VP}(p)$ is the region covered by a
+  guard at $p$ (Section~\ref{sec:visibility_guarding}).
+\item \textbf{Visibility graph}: computing the visibility graph of a
+  polygon's vertices reduces to computing $\operatorname{VP}(v)$ for every
+  vertex $v$ (Section~\ref{sec:visibility_graphs}); the vertices visible
+  from $v$ are exactly the polygon vertices on the boundary of
+  $\operatorname{VP}(v)$.
+\item \textbf{Sensor models}: in robotics and games, the visibility polygon
+  is the exact field of view of a sensor or camera, used for coverage,
+  surveillance, and line-of-sight queries.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Brute-force reference}: sample points densely in a bounding
+  box and compare against a brute-force visible test; every sampled visible
+  point must lie in the computed $\operatorname{VP}(p)$ and conversely.
+\item \textbf{Star-shaped check}: verify that $p$ lies in the kernel of the
+  computed polygon (Section~\ref{sec:visibility_in_polygons}) and that no
+  two edges of the output cross.
+\item \textbf{Window audit}: every non-boundary edge of the output must be a
+  segment through a reflex vertex of $P$ on the ray from $p$
+  (Theorem~\ref{thm:vis_vp_structure}); the number of windows agrees with
+  the number of such reflex vertices up to $O(1)$.
+\item \textbf{Degenerate inputs}: points on the boundary of $P$ (where
+  $\operatorname{VP}(p)$ degenerates to a wedge), collinear vertices, and
+  nested holes must be exercised.
+\end{itemize}
+
+\subsection{9. References}
+
+Lee's linear-time algorithm is the classic reference \cite{lee1983};
+the linear-time treatment of visibility and shortest paths from a
+triangulation, together with the radial-order lemma for simple polygons, is
+in \cite{guibas1987vis}. Textbook presentations appear in \cite{orourke1987,
+berg2008,laszlo1996}, and the robust implementation issues follow
+Chapter~\ref{ch:geometric_predicates}.
+
+\index{rotational sweep}\index{Lee's algorithm}
+
 \section{Guarding Polygons}
 \label{sec:visibility_guarding}
+
+The \textbf{art gallery problem}\index{art gallery problem} asks: how many
+points (guards) inside a polygon are needed so that every point of the
+polygon is seen by at least one of them? A guard at $p$ covers exactly
+$\operatorname{VP}(p)$ (Section~\ref{sec:visibility_polygons}), so the
+question is a covering problem for the family of visibility polygons.
+
+\begin{theorem}[Art Gallery Theorem]\label{thm:vis_art_gallery}
+  Every simple polygon with $n$ vertices can be guarded by at most
+  $\lfloor n/3 \rfloor$ guards, and this bound is tight: for every $n$
+  there are polygons that cannot be guarded by fewer than $\lfloor n/3
+  \rfloor$ guards.
+\end{theorem}
+
+\begin{proof}
+  The upper bound is Fisk's elegant proof \cite{fisk1978}. Triangulate the
+  polygon (Theorem~\ref{thm:vis_triangulation}). The triangulation graph is
+  3-colorable: its dual graph is a tree, so one can 3-color the vertices by
+  walking the dual tree, each new triangle forced to receive the third color
+  on its new vertex. Of the three color classes, one contains at most
+  $\lfloor n/3 \rfloor$ vertices. Place guards at the vertices of that
+  class. Every triangle has exactly one vertex of each color, so every
+  triangle contains a guard at one of its vertices; since a triangle is
+  convex, that guard sees the entire triangle, and every point of the
+  polygon lies in some triangle. The polygon is therefore guarded by at most
+  $\lfloor n/3 \rfloor$ guards.
+\end{proof}
+
+The lower bound is a \textbf{comb polygon}\index{comb polygon}: a long thin
+rectangle with $\lfloor n/3 \rfloor$ triangular ``teeth'' cut into one side
+so that the teeth are separated by narrow necks. A single guard can see
+points in at most one tooth plus the adjacent corridor, so at least one
+guard per tooth is required; each tooth costs three vertices, giving the
+$\lfloor n/3 \rfloor$ lower bound. The theorem is Chvatal's
+\cite{chvatal1975}; the full history and the algorithmic extensions are in
+Chapter~\ref{ch:art_gallery}.
+
+\begin{remark}\label{rem:vis_guarding_variants}
+  Variants change the picture. \textbf{Vertex guards} (restricted to
+  vertices) satisfy the same $\lfloor n/3 \rfloor$ bound, since Fisk's proof
+  already produces vertex guards. For polygons with $h$ holes the bound is
+  $\lfloor (n + 2h)/3 \rfloor$, and for orthogonal polygons $\lfloor n/4
+  \rfloor$. Computing the \emph{minimum} number of guards is NP-hard even
+  for simple polygons, so the worst-case bound is the practical substitute
+  for exact optimization.
+\end{remark}
+
+The guarding problem is the point-coverage version of set cover, with the
+visibility polygons of Section~\ref{sec:visibility_polygons} as the sets to
+be covered; Chapter~\ref{ch:art_gallery} develops the theorem, its variants,
+and the hardness results in depth.
+
+\index{guard}\index{art gallery theorem}
 
 \section{Visibility Graphs}
 \label{sec:visibility_graphs}
 
+\subsection{1. Overview}
+
+The \textbf{visibility graph}\index{visibility graph} of a set of obstacles
+records which obstacle vertices see each other. Its paths are exactly the
+candidate shortest paths among the obstacles: a path that changes direction
+only at obstacle corners moves in a straight line between consecutive
+vertices precisely when those vertices are mutually visible. The visibility
+graph therefore turns the continuous shortest-path problem into a discrete
+graph problem (Section~\ref{sec:visibility_shortest_paths}). This section
+studies the base case of pairwise-disjoint segments, as analyzed in
+\cite{berg2008}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Visibility Graph]\label{def:vis_vg}
+  Let $\mathcal{S}$ be a set of pairwise-disjoint closed line segments
+  (the obstacles). The \textbf{visibility graph} of $\mathcal{S}$ has a
+  vertex for every segment endpoint and an edge between two vertices $u, v$
+  if $u$ and $v$ are mutually visible: the open segment $\overline{uv}$
+  crosses no segment of $\mathcal{S}$. For polygonal obstacles one takes the
+  obstacle vertices as vertices and requires the open segment to avoid all
+  obstacle interiors.
+\end{definition}
+
+\begin{definition}[Bitangent]\label{def:vis_bitangent}
+  A \textbf{bitangent} (or visibility edge) of a set of disjoint convex
+  obstacles is a segment that is mutually visible to the two obstacles it
+  touches at its endpoints. In the segment-obstacle setting the bitangents
+  are exactly the visibility-graph edges, since every visibility edge is
+  tangent to the segments at both endpoints.
+\end{definition}
+
+\subsection{3. Theory}
+
+\begin{theorem}[Complexity of the Visibility Graph]\label{thm:vis_complexity}
+  The visibility graph of $n$ pairwise-disjoint segments has $O(n^2)$ edges,
+  and the bound is tight: configurations with $O(n^2)$ mutual-visibility
+  pairs exist. The graph can be computed in $O(n^2 \log n)$ time by a
+  per-vertex rotational sweep, in $O(n^2)$ time with more care, and in
+  $O(n \log n + k)$ time with an output-sensitive algorithm, where $k$ is
+  the number of visibility edges \cite{ghoshmount1991,overmarswelzl1992}.
+\end{theorem}
+
+The rotational sweep analyzes visibility from one vertex $v$ at a time.
+Sort the other endpoints around $v$ and rotate a ray, maintaining the front
+(Definition~\ref{def:vis_front}), the closest segment crossing the ray. When
+the ray points at a vertex $u$, the open segment $\overline{vu}$ is crossed
+by an obstacle if and only if the front intersects it: a closer blocker
+would be the front, and a farther blocker would be beyond it. Hence $u$ is
+visible from $v$ exactly when the front does not cross $\overline{vu}$. The
+sweep costs $O(n \log n)$ per vertex, giving $O(n^2 \log n)$; the
+output-sensitive methods of \cite{ghoshmount1991,overmarswelzl1992} spend
+time proportional to the number of edges actually reported.
+
+For a simple polygon, the visibility graph is obtained by computing
+$\operatorname{VP}(v)$ for every vertex $v$
+(Section~\ref{sec:visibility_from_point}): the vertices visible from $v$
+are exactly the polygon vertices on the boundary of $\operatorname{VP}(v)$.
+Since each visibility polygon has $O(n)$ boundary vertices, all $n$
+computations take $O(n^2)$ time, matching the worst-case number of edges.
+The bitangent structure connects to the envelopes of Chapter~\ref{ch:envelopes}:
+the visibility edges from a vertex are the vertices of the lower envelope of
+the obstacle segments as seen from that vertex.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Rotational Sweep for the Visibility Graph}
+\label{alg:vis_vg_sweep}
+\begin{algorithmic}[1]
+\Require Pairwise-disjoint obstacle segments $\mathcal{S}$ in general position.
+\Ensure The visibility graph $G = (V, E)$.
+\Function{VisibilityGraph}{$\mathcal{S}$}
+  \State $V \gets$ all segment endpoints; $E \gets \emptyset$
+  \For{vertex $v \in V$}
+    \State $W \gets$ the other endpoints of $V$, sorted by angle around $v$
+    \State $\ell \gets$ the front segment at the initial sweep angle from $v$
+    \For{endpoint $u \in W$, in radial order}
+      \If{the front $\ell$ does not cross the open segment $\overline{vu}$}
+        \State $E \gets E \cup \{(v,u)\}$ \Comment{$u$ is visible from $v$}
+      \EndIf
+      \State update $\ell$ as the ray passes the endpoints of the segments incident to $u$
+    \EndFor
+  \EndFor
+  \State \Return $G$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{General position}: assume no two endpoints share an angle from
+  $v$ and no endpoint lies on another segment; ties and collinearities are
+  resolved by the fixed conventions of Chapter~\ref{ch:geometric_predicates}.
+\item \textbf{Distinct obstacles}: input segments must be pairwise disjoint;
+  touching segments are split at their contact points first.
+\item \textbf{Output size}: the graph may be dense; applications should
+  build only the edges they need (e.g., the reduced visibility graph keeping
+  only bitangent edges between reflex vertices plus tangent edges to convex
+  vertices) when $k$ is large.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Time}: $O(n^2 \log n)$ for Algorithm~\ref{alg:vis_vg_sweep}
+  ($O(n \log n)$ per vertex); $O(n \log n + k)$ output-sensitive
+  \cite{ghoshmount1991,overmarswelzl1992}.
+\item \textbf{Space}: $O(n + k)$ for the graph and auxiliary structures.
+\item \textbf{Lower bound}: $\Omega(n^2)$ time in the worst case, since the
+  output can have $\Theta(n^2)$ edges.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Shortest paths}: the shortest obstacle-avoiding path is a
+  visibility-graph path (Section~\ref{sec:visibility_shortest_paths}).
+\item \textbf{Motion planning}: visibility graphs are the classical
+  \textbf{roadmaps}\index{roadmap} for a point robot moving among polygonal
+  obstacles; Chapter~\ref{ch:motion_planning} uses them as the simplest
+  complete roadmap.
+\item \textbf{Navigation meshes}: reduced visibility graphs (bitangents
+  between reflex vertices) form the skeleton of navigation meshes for agents
+  in games and robotics.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item \textbf{Brute-force verification}: for small $n$, compute all pairs
+  $(u,v)$ by a direct segment-intersection test against every obstacle and
+  require the same edge set.
+\item \textbf{Edge validity}: every reported edge must be visible, and no
+  omitted pair may be visible, on random and on adversarial inputs.
+\item \textbf{Tangency}: endpoints lying on the same ray from $v$, and
+  segments whose endpoints are collinear, must produce a consistent edge set
+  under the fixed tie-breaking rule.
+\item \textbf{Dense instances}: a ring of short segments with a central
+  vertex should produce a near-complete visibility graph; verify the count
+  against $\binom{2n}{2}$.
+\end{itemize}
+
+\subsection{9. References}
+
+The visibility graph and its rotational-sweep computation are presented in
+\cite{berg2008}; the optimal output-sensitive algorithms are due to Ghosh
+and Mount \cite{ghoshmount1991} and to Overmars and Welzl
+\cite{overmarswelzl1992}; the use of visibility graphs in planning dates to
+the configuration-space approach of Lozano-Perez \cite{lozanoperez1983} and
+is treated in \cite{orourke1987,sharir1995}.
+
 \section{Shortest Paths among Obstacles}
 \label{sec:visibility_shortest_paths}
+
+The shortest-path problem among obstacles is: given two points $s, t$ and
+pairwise-disjoint polygonal obstacles, find the shortest path from $s$ to
+$t$ avoiding the obstacle interiors --- the "rubber band" path pulled tight
+between $s$ and $t$. Its combinatorial structure is the central fact that
+makes visibility graphs useful.
+
+\begin{theorem}[Shortest Path Structure]\label{thm:vis_shortest_path}
+  Let $s, t$ be points and $\mathcal{O}$ a set of pairwise-disjoint polygonal
+  obstacles. The shortest obstacle-avoiding path from $s$ to $t$ is a simple
+  polygonal chain; every interior vertex of the chain is a vertex of an
+  obstacle, and every two consecutive vertices of the chain are mutually
+  visible. Consequently the shortest path is a path in the visibility graph
+  of the obstacle vertices augmented with $s$ and $t$.
+\end{theorem}
+
+\begin{proof}
+  A shortest path avoids obstacle interiors. Any subpath that runs through
+  free space with no obstacle corner between its endpoints can be replaced
+  by the straight segment between its endpoints, which shortens it; hence
+  every ``kink'' occurs at an obstacle vertex, and the path is a polygonal
+  chain through obstacle vertices. If two consecutive vertices $u, v$ of the
+  chain were not mutually visible, $\overline{uv}$ would cross an obstacle
+  and the path could be locally detoured to a shorter one, contradicting
+  optimality. Hence consecutive vertices are visible, and the chain is a
+  path in the visibility graph of the vertices plus $s$ and $t$.
+\end{proof}
+
+The theorem reduces the continuous problem to a shortest-path problem in a
+graph with $O(n)$ vertices and $O(n^2)$ edges:
+
+\begin{algorithm}[htbp]
+\caption{Shortest Path among Polygonal Obstacles}
+\label{alg:vis_shortest_path}
+\begin{algorithmic}[1]
+\Require Points $s, t$ and pairwise-disjoint polygonal obstacles $\mathcal{O}$.
+\Ensure The shortest obstacle-avoiding path from $s$ to $t$.
+\Function{ShortestPath}{$s, t, \mathcal{O}$}
+  \State $G \gets$ visibility graph of $\mathcal{O}$ (Algorithm~\ref{alg:vis_vg_sweep})
+  \State add $s$ and $t$ to $G$ with their visible edges
+  \State run Dijkstra's algorithm on $G$ with edge weights equal to Euclidean lengths
+  \State \Return the resulting $s$-$t$ path
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+With $O(n^2)$ edges the Dijkstra run costs $O(n^2 \log n)$; with the
+output-sensitive visibility graph of Theorem~\ref{thm:vis_complexity} the
+total is $O(n \log n + k)$. The general Euclidean shortest-path problem and
+its rectilinear and weighted variants are discussed in
+Chapter~\ref{ch:distance_paths}; the visibility graph remains the reference
+approach whenever the shortest path bends only at obstacle corners
+\cite{lozanoperez1983,berg2008}.
+
+\begin{remark}\label{rem:vis_spp_directions}
+  Three refinements are standard. (i) The \textbf{reduced} visibility graph
+  (bitangent edges between reflex vertices plus tangents to convex vertices)
+  still contains the shortest path and is much sparser in practice. (ii) For
+  a fixed start and many targets, the graph is processed once and each query
+  is a Dijkstra-like exploration. (iii) For a robot of nonzero size, the
+  obstacles are first inflated to a configuration space
+  (Section~\ref{sec:visibility_applications}).
+\end{remark}
+
+\index{shortest path}
 
 \section{Geodesic Paths}
 \label{sec:visibility_geodesic_paths}
 
+When the path is required to stay inside a simple polygon, the shortest
+path is a \textbf{geodesic path}\index{geodesic path}: the shortest curve
+in $P$ joining two points of $P$. The geodesic is the planar analogue of
+the great-circle distance on a surface, and it defines the \textbf{geodesic
+distance} $d_P(s,t)$, the length of the geodesic.
+
+\begin{definition}[Geodesic]\label{def:vis_geodesic}
+  For points $s, t$ in a simple polygon $P$, the \textbf{geodesic} $\pi(s,t)$
+  is the shortest path from $s$ to $t$ whose points all lie in $P$, and
+  $d_P(s,t)$ is its length.
+\end{definition}
+
+\begin{theorem}[Structure and Computation of Geodesics]\label{thm:vis_geodesic}
+  The geodesic $\pi(s,t)$ is unique and simple, and all its interior
+  vertices are reflex vertices of $P$. Given a triangulation of $P$, the
+  geodesic can be computed in $O(n)$ time.
+\end{theorem}
+
+\begin{proof}
+  Uniqueness follows because the free space is simply connected: any two
+  distinct shortest paths of equal length between the same endpoints enclose
+  a region of $P$ of positive area, and a slight shortening within that
+  region contradicts optimality. As in
+  Theorem~\ref{thm:vis_shortest_path}, every bend of the geodesic must lie
+  at a reflex vertex of $P$: at an interior bend the path could be shortcut,
+  and at a convex boundary vertex the path could be pulled into the interior
+  of $P$. The geodesic crosses exactly the triangles on the unique path
+  between the triangles of $s$ and $t$ in the dual tree of the triangulation,
+  and the linear-time algorithms of \cite{guibas1987vis} walk this chain
+  while maintaining a \textbf{funnel}: the shortest path to the current
+  boundary of the visited region, which has the shape of a funnel with the
+  source $s$ at the apex.
+\end{proof}
+
+The funnel algorithm processes the triangle chain one at a time. Each step
+adds a triangle contributing one new vertex; the funnel's two boundary
+chains (the shortest paths from $s$ to the two ends of the path front) are
+updated by a visibility test of which vertex lies inside the current
+triangle. When the two chains cross, the apex advances to the crossing point
+and the funnel resets --- the geodesic's turning point moves forward. Each
+triangle is processed once, so the total cost is linear after locating $s$
+and $t$ in the triangulation (Chapter~\ref{ch:point_location}).
+
+\begin{algorithm}[htbp]
+\caption{Shortest Path in a Triangulated Polygon (Funnel Algorithm)}
+\label{alg:vis_funnel}
+\begin{algorithmic}[1]
+\Require A simple polygon $P$ with a triangulation $T$, and points $s, t$ in $P$.
+\Ensure The geodesic path from $s$ to $t$.
+\Function{FunnelShortestPath}{$P, T, s, t$}
+  \State locate the triangles $\Delta_s \ni s$ and $\Delta_t \ni t$ in $T$
+  \State $\Delta_s, \Delta_1, \dots, \Delta_k, \Delta_t \gets$ the triangle chain along the dual tree of $T$
+  \State $F \gets$ funnel with apex $s$ and the two boundary chains along the current path front
+  \For{triangle $\Delta$ in the chain}
+    \State add the new vertex of $\Delta$; update the two funnel chains
+    \If{the two chains cross at a point $c$}
+      \State advance the apex to $c$ and reset the funnel
+    \EndIf
+  \EndFor
+  \State \Return the shortest path read off the final funnel
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{example}[Two Geodesics Bound a Funnel]\label{exa:vis_funnel}
+  Fix a source $s$ and a reflex vertex $v$ of $P$. The two geodesics
+  $\pi(s,v)$ together with the boundary of $P$ between them enclose a
+  funnel-shaped region; every geodesic from $s$ to a point $t$ in that
+  region follows one of the two paths until the funnel narrows, then
+  crosses to the other side. This structure is the organizing principle of
+  \cite{guibas1987vis} and of data structures answering geodesic-distance
+  queries in logarithmic time after $O(n \log n)$ preprocessing.
+\end{example}
+
+The geodesic notion extends to polyhedral surfaces, where a shortest path
+is a sequence of straight segments across faces meeting only at surface-reflex
+vertices. The \textbf{discrete geodesic problem} \cite{mitchell1987} computes
+such paths by continuous Dijkstra simulation, together with the polygon case
+in Chapter~\ref{ch:distance_paths}; visibility enters because the path's
+straight segments must lie in a mutually visible region.
+
+\index{funnel algorithm}\index{geodesic}
+
 \section{Applications}
 \label{sec:visibility_applications}
 
+Visibility is a lens through which several mature application areas are best
+understood. Three stand out: rendering, motion planning, and robotics.
+
+\subsection*{Hidden Surface Removal and Rendering}
+
+The \textbf{hidden surface removal} problem is to draw a 3D scene so that
+only the surfaces visible from the viewpoint appear. It is, per pixel, a
+point-visibility problem: the pixel's color comes from the \emph{first}
+surface hit along the viewing ray through the pixel. The two classical
+solutions are:
+
+\begin{description}
+  \item[The painter's algorithm] \cite{newell1972} sorts the polygons by
+    depth and draws them back-to-front, letting near polygons overpaint far
+    ones. It fails when no consistent depth order exists (cyclically
+    overlapping polygons), requiring the polygons to be split.
+  \item[The z-buffer] \cite{catmull1974} performs the depth comparison per
+    pixel: a fragment is written only if its depth beats the stored depth,
+    so the buffer holds exactly the per-pixel first hit at $O(1)$ per
+    fragment --- the hardware-standard algorithm of modern graphics
+    pipelines.
+  \item[Binary space partitions] \cite{fuchs1980,naylor1990} build a
+    recursive partition of space by planes; any viewpoint then has a
+    correct back-to-front order from a single tree walk, giving the
+    painter's algorithm its missing order.
+\end{description}
+
+Geometrically, the visible surface points are the \textbf{lower envelope}
+of the surfaces as seen from the viewpoint: a surface point is visible
+exactly when it lies on that envelope. This ties rendering to the envelope
+machinery of Chapter~\ref{ch:envelopes} and, on the engineering side, to
+the spatial structures of \cite{ericson2004} used for occlusion culling;
+Chapter~\ref{ch:applications_graphics} uses these algorithms as its
+rendering core.
+
+\subsection*{Motion Planning and Visibility Roadmaps}
+
+The configuration-space approach of Lozano-Perez \cite{lozanoperez1983}
+reduces motion planning for a robot with geometry to point planning for its
+\emph{configuration} among inflated obstacles (the \textbf{C-obstacles}).
+For a point robot among polygonal obstacles the visibility graph is a
+complete roadmap: every shortest path is a visibility-graph path
+(Theorem~\ref{thm:vis_shortest_path}), so planning reduces to the
+shortest-path search of Algorithm~\ref{alg:vis_shortest_path}. Visibility
+roadmaps remain the reference ``exact'' planner for low-dimensional
+configuration spaces, and visibility is also the connection criterion in
+sampling-based planners. Chapter~\ref{ch:motion_planning} develops the
+roadmap approach and its sampling-based successors.
+
+\subsection*{Robotics, Coverage, and Simulation}
+
+Guarding (Section~\ref{sec:visibility_guarding}) is the coverage question
+behind sensor placement: placing cameras, guards, or beacons so that every
+point of a domain is seen by at least one sensor, with the art gallery
+bound as worst-case guarantee (optimal placement is NP-hard,
+Remark~\ref{rem:vis_guarding_variants}). In navigation, the visibility
+polygon is the local sensor model of simultaneous localization and mapping,
+and the geodesic paths of Section~\ref{sec:visibility_geodesic_paths} are
+the routes agents follow indoors. In games and simulation, reduced
+visibility graphs form navigation meshes, and the point-visibility and
+ray-shooting primitives of this chapter underlie the collision and occlusion
+queries discussed in \cite{ericson2004}.
+
+\index{hidden surface removal}\index{painter's algorithm}\index{z-buffer}
+\index{binary space partition}\index{visibility roadmap}
+
 \section{Exercises}
 \label{sec:visibility_exercises}
+
+\begin{enumerate}
+  \item Show that mutual visibility is not transitive: construct three
+    points $p, q, r$ in a simple polygon with $p$ and $q$ visible, $q$ and
+    $r$ visible, but $p$ and $r$ not visible. Prove that in a convex polygon
+    the relation \emph{is} transitive.
+  \item Prove that the kernel of a simple polygon is convex and is exactly
+    the intersection of the half-planes of Definition~\ref{def:vis_kernel},
+    and give a polygon whose kernel is a single point.
+  \item Prove Theorem~\ref{thm:vis_vp_structure} in detail: show that every
+    window of $\operatorname{VP}(p)$ passes through a reflex vertex of $P$
+    and lies on the ray from $p$ through that vertex.
+  \item Carry out Fisk's proof of Theorem~\ref{thm:vis_art_gallery}: prove
+    that the triangulation graph of a simple polygon is 3-colorable by
+    induction on the dual tree, and derive the $\lfloor n/3 \rfloor$ bound.
+  \item Design a comb polygon on $n$ vertices and prove that it cannot be
+    guarded with fewer than $\lfloor n/3 \rfloor$ guards.
+  \item Prove Theorem~\ref{thm:vis_shortest_path}: show that every kink of
+    the shortest obstacle-avoiding path occurs at an obstacle vertex and
+    that consecutive vertices of the path are mutually visible.
+  \item Compute by hand the visibility polygon of a point in a staircase
+    polygon, and verify that the number of windows equals the number of
+    reflex vertices visible on windows, as guaranteed by
+    Theorem~\ref{thm:vis_vp_structure}.
+  \item Implement the rotational sweep of
+    Algorithm~\ref{alg:vis_rotational_sweep} for a simple polygon and
+    validate it against a brute-force visibility test on random polygons,
+    checking in particular the window audit described in
+    Section~\ref{sec:visibility_from_point}.
+\end{enumerate}
