@@ -1,31 +1,755 @@
 \chapter{Computational Geometry Software}
 \label{app:software}
 
-% Stub: outline only; content to be written.
+This appendix surveys the software landscape for computational geometry:
+the general-purpose C++ libraries, the Python packages, the meshing
+engines, the polygon and CAD kernels, the visualization tools, and the
+exact-arithmetic foundations on which they rest. For each entry we give a
+compact profile --- language, license, and the operations it offers ---
+together with a one-line ``Good for:'' recommendation. License statements
+and version numbers are accurate as of the writing of this book, but open
+and proprietary projects both change their terms; verify against the
+project's own pages before committing to a library for a product.
+
+Throughout this appendix we assume the reader has worked through the
+algorithm chapters of the book: convex hulls
+(Chapter~\ref{ch:convex_hulls}), segment intersection
+(Chapter~\ref{ch:segment_intersection}), triangulations and Delaunay
+triangulations (Chapters~\ref{ch:triangulations} and
+\ref{ch:delaunay_triangulations}), Voronoi diagrams
+(Chapter~\ref{ch:voronoi_diagrams}), point location
+(Chapter~\ref{ch:point_location}), geometric predicates
+(Chapter~\ref{ch:geometric_predicates}), polygon operations
+(Chapter~\ref{ch:polygon_ops}), half-edge data structures
+(Chapter~\ref{ch:half_edge}), and mesh generation
+(Chapter~\ref{ch:mesh_generation}). The libraries below are the ones most
+likely to supply production implementations of the algorithms in those
+chapters, and the choice among them is the subject of the final section.
 
 \section{CGAL}
 \label{sec:app_soft_cgal}
 
+CGAL, the Computational Geometry Algorithms Library, is the closest thing
+the field has to a reference implementation of its own theory. It is a
+large C++ library, developed since 1996 by a consortium of academic
+institutions and companies, and it covers most of the classical
+algorithms in this book with a rigor that is unmatched elsewhere.
+
+\begin{itemize}
+  \item \textbf{CGAL} --- C++, open-source (dual-licensed under the GNU
+    GPL v3 and the GNU LGPL v3, with the applicable license depending on
+    the package; commercial licenses are available from the CGAL
+    project) \cite{cgalmanual}. Offers exact and adaptive predicates
+    through its kernel architecture (Section~\ref{sec:intro_exact_computation}),
+    plus packages for convex hulls in any dimension, 2D and 3D Delaunay
+    and regular triangulations, constrained Delaunay triangulations,
+    Voronoi diagrams, 2D and 3D arrangements, Boolean operations on
+    polygons and Nef polyhedra, point location, polygon offsetting and
+    straight skeletons, spatial searching and AABB trees, half-edge and
+    polyhedral surface data structures (the analogues of
+    Chapter~\ref{ch:half_edge}), mesh generation in 2D and 3D, and
+    polygon mesh processing. \emph{Good for:} provably robust,
+    exactness-guaranteed implementations of nearly every algorithm in
+    this book, and the de facto standard against which other geometry
+    software is judged.
+  \item \textbf{CGAL exact number types} --- C++, part of CGAL. The
+    \texttt{Gmpz}, \texttt{Gmpq}, \texttt{Lazy\_exact\_nt}, and
+    \texttt{Interval\_nt} types, together with filtered (adaptive)
+    predicates and lazy evaluation, let the same code run fast in the
+    non-degenerate case and exact in the degenerate one, exactly as
+    described in Sections~\ref{sec:intro_robustness}--\ref{sec:intro_exact_computation}
+    and Chapter~\ref{ch:geometric_predicates}. \emph{Good for:} exact
+    evaluation of orientation, in-circle, and in-sphere predicates on
+    integer or rational input coordinates.
+  \item \textbf{CGAL 2D Arrangements} --- C++, part of CGAL. Constructs
+    and walks planar arrangements of segments, polylines, conics, and
+    other curves; supports point location, zone construction, and face
+    traversal, the data structure underlying
+    Chapters~\ref{ch:segment_intersection} and \ref{ch:point_location}.
+    \emph{Good for:} exact planar subdivisions and overlay problems with
+    curved input.
+  \item \textbf{CGAL mesh generation} --- C++, part of CGAL. The
+    \texttt{Mesh\_2} and \texttt{Mesh\_3} packages build triangulated
+    and tetrahedral meshes with user-supplied sizing, shape, and
+    approximation criteria, including meshing of implicit domains from a
+    signed distance function and preservation of sharp features; see
+    Chapter~\ref{ch:mesh_generation}. \emph{Good for:} high-quality
+    meshes with rigorous guarantees on element shape.
+  \item \textbf{Geogram} --- C++, open-source (GNU LGPL v3). A geometry
+    and mesh-processing library from INRIA (Bruno L\'evy) providing
+    robust 2D and 3D triangulations and Voronoi diagrams, a Delaunay
+    package, spatial search (k-d trees), and its own graphics layer.
+    \cite{geogram} \emph{Good for:} mesh processing and 3D Delaunay
+    experiments in C++ without the template complexity of CGAL.
+  \item \textbf{libigl} --- C++ (header-only), open-source (Mozilla
+    Public License 2.0) \cite{libigl}. A geometry-processing library
+    built on Eigen: cotangent Laplacians and mass matrices, mesh Boolean
+    operations, decimation, parameterization, and an OpenGL viewer.
+    \emph{Good for:} research prototyping in geometry processing, and
+    for the discrete differential-geometry operators used in the surface
+    chapters.
+  \item \textbf{CGAL Python bindings} --- C++/Python, open-source (GPL).
+    The \texttt{cgal-bindings} project exposes a subset of CGAL
+    (triangulations, arrangements, polygon operations, meshing) to
+    Python; support is partial and the API lags the C++ library. For
+    Python-side exact geometry the lighter-weight \texttt{scikit-geometry}
+    wrapper of Section~\ref{sec:app_soft_python} is often easier.
+    \emph{Good for:} prototyping CGAL algorithms interactively from
+    Python.
+\end{itemize}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{llll}
+\hline
+\textbf{Library} & \textbf{Language} & \textbf{License} & \textbf{Focus} \\
+\hline
+CGAL            & C++       & GPL-3/LGPL-3, commercial & broad exact geometry \\
+Geogram         & C++       & LGPL-3                   & triangulations, meshes \\
+libigl          & C++       & MPL-2.0                 & geometry processing \\
+CGAL Python bindings & C++/Python & GPL-3              & CGAL subset in Python \\
+\hline
+\end{tabular}
+\caption{General-purpose C++ computational-geometry libraries.}
+\label{tbl:appsoft_cgal}
+\end{table}
+
+Beyond the software itself, the CGAL project maintains one of the best
+reference resources in the field: the \emph{CGAL User and Reference
+Manual} \cite{cgalmanual}, organized by package, with exhaustive
+documentation of the theory each package implements, and an extensive
+tutorial collection that walks the reader from basic kernel usage to
+advanced packages such as arrangements and mesh generation. A companion
+free journal, the \emph{Journal of Computational Geometry} \cite{jocg},
+publishes research papers on computational geometry --- frequently the
+same algorithms the library implements --- and is a good place to look
+up the theoretical provenance of a CGAL package.
+
 \section{GEOSE}
 \label{sec:app_soft_geose}
+
+This section covers the geometry engines and CAD kernels built around
+planar and solid Boolean operations: GEOS and its Java ancestor JTS,
+the Clipper polygon-clipping family, and the OpenCascade solid modeling
+kernel. (The heading ``GEOSE'' stands for the \emph{GEometry Engine}
+library family; GEOS itself is the leading member.)
+
+\begin{itemize}
+  \item \textbf{GEOS} --- C++, open-source (GNU LGPL v2.1). The Geometry
+    Engine Open Source, a faithful C++ port of JTS that serves as the
+    geometry backend of PostGIS, QGIS, and Shapely. Offers the planar
+    operation suite of Chapter~\ref{ch:polygon_ops}: intersection,
+    union, difference, and symmetric difference of polygons and
+    multipolygons, buffer construction (offsetting with round, bevel,
+    and miter joins), predicates such as \texttt{within},
+    \texttt{contains}, and \texttt{intersects}, distance and nearest
+    feature computations, prepared geometries for repeated predicate
+    queries, and an STRtree spatial index \cite{geos}. \emph{Good for:}
+    production planar Boolean and overlay operations on geographic data.
+  \item \textbf{JTS} --- Java, open-source (Eclipse Distribution License
+    v1) \cite{jts}. The JTS Topology Suite is the reference Java
+    implementation of the same planar operation model, and the direct
+    ancestor of GEOS; it also supplies Delaunay triangulation, Voronoi
+    diagrams, and hull construction in Java. \emph{Good for:} Java
+    applications and as the reference behavior that other engines
+    reproduce.
+  \item \textbf{Clipper2} --- C++ (with C\# and Python bindings),
+    open-source (Boost Software License 1.0) \cite{clipper2}. Boolean
+    operations (intersection, union, difference, XOR) on polygons with
+    holes and open polylines, plus the \emph{inflate} and \emph{deflate}
+    operations that implement polygon offsetting (the 2D Minkowski
+    operations studied in the polygon chapters). Uses 64-bit integer
+    coordinates, which makes the booleans exact and extremely fast for
+    input that can be scaled to integers. \emph{Good for:} polygon
+    clipping and offsetting in CAD/CAM, PCB, and laser-cutting
+    workflows. Its predecessor, Clipper, remains widely deployed.
+  \item \textbf{OpenCascade} --- C++, open-source (GNU LGPL v2.1 with an
+    additional linking exception) \cite{opencascade}. A full 3D CAD
+    kernel: boundary representation (BRep) solids, Boolean operations on
+    solids, filleting and chamfering, NURBS surface modeling, STEP and
+    IGES import/export, and a built-in mesher (BRepMesh) that turns BRep
+    faces into triangle meshes for rendering and simulation.
+    \emph{Good for:} 3D solid modeling, CAD data interchange, and the
+    underlying geometry engine for mesh pre-processing pipelines.
+  \item \textbf{Fade2D} --- C++, proprietary (a free license is granted
+    for academic and educational use) \cite{fade2d}. A focused 2D
+    triangulation library: (constrained) Delaunay triangulations, point
+    location, Boolean operations, and offsetting, marketed toward
+    industrial geometric algorithms. \emph{Good for:} commercial 2D
+    triangulation and polygon offsetting with a permissive commercial
+    model.
+\end{itemize}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{llll}
+\hline
+\textbf{Engine} & \textbf{Language} & \textbf{License} & \textbf{Strength} \\
+\hline
+GEOS            & C++        & LGPL-2.1             & planar booleans, GIS \\
+JTS             & Java       & EDL-1.0              & reference planar ops \\
+Clipper2        & C++/C\#/Python & BSL-1.0           & clipping, offsetting \\
+OpenCascade     & C++        & LGPL-2.1 + exception & 3D CAD/BREP kernel \\
+Fade2D          & C++        & proprietary, free academic & robust 2D triangulation \\
+\hline
+\end{tabular}
+\caption{Polygon and CAD geometry engines.}
+\label{tbl:appsoft_geose}
+\end{table}
+
+A practical observation about this family: the overlay algorithms in
+GEOS and JTS are designed to remain combinatorially consistent in the
+face of floating-point roundoff (they "snap" nearly-coincident vertices
+and nudge intersecting segments), whereas Clipper2 sidesteps the issue
+entirely by using integer coordinates. Neither approach replaces the
+exactness of CGAL's filtered predicates, but both are considerably faster
+on typical GIS or drafting data, which is why they dominate their
+application domains.
 
 \section{Boost.Geometry}
 \label{sec:app_soft_boost}
 
+Boost contributes two header-only C++ libraries for 2D geometry. They
+follow the Boost idiom of generic algorithms over user-supplied geometry
+types, and are a reasonable default when a project already builds on
+Boost.
+
+\begin{itemize}
+  \item \textbf{Boost.Geometry} --- C++ (header-only), part of Boost,
+    open-source (Boost Software License 1.0) \cite{boostgeometry}.
+    Generic algorithms for planar geometry: area, length, perimeter,
+    distance, \texttt{within}, \texttt{intersects}, \texttt{covers},
+    intersection, union, and difference of points, linestrings,
+    polygons, and their multi-versions, buffer construction, convex
+    hull, envelope, and an R-tree spatial index. Algorithms are written
+    against an extensible \emph{concept} interface, so user geometry
+    classes can be plugged in. \emph{Good for:} 2D geometric algorithms
+    in generic C++ code with arbitrary coordinate types.
+  \item \textbf{boost.polygon} --- C++ (header-only), part of Boost,
+    open-source (Boost Software License 1.0) \cite{boostpolygon}.
+    Boolean set operations on polygons with holes for integer
+    coordinates (exact), Voronoi diagrams of points and segments, and
+    polygon layout utilities. Its integer model makes the Boolean
+    operations deterministic and fast; floating-point input is supported
+    only in restricted configurations. \emph{Good for:} fast
+    integer-coordinate polygon Boolean operations and segment Voronoi
+    diagrams.
+\end{itemize}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{llll}
+\hline
+\textbf{Library} & \textbf{Language} & \textbf{License} & \textbf{Focus} \\
+\hline
+Boost.Geometry & C++, header-only & BSL-1.0 & generic 2D algorithms, R-tree \\
+boost.polygon  & C++, header-only & BSL-1.0 & integer polygon booleans, Voronoi \\
+\hline
+\end{tabular}
+\caption{Boost geometry libraries.}
+\label{tbl:appsoft_boost}
+\end{table}
+
+Both libraries are solid engineering but limited in scope compared with
+CGAL: they are 2D-centric, and their Boolean and overlay kernels do not
+make the exactness guarantees that CGAL's filtered predicates provide.
+For tasks confined to the planar algorithms of this book and a codebase
+already committed to Boost, they are an attractive dependency-free choice.
+
 \section{Qhull}
 \label{sec:app_soft_qhull}
+
+Qhull is the classic implementation of the Quickhull algorithm for
+convex hulls, Delaunay triangulations, and Voronoi diagrams in arbitrary
+dimensions \cite{barber1996}. Despite its age it remains the workhorse
+behind most hull and triangulation computations outside CGAL, including
+the numerical-computing ecosystems.
+
+\begin{itemize}
+  \item \textbf{Qhull / libqhull} --- C, open-source (permissive custom
+    license, BSD/MIT-like, with attribution and notice requirements)
+    \cite{barber1996}. Computes convex hulls in 2, 3, and higher
+    dimensions, Delaunay triangulations and their Voronoi duals (by
+    lifting onto the paraboloid, the construction of
+    Chapter~\ref{ch:voronoi_diagrams}), halfspace intersections about a
+    point, and furthest-site Delaunay triangulations. Ships as a
+    command-line program (\texttt{qhull}) and as a re-entrant C library
+    (\texttt{libqhull\_r}); it handles floating-point roundoff by
+    detecting inconsistencies and, when asked, by "joggling" input
+    points, a practical alternative to the exact-predicate approach of
+    Section~\ref{sec:intro_exact_computation}. \emph{Good for:} convex
+    hulls, Delaunay, and Voronoi computations in any dimension, and as
+    the embedded engine of higher-level packages.
+  \item \textbf{scipy.spatial} --- Python, open-source (BSD 3-clause)
+    \cite{scipy}. Wraps Qhull to expose \texttt{ConvexHull},
+    \texttt{Delaunay}, and \texttt{Voronoi} on NumPy arrays; see the
+    SciPy section below. \emph{Good for:} Python access to Qhull without
+    writing C.
+\end{itemize}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{llll}
+\hline
+\textbf{Interface} & \textbf{Language} & \textbf{License} & \textbf{Focus} \\
+\hline
+qhull CLI       & C, command line & Qhull (permissive) & hulls/Delaunay/Voronoi, all dims \\
+libqhull\_r     & C library        & Qhull (permissive) & embedding in C/C++ \\
+scipy.spatial   & Python           & BSD-3             & NumPy-array access to Qhull \\
+\hline
+\end{tabular}
+\caption{Qhull interfaces.}
+\label{tbl:appsoft_qhull}
+\end{table}
+
+Qhull's output is numeric rather than exact: with default options it
+produces a hull and triangulation that are correct up to roundoff, and
+for exact-combinatorics work (for example, when the result must match a
+proof or be bit-for-bit reproducible across platforms) CGAL or an exact
+Delaunay implementation is the safer choice. Its strengths are
+dimensionality, speed, and ubiquity.
 
 \section{Triangle}
 \label{sec:app_soft_triangle}
 
+Triangle, by Jonathan Shewchuk, is the reference 2D mesh generator: a
+carefully engineered C program for constrained Delaunay triangulations
+and quality mesh generation that has served as the research and
+educational benchmark for the subject since the mid-1990s
+\cite{triangle,ruppert1995,shewchuk2002}.
+
+\begin{itemize}
+  \item \textbf{Triangle} --- C, open-source for research and education
+    (a commercial license is required for commercial use)
+    \cite{triangle}. Reads a planar straight-line graph (PSLG) and
+    produces: an unconstrained or constrained Delaunay triangulation, a
+    conforming Delaunay triangulation, or a quality mesh with provable
+    bounds on the minimum angle and maximum triangle area via Delaunay
+    refinement, the algorithm family of
+    Chapter~\ref{ch:mesh_generation} \cite{ruppert1995,shewchuk2002}.
+    Uses Shewchuk's adaptive exact predicates
+    (Section~\ref{sec:intro_exact_computation}, \cite{shewchuk1997}),
+    so its combinatorial decisions are exact even though vertex
+    coordinates are floating point. Output uses the classic
+    \texttt{.node}, \texttt{.ele}, \texttt{.poly}, and \texttt{.neigh}
+    formats. \emph{Good for:} 2D quality meshing for finite elements,
+   and for teaching and verifying the Delaunay-refinement theory.
+\end{itemize}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{ll}
+\hline
+\textbf{Feature} & \textbf{Description} \\
+\hline
+Input & planar straight-line graphs, segment constraints, holes \\
+Delaunay & unconstrained, constrained, conforming Delaunay \\
+Quality & Delaunay refinement with min-angle / max-area control \\
+Exactness & adaptive predicates from \cite{shewchuk1997} \\
+Output & \texttt{.node} / \texttt{.ele} / \texttt{.poly} / \texttt{.neigh} \\
+\hline
+\end{tabular}
+\caption{Triangle at a glance.}
+\label{tbl:appsoft_triangle}
+\end{table}
+
+Triangle is effectively frozen (its author recommends it for research
+and education rather than new production code), but it remains the
+standard against which newer 2D meshers --- CGAL's \texttt{Mesh\_2},
+Gmsh's 2D mesher, and the triangulators of the Python ecosystem --- are
+compared. The algorithms of Chapter~\ref{ch:triangulations} and the
+refinement analysis of Chapter~\ref{ch:mesh_generation} map directly
+onto its behavior.
+
 \section{TetGen}
 \label{sec:app_soft_tetgen}
+
+TetGen is the 3D counterpart of Triangle: a Delaunay-based tetrahedral
+mesh generator for volumes, widely used in finite-element simulation.
+This section also covers the surrounding meshing ecosystem --- Gmsh,
+CGAL's 3D mesher, pygalmesh, MeshLab, and MMG --- so that the reader can
+match a meshing task to a tool.
+
+\begin{itemize}
+  \item \textbf{TetGen} --- C++, open-source (GNU AGPL v3; commercial
+    licenses are available from the Weierstrass Institute)
+    \cite{si2015}. Computes constrained Delaunay tetrahedralizations,
+    quality tetrahedral meshes by Delaunay refinement with control over
+    element size and quality, boundary recovery, and sliver removal.
+    Input is a piecewise linear complex (PLC), the 3D analogue of a
+    PSLG; output uses the TetGen mesh format and the standard
+    \texttt{.node}/\texttt{.ele}/\texttt{.face} set.
+    \emph{Good for:} 3D tetrahedral meshing for finite elements and
+    scientific computing.
+  \item \textbf{Gmsh} --- C++, open-source (GNU GPL v2 or later)
+    \cite{geuzaine2009}. A general 3D finite-element mesh generator with
+    a built-in CAD kernel, an optional OpenCascade geometry interface, a
+    Python-like scripting language, and interactive pre/post-processing
+    tools. Generates 1D, 2D, and 3D unstructured meshes (triangles,
+    quadrangles, tetrahedra, hexahedra, and hybrid meshes), supports
+    high-order elements and mesh size fields, and can run in parallel.
+    \emph{Good for:} end-to-end geometry-to-mesh pipelines in scientific
+    computing, especially with parametric or imported CAD geometry.
+  \item \textbf{CGAL 3D mesh generation} --- C++, open-source
+    (component-dependent license, see Section~\ref{sec:app_soft_cgal})
+    \cite{cgalmanual}. The \texttt{Mesh\_3} package produces tetrahedral
+    meshes of polyhedral or implicit domains (via a signed distance
+    function) with control over element size and shape, preserving
+    sharp features and 1D features; it combines Delaunay refinement
+    with sliver exudation. \emph{Good for:} high-quality tetrahedral
+    meshes with theoretical guarantees, and implicit-domain meshing.
+  \item \textbf{pygalmesh} --- Python/C++, open-source (MIT)
+    \cite{pygalmesh}. A Python wrapper around CGAL's 3D Delaunay
+    refinement that meshes an implicit domain given as a signed distance
+    function, returning the mesh as arrays. \emph{Good for:} Python-side
+    3D meshing of level-set-defined domains.
+  \item \textbf{MeshLab} --- C++/Qt, open-source (GNU GPL v3)
+    \cite{meshllab}. An interactive system for processing unstructured
+    3D triangular meshes built on the VCG library: cleaning and repair
+    (removing duplicate and non-manifold elements), decimation, surface
+    remeshing, curvature and metric computation, and alignment.
+    \emph{Good for:} mesh cleanup, repair, and decimation of scanned or
+    reconstructed surfaces (compare with
+    Chapter~\ref{ch:shape_reconstruction}).
+  \item \textbf{MMG} --- C, open-source (GNU LGPL v3)
+    \cite{mmg}. A suite of mesh-adaptation codes --- \texttt{mmg2d},
+    \texttt{mmgs} (surface), and \texttt{mmg3d} (volume) --- that locally
+    remesh simplicial meshes to match a prescribed (possibly anisotropic)
+    metric, mesh implicit domains from a level-set function, and track
+    moving boundaries. \emph{Good for:} anisotropic metric-based
+    adaptation in CFD and PDE solvers.
+\end{itemize}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{llll}
+\hline
+\textbf{Mesher} & \textbf{Language} & \textbf{License} & \textbf{Focus} \\
+\hline
+TetGen     & C++     & AGPL-3, commercial & tetrahedral meshing \\
+Gmsh       & C++     & GPL-2+             & 3D FEM meshing + CAD \\
+CGAL Mesh\_3 & C++   & GPL/LGPL-3         & quality tet meshing \\
+pygalmesh  & C++/Python & MIT             & implicit domains in Python \\
+MeshLab    & C++/Qt  & GPL-3             & mesh processing/repair \\
+MMG        & C       & LGPL-3             & metric-based adaptation \\
+\hline
+\end{tabular}
+\caption{Meshing software.}
+\label{tbl:appsoft_tetgen}
+\end{table}
+
+The division of labor among these tools mirrors the theory: TetGen and
+CGAL implement Delaunay-refinement with the quality bounds of
+Chapter~\ref{ch:mesh_generation}, Gmsh layers a CAD kernel and a
+scripting interface on top of similar technology, MeshLab operates on
+the output after generation, and MMG re-fines a mesh to match error
+estimates, which is a post-generation step.
 
 \section{SciPy Spatial Algorithms}
 \label{sec:app_soft_scipy}
 
+SciPy is the scientific-computing workhorse of the Python ecosystem; its
+\texttt{scipy.spatial} module is where most Python users first meet
+convex hulls, Delaunay triangulations, Voronoi diagrams, and nearest
+neighbor search. The closely related \texttt{matplotlib.path} module
+supplies fast point-in-polygon tests for plotting and geometry code.
+
+\begin{itemize}
+  \item \textbf{scipy.spatial} --- Python (C and Cython behind NumPy),
+    open-source (BSD 3-clause) \cite{scipy}. Wraps Qhull
+    (Section~\ref{sec:app_soft_qhull}) to provide \texttt{ConvexHull},
+    \texttt{Delaunay}, \texttt{Voronoi}, and \texttt{SphericalVoronoi}
+    on NumPy arrays; also provides \texttt{cKDTree} for fast nearest
+    neighbor and fixed-radius queries (the k-d trees of
+    Chapter~\ref{ch:geometric_data_structures}), the \texttt{distance}
+    module of pairwise metric functions, \texttt{Procrustes} analysis,
+    and the \texttt{transform} module (rotations, Slerp) used in
+    registration. \emph{Good for:} quick, array-oriented hull,
+    triangulation, Voronoi, and nearest-neighbor computations in Python.
+  \item \textbf{matplotlib.path} --- Python, open-source (matplotlib's
+    PSF-derived BSD-style license) \cite{matplotlib}. Implements the
+    \texttt{Path} object, a sequence of line and curve segments with a
+    closed flag, and \texttt{Path.contains\_point} /
+    \texttt{contains\_points}, which test point-in-polygon membership
+    using either the even-odd or the non-zero winding rule. The same
+    object is the basis of drawing polygons in matplotlib figures.
+    \emph{Good for:} point-in-polygon tests, polygon rendering, and
+    lightweight clipping in Python.
+  \item \textbf{matplotlib.tri} --- Python, part of matplotlib
+    \cite{matplotlib}. Builds triangulations on scattered points
+    (delegating to \texttt{scipy.spatial.Delaunay} when available) and
+    produces interpolated contours and surfaces over them.
+    \emph{Good for:} contouring scattered data without a dedicated
+    geometry library.
+\end{itemize}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{ll}
+\hline
+\textbf{Module} & \textbf{Focus} \\
+\hline
+scipy.spatial & hulls, Delaunay, Voronoi, cKDTree, distances \\
+matplotlib.path & point-in-polygon tests, polygon rendering \\
+matplotlib.tri & contouring over triangulated scattered data \\
+\hline
+\end{tabular}
+\caption{SciPy spatial algorithms and matplotlib path utilities.}
+\label{tbl:appsoft_scipy}
+\end{table}
+
+A caution: like Qhull itself, \texttt{scipy.spatial} results are
+combinatorially reliable only up to floating-point precision, and the
+package makes no exactness promises. For computations whose output must
+be certified (or reproducible bit for bit), route them through an
+exact-predicate library instead; the rest of the time, SciPy's speed and
+array interface make it the right default.
+
 \section{Python Geometry Ecosystem}
 \label{sec:app_soft_python}
 
+The Python ecosystem now provides a complete geometry stack, from the
+exact planar engines (Shapely, and the CGAL wrapper
+\texttt{scikit-geometry}) through 3D mesh processing and point clouds
+(PyVista, meshio, trimesh, Open3D) to GIS analysis (GeoPandas) and
+visualization (matplotlib, Plotly, VisPy, vedo, Polyscope).
+
+\begin{itemize}
+  \item \textbf{Shapely} --- Python, open-source (BSD 3-clause)
+    \cite{gillies2007}. A Python binding to GEOS
+    (Section~\ref{sec:app_soft_geose}) that exposes points, lines,
+    polygons, and their collections, with predicates
+    (\texttt{intersects}, \texttt{within}, \texttt{contains}),
+    operations (intersection, union, difference, buffer, convex hull,
+    simplification), distance, and WKT/WKB/GeoJSON input and output.
+    Version 2 rewrote the interface on top of the GEOS C library with
+    NumPy-array (universal function) dispatch, which is also the design
+    that absorbed the earlier standalone \texttt{pygeos} binding
+    (BSD 3-clause); new code should use Shapely 2.0 directly.
+    \emph{Good for:} planar geometric analysis on geographic and
+    drafting data in Python.
+  \item \textbf{scikit-geometry} --- Python, open-source (GNU LGPL v3)
+    \cite{scikitgeometry}. Python bindings (via pybind11) to a curated
+    subset of CGAL, exposing exact-predicate operations: polygon
+    Boolean operations, point location, arrangements, and 2D
+    triangulations. \emph{Good for:} exact geometric computations in
+    Python and as a bridge between the theory chapters and CGAL.
+  \item \textbf{GeoPandas} --- Python, open-source (BSD 3-clause)
+    \cite{geopandas}. Extends pandas with a geometry column type backed
+    by Shapely, providing spatial joins, spatial index queries (STRtree),
+    reading and writing GeoJSON, Shapefile, and other vector formats,
+    and map-style plotting through matplotlib. The GeoJSON format itself
+    (RFC 7946) is the lingua franca of the interchange layer.
+    \emph{Good for:} tabular GIS analysis, the Python analogue of the
+    operations in Chapter~\ref{ch:applications_gis}.
+  \item \textbf{PyVista} --- Python, open-source (MIT) \cite{pyvista}.
+    A high-level interface to the Visualization Toolkit (VTK)
+    \cite{vtk} for 3D mesh plotting and analysis: reading and writing
+    mesh formats, filters for decimation, smoothing, clipping,
+    slicing, contouring, and marching-cubes isosurfacing, plus
+    interactive rendering of surfaces, volumes, and point clouds.
+    \emph{Good for:} interactive 3D visualization and mesh analysis on
+    scientific data.
+  \item \textbf{meshio} --- Python, open-source (MIT) \cite{meshio}.
+    Reads and writes dozens of mesh formats (Gmsh \texttt{.msh}, VTK,
+    STL, OBJ, PLY, Abaqus, Exodus, CGNS, and others) through a single
+    unified mesh object, converting cells of any dimension.
+    \emph{Good for:} mesh format conversion between meshers, solvers,
+    and visualizers.
+  \item \textbf{trimesh} --- Python, open-source (MIT) \cite{trimesh}.
+    A library for working with triangle meshes: loading and saving many
+    formats, watertight repair, Boolean operations (via external
+    engines), slicing and sectioning, cross-section extraction, convex
+    hull, voxelization, and integration with the rest of the ecosystem.
+    \emph{Good for:} mesh processing, repair, and analysis in Python.
+  \item \textbf{Open3D} --- C++ with Python bindings, open-source (MIT)
+    \cite{open3d}. A 3D data processing library aimed at robotics and
+    3D vision: point cloud I/O and filtering, ICP and point-to-plane
+    registration, surface reconstruction (ball pivoting, Poisson, moving
+    least squares), mesh processing, and visualization.
+    \emph{Good for:} point clouds, 3D vision, and reconstruction
+    pipelines (compare with Chapter~\ref{ch:shape_reconstruction}).
+\end{itemize}
+
+Visualization deserves a subsection of its own, since almost every
+geometric algorithm in this book is best debugged by drawing it.
+
+\begin{itemize}
+  \item \textbf{matplotlib} --- Python, open-source (matplotlib license,
+    PSF-derived BSD style) \cite{matplotlib}. The default 2D plotting
+    library: \texttt{plot}, \texttt{scatter}, \texttt{Patch} and
+    \texttt{Polygon} artists, and \texttt{PathPatch} make it the natural
+    place to draw point sets, polygons, triangulations, Voronoi cells,
+    and hulls as figures for this book and for papers.
+    \emph{Good for:} publication-quality 2D figures of geometric
+    structures.
+  \item \textbf{Plotly} --- Python/JavaScript, open-source (MIT)
+    \cite{plotly}. Interactive web-based plots with \texttt{scatter3d},
+    \texttt{mesh3d} (triangle meshes in 3D), and surface traces;
+    good for sharing interactive geometric figures in notebooks and
+    dashboards. \emph{Good for:} interactive, browser-shareable 3D
+    visualizations.
+  \item \textbf{VisPy} --- Python, open-source (BSD 3-clause)
+    \cite{vispy}. GPU-accelerated visualization on top of OpenGL; renders
+    very large point sets, lines, and meshes at interactive rates, with
+    a scene graph and scientific visualization backends.
+    \emph{Good for:} high-performance interactive rendering of large
+    geometric datasets.
+  \item \textbf{vedo} --- Python, open-source (MIT) \cite{vedo}. A
+    VTK-based module for scientific visualization and analysis of 3D
+    objects and point clouds: high-level mesh plotting, slicing, distance
+    computation, animation, and publication-quality rendering.
+    \emph{Good for:} scientific 3D visualization with minimal code.
+  \item \textbf{Polyscope} --- C++ and Python, open-source (MIT)
+    \cite{polyscope}. A lightweight viewer for meshes, point clouds, and
+    scalar/vector fields designed for geometry-processing research;
+    data registered in a few lines of code can be inspected
+    interactively, including picking and clipping.
+    \emph{Good for:} debugging and presenting geometry-processing
+    algorithms.
+  \item \textbf{OpenGL-based tools} --- C++/Python, mixed licenses.
+    When an application needs a custom interactive geometry viewer, the
+    usual route is direct OpenGL (via GLFW or similar windowing
+    frameworks) or a retained-mode toolkit such as VTK \cite{vtk};
+    collision-sensitive rendering pipelines are discussed at length in
+    \cite{vandenbergen2004}. \emph{Good for:} custom viewers and
+    interactive demonstrations of geometric algorithms.
+\end{itemize}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lll}
+\hline
+\textbf{Package} & \textbf{License} & \textbf{Purpose} \\
+\hline
+Shapely          & BSD-3 & planar ops on GEOS \\
+scikit-geometry  & LGPL-3 & CGAL wrappers, exact \\
+GeoPandas        & BSD-3 & GIS data analysis \\
+PyVista          & MIT   & 3D mesh plotting/analysis \\
+meshio           & MIT   & mesh format conversion \\
+trimesh          & MIT   & mesh processing/repair \\
+Open3D           & MIT   & point clouds, 3D vision \\
+matplotlib       & matplotlib & 2D plotting \\
+Plotly           & MIT   & interactive web plots \\
+VisPy            & BSD-3 & GPU rendering \\
+vedo             & MIT   & scientific 3D viz \\
+Polyscope        & MIT   & geometry-processing viewer \\
+\hline
+\end{tabular}
+\caption{Python geometry and visualization packages.}
+\label{tbl:appsoft_python}
+\end{table}
+
 \section{Choosing a Library}
 \label{sec:app_soft_choosing}
+
+No single library dominates every task, and the right choice is usually
+determined by five questions: \emph{what} algorithm family is needed,
+\emph{how many} dimensions, whether \emph{exactness} is required,
+which \emph{language and ecosystem} the project uses, and what
+\emph{license} the deliverable can tolerate.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lp{10cm}}
+\hline
+\textbf{Task} & \textbf{Recommended libraries} \\
+\hline
+Convex hull, Delaunay, Voronoi (2D/3D+) & Qhull, scipy.spatial (numeric); CGAL (exact) \\
+Exact planar arrangements and subdivisions & CGAL arrangements; scikit-geometry (Python) \\
+Planar boolean/overlay on GIS data & GEOS, JTS, Shapely \\
+Polygon clipping and offsetting & Clipper2 (integer); GEOS buffer (floating point) \\
+2D quality meshing & Triangle (research); CGAL Mesh\_2, Gmsh \\
+3D tetrahedral meshing & TetGen, Gmsh, CGAL Mesh\_3; pygalmesh (Python) \\
+Mesh adaptation to a metric & MMG \\
+Mesh cleanup and repair & MeshLab, trimesh, PyVista \\
+CAD geometry and STEP/IGES & OpenCascade \\
+GIS analysis in Python & Shapely, GeoPandas \\
+3D vision and point clouds & Open3D \\
+2D visualization & matplotlib \\
+3D visualization & vedo, Polyscope, PyVista, Plotly \\
+\hline
+\end{tabular}
+\caption{Task-oriented library selection.}
+\label{tbl:appsoft_choose}
+\end{table}
+
+The central trade-off is the one that pervades this book: \emph{exact
+computation versus floating-point speed}. The exactness spectrum, from
+most to least conservative, is
+
+\begin{itemize}
+  \item \textbf{Shewchuk's robust predicates} --- C, open-source
+    (unrestricted free use) \cite{shewchuk1997}. The adaptive
+    orientation, in-circle, and in-sphere predicates that are the
+    standard building block for triangulation, hull, and Voronoi code;
+    nearly as fast as plain floating-point evaluation on typical input.
+    \emph{Good for:} implementing the predicate layer of
+    Chapter~\ref{ch:geometric_predicates} in your own code.
+  \item \textbf{CGAL exact number types and kernels} --- C++, open-source
+    \cite{cgalmanual}. Filtered exact arithmetic (Gmpz/Gmpq,
+    \texttt{Lazy\_exact\_nt}) applied at the kernel level, so whole
+    algorithms --- not just individual predicates --- are exact.
+    \emph{Good for:} full-algorithm exactness guarantees.
+  \item \textbf{GMP} --- C, open-source (dual GPL v3 and LGPL v3)
+    \cite{gmp}. The GNU Multiple Precision Arithmetic Library: bignum
+    integers and rationals at high speed, the underlying engine for the
+    exact kernels above. \emph{Good for:} multiprecision integer and
+    rational arithmetic as a building block.
+  \item \textbf{MPFR} --- C, open-source (GNU LGPL v3) \cite{mpfr}.
+    Arbitrary-precision binary floating point with correct rounding for
+    each elementary operation, useful when the geometry is numerical but
+    the precision budget must be controllable. \emph{Good for:}
+    high-precision floating-point geometry with a certified rounding
+    model.
+\end{itemize}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{llll}
+\hline
+\textbf{Library} & \textbf{Language} & \textbf{License} & \textbf{Provides} \\
+\hline
+Shewchuk predicates & C          & free use & adaptive orientation/in-circle \\
+CGAL kernels        & C++        & GPL/LGPL-3 & filtered exact arithmetic \\
+GMP                 & C          & GPL-3/LGPL-3 & bignum integers, rationals \\
+MPFR                & C          & LGPL-3 & correctly rounded big floats \\
+\hline
+\end{tabular}
+\caption{Robust arithmetic and predicate libraries.}
+\label{tbl:appsoft_robust}
+\end{table}
+
+A pragmatic rule used throughout the accompanying CompGeom package, and
+recommended here: implement with adaptive predicates from the start
+\cite{shewchuk1997}; use exact kernels only where the output structure
+must be certified (arrangements, Boolean operations, mesh combinatorics);
+and reserve epsilon-tolerance tricks for genuinely numerical
+measurements, never for combinatorial predicates --- the failure modes
+are exactly the ones catalogued in
+Sections~\ref{sec:intro_robustness}--\ref{sec:intro_exact_computation}.
+For a general, well-tested textbook baseline, the design of
+\cite{deberg2008} (and the closely related \cite{berg2008}) is what the
+majority of the field implements in one form or another.
+
+Community and reference resources round out the survey. The \emph{CGAL
+User and Reference Manual} and its tutorials \cite{cgalmanual} are the
+most complete documentation of practical computational geometry in
+existence. The \emph{Journal of Computational Geometry} \cite{jocg} is
+the field's free, open-access journal and a reliable source of the
+theory behind the libraries. Finally, the repository of the CompGeom
+package that accompanies this book follows the conventions described in
+Appendix~\ref{app:implementation_guide}: one module per algorithm
+chapter, pseudocode mirrored by Python implementations, and a test suite
+that includes the degenerate cases discussed in each chapter. That
+layout is itself a model worth copying --- for a geometry project, the
+tests are the only place where the difference between "robust in theory"
+and "robust in practice" becomes visible.
+
+One closing caveat. The software landscape is fast-moving: licenses do
+change (several libraries listed here re-licensed themselves over the
+past decade), APIs evolve, and projects fall into and out of
+maintenance. The profiles above are accurate as of the writing of this
+book, but any project committed to a specific library should re-check
+its license and maintenance status before depending on it for
+production work.

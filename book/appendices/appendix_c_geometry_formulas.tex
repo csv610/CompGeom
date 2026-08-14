@@ -1,28 +1,1034 @@
 \chapter{Geometry Formula Reference}
 \label{app:geometry_formulas}
 
-% Stub: outline only; content to be written.
+This appendix is a formula-level reference for the geometry used throughout
+the book. It collects the exact predicates, distances, intersection
+conditions, circle and sphere identities, measures, and coordinate
+transformations that the algorithms rely on, each stated with its
+preconditions and with pointers to the chapters that use it. Notation
+follows Chapter~\ref{ch:math_foundations} and Appendix~\ref{app:math_reference}:
+lowercase $p,q,r$ denote points and $u,v,w$ vectors in $\mathbb{R}^d$;
+$\langle u,v\rangle$ is the dot product and $\|v\| = \sqrt{\langle v,v\rangle}$
+the Euclidean norm; $u\times v$ is the scalar cross product in
+$\mathbb{R}^2$ and the vector cross product in $\mathbb{R}^3$. Polygons are
+oriented counterclockwise (CCW) and tetrahedra positively (right-handed)
+unless stated otherwise. Standard references for this material are
+\cite{deberg2008}, \cite{preparata1985}, \cite{weisstein2004}, and, for the
+numerical side, \cite{higham2002}. Appendix~\ref{app:implementation_guide}
+discusses when the floating-point versions of these formulas can be trusted.
 
 \section{Vector Operations}
 \label{sec:app_formulas_vectors}
 
+\medskip\noindent\textbf{Dot product, norm, and angle.}
+\index{dot product}\index{angle between vectors}
+For vectors $u,v \in \mathbb{R}^d$,
+\[
+  \langle u, v\rangle = \sum_{i=1}^d u_i v_i,
+  \qquad
+  \cos\theta = \frac{\langle u,v\rangle}{\|u\|\,\|v\|},
+\]
+where $\theta \in [0,\pi]$ is the angle between two nonzero vectors. By
+Cauchy--Schwarz (Theorem~\ref{thm:math_cauchy_schwarz}),
+$|\langle u,v\rangle| \le \|u\|\,\|v\|$, so $|\cos\theta|\le 1$ and
+$u \perp v$ iff $\langle u,v\rangle = 0$. The angle is obtained as
+$\theta = \arccos(\langle u,v\rangle / (\|u\|\|v\|))$, computed stably by
+$\operatorname{atan2}(\|u\times v\|, \langle u,v\rangle)$ in the plane.
+Used in Chapter~\ref{ch:math_foundations} (Section~\ref{sec:math_inner_products})
+and in every closest-point computation of Chapter~\ref{ch:distance_paths}.
+
+\medskip\noindent\textbf{Scalar cross product in $\mathbb{R}^2$.}
+\index{cross product}
+For $u = (u_x, u_y)$ and $v = (v_x, v_y)$,
+\[
+  u\times v \;=\; u_x v_y - u_y v_x
+  \;=\; \det\begin{pmatrix} u_x & v_x \\ u_y & v_y \end{pmatrix}
+  \;=\; \|u\|\,\|v\|\,\sin\theta,
+\]
+the signed area of the parallelogram spanned by $u$ and $v$: positive when
+the rotation from $u$ to $v$ is counterclockwise, zero iff $u$ and $v$ are
+parallel. This is the algebraic core of the orientation test
+(Section~\ref{sec:app_formulas_orientation}). Used in
+Chapter~\ref{ch:geometric_predicates} and Chapter~\ref{ch:convex_hulls}.
+
+\medskip\noindent\textbf{Vector cross product in $\mathbb{R}^3$.}
+\index{cross product}
+For $u, v \in \mathbb{R}^3$,
+\[
+  u\times v = (u_2 v_3 - u_3 v_2,\; u_3 v_1 - u_1 v_3,\; u_1 v_2 - u_2 v_1),
+\]
+the unique vector perpendicular to both $u$ and $v$ with
+$\|u\times v\| = \|u\|\,\|v\|\,\sin\theta$ (area of the spanned
+parallelogram) and direction given by the right-hand rule. Lagrange's
+identity gives
+\[
+  \|u\times v\|^2 = \|u\|^2\|v\|^2 - \langle u,v\rangle^2,
+\]
+which is the numerically stable way to evaluate $\|u\times v\|$ for
+near-parallel vectors. Used in Chapter~\ref{ch:polyhedral_geometry}
+(normals and volumes), Chapter~\ref{ch:curves_surfaces} (surface normals),
+and Chapter~\ref{ch:applications_graphics}.
+
+\medskip\noindent\textbf{Scalar triple product.}
+\index{scalar triple product}
+For $u, v, w \in \mathbb{R}^3$,
+\[
+  \langle u,\, v\times w\rangle
+  = \det\begin{pmatrix} u_x & u_y & u_z \\ v_x & v_y & v_z \\ w_x & w_y & w_z \end{pmatrix},
+\]
+the signed volume of the parallelepiped spanned by $u, v, w$
+(Section~\ref{sec:app_math_determinants}); it is invariant under cyclic
+permutations and changes sign under transpositions. Its absolute value
+yields tetrahedron volumes in Section~\ref{sec:app_formulas_areas_volumes}.
+Used in Chapter~\ref{ch:polyhedral_geometry}.
+
+\medskip\noindent\textbf{Projection onto a vector.}
+\index{projection}
+For $v \neq \mathbf{0}$,
+\[
+  \operatorname{proj}_v u = \frac{\langle u,v\rangle}{\langle v,v\rangle}\,v,
+  \qquad
+  u = \operatorname{proj}_v u \;+\; \bigl(u - \operatorname{proj}_v u\bigr),
+\]
+where the residual $u - \operatorname{proj}_v u$ is orthogonal to $v$, and
+$\|\operatorname{proj}_v u\| = |\langle u,v\rangle| / \|v\|$ is the length
+of the orthogonal projection. Used in Chapter~\ref{ch:distance_paths}
+(closest points on lines) and Chapter~\ref{ch:geometric_matching}
+(projection steps in registration).
+
+\medskip\noindent\textbf{Angle bisectors and perpendicular bisectors.}
+\index{angle bisector}
+For two nonzero, non-opposite vectors $u$ and $v$ the internal angle
+bisector has direction
+\[
+  b = \frac{u}{\|u\|} + \frac{v}{\|v\|},
+\]
+and the external bisector has direction
+$b' = u/\|u\| - v/\|v\|$, with $b \perp b'$; every vector making equal
+angle with $u$ and $v$ is parallel to $b$. The locus of points equidistant
+from two points $p$ and $q$ is the perpendicular bisector
+\[
+  \operatorname{bis}(p,q) = \bigl\{ x : \|x-p\| = \|x-q\| \bigr\}
+  \;\Longleftrightarrow\;
+  \langle x,\, q-p\rangle = \frac{\|q\|^2 - \|p\|^2}{2},
+\]
+a hyperplane perpendicular to the segment $[p,q]$ (a line in $\mathbb{R}^2$,
+a plane in $\mathbb{R}^3$). For two lines given by
+$\langle n_i, x\rangle = c_i$, the two angle-bisector lines satisfy
+\[
+  \frac{\langle n_1, x\rangle - c_1}{\|n_1\|}
+  = \pm\ \frac{\langle n_2, x\rangle - c_2}{\|n_2\|},
+\]
+the equal-distance locus. Used in Chapter~\ref{ch:voronoi_diagrams}, where
+Voronoi cells are intersections of perpendicular-bisector half-spaces and
+line-site diagrams use the line bisectors (Section~\ref{sec:voronoi_segments}).
+
+\index{vector operations}\index{perpendicular bisector}
+
 \section{Orientation Tests}
 \label{sec:app_formulas_orientation}
+
+Orientation predicates assign to an ordered tuple of points the sign of a
+determinant; they encode sidedness, collinearity, concyclicity, and
+coplanarity, and they are the decisions on which most algorithms hinge.
+The signs below are exactly those implemented by the robust predicates of
+Chapter~\ref{ch:geometric_predicates}.
+
+\medskip\noindent\textbf{2D orientation (sidedness).}
+\index{orientation}
+\index{predicate}
+For points $p, q, r$ in the plane,
+\[
+  \operatorname{orient}(p,q,r) =
+  \det\begin{pmatrix}
+    1 & 1 & 1\\ p_x & q_x & r_x\\ p_y & q_y & r_y
+  \end{pmatrix}
+  = (q-p)\times(r-p)
+  = (q_x-p_x)(r_y-p_y) - (q_y-p_y)(r_x-p_x).
+\]
+The value is positive iff $r$ lies strictly to the left of the directed
+line $p\to q$ (the turn $p, q, r$ is CCW), negative iff to the right, and
+zero iff $p, q, r$ are collinear. It equals twice the signed area of the
+triangle $pqr$ (Section~\ref{sec:math_signed_area_volume}). Used in
+Chapter~\ref{ch:geometric_predicates} (Section~\ref{sec:orientation_predicate}),
+Chapter~\ref{ch:convex_hulls} (Sections~\ref{sec:graham_scan} and
+\ref{sec:monotone_chain}), Chapter~\ref{ch:segment_intersection}, and
+Chapter~\ref{ch:point_location}.
+
+\medskip\noindent\textbf{3D orientation (coplanarity).}
+\index{orientation}
+For points $p, q, r, s$ in $\mathbb{R}^3$,
+\[
+  \operatorname{orient}(p,q,r,s) =
+  \det\begin{pmatrix}
+    1 & 1 & 1 & 1\\
+    p_x & q_x & r_x & s_x\\
+    p_y & q_y & r_y & s_y\\
+    p_z & q_z & r_z & s_z
+  \end{pmatrix}
+  = \bigl\langle (q-p)\times(r-p),\, s-p\bigr\rangle,
+\]
+which is six times the signed volume of the tetrahedron $pqrs$. The value
+is positive iff $s$ lies on the positive side of the oriented plane through
+$p, q, r$ and zero iff the four points are coplanar. Used in
+Chapter~\ref{ch:geometric_predicates} (Section~\ref{sec:orientation3d_predicate}),
+Chapter~\ref{ch:convex_polytopes}, and Chapter~\ref{ch:mesh_generation}.
+
+\medskip\noindent\textbf{In-circle test.}
+\index{in-circle test}
+For $a, b, c, d$ with $a, b, c$ counterclockwise,
+\[
+  \operatorname{incircle}(a,b,c,d) =
+  \det\begin{pmatrix}
+    a_x & a_y & a_x^2 + a_y^2 & 1\\
+    b_x & b_y & b_x^2 + b_y^2 & 1\\
+    c_x & c_y & c_x^2 + c_y^2 & 1\\
+    d_x & d_y & d_x^2 + d_y^2 & 1
+  \end{pmatrix},
+\]
+which is positive iff $d$ lies strictly inside the circle through
+$a, b, c$. It is the sign of the position of the lifted point
+$\hat d = (d_x, d_y, d_x^2 + d_y^2)$ with respect to the plane through the
+lifted points $\hat a, \hat b, \hat c$ on the paraboloid
+$z = x^2 + y^2$ (Section~\ref{sec:delaunay_lifting}). Used in
+Chapter~\ref{ch:delaunay_triangulations} (Section~\ref{sec:incircle_predicate},
+Definition~\ref{def:incircle}) and Chapter~\ref{ch:geometric_predicates}.
+
+\medskip\noindent\textbf{In-sphere test.}
+\index{in-sphere test}
+The three-dimensional analogue for $a, b, c, d, e$,
+\[
+  \operatorname{insphere}(a,b,c,d,e) =
+  \det\begin{pmatrix}
+    a_x & a_y & a_z & a_x^2+a_y^2+a_z^2 & 1\\
+    b_x & b_y & b_z & b_x^2+b_y^2+b_z^2 & 1\\
+    c_x & c_y & c_z & c_x^2+c_y^2+c_z^2 & 1\\
+    d_x & d_y & d_z & d_x^2+d_y^2+d_z^2 & 1\\
+    e_x & e_y & e_z & e_x^2+e_y^2+e_z^2 & 1
+  \end{pmatrix},
+\]
+is positive iff $e$ lies strictly inside the sphere through $a, b, c, d$,
+for a positively oriented quadruple $a, b, c, d$; it is the in-circle
+predicate lifted one dimension. Used in Chapter~\ref{ch:geometric_predicates}
+(Section~\ref{sec:three_dimensional_predicates}) and in 3D Delaunay
+constructions of Chapter~\ref{ch:delaunay_triangulations}.
+
+A zero determinant always marks a degenerate configuration: collinear,
+coplanar, concyclic, or cospherical points. Algorithms therefore assume
+general position and handle degeneracies separately
+(Chapter~\ref{ch:introduction}, Section~\ref{sec:intro_degeneracies}).
+
+\subsection{Robustness Constants and Error Bounds}
+\label{sec:appform_robustness}
+\index{machine epsilon}\index{unit roundoff}\index{floating-point}
+
+In binary floating point with a $p$-bit significand, arithmetic is exact
+only up to a relative error bounded by the \emph{unit roundoff}
+$u = 2^{-p}$: for $\odot \in \{+, -, \times, \div\}$,
+\[
+  \operatorname{fl}(a \odot b) = (a \odot b)\,(1 + \delta),
+  \qquad |\delta| \le u,
+\]
+and the \emph{machine epsilon} is $\varepsilon = 2u = 2^{1-p}$. The standard
+precisions are collected below (\cite{higham2002}, Chapter 2):
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+format & significand $p$ & unit roundoff $u$ & machine epsilon $\varepsilon$ \\
+\midrule
+binary32 (single)  & $24$  & $2^{-24} \approx 5.96\times10^{-8}$  & $2^{-23} \approx 1.19\times10^{-7}$ \\
+binary64 (double)  & $53$  & $2^{-53} \approx 1.11\times10^{-16}$ & $2^{-52} \approx 2.22\times10^{-16}$ \\
+extended (80-bit)  & $64$  & $2^{-64} \approx 5.42\times10^{-20}$ & $2^{-63} \approx 1.08\times10^{-19}$ \\
+binary128 (quad)   & $113$ & $2^{-113} \approx 9.63\times10^{-35}$ & $2^{-112} \approx 1.93\times10^{-34}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A useful shorthand is the factor
+\[
+  \gamma_n = \frac{n\,u}{1 - n\,u},
+\]
+which bounds the accumulated relative error of a computation of $n$
+floating-point operations. For example, the computed dot product of two
+$n$-vectors satisfies
+\[
+  \bigl|\operatorname{fl}\bigl(\textstyle\sum_{i=1}^n x_i y_i\bigr)
+  - \langle x, y\rangle\bigr|
+  \le \gamma_n \sum_{i=1}^n |x_i y_i|
+\]
+(\cite{higham2002}, Chapter 3), so cancellation of nearly equal
+large-magnitude terms is the danger.
+
+For the 2D orientation test with coordinates bounded by $B$
+($|p_x|,|p_y|,\dots \le B$), the seven operations of the standard formula
+yield the first-order absolute error bound
+\[
+  \bigl|\widehat{\operatorname{orient}}(p,q,r) - \operatorname{orient}(p,q,r)\bigr|
+  \le 28\,u\,B^2 + O(u^2 B^2);
+\]
+the sign is therefore reliable whenever $|\operatorname{orient}|$ exceeds
+the bound, which is the principle behind the error filters and adaptive
+exact evaluation of Section~\ref{sec:floating_point_filters} and
+Section~\ref{sec:robust_predicates}; the tight constants are worked out by
+\cite{shewchuk1997}. In Appendix~\ref{app:implementation_guide} the same
+constants appear as the predicates' epsilon thresholds
+(Sections~\ref{sec:appimpl_machine_eps} and \ref{sec:appimpl_adaptive}).
+
+For a determinant, the condition number under componentwise perturbations
+is the ratio of the sum of the absolute values of the permutation products
+to the determinant itself: writing $a_{ij}$ for the entries of an
+$n\times n$ matrix $A$ and $\widehat a_{ij} = a_{ij}(1+\varepsilon_{ij})$
+with $|\varepsilon_{ij}| \le u$,
+\[
+  |\det\widehat A - \det A|
+  \le u \sum_{\sigma \in S_n}\prod_{i=1}^n |a_{i,\sigma(i)}| + O(u^2),
+\]
+so the relative condition number of the determinant is
+\[
+  \kappa = \frac{\sum_{\sigma \in S_n}\prod_i |a_{i,\sigma(i)}|}{|\det A|},
+\]
+which is enormous precisely when the rows or columns are nearly dependent,
+i.e., when the geometric configuration is nearly degenerate
+(\cite{higham2002}, Section 12.3). This is why near-zero determinants must
+not be evaluated in floating point without a filter; exact arithmetic
+(Section~\ref{sec:exact_arithmetic}) removes the problem entirely.
+
+\index{orientation tests}\index{condition number}
 
 \section{Distance Formulas}
 \label{sec:app_formulas_distances}
 
+\medskip\noindent\textbf{Point to line.}
+\index{point-line distance}
+For a point $q$ and a line $\ell = \{ p + t v : t \in \mathbb{R} \}$ with
+$v \neq \mathbf{0}$,
+\[
+  \operatorname{dist}(q, \ell) = \frac{\|(q - p)\times v\|}{\|v\|},
+\]
+using the scalar cross product in $\mathbb{R}^2$ and the vector cross
+product in $\mathbb{R}^3$. Equivalently, for a line in normal form
+$\langle n, x\rangle = c$, the signed distance is
+$\delta(q) = (\langle n, q\rangle - c)/\|n\|$ and
+$\operatorname{dist}(q, \ell) = |\delta(q)|$ (Section~\ref{sec:math_lines_hyperplanes}).
+Used in Chapter~\ref{ch:distance_paths} and in the walking point-location
+of Chapter~\ref{ch:point_location}.
+
+\medskip\noindent\textbf{Point to plane.}
+\index{point-plane distance}
+For a point $q$ and a plane $H = \{ x : \langle n, x\rangle = c \}$ with
+$n \neq \mathbf{0}$,
+\[
+  \operatorname{dist}(q, H) = \frac{|\langle n, q\rangle - c|}{\|n\|},
+\]
+with signed version $\delta(q) = (\langle n, q\rangle - c)/\|n\|$
+positive on the side pointed to by $n$. The same formula (with
+$n = (a,b)$, $c = -d$) covers a line in $\mathbb{R}^2$. Used in
+Chapter~\ref{ch:distance_paths} and Chapter~\ref{ch:convex_polytopes}.
+
+\medskip\noindent\textbf{Point to segment.}
+\index{point-segment distance}
+For a point $q$ and the segment $[p,\, p+v]$, $v \neq \mathbf{0}$, the
+closest point is $p + t^* v$ with the projection parameter clamped to the
+segment:
+\[
+  t^* = \min\Bigl(1,\ \max\Bigl(0,\ \frac{\langle q-p, v\rangle}{\langle v, v\rangle}\Bigr)\Bigr),
+  \qquad
+  \operatorname{dist}\bigl(q,\,[p,\, p+v]\bigr) = \|q - p - t^* v\|.
+\]
+Used in Chapter~\ref{ch:distance_paths}, Chapter~\ref{ch:proximity}, and
+Chapter~\ref{ch:motion_planning} (distance to a robot link).
+
+\medskip\noindent\textbf{Between two lines in $\mathbb{R}^3$.}
+\index{line-line distance}
+For skew lines $p + t v$ and $q + s w$ with $v\times w \neq \mathbf{0}$,
+the distance between the lines is
+\[
+  \operatorname{dist}(\ell_1, \ell_2)
+  = \frac{\bigl|\langle q - p,\, v\times w\rangle\bigr|}{\|v\times w\|},
+\]
+the absolute scalar triple product divided by the area of the direction
+parallelogram; the closest points are $p + t^* v$ and $q + s^* w$ where
+$(t^*, s^*)$ solves the $2\times 2$ system of
+Section~\ref{sec:app_formulas_intersections}. For parallel lines
+($v\times w = \mathbf{0}$) the distance reduces to the point-to-line
+distance from any point of one line to the other. Used in
+Chapter~\ref{ch:distance_paths} and Chapter~\ref{ch:convex_intersection}.
+
+\medskip\noindent\textbf{Between two segments (2D and 3D).}
+\index{segment-segment distance}
+The distance between segments $[p, p+v]$ and $[q, q+w]$ is the minimum
+\[
+  \min_{s,t \in [0,1]} \bigl\| p + t\,v - q - s\,w \bigr\|^2,
+\]
+a convex quadratic in $(t, s)$. Its interior critical point solves
+\[
+  \begin{pmatrix}
+    \langle v,v\rangle & -\langle v,w\rangle\\
+    -\langle v,w\rangle & \langle w,w\rangle
+  \end{pmatrix}
+  \begin{pmatrix} t \\ s \end{pmatrix}
+  = \begin{pmatrix} \langle v,\, q-p\rangle \\ \langle w,\, q-p\rangle \end{pmatrix},
+\]
+and the minimum over the box $[0,1]^2$ is either this point (when it lies
+inside) or is attained on the boundary, which is a point-segment distance;
+the closest points are returned along with the distance. In $\mathbb{R}^2$
+the two segments intersect iff this minimum is zero, which is decided
+directly by the orientation products of Section~\ref{sec:app_formulas_intersections}.
+Used in Chapter~\ref{ch:distance_paths} (closest-pair-adjacent queries)
+and Chapter~\ref{ch:motion_planning} (clearance of link chains).
+
+\medskip\noindent\textbf{Between parallel planes.}
+For parallel planes $\langle n, x\rangle = c_1$ and
+$\langle n, x\rangle = c_2$ (same normal, up to scaling),
+\[
+  \operatorname{dist}(H_1, H_2) = \frac{|c_1 - c_2|}{\|n\|}.
+\]
+Used in Chapter~\ref{ch:convex_polytopes} and
+Chapter~\ref{ch:applications_graphics} (slab tests).
+
+\index{distances}\index{closest point}
+
 \section{Intersection Formulas}
 \label{sec:app_formulas_intersections}
+
+\medskip\noindent\textbf{Two lines in $\mathbb{R}^2$.}
+\index{line-line intersection}
+For lines $p + t v$ and $q + s w$ with $v \times w \neq 0$,
+\[
+  t = \frac{(q - p)\times w}{v \times w},
+  \qquad
+  s = \frac{(q - p)\times v}{v \times w},
+\]
+and the intersection point is $p + t v = q + s w$. If
+$v \times w = 0$ the lines are parallel: coincident (no unique
+intersection) or disjoint. Used in Chapter~\ref{ch:segment_intersection},
+Chapter~\ref{ch:geometric_duality}, and Chapter~\ref{ch:applications_graphics}.
+
+\medskip\noindent\textbf{Two segments in $\mathbb{R}^2$.}
+\index{segment intersection}
+The closed segments $[a, b]$ and $[c, d]$ intersect iff the endpoints of
+each straddle the line of the other:
+\[
+  \operatorname{orient}(a,b,c)\cdot\operatorname{orient}(a,b,d) \le 0
+  \qquad\text{and}\qquad
+  \operatorname{orient}(c,d,a)\cdot\operatorname{orient}(c,d,b) \le 0,
+\]
+where equality holds exactly for boundary contact (an endpoint on the other
+segment, or overlapping collinear segments, which are then reduced to a
+1D overlap test). Used in Chapter~\ref{ch:segment_intersection}
+(Section~\ref{sec:segint_pairwise}).
+
+\medskip\noindent\textbf{Line and plane in $\mathbb{R}^3$.}
+\index{line-plane intersection}
+For the line $p + t v$ and the plane $\langle n, x\rangle = c$,
+\[
+  t = \frac{c - \langle n, p\rangle}{\langle n, v\rangle},
+  \qquad\text{provided } \langle n, v\rangle \neq 0,
+\]
+and the intersection point is $p + t v$; if $\langle n, v\rangle = 0$ the
+line is parallel to the plane (contained or disjoint). Used in
+Chapter~\ref{ch:applications_graphics} (Section~\ref{sec:graphics_ray_intersection})
+and Chapter~\ref{ch:convex_polytopes}.
+
+\medskip\noindent\textbf{Two planes in $\mathbb{R}^3$.}
+\index{plane-plane intersection}
+The planes $\langle n_1, x\rangle = c_1$ and $\langle n_2, x\rangle = c_2$
+with $n_1\times n_2 \neq \mathbf{0}$ meet in a line with direction
+\[
+  d = n_1 \times n_2
+\]
+through any point $p_0$ satisfying the two equations; a convenient choice
+solves the $2\times 3$ system
+\[
+  \begin{pmatrix} n_1^\top \\ n_2^\top \end{pmatrix} p_0
+  = \begin{pmatrix} c_1 \\ c_2 \end{pmatrix}
+\]
+for the component of $p_0$ along the direction of largest pivot
+(Section~\ref{sec:app_math_linear_algebra}). If $n_1\times n_2 = \mathbf{0}$
+the planes are parallel. Used in Chapter~\ref{ch:convex_intersection}
+(separating planes) and Chapter~\ref{ch:convex_polytopes} (facet-plane
+interactions).
+
+\medskip\noindent\textbf{Ray and triangle (M\"oller--Trumbore).}
+\index{ray-triangle intersection}
+Let the triangle have vertices $v_0, v_1, v_2$, ray origin $O$, and unit
+direction $d$. Writing the hit point in barycentric coordinates of
+Section~\ref{sec:app_formulas_barycentric}, the ray intersects the triangle
+where
+\[
+  E_1\,u + E_2\,v + d\,t = T,
+  \qquad
+  E_1 = v_1 - v_0,\quad E_2 = v_2 - v_0,\quad T = O - v_0,
+\]
+which Cramer's rule solves as
+\[
+  u = \frac{\langle T,\, d\times E_2\rangle}{\langle E_1,\, d\times E_2\rangle},
+  \qquad
+  v = \frac{\langle d,\, T\times E_1\rangle}{\langle E_1,\, d\times E_2\rangle},
+  \qquad
+  t = \frac{\langle E_2,\, T\times E_1\rangle}{\langle E_1,\, d\times E_2\rangle}.
+\]
+The ray hits iff $t \ge 0$, $u \ge 0$, $v \ge 0$, and $u + v \le 1$, with
+$\langle E_1, d\times E_2\rangle = 0$ the parallel (miss) case. Used in
+Chapter~\ref{ch:applications_graphics} (Section~\ref{sec:graphics_ray_intersection})
+and in the Monte Carlo volume estimates of Chapter~\ref{ch:sampling}.
+
+\subsection{Arrangements and Counting Formulas}
+\label{sec:appform_counting}
+\index{arrangement}\index{Euler formula}
+
+\medskip\noindent\textbf{Arrangement of lines.}
+For an arrangement of $n$ lines in general position (no two parallel, no
+three concurrent), the numbers of cells are
+\[
+  V = \binom{n}{2} = \frac{n(n-1)}{2},
+  \qquad
+  E = n^2,
+  \qquad
+  F = \frac{n(n+1)}{2} + 1
+\]
+vertices, edges, and faces (including the unbounded face); here the graph
+relation reads $V - E + F = 1$ because the unbounded rays have a single
+endpoint, and treating the point at infinity restores $V - E + F = 2$
+(\cite{deberg2008}, Chapter 8). Used in Chapter~\ref{ch:segment_intersection}
+(Section~\ref{sec:line_arrangements}), Chapter~\ref{ch:envelopes}, and
+Chapter~\ref{ch:geometric_duality}.
+
+\begin{theorem}[Zone Theorem]\label{thm:appform_zone}
+  In an arrangement of $n$ lines the zone of any line has $O(n)$ edges;
+  in an arrangement of $n$ line segments the zone of a segment has
+  complexity $O(n\,\alpha(n))$, where $\alpha$ is the inverse
+  Ackermann function (\cite{deberg2008}, Chapter 8).
+\end{theorem}
+The zone theorem drives the complexity of the sweep of
+Chapter~\ref{ch:segment_intersection} and the randomized incremental
+constructions of Chapter~\ref{ch:randomized_algorithms}.
+
+\medskip\noindent\textbf{Planar graphs.}
+\index{planar graph}
+For a connected planar map with $V$ vertices, $E$ edges, and $F$ faces
+(including the unbounded face), Euler's formula holds:
+\[
+  V - E + F = 2
+\]
+(\cite{euler1758}); equivalently $E \le 3V - 6$ and $F \le 2V - 4$ for a
+triangulation of $V \ge 3$ vertices. Used in Chapter~\ref{ch:computational_topology}
+(Section~\ref{sec:euler_characteristic}), Chapter~\ref{ch:half_edge}
+(Section~\ref{sec:halfedge_complexity}), and Chapter~\ref{ch:mesh_analysis}.
+
+\medskip\noindent\textbf{Triangulation counts.}
+A triangulation of a simple polygon with $n$ vertices has
+\[
+  T = n - 2 \text{ triangles}, \qquad
+  E = 2n - 3 \text{ edges (incl.\ boundary)}, \qquad
+  n - 3 \text{ diagonals}.
+\]
+A triangulation of a point set of $n$ points, $h$ of them on the convex
+hull, has
+\[
+  T = 2n - 2 - h \text{ triangles}, \qquad
+  E = 3n - 3 - h \text{ edges}.
+\]
+Used in Chapter~\ref{ch:triangulations}, Chapter~\ref{ch:polygon_partitioning},
+Chapter~\ref{ch:art_gallery}, and Chapter~\ref{ch:delaunay_triangulations}.
+
+\medskip\noindent\textbf{Series used in complexity analysis.}
+\index{series}\index{harmonic number}
+The following sums appear throughout the randomized and expected-time
+analyses of Chapters~\ref{ch:randomized_algorithms},
+\ref{ch:delaunay_triangulations}, and \ref{ch:high_dimensional}
+(\cite{cormen2009}, Appendix A):
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+$\displaystyle\sum_{i=1}^{n} i = \frac{n(n+1)}{2}$ &
+  arithmetic sum \\
+$\displaystyle\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}$ &
+  squared arithmetic sum \\
+$\displaystyle\sum_{i=0}^{n} 2^i = 2^{n+1} - 1$ &
+  doubling sum \\
+$\displaystyle\sum_{i=0}^{n} r^i = \frac{1 - r^{n+1}}{1 - r}$, $r \neq 1$ &
+  geometric series \\
+$\displaystyle\sum_{i=1}^{n} \frac{1}{i} = H_n = \ln n + \gamma + O\!\Bigl(\frac{1}{n}\Bigr)$ &
+  harmonic number, $\gamma \approx 0.5772$ \\
+$\displaystyle\sum_{i=1}^{\infty} \frac{1}{i^2} = \frac{\pi^2}{6}$ &
+  Euler's sum \\
+$\displaystyle\sum_{k=0}^{n} \binom{n}{k} = 2^n$, 
+  $\displaystyle\sum_{k=0}^{n} \binom{n}{k} x^k = (1+x)^n$ &
+  binomial theorem \\
+$\displaystyle\sum_{i=k}^{n} \binom{i}{k} = \binom{n+1}{k+1}$ &
+  hockey-stick identity \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\index{intersection formulas}\index{counting}
 
 \section{Circle Predicates}
 \label{sec:app_formulas_circles}
 
+\medskip\noindent\textbf{Circumcircle of three points.}
+\index{circumcircle}
+For three non-collinear points $a, b, c$, the circumcenter $o$ is the
+unique point equidistant from all three, solving
+\[
+  2 \begin{pmatrix} (b - a)^\top \\ (c - a)^\top \end{pmatrix} o
+  = \begin{pmatrix} \|b\|^2 - \|a\|^2 \\ \|c\|^2 - \|a\|^2 \end{pmatrix},
+\]
+and the circumradius is $r = \|o - a\|$. Expanding Cramer's rule gives the
+explicit coordinates
+\[
+  D = 2\,\bigl(x_a(y_b - y_c) + x_b(y_c - y_a) + x_c(y_a - y_b)\bigr) \neq 0,
+\]
+\[
+  o_x = \frac{(x_a^2 + y_a^2)(y_b - y_c) + (x_b^2 + y_b^2)(y_c - y_a) + (x_c^2 + y_c^2)(y_a - y_b)}{D},
+\]
+\[
+  o_y = \frac{(x_a^2 + y_a^2)(x_c - x_b) + (x_b^2 + y_b^2)(x_a - x_c) + (x_c^2 + y_c^2)(x_b - x_a)}{D},
+\]
+where $D = 2\,\operatorname{orient}(a,b,c)$ equals four times the signed
+area of the triangle; small $D$ means a skinny triangle and an
+ill-conditioned circumcenter
+(\cite{weisstein2004}). Used in Chapter~\ref{ch:delaunay_triangulations}
+(Section~\ref{sec:delaunay_empty_circumcircle}), Chapter~\ref{ch:voronoi_diagrams}
+(circumcenters are Voronoi vertices), and Chapter~\ref{ch:sampling}
+(Section~\ref{sec:largest_empty_circle}).
+
+\medskip\noindent\textbf{Circumsphere of four points.}
+\index{circumsphere}
+For four non-coplanar points $p_0, p_1, p_2, p_3$, the circumcenter $o$
+solves the $3\times 3$ system
+\[
+  2 \begin{pmatrix} (p_1 - p_0)^\top \\ (p_2 - p_0)^\top \\ (p_3 - p_0)^\top \end{pmatrix} o
+  = \begin{pmatrix} \|p_1\|^2 - \|p_0\|^2 \\
+      \|p_2\|^2 - \|p_0\|^2 \\
+      \|p_3\|^2 - \|p_0\|^2 \end{pmatrix},
+\]
+with radius $r = \|o - p_0\|$. Used in Chapter~\ref{ch:delaunay_triangulations}
+(empty-circumsphere property of 3D Delaunay) and
+Chapter~\ref{ch:mesh_generation}. Whether a point lies inside the sphere is
+decided exactly by the in-sphere determinant of
+Section~\ref{sec:app_formulas_orientation}.
+
+\medskip\noindent\textbf{Circle--circle intersection.}
+\index{circle-circle intersection}
+Two circles with centers $c_1, c_2$ and radii $r_1, r_2$, at distance
+$d = \|c_2 - c_1\|$, intersect iff
+\[
+  |r_1 - r_2| \le d \le r_1 + r_2,
+\]
+with equality in either bound a tangency. For $|r_1 - r_2| < d < r_1 + r_2$
+there are two intersection points $p_\pm$ given by
+\[
+  a = \frac{d^2 + r_1^2 - r_2^2}{2d},
+  \qquad
+  h = \sqrt{r_1^2 - a^2},
+  \qquad
+  p_\pm = c_1 + \frac{a}{d}\,(c_2 - c_1) \pm \frac{h}{d}\,R_{90}(c_2 - c_1),
+\]
+where $R_{90}(u) = (-u_y, u_x)$ is the CCW rotation by $90^\circ$. Used in
+Chapter~\ref{ch:voronoi_diagrams} (Voronoi vertices as circle--circle
+intersections) and Chapter~\ref{ch:proximity}.
+
+\medskip\noindent\textbf{Circle--line intersection.}
+\index{circle-line intersection}
+For a circle with center $c$ and radius $r$, and a line through $p$ with
+unit direction $v$, the projection parameter of the closest point to $c$
+is $t = \langle c - p, v\rangle$; the intersections, if any, are
+\[
+  p_\pm = p + \bigl(t \pm \sqrt{\Delta}\bigr) v,
+  \qquad
+  \Delta = r^2 - \|c - p\|^2 + t^2,
+\]
+with two distinct intersections for $\Delta > 0$, one tangent point for
+$\Delta = 0$, and none for $\Delta < 0$. Restricting to $t \ge 0$ yields the
+ray--circle (ray--sphere in $\mathbb{R}^3$) intersection. Used in
+Chapter~\ref{ch:applications_graphics} and Chapter~\ref{ch:packing_algorithms}.
+
+\medskip\noindent\textbf{Power of a point.}
+\index{power of a point}
+For a point $p$ and a circle with center $c$ and radius $r$, the power is
+\[
+  \operatorname{Pow}(p) = \|p - c\|^2 - r^2,
+\]
+positive outside, negative inside, and zero on the circle. For any line
+through $p$ meeting the circle at $X$ and $Y$,
+\[
+  \operatorname{Pow}(p) = \langle p - X,\, p - Y\rangle,
+\]
+the product of the signed directed distances, independent of the choice of
+line. Used in Chapter~\ref{ch:voronoi_diagrams} (power diagrams and
+weighted Voronoi cells) and Chapter~\ref{ch:geometric_duality}.
+
+\medskip\noindent\textbf{Radical axis.}
+\index{radical axis}
+The set of points with equal power with respect to two circles
+$(c_1, r_1)$ and $(c_2, r_2)$ is the line
+\[
+  \|x - c_1\|^2 - r_1^2 = \|x - c_2\|^2 - r_2^2
+  \;\Longleftrightarrow\;
+  2\,\langle x,\, c_2 - c_1\rangle = \|c_2\|^2 - \|c_1\|^2 + r_1^2 - r_2^2,
+\]
+perpendicular to the line of centers; it is the common chord when the two
+circles intersect. Used in Chapter~\ref{ch:voronoi_diagrams} (edges of
+power diagrams) and Chapter~\ref{ch:geometric_duality}.
+
+\index{circle predicates}\index{circumcenter}
+
 \section{Areas and Volumes}
 \label{sec:app_formulas_areas_volumes}
+
+\medskip\noindent\textbf{Triangle area in $\mathbb{R}^2$.}
+\index{triangle area}
+For a triangle with vertices $p, q, r$,
+\[
+  A = \frac{1}{2}\,\bigl|(q - p)\times(r - p)\bigr|
+  = \frac{1}{2}\,\bigl|\operatorname{orient}(p,q,r)\bigr|,
+\]
+or, in terms of the side lengths $a, b, c$, Heron's formula
+\[
+  A = \sqrt{s(s-a)(s-b)(s-c)},
+  \qquad
+  s = \frac{a + b + c}{2}
+\]
+(\cite{weisstein2004}). Used in Chapter~\ref{ch:polygon_ops} and
+Chapter~\ref{ch:mesh_analysis} (element area and quality).
+
+\medskip\noindent\textbf{Polygon area (shoelace formula).}
+\index{shoelace formula}\index{polygon area}
+For a simple polygon $p_1, \dots, p_n$ (indices modulo $n$), the signed
+area is
+\[
+  A = \frac{1}{2}\sum_{i=1}^{n} (x_i y_{i+1} - x_{i+1} y_i),
+\]
+positive for a CCW boundary and equal in absolute value to the usual area
+(Section~\ref{sec:math_signed_area_volume}). The formula extends to
+self-intersecting polygons as the signed area enclosed by the boundary.
+Used in Chapter~\ref{ch:polygon_ops} (area, orientation repair) and
+Chapter~\ref{ch:surface_geometry}.
+
+\medskip\noindent\textbf{Polygon centroid.}
+\index{centroid}
+The centroid of a triangle is the arithmetic mean of its vertices. The
+area-weighted centroid of a polygon is the average of the triangle
+centroids with the signed areas as weights:
+\[
+  G = \frac{1}{6A}\sum_{i=1}^{n} (x_i y_{i+1} - x_{i+1} y_i)\,(p_i + p_{i+1}),
+\]
+with $A$ the signed area above; note that the arithmetic mean of the
+vertices equals $G$ only for triangles. Used in Chapter~\ref{ch:polygon_ops}
+(area, moment, and center-of-mass computations).
+
+\medskip\noindent\textbf{Convex hull perimeter and isoperimetric inequality.}
+\index{convex hull}\index{isoperimetric inequality}
+The perimeter of a convex polygon with vertices $p_1, \dots, p_n$ in
+boundary order is
+\[
+  \operatorname{perim}(P) = \sum_{i=1}^{n}\|p_{i+1} - p_i\|,
+\]
+the length of the boundary of the convex hull of a point set
+(Chapter~\ref{ch:convex_hulls}). For any closed curve enclosing area $A$,
+\[
+  L^2 \ge 4\pi A,
+  \qquad
+  L \ge 2\sqrt{\pi A},
+\]
+the isoperimetric inequality, with equality only for a circle; it governs
+the packing-density arguments of Chapter~\ref{ch:packing_algorithms}.
+
+\medskip\noindent\textbf{Tetrahedron volume.}
+\index{tetrahedron volume}
+For a tetrahedron with vertices $p, q, r, s$,
+\[
+  V = \frac{1}{6}\,\bigl|\bigl\langle (q-p)\times(r-p),\, s-p\bigr\rangle\bigr|
+  = \frac{1}{6}\,\bigl|\operatorname{orient}(p,q,r,s)\bigr|,
+\]
+one sixth of the scalar triple product (Section~\ref{sec:app_formulas_vectors}).
+Used in Chapter~\ref{ch:polyhedral_geometry}, Chapter~\ref{ch:mesh_generation}
+(element volumes), and Chapter~\ref{ch:mesh_analysis}.
+
+\medskip\noindent\textbf{Polyhedron volume (divergence theorem).}
+\index{polyhedron volume}\index{divergence theorem}
+For a closed surface mesh with consistently oriented triangular faces
+$(v_1, v_2, v_3)$ (CCW seen from outside), the enclosed volume is
+\[
+  V = \frac{1}{6}\sum_{f} \bigl\langle v_1,\ v_2\times v_3\bigr\rangle,
+\]
+the sum of the signed tetrahedra formed by each face with the origin
+(any fixed apex works); this is the discrete divergence theorem
+(Section~\ref{sec:app_math_vector_calculus}). Used in
+Chapter~\ref{ch:polyhedral_geometry} (volume, center of mass, moments) and
+Chapter~\ref{ch:sampling} (validation of Monte Carlo estimates).
+
+\medskip\noindent\textbf{Surface area of a mesh.}
+\index{surface area}
+The surface area of a triangle mesh is the sum of the triangle areas
+\[
+  S = \sum_{f} \frac{1}{2}\,\bigl\|(v_2 - v_1)\times(v_3 - v_1)\bigr\|,
+\]
+and the area of a triangulated patch is orientation-independent. Used in
+Chapter~\ref{ch:surface_geometry} and Chapter~\ref{ch:mesh_analysis}.
+
+\medskip\noindent\textbf{Centroid (center of mass) of a polyhedron.}
+\index{centroid}
+The centroid of a tetrahedron is the arithmetic mean of its four vertices.
+For a closed triangle mesh with consistently oriented faces, the centroid
+is the signed-volume-weighted average of the tetrahedron centroids:
+\[
+  G = \frac{1}{4V}\sum_{f} V_f\,(v_1 + v_2 + v_3),
+  \qquad
+  V_f = \frac{1}{6}\,\langle v_1, v_2\times v_3\rangle,
+\]
+with $V = \sum_f V_f$. Used in Chapter~\ref{ch:polyhedral_geometry} and
+Chapter~\ref{ch:applications_robotics} (balance and inertial properties).
+
+\medskip\noindent\textbf{Simplex volume in $d$ dimensions.}
+\index{simplex volume}
+The $d$-simplex $\Delta^d = \operatorname{conv}\{p_0, \dots, p_d\}$ has
+$d$-dimensional volume
+\[
+  \operatorname{Vol}(\Delta^d)
+  = \frac{1}{d!}\,
+  \biggl|\det\begin{pmatrix} p_1 - p_0 \\ \vdots \\ p_d - p_0 \end{pmatrix}\biggr|,
+\]
+generalizing the $1/2$ and $1/6$ factors above; the standard simplex
+$\operatorname{conv}\{0, e_1, \dots, e_d\}$ has volume $1/d!$. Used in
+Chapter~\ref{ch:high_dimensional} (high-dimensional volume) and
+Chapter~\ref{ch:sampling} (volume estimation).
+
+\medskip\noindent\textbf{Volumes of balls and spheres.}
+\index{ball volume}
+The volume of the Euclidean ball of radius $r$ in $\mathbb{R}^d$ and the
+surface volume of its boundary sphere are
+\[
+  V_d(r) = \frac{\pi^{d/2}}{\Gamma(d/2 + 1)}\,r^d,
+  \qquad
+  S_d(r) = \frac{d}{r}\,V_d(r),
+\]
+so in $\mathbb{R}^3$, $V_3(r) = \frac{4}{3}\pi r^3$ and
+$S_3(r) = 4\pi r^2$. The concentration of volume near the boundary in high
+dimension drives the phenomena of Chapter~\ref{ch:high_dimensional}.
+
+\index{areas and volumes}\index{volume}
 
 \section{Coordinate Transformations}
 \label{sec:app_formulas_transformations}
 
+\medskip\noindent\textbf{Affine maps as matrices.}
+\index{affine transformation}
+An affine map $x \mapsto Mx + t$ (invertible $d\times d$ matrix $M$,
+translation $t$) preserves collinearity, parallelism, ratios along lines,
+and affine combinations, but not lengths or angles in general
+(Section~\ref{sec:math_transformations}). In homogeneous coordinates it is
+the linear map (Section~\ref{sec:math_homogeneous})
+\[
+  \begin{pmatrix} \tilde x \\ w \end{pmatrix}
+  \mapsto
+  \begin{pmatrix} M & t \\ \mathbf{0}^\top & 1 \end{pmatrix}
+  \begin{pmatrix} \tilde x \\ w \end{pmatrix},
+  \qquad
+  x = \tilde x / w,
+\]
+so composition of affine maps is ordinary matrix multiplication. Used in
+Chapter~\ref{ch:applications_graphics} (model, view, and projection
+matrices), Chapter~\ref{ch:applications_robotics}, and
+Chapter~\ref{ch:geometric_matching}.
+
+\medskip\noindent\textbf{Translation and scaling.}
+\index{translation}\index{scaling}
+Translation by $t$ is $(I, t)$; uniform scaling by $s$ is $(sI, \mathbf{0})$;
+anisotropic scaling about the origin is
+$\operatorname{diag}(s_1, \dots, s_d)$. Scaling or rotation about a point
+$p$ is the conjugation
+\[
+  T(p)\,M\,T(-p),
+\]
+with $T(\cdot)$ the translation matrix. Used in Chapter~\ref{ch:applications_graphics}
+and Chapter~\ref{ch:geometric_matching} (shape alignment).
+
+\medskip\noindent\textbf{Rotation in $\mathbb{R}^2$.}
+\index{rotation}
+The CCW rotation by angle $\theta$ is
+\[
+  R(\theta) = \begin{pmatrix}
+    \cos\theta & -\sin\theta\\
+    \sin\theta & \cos\theta
+  \end{pmatrix},
+\]
+with $R(\theta_1)R(\theta_2) = R(\theta_1 + \theta_2)$,
+$R(-\theta) = R(\theta)^\top = R(\theta)^{-1}$, and $\det R = 1$. Used in
+Chapter~\ref{ch:geometric_matching} (Section~\ref{sec:matching_rigid}) and
+Chapter~\ref{ch:applications_graphics}.
+
+\medskip\noindent\textbf{Rotation in $\mathbb{R}^3$.}
+\index{rotation}
+The rotations about the coordinate axes are
+\[
+  R_x(\theta) = \begin{pmatrix}
+    1 & 0 & 0\\
+    0 & \cos\theta & -\sin\theta\\
+    0 & \sin\theta & \cos\theta
+  \end{pmatrix}, \quad
+  R_y(\theta) = \begin{pmatrix}
+    \cos\theta & 0 & \sin\theta\\
+    0 & 1 & 0\\
+    -\sin\theta & 0 & \cos\theta
+  \end{pmatrix}, \quad
+  R_z(\theta) = \begin{pmatrix}
+    \cos\theta & -\sin\theta & 0\\
+    \sin\theta & \cos\theta & 0\\
+    0 & 0 & 1
+  \end{pmatrix}.
+\]
+Rotation by angle $\theta$ about a unit axis $k$ is given by Rodrigues'
+formula
+\[
+  R = I + \sin\theta\,[k]_\times + (1 - \cos\theta)\,[k]_\times^2,
+  \qquad
+  [k]_\times = \begin{pmatrix}
+    0 & -k_z & k_y\\
+    k_z & 0 & -k_x\\
+    -k_y & k_x & 0
+  \end{pmatrix},
+\]
+where $[k]_\times$ is the skew-symmetric matrix of the cross product
+$[k]_\times v = k\times v$. Used in Chapter~\ref{ch:applications_robotics}
+(robot kinematics) and Chapter~\ref{ch:geometric_matching} (rigid
+registration).
+
+\medskip\noindent\textbf{Change of basis.}
+\index{change of basis}
+If the columns of an invertible matrix $B$ are the new basis vectors
+expressed in the old coordinates, then a point with new coordinates
+$x_{\text{new}}$ has old coordinates
+\[
+  x_{\text{old}} = B\,x_{\text{new}},
+  \qquad
+  x_{\text{new}} = B^{-1}\,x_{\text{old}};
+\]
+for an orthonormal basis $B^{-1} = B^\top$, and the map is a rigid
+transformation. Used in Chapter~\ref{ch:spectral_geometry} (eigenbases of
+the Laplacian), Chapter~\ref{ch:geometry_data_ml} (PCA), and
+Chapter~\ref{ch:surface_geometry} (local tangent frames).
+
+\medskip\noindent\textbf{Orthonormal frame from a normal.}
+\index{frame}
+Given a unit normal $n$ in $\mathbb{R}^3$, an orthonormal frame
+$(e_1, e_2, n)$ is obtained by taking any vector $a$ not parallel to $n$,
+setting $e_1 = (a - \langle a, n\rangle n)/\|a - \langle a, n\rangle n\|$
+and $e_2 = n \times e_1$. Used in Chapter~\ref{ch:curves_surfaces} and
+Chapter~\ref{ch:applications_graphics} (tangent-space shading).
+
+\index{coordinate transformations}\index{homogeneous coordinates}
+
 \section{Barycentric Coordinates}
 \label{sec:app_formulas_barycentric}
+
+\medskip\noindent\textbf{Triangle barycentric coordinates.}
+\index{barycentric coordinates}
+With respect to an affine frame $A, B, C$ of $\mathbb{R}^2$, every point
+$x$ has a unique representation $x = \lambda_A A + \lambda_B B + \lambda_C C$
+with $\lambda_A + \lambda_B + \lambda_C = 1$; the coefficients solve
+\[
+  \begin{pmatrix} 1 & 1 & 1 \\ A_x & B_x & C_x \\ A_y & B_y & C_y \end{pmatrix}
+  \begin{pmatrix} \lambda_A \\ \lambda_B \\ \lambda_C \end{pmatrix}
+  = \begin{pmatrix} 1 \\ x_x \\ x_y \end{pmatrix}
+\]
+and are the signed area ratios
+\[
+  \lambda_A = \frac{A(\triangle xBC)}{A(\triangle ABC)},
+  \quad
+  \lambda_B = \frac{A(\triangle xCA)}{A(\triangle ABC)},
+  \quad
+  \lambda_C = \frac{A(\triangle xAB)}{A(\triangle ABC)},
+\]
+with the signed areas of Section~\ref{sec:app_formulas_areas_volumes}
+(Section~\ref{sec:math_barycentric}). The point $x$ lies inside the
+triangle iff all three coordinates are nonnegative, on the boundary iff
+one is zero, and outside iff some coordinate is negative; this yields a
+point-in-triangle test built from three orientation evaluations. Used in
+Chapter~\ref{ch:math_foundations}, Chapter~\ref{ch:point_location}, and
+Chapter~\ref{ch:sampling}.
+
+\medskip\noindent\textbf{Linear interpolation.}
+\index{interpolation}
+Given scalar data $f_A, f_B, f_C$ at the vertices, the affine interpolation
+at $x$ is
+\[
+  f(x) = \lambda_A f_A + \lambda_B f_B + \lambda_C f_C,
+\]
+the unique affine function agreeing with the data at the vertices; it is
+affine-invariant and is the linear finite-element basis function on the
+triangle (Section~\ref{sec:app_math_affine}). Used in
+Chapter~\ref{ch:mesh_analysis} (finite elements, Section~\ref{sec:scientific_fem}),
+Chapter~\ref{ch:applications_graphics} (texture and color interpolation),
+and Chapter~\ref{ch:geometry_data_ml}.
+
+\medskip\noindent\textbf{Tetrahedron barycentric coordinates.}
+\index{barycentric coordinates}
+For a tetrahedron $p_0 p_1 p_2 p_3$ the barycentric coordinates are the
+signed volume ratios
+\[
+  \lambda_i = \frac{V(x\, p_j p_k p_l)}{V(p_0 p_1 p_2 p_3)},
+  \qquad \{i, j, k, l\} = \{0, 1, 2, 3\},
+\]
+with $V(\cdot)$ the signed tetrahedron volume of
+Section~\ref{sec:app_formulas_areas_volumes}; again $x$ is inside iff all
+$\lambda_i \ge 0$, and interpolation $f(x) = \sum_i \lambda_i f_i$ is
+affine. Used in Chapter~\ref{ch:mesh_analysis} (tetrahedral finite
+elements) and Chapter~\ref{ch:mesh_generation}.
+
+\medskip\noindent\textbf{Barycentric coordinates on the $d$-simplex.}
+For an affine frame $p_0, \dots, p_d$ of $\mathbb{R}^d$ the coordinates of
+$x$ are the unique solution of the $(d+1)\times(d+1)$ system
+\[
+  \sum_{i=0}^{d} \lambda_i = 1,
+  \qquad
+  \sum_{i=0}^{d} \lambda_i p_i = x,
+\]
+equivalently ratios of signed $d$-volumes, and the interpolation formula
+$f(x) = \sum_i \lambda_i f_i$ is the general linear basis on simplices.
+Generalized (non-affine, mean-value and harmonic) coordinates for arbitrary
+polygons are used in the parameterization literature
+(Chapter~\ref{ch:surface_modeling}).
+
+\medskip\noindent\textbf{Face counts of a simplex.}
+\index{simplex}\index{k-face}
+The $d$-simplex has
+\[
+  f_k(\Delta^d) = \binom{d+1}{k+1}
+\]
+faces of dimension $k$ ($0 \le k \le d$), and
+$\sum_{k=0}^{d} f_k = 2^{d+1} - 1$ proper faces; e.g., the tetrahedron has
+$f_0 = 4$ vertices, $f_1 = 6$ edges, $f_2 = 4$ triangles, and $f_3 = 1$
+body. Used in Chapter~\ref{ch:computational_topology} and
+Chapter~\ref{ch:convex_polytopes} (Section~\ref{sec:polytopes_faces}).
+
+\medskip\noindent\textbf{Euler--Poincar\'e formula.}
+\index{Euler characteristic}\index{Euler--Poincar\'e formula}
+For a convex $d$-polytope with $f_k$ faces of dimension $k$,
+\[
+  \sum_{k=0}^{d-1} (-1)^k f_k = 1 - (-1)^d,
+\]
+which for $d = 3$ is Euler's polyhedron formula $V - E + F = 2$ and for a
+closed surface triangulated with Euler characteristic $\chi$ reads
+\[
+  V - E + F = \chi,
+  \qquad
+  \chi = 2 - 2g \text{ for an orientable closed surface of genus } g
+\]
+(Section~\ref{sec:math_topology}, Chapter~\ref{ch:computational_topology};
+the planar $V - E + F = 2$ appears in Section~\ref{sec:appform_counting}).
+The alternating sum is the discrete Euler characteristic of a simplicial
+complex (Appendix~\ref{app:math_reference}, Section~\ref{sec:app_math_graphs}).
+Used in Chapter~\ref{ch:half_edge} (Section~\ref{sec:halfedge_complexity}),
+Chapter~\ref{ch:mesh_analysis}, and Chapter~\ref{ch:convex_polytopes}.
+
+\begin{theorem}[Euler--Poincar\'e for Polyhedra]\label{thm:appform_euler_poincare}
+  For a closed (boundaryless) polyhedral surface, $V - E + F$ is a
+  topological invariant, equal to the Euler characteristic $\chi$; for an
+  orientable surface triangulated with $n$ triangles,
+  $E = \frac{3}{2}F$ and $V - \frac{1}{2}F = \chi$.
+\end{theorem}
+
+\index{barycentric coordinates}\index{Euler formula}

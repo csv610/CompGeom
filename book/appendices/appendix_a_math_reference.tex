@@ -1,28 +1,764 @@
 \chapter{Mathematical Reference}
 \label{app:math_reference}
 
-% Stub: outline only; content to be written.
+This appendix is a compact reference for the mathematics used throughout the
+book. It collects definitions, formulas, and standard facts without proofs;
+the chapters cited at the end of each section develop the material in
+context. Chapter~\ref{ch:math_foundations} is the primary companion chapter
+and fixes the geometric vocabulary in detail. The textbooks
+\cite{cormen2009} (algorithms and asymptotic analysis), \cite{deberg2008}
+(computational geometry), \cite{mitzenmacher2005} (probability and randomized
+algorithms), \cite{horn1985} (matrix analysis), and \cite{rudin1976} (real
+analysis) cover all of this material at length.
+
+\medskip
+\noindent\textbf{Sets and logic.}
+\index{set theory}\index{logic}
+We write $\mathbb{R}$ for the real line, $\mathbb{R}^d$ for the space of
+$d$-tuples of real numbers, $\mathbb{N}$ for the nonnegative integers,
+$\mathbb{Z}$ for the integers, $\emptyset$ for the empty set, and $|S|$ for
+the cardinality of a finite set $S$.
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+$x \in S$ & $x$ belongs to $S$ &
+$x \notin S$ & $x$ does not belong to $S$ \\
+$S \subseteq T$ & subset of $T$ &
+$S \subset T$ & proper subset of $T$ \\
+$S \cup T$ & union &
+$S \cap T$ & intersection \\
+$S \setminus T$ & set difference &
+$S \times T$ & Cartesian product \\
+$\overline{S}$ & complement &
+$2^S$ & power set of $S$ \\
+$\forall$ & for all &
+$\exists$ & there exists \\
+$A \wedge B$ & logical and &
+$A \vee B$ & logical or \\
+$\neg A$ & negation of $A$ &
+$A \Rightarrow B$ & $A$ implies $B$ \\
+$A \iff B$ & $A$ iff $B$ &
+$a \equiv b$ & $a$ congruent to $b$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A statement of the form ``$P$ iff $Q$'' means $P \iff Q$; ``iff'' abbreviates
+``if and only if.'' We use ``w.r.t.'' for ``with respect to'' and
+``a.e.'' for ``almost everywhere.'' Quantifiers bind tightly: ``for all
+$\varepsilon > 0$ there exists $\delta$'' is written
+$\forall\varepsilon>0\ \exists\delta$.
 
 \section{Linear Algebra}
 \label{sec:app_math_linear_algebra}
 
+\index{linear algebra}\index{vector}\index{matrix}
+A \textbf{vector} in $\mathbb{R}^d$ is an element $u = (u_1,\dots,u_d)$.
+Vector addition and scalar multiplication are defined coordinate-wise.
+The \textbf{dot product} (inner product) and induced norm are
+\[
+  \langle u, v \rangle = \sum_{i=1}^d u_i v_i,
+  \qquad
+  \|u\| = \sqrt{\langle u, u \rangle},
+\]
+and the Euclidean distance is $\operatorname{dist}(u,v) = \|u - v\|$.
+The dot product satisfies Cauchy--Schwarz,
+$|\langle u,v\rangle| \le \|u\|\,\|v\|$, so the angle $\theta$ between
+nonzero vectors satisfies $\cos\theta = \langle u,v\rangle / (\|u\|\,\|v\|)$
+(Theorem~\ref{thm:math_cauchy_schwarz}); vectors are orthogonal iff
+$\langle u,v\rangle = 0$. A set of vectors is \textbf{linearly independent}
+if no nontrivial linear combination is zero, and a \textbf{basis} is a
+maximal such set; every basis of a subspace has the same size, the
+\textbf{dimension}. The \textbf{span}
+$\operatorname{span}(u_1,\dots,u_k)$ is the set of all linear combinations.
+
+In $\mathbb{R}^3$ the \textbf{cross product} of $u$ and $v$ is the vector
+\[
+  u \times v =
+  (u_2 v_3 - u_3 v_2,\ u_3 v_1 - u_1 v_3,\ u_1 v_2 - u_2 v_1),
+\]
+orthogonal to both $u$ and $v$, with $\|u \times v\| = \|u\|\,\|v\|\,\sin\theta$
+equal to the area of the parallelogram spanned by $u$ and $v$. The scalar
+triple product $\langle u, v \times w \rangle = \det(u,v,w)$ gives the signed
+volume of the parallelepiped.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+operation & definition & identity \\
+\midrule
+transpose & $(A^\top)_{ij} = A_{ji}$ & $(AB)^\top = B^\top A^\top$ \\
+product & $(AB)_{ij} = \sum_k A_{ik} B_{kj}$ & -- \\
+trace & $\operatorname{tr} A = \sum_i A_{ii}$ & $\operatorname{tr}(AB) = \operatorname{tr}(BA)$ \\
+inverse & $A A^{-1} = A^{-1} A = I$ & $(AB)^{-1} = B^{-1} A^{-1}$ \\
+rank & $\operatorname{rank} A = \dim \operatorname{im} A$ & $\operatorname{rank} A = \operatorname{rank} A^\top$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A square matrix $Q$ is \textbf{orthogonal} if $Q^\top Q = I$ (then $Q^{-1} = Q^\top$
+and $\|Qx\| = \|x\|$ for all $x$); a matrix $S$ is \textbf{symmetric} if
+$S = S^\top$.
+
+\medskip
+\noindent\textbf{Eigenvalues.}
+\index{eigenvalue}\index{eigenvector}
+A scalar $\lambda$ is an \textbf{eigenvalue} of a square matrix $A$ with
+\textbf{eigenvector} $v \neq \mathbf{0}$ if $Av = \lambda v$. Eigenvalues are
+the roots of the characteristic polynomial $\det(A - \lambda I)$.
+A symmetric matrix has $d$ real eigenvalues and an orthonormal eigenbasis;
+if all eigenvalues are nonnegative it is \textbf{positive semidefinite}, and
+if all are positive it is \textbf{positive definite}. Positive definite
+matrices define quadratic forms $x^\top A x > 0$ for $x \neq \mathbf{0}$ and
+appear throughout mesh analysis via the cotangent Laplacian
+(Chapter~\ref{ch:mesh_analysis}) and in spectral shape analysis
+(Chapter~\ref{ch:spectral_geometry}).
+
+The \textbf{Gram matrix} of vectors $v_1,\dots,v_k$ is
+$G_{ij} = \langle v_i, v_j \rangle$; it is symmetric and positive semidefinite,
+and it is positive definite iff the vectors are linearly independent. Gram
+matrices are the algebraic heart of kernel methods, where a kernel
+$K(x,y) = \langle \varphi(x), \varphi(y) \rangle$ replaces an explicit high
+dimensional feature map by inner products (Section~\ref{sec:data_ml_kernels}).
+
+The \textbf{singular value decomposition} (SVD) of an $m \times n$ matrix $A$
+is $A = U \Sigma V^\top$, where $U$ and $V$ are orthogonal and
+$\Sigma = \operatorname{diag}(\sigma_1,\dots,\sigma_k)$ holds the
+\textbf{singular values} $\sigma_1 \ge \sigma_2 \ge \cdots \ge \sigma_k \ge 0$,
+$k = \min(m,n)$. The singular values are the square roots of the eigenvalues
+of $A^\top A$. The SVD gives the best low-rank approximation (Eckart--Young
+theorem), the principal components of a point cloud, and the pseudoinverse
+$A^+ = V \Sigma^+ U^\top$, and it underlies the embedding and dimension
+reduction methods of Chapters~\ref{ch:spectral_geometry} and
+\ref{ch:geometry_data_ml}.
+
+\subsection{Norms and Metrics}
+\index{norm}\index{metric}\index{triangle inequality}
+A \textbf{norm} on $\mathbb{R}^d$ is a function $\|\cdot\| \to [0,\infty)$
+that is positive definite ($\|x\| = 0$ iff $x = \mathbf{0}$), homogeneous
+($\|\lambda x\| = |\lambda| \|x\|$), and satisfies the \textbf{triangle
+inequality} $\|x + y\| \le \|x\| + \|y\|$. The $\ell_p$ family is
+\[
+  \|x\|_p = \left( \sum_{i=1}^d |x_i|^p \right)^{1/p}, \quad p \ge 1,
+  \qquad
+  \|x\|_\infty = \max_i |x_i|.
+\]
+The Euclidean norm is the $p = 2$ member. The $\ell_p$ norms are monotone in
+$p$ and related by
+$\|x\|_q \le \|x\|_p \le d^{\,1/p - 1/q}\,\|x\|_q$ for $p \le q$, so they are
+equivalent up to dimension-dependent constants. A \textbf{metric} on a set is
+a distance function that is positive definite, symmetric, and obeys the
+triangle inequality; every norm induces a metric $d(x,y) = \|x - y\|$.
+Any inner product induces a norm via $\|x\| = \sqrt{\langle x, x\rangle}$ and
+satisfies the parallelogram law
+$\|x+y\|^2 + \|x-y\|^2 = 2(\|x\|^2 + \|y\|^2)$.
+
+The $\ell_1$ (Manhattan) and $\ell_\infty$ (Chebyshev) metrics model grid
+motion and are used in rectilinear and axis-aligned problems
+(Chapter~\ref{ch:distance_paths}, Chapter~\ref{ch:space_filling_curves}).
+The \textbf{geodesic distance} on a surface or in a domain is the length of
+the shortest curve confined to that surface or domain;
+$d_{\text{geo}}(p,q) \ge \|p - q\|$ always, with equality iff the straight
+segment between $p$ and $q$ lies in the object
+(Chapters~\ref{ch:surface_geometry} and \ref{ch:sampling}). The triangle
+inequality is the minimal assumption behind nearly every nearest-neighbor
+algorithm (Chapter~\ref{ch:proximity}).
+
+\index{dot product}\index{singular value decomposition}\index{Gram matrix}
+See Chapter~\ref{ch:math_foundations} for the geometric development of inner
+products and norms and Chapter~\ref{ch:spectral_geometry} for eigenmethods.
+
 \section{Vector Calculus}
 \label{sec:app_math_vector_calculus}
+
+\index{calculus}\index{derivative}\index{gradient}
+For $f : \mathbb{R} \to \mathbb{R}$, the \textbf{derivative} at $a$ is
+\[
+  f'(a) = \lim_{h \to 0} \frac{f(a+h) - f(a)}{h},
+\]
+when the limit exists; $f$ is $k$ times differentiable if $f^{(k)}$ exists.
+The \textbf{partial derivatives} of $f : \mathbb{R}^d \to \mathbb{R}$ are
+$\partial f / \partial x_i$; the \textbf{gradient}
+$\nabla f = (\partial f/\partial x_1, \dots, \partial f/\partial x_d)$ is the
+direction of steepest ascent, so $-\nabla f$ is the descent direction used by
+gradient-based optimization. The \textbf{Jacobian} of a map
+$F : \mathbb{R}^d \to \mathbb{R}^m$ is the $m \times d$ matrix of partial
+derivatives, and the \textbf{Hessian} of $f$ is the symmetric $d \times d$
+matrix $H_{ij} = \partial^2 f / \partial x_i \partial x_j$. The chain rule
+reads $D(F \circ G)(x) = DF(G(x))\, DG(x)$; the directional derivative of $f$
+at $x$ in direction $v$ is $\langle \nabla f(x), v \rangle$.
+
+\textbf{Taylor expansion.}
+\index{Taylor series}
+For a smooth scalar function, the first-order and second-order expansions are
+\[
+  f(x) = f(a) + f'(a)(x-a) + \frac{1}{2} f''(a)(x-a)^2 + O\bigl((x-a)^3\bigr),
+\]
+\[
+  f(x + h) = f(x) + \langle \nabla f(x), h\rangle
+    + \frac{1}{2}\, h^\top H(x) h + O\bigl(\|h\|^3\bigr).
+\]
+Taylor's theorem also yields the mean value theorem and the error estimates
+used throughout the numerical chapters: if $f \in C^2$ then
+$|f(x) - f(a) - f'(a)(x-a)| \le \tfrac{1}{2} M_2 (x-a)^2$ where $M_2$ bounds
+$|f''|$ on the interval.
+
+\medskip
+\noindent\textbf{Vector fields.}
+\index{divergence}\index{curl}\index{Laplacian}
+For a vector field $F = (F_1,\dots,F_d)$ on $\mathbb{R}^d$, the
+\textbf{divergence} is $\nabla \cdot F = \sum_i \partial F_i/\partial x_i$
+and (for $d = 3$) the \textbf{curl} is
+$\nabla \times F$. The \textbf{Laplacian} of a scalar function is
+$\Delta f = \nabla \cdot \nabla f = \sum_i \partial^2 f/\partial x_i^2$; its
+eigenfunctions and eigenvalues govern heat diffusion and the spectrum of a
+surface (Chapter~\ref{ch:spectral_geometry}, Definition~\ref{def:laplace_beltrami}).
+The divergence theorem
+\[
+  \int_{\partial \Omega} \langle F, n\rangle \, dS = \int_\Omega (\nabla \cdot F)\, dV
+\]
+(where $n$ is the outward unit normal) converts volume integrals to surface
+integrals and is the reason the signed volume and area formulas of
+Section~\ref{sec:math_signed_area_volume} reduce to boundary sums, and why
+finite-element stiffness matrices assemble from element integrals
+(Chapter~\ref{ch:applications_scientific}, Section~\ref{sec:scientific_fem}).
+
+\medskip
+\noindent\textbf{Convex functions.}
+\index{convex function}
+A function $f$ on a convex domain is \textbf{convex} if
+$f(\lambda x + (1-\lambda) y) \le \lambda f(x) + (1-\lambda) f(y)$ for all
+$0 \le \lambda \le 1$, and \textbf{strictly convex} if equality only occurs at
+the endpoints. For $C^2$ functions, convexity is equivalent to $f'' \ge 0$ in
+one dimension and to the Hessian being positive semidefinite in higher
+dimensions. Convex functions satisfy Jensen's inequality
+(Section~\ref{sec:app_math_convexity}) and have unique minimizers on convex
+sets, which is what makes energy minimization for mesh and geometry
+processing well posed (Chapters~\ref{ch:surface_geometry} and
+\ref{ch:surface_modeling}).
+
+\index{calculus}\index{geodesic}
+See Chapter~\ref{ch:math_foundations} for the definitions and
+Chapter~\ref{ch:surface_geometry} for the calculus of curves and surfaces.
 
 \section{Determinants}
 \label{sec:app_math_determinants}
 
+\index{determinant}\index{orientation}
+The determinant is a signed volume: for the $2 \times 2$ and $3 \times 3$
+cases,
+\[
+  \det\begin{pmatrix} a & b \\ c & d \end{pmatrix} = ad - bc,
+\]
+\[
+  \det\begin{pmatrix}
+    a_1 & b_1 & c_1\\
+    a_2 & b_2 & c_2\\
+    a_3 & b_3 & c_3
+  \end{pmatrix}
+  = a_1(b_2 c_3 - b_3 c_2) - b_1(a_2 c_3 - a_3 c_2)
+    + c_1(a_2 b_3 - a_3 b_2).
+\]
+In general $\det A = \sum_\sigma \operatorname{sgn}(\sigma) \prod_i A_{i,\sigma(i)}$
+over all permutations $\sigma$ of $\{1,\dots,n\}$, which is the sum of
+$n!$ products; for large $n$ determinants are computed by elimination
+($O(n^3)$) rather than by the definition.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+property & consequence \\
+\midrule
+$\det(AB) = \det(A)\det(B)$ & product rule \\
+$\det(A^\top) = \det(A)$ & rows and columns interchangeable \\
+$\det(A^{-1}) = 1 / \det(A)$ & inverse rule \\
+$\det(\lambda A) = \lambda^n \det(A)$ & scaling rule \\
+swap two rows/columns & determinant changes sign \\
+add a multiple of one row to another & determinant unchanged \\
+two equal rows/columns & determinant is zero \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Geometrically, $|\det(u,v)|$ is the area of the parallelogram spanned by
+$u,v$, and $|\det(u,v,w)|$ is the volume of the parallelepiped. The sign is
+the \textbf{orientation}: in $\mathbb{R}^2$ the sign of
+$\det(q-p, r-p)$ records whether $r$ lies left, on, or right of the directed
+line through $p$ and $q$, and the $d$-dimensional orientation test is the
+$(d+1) \times (d+1)$ determinant built from homogeneous coordinates
+(Section~\ref{sec:math_orientation_determinants}). These orientation
+determinants are the raw predicates of almost every algorithm in the book and
+their robust evaluation is the subject of
+Chapter~\ref{ch:geometric_predicates}; the signed area and signed volume
+formulas of Section~\ref{sec:math_signed_area_volume} are determinants.
+
+The \textbf{adjugate} $\operatorname{adj}(A)$ is the transpose of the matrix
+of cofactors, giving the inverse formula $A^{-1} = \operatorname{adj}(A)/\det(A)$,
+and \textbf{Cramer's rule} solves $Ax = b$ via
+$x_i = \det(A_i)/\det(A)$ where $A_i$ replaces column $i$ by $b$.
+The determinant also decides invertibility ($\det A = 0$ iff $A$ is singular)
+and appears as $\det(A - \lambda I)$ in the eigenvalue equation
+(Section~\ref{sec:app_math_linear_algebra}).
+
+\index{determinant}\index{Cramer's rule}\index{adjugate}
+See Chapter~\ref{ch:geometric_predicates} for the use of determinants as
+robust geometric predicates and Section~\ref{sec:math_orientation_determinants}
+for the orientation convention.
+
 \section{Affine Geometry}
 \label{sec:app_math_affine}
+
+\index{affine geometry}\index{affine space}
+The distinction between \textbf{points} (locations) and \textbf{vectors}
+(translations) is fixed in Chapter~\ref{ch:math_foundations}. An
+\textbf{affine combination} of points $p_1,\dots,p_k$ is
+$x = \sum_i \lambda_i p_i$ with $\sum_i \lambda_i = 1$; the coefficients
+$\lambda_i$ are the \textbf{barycentric coordinates} of $x$ with respect to
+the frame (Section~\ref{sec:math_affine_combinations},
+Section~\ref{sec:math_barycentric}). A set is \textbf{affinely independent}
+if no point is an affine combination of the others; at most $d+1$ points in
+$\mathbb{R}^d$ are affinely independent. The \textbf{affine hull} of a set is
+its smallest affine subspace.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+object & definition in $\mathbb{R}^d$ \\
+\midrule
+line & $\{ p + t v : t \in \mathbb{R} \}$, $v \neq \mathbf{0}$ \\
+segment & $\{ (1-t)p + t q : 0 \le t \le 1 \}$ \\
+ray & $\{ p + t v : t \ge 0 \}$ \\
+hyperplane & $\{ x : \langle n, x\rangle = c \}$, $n \neq \mathbf{0}$ \\
+half-space & $\{ x : \langle n, x\rangle \ge c \}$ or $\le c$ \\
+simplex & convex hull of $d+1$ affinely independent points \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\index{simplex}\index{simplicial complex}\index{triangulation}
+A \textbf{$d$-simplex} is the convex hull of $d+1$ affinely independent
+points: a point ($d=0$), segment ($d=1$), triangle ($d=2$), or tetrahedron
+($d=3$). Its \textbf{faces} are the simplices spanned by subsets of its
+vertices. A \textbf{simplicial complex} is a finite collection of simplices
+closed under taking faces whose intersections are faces of both. A
+\textbf{triangulation} of a point set in the plane is a simplicial complex
+using the points as vertices that covers their convex hull; a triangulation
+of a simple $n$-gon uses exactly $n-2$ triangles and $n-3$ diagonals
+(Chapter~\ref{ch:triangulations}, Chapter~\ref{ch:polygon_partitioning}).
+In $\mathbb{R}^3$, tetrahedralizations and the half-edge/half-face data
+structures used to store them are described in Chapters
+\ref{ch:mesh_generation} and \ref{ch:half_edge}. Euler's formula ties the
+counts together: for a planar triangulation with the unbounded face counted,
+$V - E + F = 2$, and for a triangulated polygon counting only bounded faces,
+$V - E + F = 1$ (Section~\ref{sec:app_math_graphs}).
+
+\index{polygon}\index{half-plane}\index{convex set}
+A \textbf{polygon} is the region bounded by a closed polygonal chain; it is
+\textbf{simple} if the chain is non-self-intersecting, and \textbf{convex} if
+the region is a convex set. The book consistently orients polygon boundaries
+counterclockwise (positive orientation), so the interior lies to the left of
+each directed edge. Half-planes, convex sets, and their separation properties
+are collected in Section~\ref{sec:app_math_convexity}.
+
+\medskip
+\noindent\textbf{Arrangements.}
+\index{arrangement}\index{zone}
+An \textbf{arrangement} of a finite family of lines, or more generally
+segments, is the subdivision of the plane induced by drawing them: the
+maximal connected open cells (\textbf{faces}), the maximal connected pieces
+of the input objects (\textbf{edges}), and the intersection points
+(\textbf{vertices}). The arrangement of $n$ lines has
+$O(n^2)$ cells, exactly $n(n+1)/2 + 1$ faces, and the arrangement of $n$
+segments has $O(n^2)$ complexity in the worst case. The \textbf{zone} of a
+curve is the set of cells it crosses; the zone theorem states that the total
+complexity of the zone of a line in an arrangement of $n$ lines (or segments)
+is $O(n)$ (Theorem~\ref{thm:zone_theorem}). Arrangements are the setting for
+point location (Chapter~\ref{ch:point_location}), envelopes and lower
+envelopes (Chapter~\ref{ch:envelopes}), and the duality theory of
+Chapter~\ref{ch:geometric_duality}; the book's conventions are fixed in
+Sections \ref{sec:math_lines_hyperplanes} and \ref{sec:math_homogeneous}.
+
+\index{affine geometry}\index{barycentric coordinates}
+See Chapter~\ref{ch:math_foundations} for the affine foundations and
+Chapter~\ref{ch:triangulations} for triangulations in full detail.
 
 \section{Convexity}
 \label{sec:app_math_convexity}
 
+\index{convexity}\index{convex set}\index{convex hull}
+A set $C \subseteq \mathbb{R}^d$ is \textbf{convex} if it contains the
+segment between any two of its points, equivalently if it contains every
+convex combination of its points (Definition~\ref{def:math_convex_hull}).
+The \textbf{convex hull} $\operatorname{conv}(S)$ of a set $S$ is the
+smallest convex set containing $S$, i.e.\ the set of all convex combinations
+of points of $S$. The operations that preserve convexity:
+\begin{itemize}
+  \item intersection of convex sets is convex;
+  \item the Minkowski sum $A \oplus B = \{ a + b : a \in A,\ b \in B \}$ of
+    convex sets is convex (Section~\ref{sec:math_separating_surfaces});
+  \item the convex hull of a union is the convex hull of the union of the
+    hulls: $\operatorname{conv}(A \cup B) = \operatorname{conv}(\operatorname{conv}(A) \cup \operatorname{conv}(B))$.
+\end{itemize}
+Every point of the convex hull is a convex combination of at most $d+1$
+points of $S$ (Carath\'eodory's theorem,
+Theorem~\ref{thm:math_caratheodory}). A set is closed and convex iff it is
+the intersection of all half-spaces containing it, and the two basic
+separation theorems hold: two disjoint closed convex sets, one of which is
+compact, are strictly separated by a hyperplane
+(Theorem~\ref{thm:math_separation}); a point outside a closed convex set has
+a unique nearest point in it. \textbf{Farkas's lemma} states that exactly one
+of the systems $\{Ax = b,\ x \ge 0\}$ and $\{A^\top y \ge 0,\ \langle b,y\rangle < 0\}$
+has a solution; it is the certificate of infeasibility behind linear
+programming (Chapter~\ref{ch:linear_programming}) and polarity
+(Section~\ref{sec:polytopes_polarity}). \textbf{Helly's theorem} says that a
+finite family of convex sets in $\mathbb{R}^d$ whose every $d+1$ members
+intersect has a common intersection point; it is a template for the
+``certificates'' that appear in randomized algorithms
+(Chapter~\ref{ch:convex_polytopes}).
+
+A \textbf{convex polytope} is the convex hull of finitely many points
+($\mathcal{V}$-representation) or, equivalently by the Weyl--Minkowski
+theorem, a bounded intersection of finitely many half-spaces
+($\mathcal{H}$-representation). Polytopes in $\mathbb{R}^d$ are the objects of
+Chapter~\ref{ch:convex_polytopes}; their faces, adjacency graphs, and
+upper-bound complexity ($O(n^{\lfloor d/2\rfloor})$ facets for
+$\mathcal{V}$-polytopes with $n$ vertices,
+Theorem~\ref{thm:polytopes_upper_bound}) are treated there. Boolean
+operations, distance queries, and collision detection for convex bodies
+reduce to half-space algebra (Chapter~\ref{ch:convex_intersection}), and the
+convex hull algorithms themselves are the subject of
+Chapter~\ref{ch:convex_hulls}.
+
+\medskip
+\noindent\textbf{Convex functions and Jensen's inequality.}
+\index{Jensen's inequality}
+For a convex function $f$ (Section~\ref{sec:app_math_vector_calculus}),
+Jensen's inequality states that for any convex combination,
+\[
+  f\left( \sum_{i=1}^k \lambda_i x_i \right) \le \sum_{i=1}^k \lambda_i f(x_i),
+  \qquad \lambda_i \ge 0,\ \sum_i \lambda_i = 1,
+\]
+with equality (for strictly convex $f$) only if all $x_i$ are equal. The
+probabilistic form, $f(\mathbb{E}[X]) \le \mathbb{E}[f(X)]$, follows by
+taking $\lambda_i$ to be a probability mass function and is stated again in
+Section~\ref{sec:app_math_probability}. Jensen's inequality is the engine of
+many lower bounds in approximation and randomized analysis
+(Chapters~\ref{ch:approximation_algorithms} and \ref{ch:randomized_algorithms}).
+
+\index{convexity}\index{polytope}\index{separation}
+See Chapter~\ref{ch:convex_hulls} for the algorithmic development and
+Chapter~\ref{ch:convex_polytopes} for the higher-dimensional theory.
+
 \section{Probability}
 \label{sec:app_math_probability}
+
+\index{probability}\index{random variable}
+A \textbf{probability space} is a set of outcomes $\Omega$ with a function
+$\Pr$ assigning each event $A \subseteq \Omega$ a probability in $[0,1]$ such
+that $\Pr(\Omega) = 1$ and $\Pr(\cup_i A_i) = \sum_i \Pr(A_i)$ for pairwise
+disjoint $A_i$. A \textbf{random variable} $X$ is a function on $\Omega$;
+its \textbf{expectation} and \textbf{variance} are
+\[
+  \mathbb{E}[X] = \sum_x x\,\Pr(X = x),
+  \qquad
+  \operatorname{Var}(X) = \mathbb{E}\bigl[(X - \mathbb{E}[X])^2\bigr]
+    = \mathbb{E}[X^2] - \mathbb{E}[X]^2,
+\]
+and the \textbf{covariance} of two random variables is
+$\operatorname{Cov}(X,Y) = \mathbb{E}[XY] - \mathbb{E}[X]\,\mathbb{E}[Y]$.
+The two facts used constantly in this book:
+\begin{itemize}
+  \item \textbf{linearity of expectation}:
+    $\mathbb{E}[X_1 + \cdots + X_n] = \sum_i \mathbb{E}[X_i]$, with no
+    independence required;
+  \item independence: if $X_1,\dots,X_n$ are independent, then
+    $\operatorname{Var}(X_1 + \cdots + X_n) = \sum_i \operatorname{Var}(X_i)$
+    and $\mathbb{E}[XY] = \mathbb{E}[X]\,\mathbb{E}[Y]$.
+\end{itemize}
+Linearity of expectation is the single most powerful tool for the expected
+running times in this book: indicator variables turn a complicated random
+sum into a sum of simple expectations (Definition~\ref{def:rand_expected_time}).
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+distribution & support & $\Pr(X = k)$ & mean \\
+\midrule
+Bernoulli$(p)$ & $\{0,1\}$ & $p$ if $k=1$ & $p$ \\
+Binomial$(n,p)$ & $\{0,\dots,n\}$ & $\binom{n}{k} p^k (1-p)^{n-k}$ & $np$ \\
+Geometric$(p)$ & $\{1,2,\dots\}$ & $(1-p)^{k-1} p$ & $1/p$ \\
+Poisson$(\lambda)$ & $\{0,1,\dots\}$ & $e^{-\lambda}\lambda^k / k!$ & $\lambda$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The geometric distribution is memoryless, $\Pr(X > n+m \mid X > m) = \Pr(X > n)$,
+which is the basis of the coupon-collector analysis: collecting $n$ coupons
+(equiprobable, with replacement) takes $\mathbb{E}[T] = n H_n$ draws, where
+$H_n$ is the $n$-th harmonic number (Section~\ref{sec:app_math_asymptotics}).
+
+\medskip
+\noindent\textbf{Tail bounds.}
+\index{union bound}\index{Markov's inequality}\index{Chebyshev's inequality}\index{Chernoff bound}
+The four concentration inequalities below are stated for nonnegative or
+bounded random variables and are used throughout the book, especially in
+Chapters~\ref{ch:randomized_algorithms} and \ref{ch:high_dimensional}.
+
+\begin{theorem}[Union Bound]\label{thm:appmath_union_bound}
+  For any events $A_1,\dots,A_n$,
+  $\Pr(\cup_i A_i) \le \sum_i \Pr(A_i)$.
+\end{theorem}
+
+\begin{theorem}[Markov's Inequality]\label{thm:appmath_markov}
+  If $X \ge 0$ then for every $a > 0$,
+  $\Pr(X \ge a) \le \mathbb{E}[X] / a$.
+\end{theorem}
+
+\begin{theorem}[Chebyshev's Inequality]\label{thm:appmath_chebyshev}
+  For any $X$ with finite variance and every $a > 0$,
+  $\Pr(|X - \mathbb{E}[X]| \ge a) \le \operatorname{Var}(X) / a^2$.
+\end{theorem}
+
+\begin{theorem}[Chernoff Bound]\label{thm:appmath_chernoff}
+  Let $X_1,\dots,X_n$ be independent Bernoulli variables with
+  $p_i = \Pr(X_i = 1)$ and let $X = \sum_i X_i$ with $\mu = \mathbb{E}[X]$.
+  For every $\delta \in (0,1)$,
+  \[
+    \Pr(X \ge (1+\delta)\mu) \le \exp\!\left(-\frac{\mu \delta^2}{3}\right),
+    \qquad
+    \Pr(X \le (1-\delta)\mu) \le \exp\!\left(-\frac{\mu \delta^2}{2}\right).
+  \]
+\end{theorem}
+
+Markov and Chebyshev are sharp as stated but require no independence;
+Chernoff requires independence but gives exponential tails, which is what
+makes failure probabilities $e^{-cn}$ for randomized algorithms and the
+concentration-of-measure results of Chapter~\ref{ch:high_dimensional}
+(Section~\ref{sec:highdim_concentration}) possible. The version used in
+Theorem~\ref{thm:rand_chernoff} for randomized incremental constructions
+applies to sums of indicator random variables with bounded tails. Jensen's
+inequality in its probabilistic form,
+$f(\mathbb{E}[X]) \le \mathbb{E}[f(X)]$ for convex $f$, is the converse
+direction: it converts expectations of convex functions into inequalities
+(Section~\ref{sec:app_math_convexity}).
+
+\medskip
+\noindent\textbf{Randomized algorithms.}
+\index{Las Vegas}\index{Monte Carlo}
+An algorithm is \textbf{Las Vegas} if it always returns a correct answer and
+its running time is a random variable (expected time stated via
+$\mathbb{E}[T]$), and \textbf{Monte Carlo} if it runs in a deterministic bound
+but may err with small probability (Definitions \ref{def:rand_las_vegas} and
+\ref{def:rand_monte_carlo}). The analysis of expected running time uses
+backward analysis, which bounds the expected cost by charging a random
+permutation of the input (Definition~\ref{def:rand_backward_analysis},
+Theorem~\ref{thm:rand_ric_expected}); typical proofs combine linearity of
+expectation, a union bound over failure events, and a Chernoff bound to boost
+success probability (Definition~\ref{def:rand_expected_time} and
+Theorem~\ref{thm:rand_chernoff}). Randomized algorithms in this book include
+randomized incremental construction
+(Section~\ref{sec:randomized_incremental}), Seidel's linear programming
+(Algorithm~\ref{alg:rand_lp_seidel}), randomized point location
+(Chapter~\ref{ch:point_location}), and the Monte Carlo estimation methods of
+Chapters~\ref{ch:sampling} and \ref{ch:applications_scientific}.
+
+\index{probability}\index{expectation}\index{variance}
+See Chapter~\ref{ch:randomized_algorithms} for the algorithmic use of these
+bounds and \cite{mitzenmacher2005} and \cite{ross2014} for proofs and
+extensions.
 
 \section{Graph Theory}
 \label{sec:app_math_graphs}
 
+\index{graph theory}\index{graph}
+A \textbf{graph} $G = (V, E)$ consists of a set of \textbf{vertices} $V$ and
+a set of \textbf{edges} $E$ of unordered (undirected) or ordered (directed)
+pairs of vertices. The \textbf{degree} of a vertex is its number of incident
+edges; a graph is $k$-regular if every vertex has degree $k$. A
+\textbf{path} is a sequence of vertices joined by edges; a \textbf{cycle} is
+a path with the same first and last vertex; the \textbf{distance} between two
+vertices is the length of the shortest path. A graph is \textbf{connected} if
+every pair of vertices is joined by a path, a \textbf{tree} is a connected
+acyclic graph, and a \textbf{forest} is a disjoint union of trees. A tree on
+$n$ vertices has exactly $n-1$ edges. Graphs are represented in memory by
+adjacency lists or adjacency matrices; the standard traversal, shortest path,
+and minimum spanning tree algorithms are collected in
+Appendix~\ref{app:algorithms_structures} and
+Chapter~\ref{ch:distance_paths}.
+
+\medskip
+\noindent\textbf{Planar graphs and Euler's formula.}
+\index{Euler's formula}\index{planar graph}
+A graph is \textbf{planar} if it can be drawn in the plane without edge
+crossings; such a drawing is a \textbf{planar subdivision}. A connected
+planar map satisfies \textbf{Euler's formula}
+\[
+  V - E + F = 2,
+\]
+where $F$ counts faces including the unbounded outer face. Consequently, a
+maximal planar graph (a triangulation) on $n \ge 3$ vertices has exactly
+$3n - 6$ edges. The same formula holds for any convex polyhedron; it is the
+planar instance of the Euler characteristic of
+Section~\ref{sec:math_topology}, and $V - E + F = 2 - 2g$ for a closed
+orientable surface of genus $g$
+(Chapter~\ref{ch:computational_topology}). The planar dual of a subdivision
+has one vertex per face and an edge across each primal edge; duality between
+the Delaunay triangulation and the Voronoi diagram is an instance
+(Theorem~\ref{thm:dt_vd_duality}, Chapters \ref{ch:voronoi_diagrams} and
+\ref{ch:delaunay_triangulations}).
+
+\index{half-edge}\index{DCEL}\index{mesh}
+The \textbf{doubly-connected edge list} (DCEL, also called the half-edge data
+structure) represents a planar subdivision or a manifold mesh by splitting
+each undirected edge into two opposite \textbf{half-edges}, each carrying
+pointers to its origin, its twin, its next and previous half-edges around its
+face, and its incident face (Chapter~\ref{ch:half_edge}). Euler's formula
+then gives the storage count: for a connected planar mesh with $V$ vertices,
+$E$ half-edges (or $E/2$ undirected edges), and $F$ faces,
+$V - E/2 + F = 2$. The combinatorial structure of meshes, including vertex
+and face traversals, is developed in Definition~\ref{def:hed_halfedge} and
+Theorem~\ref{thm:hed_euler}.
+
+\medskip
+\noindent\textbf{Common subproblems.}
+\index{spanning tree}\index{shortest path}\index{matching}
+\begin{itemize}
+  \item \textbf{Shortest paths}: Dijkstra's algorithm solves single-source
+    shortest paths with nonnegative weights in $O(E \log V)$
+    (Chapter~\ref{ch:distance_paths});
+  \item \textbf{Visibility and guarding}: the visibility graph of a polygon
+    encodes which vertex pairs see each other; guarding problems are graph
+    coloring and domination problems (Chapters \ref{ch:visibility} and
+    \ref{ch:art_gallery});
+  \item \textbf{Matching}: a matching is a set of pairwise disjoint edges;
+    bipartite matching and assignment are used in geometric registration and
+    shape comparison (Chapter~\ref{ch:geometric_matching});
+  \item \textbf{Connectivity}: the connected components and the cut and
+    cycle bases of the dual graph control mesh parameterization and
+    high-genus handling (Chapters \ref{ch:computational_topology} and
+    \ref{ch:surface_modeling}).
+\end{itemize}
+
+\index{graph theory}
+See \cite{cormen2009} for the algorithmic graph theory,
+Chapter~\ref{ch:half_edge} for the mesh data structures, and
+Chapter~\ref{ch:computational_topology} for the topological invariants.
+
 \section{Asymptotic Analysis}
 \label{sec:app_math_asymptotics}
+
+\index{asymptotic analysis}\index{big-O notation}
+Throughout the book, running times and space usage are stated in terms of
+asymptotic classes for functions $f, g : \mathbb{N} \to \mathbb{R}_{\ge 0}$.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+notation & meaning & verbal reading \\
+\midrule
+$f(n) = O(g(n))$ & $\exists c, n_0$: $f(n) \le c\,g(n)$ for $n \ge n_0$ & at most \\
+$f(n) = \Omega(g(n))$ & $\exists c, n_0$: $f(n) \ge c\,g(n)$ for $n \ge n_0$ & at least \\
+$f(n) = \Theta(g(n))$ & $f = O(g)$ and $f = \Omega(g)$ & exactly \\
+$f(n) = o(g(n))$ & $\lim_{n\to\infty} f(n)/g(n) = 0$ & strictly less \\
+$f(n) = \omega(g(n))$ & $\lim_{n\to\infty} f(n)/g(n) = \infty$ & strictly more \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Typical growth rates, in increasing order:
+$1 \prec \log n \prec \sqrt{n} \prec n \prec n\log n \prec n^2 \prec n^3
+\prec 2^n \prec n!$. The analysis conventions:
+\begin{itemize}
+  \item \textbf{worst case} bounds the running time over all inputs of size
+    $n$;
+  \item \textbf{average case} bounds the expectation over a stated input
+    distribution;
+  \item \textbf{expected} bounds hold for randomized algorithms, the
+    expectation over the random bits (Section~\ref{sec:app_math_probability});
+  \item \textbf{amortized} analysis charges the cost of a sequence of
+    operations so that expensive operations are paid for by cheap ones: if a
+    sequence of $m$ operations costs $O(m\,T(n))$ total, each operation has
+    amortized cost $O(T(n))$ even if single operations are more expensive.
+    Amortized bounds drive the union-find, splay-tree, and kinetic data
+    structure analyses (Appendix~\ref{app:algorithms_structures},
+    Chapter~\ref{ch:dynamic_kinetic_geometry}).
+\end{itemize}
+Amortized cost is often computed by the aggregate, accounting, or potential
+methods; the potential method assigns a potential $\Phi$ to each state and
+defines the amortized cost of an operation as its actual cost plus the change
+in potential.
+
+\medskip
+\noindent\textbf{Standard sums.}
+\index{harmonic number}\index{geometric series}
+The summations used most often in this book:
+\[
+  \sum_{i=1}^{n} i = \frac{n(n+1)}{2},
+  \qquad
+  \sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6},
+\]
+\[
+  \sum_{i=0}^{n} r^i = \frac{r^{n+1} - 1}{r - 1}\ \ (r \neq 1),
+  \qquad
+  \sum_{i=0}^{\infty} r^i = \frac{1}{1 - r}\ \ (|r| < 1),
+\]
+\[
+  H_n = \sum_{i=1}^{n} \frac{1}{i} = \ln n + \gamma + O\!\left(\frac{1}{n}\right),
+\]
+where $\gamma \approx 0.5772$ is Euler's constant. The harmonic numbers
+$H_n$ bound the expected costs of coupon collection, randomized incremental
+constructions, and the insertions of many data structures.
+
+\medskip
+\noindent\textbf{Binomial coefficients.}
+\index{binomial coefficient}\index{Stirling's formula}
+\[
+  \binom{n}{k} = \frac{n!}{k!\,(n-k)!},
+  \qquad
+  \binom{n}{k} = \binom{n}{n-k},
+  \qquad
+  \binom{n}{k} = \binom{n-1}{k-1} + \binom{n-1}{k}\ \text{(Pascal)},
+\]
+\[
+  \sum_{k=0}^{n} \binom{n}{k} = 2^n,
+  \qquad
+  \left(\frac{n}{k}\right)^k \le \binom{n}{k} \le \left(\frac{e n}{k}\right)^k,
+\]
+and Stirling's approximation $n! \sim \sqrt{2\pi n}\,(n/e)^n$. These bounds
+estimate the sizes of $k$-sets, $\varepsilon$-nets, and random samples in
+Chapters \ref{ch:high_dimensional} and \ref{ch:approximation_algorithms}.
+
+\medskip
+\noindent\textbf{Recurrences.}
+\index{recurrence}\index{master theorem}
+Divide-and-conquer algorithms satisfy recurrences of the form
+$T(n) = a\,T(n/b) + f(n)$ with $a \ge 1$, $b > 1$, where $f(n)$ is the cost
+of the divide and combine steps.
+
+\begin{theorem}[Master Theorem]\label{thm:appmath_master}
+  Let $T(n) = a\,T(n/b) + f(n)$, $T(1) = \Theta(1)$, and let
+  $c^* = \log_b a$.
+  \begin{enumerate}
+    \item if $f(n) = O(n^{c^* - \varepsilon})$ for some $\varepsilon > 0$,
+      then $T(n) = \Theta(n^{c^*})$;
+    \item if $f(n) = \Theta(n^{c^*})$, then $T(n) = \Theta(n^{c^*} \log n)$;
+    \item if $f(n) = \Omega(n^{c^* + \varepsilon})$ for some $\varepsilon > 0$
+      and $a\,f(n/b) \le c\,f(n)$ for some $c < 1$ and all large $n$, then
+      $T(n) = \Theta(f(n))$.
+  \end{enumerate}
+\end{theorem}
+
+For example, the closest-pair divide-and-conquer recurrence
+$T(n) = 2T(n/2) + O(n)$ gives $T(n) = \Theta(n \log n)$
+(Chapter~\ref{ch:proximity}), and the mergesort-type recurrences behind the
+multidimensional range-searching data structures of Chapter
+\ref{ch:range_searching} are solved the same way. When the master theorem
+does not apply, the substitution method (guess a bound, verify by induction)
+or recursion-tree analysis is used; see \cite{cormen2009} for the systematic
+treatment.
+
+\index{asymptotic analysis}
+See Chapter~\ref{ch:randomized_algorithms} for the expected-case analysis of
+randomized geometric algorithms and Appendix~\ref{app:algorithms_structures}
+for the complexity summaries of the standard data structures.

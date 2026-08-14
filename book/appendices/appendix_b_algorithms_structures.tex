@@ -1,28 +1,722 @@
 \chapter{Algorithms and Data Structures}
 \label{app:algorithms_structures}
 
-% Stub: outline only; content to be written.
+This appendix is a catalog of the fundamental algorithms and data
+structures on which the geometric algorithms of this book rest. Each
+chapter develops its subject in depth; the goal here is a compact survey
+recording, for every algorithm family, the problem solved, the running
+time and space, and a pointer to the chapter and section where the full
+treatment appears. Throughout, $n$ denotes the input size, $k$ the output
+size (for reporting problems), $d$ the dimension, and $h$ the number of
+convex hull vertices. Bounds are worst-case unless explicitly marked
+``expected'', in which case they hold with high probability over the
+internal randomization of the algorithm. We adopt the real-RAM model of
+Chapter~\ref{ch:introduction} (Section~\ref{sec:intro_models_complexity});
+asymptotic notation is summarized in Appendix~\ref{app:math_reference}
+(Section~\ref{sec:app_math_asymptotics}).
 
 \section{Sorting}
 \label{sec:app_alg_sorting}
 
+Sorting is the most reused primitive in computational geometry: a large
+fraction of geometric algorithms --- convex hulls, closest pairs, plane
+sweeps, and balanced spatial structures --- reduce to sorting followed by
+a linear or near-linear pass, so the sort usually dominates the running
+time. For comparison-based sorts the worst case is $\Omega(n\log n)$
+\cite{cormen2009}; integer keys of bounded range sort faster with radix
+techniques.
+
+\subsection{Classic Sorting}
+\label{sec:appalgs_sorting_classic}
+
+Table~\ref{tbl:appalgs_sorting} summarizes the standard algorithms
+\cite{cormen2009}.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lccccl}
+\toprule
+Algorithm & Worst case & Expected & Extra space & Stable \\
+\midrule
+Mergesort       & $O(n\log n)$ & $O(n\log n)$ & $O(n)$        & Yes \\
+Randomized quicksort & $O(n^2)$ & $O(n\log n)$ & $O(\log n)$ & No \\
+Heapsort        & $O(n\log n)$ & $O(n\log n)$ & $O(1)$        & No \\
+Insertion sort  & $O(n^2)$ & $O(n^2)$ & $O(1)$        & Yes \\
+Introsort       & $O(n\log n)$ & $O(n\log n)$ & $O(\log n)$ & No \\
+Radix sort (integer keys) & $O(w\cdot n)$ & $O(w\cdot n)$ & $O(n)$ & Yes \\
+\bottomrule
+\end{tabular}
+\caption{Classic sorting algorithms; $w$ is the bit length of the integer
+keys in the radix-sort row.}
+\label{tbl:appalgs_sorting}
+\end{table}
+
+\index{sorting}\index{mergesort}\index{quicksort}\index{heapsort}\index{radix sort}
+Mergesort suits external memory (sequential access), quicksort is the
+in-memory default, and heapsort is chosen when $O(1)$ extra space is
+mandatory. Stability matters geometrically: monotone chain, kinetic
+structures, and sweeps depend on the order of equal keys.
+
+\subsection{Sorting as a Geometric Preprocessing Step}
+\label{sec:appalgs_sorting_geometric}
+
+\begin{itemize}
+  \item \textbf{Graham scan}\index{Graham scan}: \textbf{Problem} ---
+    convex hull of $n$ planar points. \textbf{Running Time} --- $O(n\log n)$,
+    dominated by the polar-angle sort. \textbf{Notes} --- a left-turn stack
+    pass after sorting \cite{graham1972}. \textbf{See}
+    Chapter~\ref{ch:convex_hulls} (Section~\ref{sec:graham_scan}).
+  \item \textbf{Monotone chain}\index{monotone chain} (Andrew):
+    \textbf{Problem} --- convex hull of $n$ planar points.
+    \textbf{Running Time} --- $O(n\log n)$ for a lexicographic sort by
+    $(x,y)$ plus two linear passes. \textbf{Notes} --- avoids polar-angle
+    comparisons and handles collinear points cleanly. \textbf{See}
+    Chapter~\ref{ch:convex_hulls} (Section~\ref{sec:monotone_chain}).
+  \item \textbf{Plane-sweep preprocessing}: \textbf{Problem} --- reporting
+    intersections, overlays, and unions of $n$ planar objects.
+    \textbf{Running Time} --- $O(n\log n)$ for the initial sort plus the
+    sweep cost. \textbf{Notes} --- Bentley--Ottmann sorts segment endpoints
+    and inserts intersection events into a priority queue during the sweep
+    (Section~\ref{sec:app_alg_priority_queues}). \textbf{See}
+    Chapter~\ref{ch:segment_intersection}
+    (Sections~\ref{sec:segint_sweep_line} and \ref{sec:segint_events}).
+  \item \textbf{Closest pair (divide-and-conquer)}\index{closest pair}:
+    \textbf{Problem} --- closest pair among $n$ planar points.
+    \textbf{Running Time} --- $O(n\log n)$. \textbf{Notes} --- sorting by
+    $x$ makes the merge linear \cite{shamos1975}. \textbf{See}
+    Chapter~\ref{ch:proximity} (Section~\ref{sec:closest_pair}).
+  \item \textbf{Delaunay triangulation (divide-and-conquer)}:
+    \textbf{Problem} --- Delaunay triangulation of $n$ points.
+    \textbf{Running Time} --- $O(n\log n)$. \textbf{Notes} --- presorting
+    by $x$ keeps every merge linear \cite{deberg2008}. \textbf{See}
+    Chapter~\ref{ch:delaunay_triangulations}
+    (Section~\ref{sec:delaunay_divide_conquer}).
+  \item \textbf{kd-tree construction}: \textbf{Problem} --- balanced
+    space-partitioning tree on $n$ points. \textbf{Running Time} ---
+    $O(n\log n)$ by presorting each coordinate; splitting on medians
+    avoids recomputation at every level \cite{bentley1975, samet2006}.
+    \textbf{See} Chapter~\ref{ch:spatial_structures} (Section~\ref{sec:kd_tree}).
+  \item \textbf{Space-filling-curve orderings}\index{space-filling curve}:
+    \textbf{Problem} --- linearize $\mathbb{R}^d$ points so nearby points
+    are nearby in the order. \textbf{Running Time} --- $O(n\log n)$.
+    \textbf{Notes} --- Hilbert and Morton orders underpin external-memory
+    and streaming geometry. \textbf{See} Chapter~\ref{ch:space_filling_curves}
+    (Sections~\ref{sec:hilbert_curve} and \ref{sec:morton_curve}).
+  \item \textbf{Kinetic sorting}\index{kinetic sorting}:
+    \textbf{Problem} --- maintain the $x$-order of $n$ moving points.
+    \textbf{Running Time} --- $O(\log n)$ per swap event, $O(n^2)$ events
+    worst case. \textbf{See} Chapter~\ref{ch:dynamic_kinetic_geometry}
+    (Section~\ref{sec:dynamic_kinetic_sorting}).
+\end{itemize}
+
+\subsection{Convex Hull Algorithms}
+\label{sec:appalgs_sorting_hulls}
+
+Table~\ref{tbl:appalgs_hull} compares the hull algorithms of this book.
+The central trade-off is between near-linear algorithms that ignore the
+hull size and output-sensitive algorithms whose cost involves the number
+$h$ of hull vertices; Chan's algorithm \cite{chan1996} achieves
+$O(n\log h)$, the best of both worlds.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lllll}
+\toprule
+Algorithm & 2D worst case & Space & Output-sensitive & See \\
+\midrule
+Graham scan         & $O(n\log n)$ & $O(n)$ & No  & \ref{sec:graham_scan} \\
+Monotone chain      & $O(n\log n)$ & $O(n)$ & No  & \ref{sec:monotone_chain} \\
+Gift wrapping (Jarvis march) & $O(nh)$ & $O(n)$ & Yes & \ref{sec:chans_algorithm} \\
+QuickHull           & $O(nh)$      & $O(n)$ & Yes & \ref{sec:quickhull} \\
+Divide-and-conquer  & $O(n\log n)$ & $O(n)$ & No  & \ref{sec:delaunay_divide_conquer} \\
+Randomized incremental & $O(n\log n)$ exp.\ & $O(n)$ & No & \ref{sec:randomized_convex_hulls} \\
+Chan's algorithm    & $O(n\log h)$ & $O(n)$ & Yes & \ref{sec:chans_algorithm} \\
+3D hulls (QuickHull, incremental) & $O(n\log n)$ exp.\ & $O(n)$ & -- & \ref{sec:quickhull}, \ref{sec:incremental_3d_hull} \\
+\bottomrule
+\end{tabular}
+\caption{Convex hull algorithms. ``exp.'' marks expected time; $h$ is the
+number of hull vertices. Gift wrapping is discussed with Chan's algorithm;
+the optimal deterministic $O(n\log n)$ bound in fixed dimension is due to
+Chazelle \cite{chazelle1993}.}
+\label{tbl:appalgs_hull}
+\end{table}
+
+\index{convex hull}\index{gift wrapping}\index{Jarvis march}\index{Chan's algorithm}
+In 3D the output-sensitive machinery extends through the lifting
+correspondence between Delaunay triangulations and convex hulls
+(Section~\ref{sec:delaunay_convex_hulls}, Chapter~\ref{ch:delaunay_triangulations});
+the fixed-dimension optimal result \cite{chazelle1993} is described in
+Chapter~\ref{ch:high_dimensional} (Section~\ref{sec:highdim_hulls}).
+
 \section{Binary Search}
 \label{sec:app_alg_binary_search}
+
+Binary search is the prototypical ordered-search primitive: in $O(\log n)$
+comparisons it answers predecessor and membership queries on a sorted
+array. In geometry it is the low-level engine of point location, range
+searching, and nearest-neighbor structures, where the ``sorted lists''
+are arrays of coordinates, slabs, or node lists of trees.
+
+\subsection{Ordered Searching}
+\label{sec:appalgs_bsearch_ordered}
+
+\begin{itemize}
+  \item \textbf{Binary search}\index{binary search}: \textbf{Problem} ---
+    dictionary operations on a static ordered set. \textbf{Running Time} ---
+    $O(\log n)$ per query, matching the $\Omega(\log n)$ comparison lower
+    bound \cite{cormen2009}. \textbf{Space} --- $O(n)$.
+    \textbf{Notes} --- the same bound holds for balanced search trees
+    (Section~\ref{sec:app_alg_balanced_trees}).
+  \item \textbf{Fractional cascading}\index{fractional cascading}:
+    \textbf{Problem} --- search one key in a chain of sorted lists faster
+    than one binary search each. \textbf{Running Time} --- $O(\log n)$ for
+    the first list plus $O(1)$ per further list, after $O(n)$
+    preprocessing \cite{deberg2008}. \textbf{Notes} --- removes a
+    $\log n$ factor from range-tree queries and slab point location.
+    \textbf{See} Chapter~\ref{ch:range_searching}
+    (Section~\ref{sec:rangesearch_fractional_cascading}).
+  \item \textbf{Selection}\index{selection}: \textbf{Problem} --- find the
+    $k$-th smallest key. \textbf{Running Time} --- $O(n)$ (median-of-medians
+    worst case, randomized selection expected) \cite{cormen2009}.
+    \textbf{Notes} --- the pivot primitive of balanced $k$d-tree
+    construction (Section~\ref{sec:app_alg_balanced_trees}).
+\end{itemize}
+
+\subsection{Point Location}
+\label{sec:appalgs_bsearch_pointloc}
+
+Point location is the geometric generalization of binary search: given a
+planar subdivision and a query point, find the containing cell.
+Table~\ref{tbl:appalgs_pointloc} compares the main methods.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lllll}
+\toprule
+Method & Space & Query time & Deterministic & See \\
+\midrule
+Slab decomposition  & $O(n^2)$ & $O(\log n)$ & Yes & \ref{sec:pointloc_slabs} \\
+Triangulation refinement (Kirkpatrick) & $O(n)$ & $O(\log n)$ & Yes & \ref{sec:pointloc_kirkpatrick} \\
+Randomized trapezoidal map & $O(n)$ exp.\ & $O(\log n)$ exp.\ & No & \ref{sec:pointloc_trapezoidal} \\
+Walking             & $O(n)$ & $O(n)$ worst, practical & Yes & \ref{sec:pointloc_triangulations} \\
+Search DAGs (history) & $O(n)$ exp.\ & $O(\log n)$ exp.\ & No & \ref{sec:pointloc_search_dags} \\
+\bottomrule
+\end{tabular}
+\caption{Point location in planar subdivisions. ``exp.'' marks expected
+bounds; walking is the linear-space practical method of Delaunay-based
+applications.}
+\label{tbl:appalgs_pointloc}
+\end{table}
+
+\index{point location}\index{slab decomposition}\index{Kirkpatrick hierarchy}
+\begin{itemize}
+  \item \textbf{Slab decomposition}: \textbf{Running Time} --- $O(\log n)$
+    per query; the binary search over slabs is sped up to $O(\log n)$ total
+    by fractional cascading \cite{preparata1985}. \textbf{Space} --- $O(n^2)$
+    worst case. \textbf{See} Chapter~\ref{ch:point_location}
+    (Section~\ref{sec:pointloc_slabs}).
+  \item \textbf{Triangulation refinement (Kirkpatrick hierarchy)}:
+    \textbf{Running Time} --- $O(\log n)$ per query, $O(n)$ space,
+    deterministic \cite{kirkpatrick1983}. \textbf{Notes} --- refines the
+    subdivision to a triangulation, then coarsens it by independent-set
+    removal. \textbf{See} Chapter~\ref{ch:point_location}
+    (Section~\ref{sec:pointloc_kirkpatrick}).
+  \item \textbf{Randomized trapezoidal map}: \textbf{Running Time} ---
+    $O(n\log n)$ expected construction, $O(\log n)$ expected query, $O(n)$
+    expected space \cite{seidel1991}. \textbf{Notes} --- randomized
+    incremental insertion with a history DAG for search. \textbf{See}
+    Chapter~\ref{ch:point_location} (Sections~\ref{sec:pointloc_trapezoidal}
+    and \ref{sec:pointloc_randomized}).
+  \item \textbf{Walking}\index{walking}: \textbf{Running Time} --- $O(n)$
+    worst case; the practical default for Delaunay point location.
+    \textbf{See} Chapter~\ref{ch:point_location}
+    (Section~\ref{sec:pointloc_triangulations}) and Chapter~\ref{ch:proximity}
+    (Section~\ref{sec:point_location_walking}).
+\end{itemize}
+
+\subsection{Nearest-Neighbor Search}
+\label{sec:appalgs_bsearch_nn}
+
+Table~\ref{tbl:appalgs_nn} compares the principal nearest-neighbor
+structures.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lllll}
+\toprule
+Structure & Construction & Space & Query & See \\
+\midrule
+Voronoi diagram    & $O(n\log n)$ & $O(n)$ & $O(\log n)$ & \ref{sec:voronoi_diagram} \\
+Delaunay triangulation & $O(n\log n)$ & $O(n)$ & walking & \ref{sec:delaunay_duality} \\
+kd-tree            & $O(n\log n)$ & $O(n)$ & $O(\log n)$ exp.\ & \ref{sec:kd_tree} \\
+Cover tree         & $O(n\log n)$ exp.\ & $O(n)$ & $O(\log n)$ exp.\ & \ref{sec:approx_ann} \\
+Uniform grid / quadtree & $O(n)$ & $O(n)$ & $O(1)$ exp.\ & \ref{sec:uniform_grids} \\
+\bottomrule
+\end{tabular}
+\caption{Nearest-neighbor structures. ``exp.'' marks expected bounds; the
+grid entry assumes well-distributed input.}
+\label{tbl:appalgs_nn}
+\end{table}
+
+\index{nearest neighbor}\index{Voronoi diagram}\index{cover tree}
+\begin{itemize}
+  \item \textbf{Voronoi diagram}: \textbf{Running Time} --- construction
+    $O(n\log n)$, $O(n)$ space; nearest site via point location in
+    $O(\log n)$ \cite{shamos1975}. \textbf{See}
+    Chapter~\ref{ch:voronoi_diagrams} (Section~\ref{sec:voronoi_diagram}).
+  \item \textbf{Delaunay triangulation}: \textbf{Notes} --- the dual of
+    the Voronoi diagram; nearest-neighbor queries by walking over the
+    triangulation, the practical default in meshing and dynamic geometry.
+    \textbf{See} Chapter~\ref{ch:delaunay_triangulations}
+    (Section~\ref{sec:delaunay_duality}).
+  \item \textbf{kd-tree}: expected $O(\log n)$ queries on balanced trees
+    \cite{bentley1975}; pervasive in proximity, GIS, and learning
+    (Chapters~\ref{ch:proximity} and \ref{ch:applications_gis}).
+    \textbf{See} Chapter~\ref{ch:spatial_structures} (Section~\ref{sec:kd_tree}).
+  \item \textbf{Cover tree}\index{cover tree}: \textbf{Notes} --- a leveled
+    hierarchy with provable $O(\log n)$ expected search in metric spaces
+    of bounded expansion/doubling constant \cite{beygelzimer2006}.
+    \textbf{See} Chapter~\ref{ch:approximation_algorithms}
+    (Section~\ref{sec:approx_ann}).
+  \item \textbf{Uniform grids and quadtrees}: \textbf{Notes} --- hash-like
+    $O(1)$ expected queries for well-distributed data; the basis of
+    fixed-radius and spatial-hash searches. \textbf{See}
+    Chapter~\ref{ch:spatial_structures} (Sections~\ref{sec:uniform_grids}
+    and \ref{sec:fixed_radius_search}).
+\end{itemize}
 
 \section{Balanced Search Trees}
 \label{sec:app_alg_balanced_trees}
 
+Balanced binary search trees guarantee $O(\log n)$ dynamic operations; their
+geometric counterparts keep that balance against the \emph{data} rather than
+the key order. This section catalogs the spatial trees of
+Chapter~\ref{ch:spatial_structures} and the range structures of
+Chapter~\ref{ch:range_searching}.
+
+\subsection{Spatial Trees}
+\label{sec:appalgs_trees_spatial}
+
+\begin{itemize}
+  \item \textbf{kd-tree}\index{kd-tree}: \textbf{Problem} --- orthogonal
+    range searching and nearest-neighbor queries in $\mathbb{R}^d$.
+    \textbf{Running Time} --- build $O(n\log n)$; orthogonal range
+    reporting $O(n^{1-1/d}+k)$; nearest neighbor $O(\log n)$ expected.
+    \textbf{Space} --- $O(n)$ \cite{bentley1975, samet2006}.
+    \textbf{Notes} --- splits alternately on coordinate medians; not
+    weight-balanced, so worst-case queries degrade to $O(n)$. \textbf{See}
+    Chapter~\ref{ch:spatial_structures} (Section~\ref{sec:kd_tree}) and
+    Chapter~\ref{ch:range_searching} (Section~\ref{sec:rangesearch_kd_trees}).
+  \item \textbf{Quadtree}\index{quadtree}: \textbf{Problem} --- spatial
+    indexing, region queries, proximity. \textbf{Running Time} --- build
+    $O(n\log n)$ for a point quadtree; compressed variants have $O(n)$
+    size and build time \cite{finkel1974, samet2006}. \textbf{Notes} ---
+    compression removes chains of empty cells; underlies voxel and meshing
+    pipelines (Chapter~\ref{ch:voxel_geometry}). \textbf{See}
+    Chapter~\ref{ch:spatial_structures} (Section~\ref{sec:quadtree}).
+  \item \textbf{R-tree}\index{R-tree}: \textbf{Problem} --- window queries
+    and spatial joins in large databases. \textbf{Running Time} --- no
+    nontrivial worst-case bound; practical $O(\log n)$-ish behavior
+    \cite{guttman1984, samet2006}. \textbf{Space} --- $O(n)$.
+    \textbf{Notes} --- balanced tree of minimum bounding rectangles; the
+    standard GIS index (Chapter~\ref{ch:applications_gis},
+    Section~\ref{sec:gis_indexing}). \textbf{See}
+    Chapter~\ref{ch:spatial_structures} (Section~\ref{sec:r_tree}).
+  \item \textbf{BSP tree}\index{BSP tree}: \textbf{Problem} --- hidden
+    surface removal, solid modeling, collision detection.
+    \textbf{Running Time} --- expected size $O(n\log n)$ for random
+    cutting planes, $O(n^2)$ worst case \cite{fuchs1980, deberg2008}.
+    \textbf{See} Chapter~\ref{ch:spatial_structures}
+    (Sections~\ref{sec:bsp_trees} and \ref{sec:bsp_applications}).
+\end{itemize}
+
+\subsection{Range and Interval Structures}
+\label{sec:appalgs_trees_interval}
+
+\begin{itemize}
+  \item \textbf{Range tree}\index{range tree}: \textbf{Problem} ---
+    orthogonal range searching. \textbf{Running Time} --- 2D build
+    $O(n\log n)$, query $O(\log^2 n + k)$, space $O(n\log n)$; in
+    $d$ dimensions build/space $O(n\log^{d-1} n)$, query
+    $O(\log^{d-1} n + k)$ \cite{deberg2008}. \textbf{Notes} --- fractional
+    cascading gives $O(\log n + k)$ 2D queries
+    (Section~\ref{sec:rangesearch_fractional_cascading}). \textbf{See}
+    Chapter~\ref{ch:range_searching} (Section~\ref{sec:rangesearch_range_trees}).
+  \item \textbf{Interval tree}\index{interval tree}: \textbf{Problem} ---
+    stabbing queries: report all intervals containing a point.
+    \textbf{Running Time} --- build $O(n\log n)$, space $O(n)$, query
+    $O(\log n + k)$ \cite{edelsbrunner1980, deberg2008}. \textbf{See}
+    Chapter~\ref{ch:spatial_structures} (Section~\ref{sec:interval_tree}).
+  \item \textbf{Segment tree}\index{segment tree}: \textbf{Problem} ---
+    stabbing queries and interval unions. \textbf{Running Time} --- build
+    $O(n\log n)$, space $O(n\log n)$, query $O(\log n + k)$; the canonical
+    decomposition yields the $O(n\log n)$ area-of-union-of-rectangles
+    algorithm (Section~\ref{sec:segint_union_rectangles},
+    Chapter~\ref{ch:segment_intersection}) \cite{deberg2008}. \textbf{See}
+    Chapter~\ref{ch:spatial_structures} (Section~\ref{sec:segment_tree}).
+  \item \textbf{Partition tree}\index{partition tree}: \textbf{Problem} ---
+    simplex (half-plane, triangle) range searching. \textbf{Running Time} ---
+    build $O(n\log n)$ expected, space $O(n)$, query
+    $O(n^{1-1/d}\,\operatorname{polylog} n)$ expected \cite{matousek1992partition}.
+    \textbf{Notes} --- the basis of the cutting-based methods of
+    Section~\ref{sec:rangesearch_simplex}. \textbf{See}
+    Chapter~\ref{ch:range_searching} (Section~\ref{sec:rangesearch_simplex}).
+\end{itemize}
+
+Table~\ref{tbl:appalgs_range} summarizes the range structures of this
+section ($k$ is the number of reported points).
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lllll}
+\toprule
+Structure & Build & Space & Query (orthogonal) & See \\
+\midrule
+kd-tree         & $O(n\log n)$ & $O(n)$ & $O(n^{1-1/d}+k)$ & \ref{sec:rangesearch_kd_trees} \\
+Range tree      & $O(n\log^{d-1} n)$ & $O(n\log^{d-1} n)$ & $O(\log^{d-1} n+k)$ & \ref{sec:rangesearch_range_trees} \\
+Range tree + fractional cascading (2D) & $O(n\log n)$ & $O(n\log n)$ & $O(\log n+k)$ & \ref{sec:rangesearch_fractional_cascading} \\
+Interval tree (stabbing) & $O(n\log n)$ & $O(n)$ & $O(\log n+k)$ & \ref{sec:interval_tree} \\
+Segment tree (stabbing)  & $O(n\log n)$ & $O(n\log n)$ & $O(\log n+k)$ & \ref{sec:segment_tree} \\
+Partition tree (simplex) & $O(n\log n)$ exp.\ & $O(n)$ & $O(n^{1-1/d}\,\operatorname{polylog} n)$ exp.\ & \ref{sec:rangesearch_simplex} \\
+\bottomrule
+\end{tabular}
+\caption{Summary of range-searching structures. ``exp.'' marks expected
+bounds; $k$ is the number of reported points.}
+\label{tbl:appalgs_range}
+\end{table}
+
 \section{Priority Queues}
 \label{sec:app_alg_priority_queues}
+
+Priority queues maintain a set under repeated minimum extraction; in
+geometry they drive sweep-line event scheduling, shortest paths on planar
+and geometric graphs, and greedy refinement loops.
+
+\subsection{Heap Data Structures}
+\label{sec:appalgs_pq_heaps}
+
+\begin{itemize}
+  \item \textbf{Binary heap}\index{binary heap}: \textbf{Running Time} ---
+    $O(\log n)$ insert and extract-minimum, $O(1)$ find-minimum, $O(n)$
+    construction \cite{cormen2009}. \textbf{Space} --- $O(n)$.
+    \textbf{Notes} --- $d$-ary heaps reduce height at the cost of more
+    comparisons; the binary heap is the default implementation of the
+    sweep event queue.
+  \item \textbf{Fibonacci heap}\index{Fibonacci heap}: \textbf{Running Time} ---
+    $O(1)$ amortized decrease-key, $O(\log n)$ amortized extract-minimum
+    \cite{cormen2009}. \textbf{Notes} --- used in the fastest Dijkstra and
+    MST analyses; in practice binary heaps are usually faster.
+\end{itemize}
+
+\subsection{Priority Queues in Geometric Algorithms}
+\label{sec:appalgs_pq_geometric}
+
+\begin{itemize}
+  \item \textbf{Sweep-line event queues}: \textbf{Problem} --- report all
+    $K$ intersections of $n$ segments. \textbf{Running Time} ---
+    $O((n+K)\log n)$, each event processed in $O(\log n)$; the queue must
+    support insertion of newly computed intersections \cite{deberg2008}.
+    \textbf{Space} --- $O(n+K)$. \textbf{See}
+    Chapter~\ref{ch:segment_intersection} (Sections~\ref{sec:segint_sweep_line}
+    and \ref{sec:segint_status}).
+  \item \textbf{Dijkstra's algorithm}\index{Dijkstra's algorithm}:
+    \textbf{Problem} --- single-source shortest paths.
+    \textbf{Running Time} --- $O((n+m)\log n)$ with a heap on a graph of
+    $n$ vertices and $m$ edges \cite{dijkstra1959, cormen2009}.
+    \textbf{Notes} --- planar and geometric graphs satisfy $m = O(n)$
+    (Section~\ref{sec:app_alg_graphs}). \textbf{See}
+    Chapter~\ref{ch:distance_paths} (Section~\ref{sec:dijkstra}).
+  \item \textbf{Fast marching method}\index{fast marching method}:
+    \textbf{Problem} --- distance maps on grids. \textbf{Running Time} ---
+    $O(n\log n)$ on an $n$-cell grid, using a heap of narrow-band cells
+    \cite{sethian1996}. \textbf{See} Chapter~\ref{ch:distance_paths}
+    (Sections~\ref{sec:fast_marching_method} and \ref{sec:distance_map}).
+  \item \textbf{Delaunay refinement queues}: \textbf{Problem} --- refine a
+    mesh until no triangle violates a quality or size bound.
+    \textbf{Running Time} --- $O(\log n)$ per update, $O(n\log n)$ expected
+    overall. \textbf{Notes} --- Chew's worst-first and Ruppert's
+    radius--edge priorities are essential to the termination and angle
+    proofs. \textbf{See} Chapter~\ref{ch:mesh_generation}
+    (Sections~\ref{sec:meshgen_refinement}, \ref{sec:meshgen_chew}, and
+    \ref{sec:meshgen_ruppert}).
+  \item \textbf{Priority search tree}\index{priority search tree}:
+    \textbf{Running Time} --- 3-sided range queries in $O(\log n + k)$.
+    \textbf{See} Chapter~\ref{ch:range_searching}
+    (Section~\ref{sec:rangesearch_priority_search}).
+\end{itemize}
 
 \section{Hashing}
 \label{sec:app_alg_hashing}
 
+Hash tables give expected $O(1)$ dictionary operations. In geometry,
+hashing quantizes space (spatial hashing), fragments inputs randomly
+(locality-sensitive hashing), and supplies the votes of geometric hashing
+for recognition.
+
+\subsection{Hash Tables}
+\label{sec:appalgs_hash_tables}
+
+\begin{itemize}
+  \item \textbf{Chaining and open addressing}\index{hashing}:
+    \textbf{Running Time} --- expected $O(1)$ per operation, $O(n)$ worst
+    case \cite{cormen2009}. \textbf{Space} --- $O(n)$. \textbf{Notes} ---
+    universal families of hash functions make the expectation hold against
+    adversarial inputs \cite{cormen2009}.
+\end{itemize}
+
+\subsection{Geometric and Spatial Hashing}
+\label{sec:appalgs_hash_geometric}
+
+\begin{itemize}
+  \item \textbf{Geometric hashing}\index{geometric hashing}:
+    \textbf{Problem} --- model-based object recognition in cluttered
+    scenes. \textbf{Running Time} --- preprocessing proportional to model
+    size; recognition proportional to scene size times expected bin
+    occupancy \cite{wolfson1997}. \textbf{Notes} --- invariant under
+    rigid, similarity, or affine transformations. \textbf{See}
+    Chapter~\ref{ch:geometric_matching} (Section~\ref{sec:matching_hashing}).
+  \item \textbf{Spatial (grid) hashing}\index{spatial hashing}:
+    \textbf{Problem} --- fast fixed-radius and proximity searches.
+    \textbf{Running Time} --- expected $O(1)$ cell lookup for
+    well-distributed data. \textbf{Notes} --- assigns objects to uniform
+    grid cells by hashing cell coordinates; also accelerates ray tracing.
+    \textbf{See} Chapter~\ref{ch:spatial_structures}
+    (Sections~\ref{sec:uniform_grids} and \ref{sec:fixed_radius_search}).
+  \item \textbf{Locality-sensitive hashing (LSH)}\index{locality-sensitive hashing}:
+    \textbf{Problem} --- approximate nearest-neighbor search in high
+    dimension. \textbf{Running Time} --- sublinear query time, polynomial
+    space, for $(1+\varepsilon)$-approximate queries \cite{indyk1998}.
+    \textbf{Notes} --- close points collide with much higher probability
+    than far points; the standard high-dimensional ANN primitive.
+    \textbf{See} Chapter~\ref{ch:approximation_algorithms}
+    (Sections~\ref{sec:approx_lsh} and \ref{sec:approx_ann}) and
+    Chapter~\ref{ch:high_dimensional} (Section~\ref{sec:highdim_nearest_neighbor}).
+  \item \textbf{Hash-based practical point location}: \textbf{Notes} --- a
+    grid or hash index supplies the starting cell for the walking method
+    (Section~\ref{sec:app_alg_binary_search}). \textbf{See}
+    Chapter~\ref{ch:point_location} (Section~\ref{sec:pointloc_practical}).
+\end{itemize}
+
 \section{Graph Algorithms}
 \label{sec:app_alg_graphs}
+
+The graphs of computational geometry --- planar subdivisions, visibility
+graphs, roadmaps, grids --- are sparse and carry geometric weights.
+Shortest-path computations on them recur throughout motion planning,
+robotics, and distance analysis; the graph-theoretic background is in
+Appendix~\ref{app:math_reference} (Section~\ref{sec:app_math_graphs}).
+
+\subsection{Shortest Paths}
+\label{sec:appalgs_graphs_shortest}
+
+\begin{itemize}
+  \item \textbf{Dijkstra's algorithm}\index{Dijkstra's algorithm}:
+    \textbf{Running Time} --- $O((n+m)\log n)$ with a binary heap
+    \cite{dijkstra1959, cormen2009}. \textbf{Notes} --- planar graphs
+    satisfy $m = O(n)$, so the bound becomes $O(n\log n)$; the fast
+    marching method exploits the geometry further. \textbf{See}
+    Chapter~\ref{ch:distance_paths} (Section~\ref{sec:dijkstra}).
+  \item \textbf{A* search}\index{A* search}: \textbf{Running Time} ---
+    $O((n+m)\log n)$ worst case, often sublinear in practice on grid maps.
+    \textbf{Notes} --- Dijkstra with a consistent (admissible) heuristic;
+    expands no more nodes than Dijkstra on the same data \cite{hart1968};
+    the standard navigation method (Chapter~\ref{ch:applications_robotics},
+    Section~\ref{sec:robotics_navigation}).
+  \item \textbf{Fast marching / distance maps}\index{distance map}:
+    \textbf{Running Time} --- $O(n\log n)$ on an $n$-cell grid
+    \cite{sethian1996}. \textbf{Notes} --- propagates a continuous front;
+    produces the distance transform used for geodesic distance and level-set
+    evolution. \textbf{See} Chapter~\ref{ch:distance_paths}
+    (Sections~\ref{sec:distance_map} and \ref{sec:geodesic_distance}).
+\end{itemize}
+
+\subsection{Geometric Shortest Paths}
+\label{sec:appalgs_graphs_paths}
+
+\begin{itemize}
+  \item \textbf{Visibility graphs}\index{visibility graph}:
+    \textbf{Problem} --- shortest obstacle-avoiding paths among polygonal
+    obstacles. \textbf{Running Time} --- $O(n^2)$ edges worst case, built
+    in $O(n^2)$ time, then searched with Dijkstra \cite{berg2008}.
+    \textbf{Notes} --- exact because shortest paths turn at obstacle
+    vertices. \textbf{See} Chapter~\ref{ch:visibility}
+    (Sections~\ref{sec:visibility_graphs} and \ref{sec:visibility_shortest_paths}).
+  \item \textbf{Shortest path maps}\index{shortest path map}:
+    \textbf{Running Time} --- build $O(n\log n)$, query $O(\log n)$.
+    \textbf{Notes} --- partitions free space into cells on which the
+    shortest path to a target is combinatorially constant. \textbf{See}
+    Chapter~\ref{ch:visibility} (Sections~\ref{sec:visibility_shortest_paths}
+    and \ref{sec:visibility_geodesic_paths}).
+  \item \textbf{Roadmap methods}\index{roadmap} (PRM, RRT):
+    \textbf{Problem} --- motion planning in high-dimensional configuration
+    spaces. \textbf{Running Time} --- no worst-case guarantee; sampling and
+    collision testing determine practical performance. \textbf{See}
+    Chapter~\ref{ch:motion_planning} (Sections~\ref{sec:exact_motion_planning}
+    and \ref{sec:sampling_motion_planning}).
+\end{itemize}
+
+Table~\ref{tbl:appalgs_graphs} summarizes the path-finding methods.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lllll}
+\toprule
+Method & Model & Running time & Query & See \\
+\midrule
+Dijkstra (heap)    & general/planar graph & $O((n+m)\log n)$ & one source & \ref{sec:dijkstra} \\
+A*                 & grid/roadmap + heuristic & worst $O((n+m)\log n)$ & one goal & \ref{sec:robotics_navigation} \\
+Fast marching      & grid (continuous front) & $O(n\log n)$ & one source & \ref{sec:fast_marching_method} \\
+Visibility graph   & polygonal obstacles & build $O(n^2)$, then Dijkstra & one goal & \ref{sec:visibility_graphs} \\
+Shortest path map  & polygonal domain & build $O(n\log n)$ & $O(\log n)$ & \ref{sec:visibility_shortest_paths} \\
+\bottomrule
+\end{tabular}
+\caption{Shortest-path methods with geometric structure.}
+\label{tbl:appalgs_graphs}
+\end{table}
 
 \section{Union--Find}
 \label{sec:app_alg_union_find}
 
+The union--find (disjoint-set) data structure maintains a partition under
+union operations while answering membership queries. Its near-linear
+amortized cost makes it the connectivity primitive of geometric and
+topological algorithms.
+
+\begin{itemize}
+  \item \textbf{Union--find with union by rank and path compression}\index{union-find}:
+    \textbf{Running Time} --- $O(\alpha(n))$ amortized per operation,
+    where $\alpha$ is the inverse Ackermann function \cite{tarjan1975,
+    cormen2009}. \textbf{Space} --- $O(n)$. \textbf{Notes} --- essentially
+    linear, and optimal in the pointer model \cite{tarjan1975}.
+  \item \textbf{Connected components of meshes}\index{connected components}:
+    \textbf{Problem} --- component labeling of an $n$-element mesh.
+    \textbf{Running Time} --- $O(n\,\alpha(n))$ over the half-edge
+    structure. \textbf{See} Chapter~\ref{ch:mesh_analysis}
+    (Section~\ref{sec:mesh_connected_components}).
+  \item \textbf{Euler characteristic and topology}\index{Euler characteristic}:
+    \textbf{Notes} --- components and holes through $\chi = V - E + F$;
+    union--find tracks components as cells are added. \textbf{See}
+    Chapter~\ref{ch:mesh_analysis} (Section~\ref{sec:euler_characteristic})
+    and Chapter~\ref{ch:computational_topology}
+    (Sections~\ref{sec:manifold_verification} and \ref{sec:discrete_morse_theory}).
+  \item \textbf{Persistence by the elder rule}\index{persistence}:
+    \textbf{Running Time} --- $O(m\,\alpha(n))$ for $m$ simplices arriving
+    in filtration order. \textbf{Notes} --- zero-dimensional persistence
+    pairs via union--find over vertices. \textbf{See}
+    Chapter~\ref{ch:computational_topology} (Section~\ref{sec:discrete_morse_theory}).
+  \item \textbf{Kruskal's algorithm on geometric graphs}\index{minimum spanning tree}:
+    \textbf{Notes} --- the Euclidean minimum spanning tree is a subgraph of
+    the Delaunay triangulation, so compute Delaunay in $O(n\log n)$ and run
+    Kruskal in $O(n\,\alpha(n))$ \cite{cormen2009}. \textbf{See}
+    Chapter~\ref{ch:delaunay_triangulations} (Section~\ref{sec:delaunay_duality}).
+  \item \textbf{Mesh adjacency passes}: \textbf{Notes} --- mesh coloring
+    and reordering rely on the same breadth-first and union--find passes
+    over adjacency. \textbf{See} Chapter~\ref{ch:mesh_analysis}
+    (Sections~\ref{sec:mesh_coloring} and \ref{sec:mesh_reordering}).
+\end{itemize}
+
 \section{Randomized Algorithms}
 \label{sec:app_alg_randomized}
+
+Randomized geometric algorithms randomize the \emph{order} in which a
+deterministic incremental construction inserts its input; the analysis
+then holds on worst-case inputs with high probability (Las Vegas style).
+Expected bounds below are over the internal randomization, not over the
+input distribution.
+
+\subsection{The Randomized Incremental Paradigm}
+\label{sec:appalgs_randomized_incr}
+
+\begin{itemize}
+  \item \textbf{Randomized incremental construction}\index{randomized incremental}:
+    \textbf{Problem} --- build a geometric structure on $n$ objects.
+    \textbf{Running Time} --- expected $O(n\log n)$ for the standard
+    applications. \textbf{See} Chapter~\ref{ch:randomized_algorithms}
+    (Section~\ref{sec:randomized_incremental}).
+  \item \textbf{Backward analysis}\index{backward analysis}: \textbf{Notes} ---
+    analyzes the expected cost by deleting a random element from the
+    finished structure; the key technique behind the linear and
+    $O(n\log n)$ expected bounds below. \textbf{See}
+    Chapter~\ref{ch:randomized_algorithms}
+    (Section~\ref{sec:randomized_backward_analysis}).
+  \item \textbf{Conflict graphs}\index{conflict graph}: \textbf{Notes} ---
+    maintain, per structure element, the set of input objects conflicting
+    with it; expected cost linear in the total number of conflicts.
+    \textbf{See} Chapter~\ref{ch:randomized_algorithms}
+    (Section~\ref{sec:randomized_conflict_graphs}).
+  \item \textbf{Clarkson--Shor technique}\index{Clarkson-Shor}:
+    \textbf{Notes} --- bounds the expected number of conflicts by counting
+    small random samples; yields $O(n\log n)$ expected bounds for hulls,
+    Delaunay diagrams, and arrangements. \textbf{See}
+    Chapter~\ref{ch:randomized_algorithms}
+    (Section~\ref{sec:randomized_clarkson_shor}).
+\end{itemize}
+
+\subsection{Applications}
+\label{sec:appalgs_randomized_apps}
+
+\begin{itemize}
+  \item \textbf{Randomized incremental convex hull}: expected $O(n\log n)$
+    in 2D and 3D. \textbf{See} Chapter~\ref{ch:randomized_algorithms}
+    (Section~\ref{sec:randomized_convex_hulls}) and
+    Chapter~\ref{ch:convex_hulls} (Section~\ref{sec:incremental_3d_hull}).
+  \item \textbf{Randomized incremental Delaunay/Voronoi}\index{Delaunay triangulation}:
+    expected $O(n\log n)$ by random insertion with legalization
+    \cite{guibas1992}. \textbf{See} Chapter~\ref{ch:randomized_algorithms}
+    (Section~\ref{sec:randomized_delaunay}) and
+    Chapter~\ref{ch:delaunay_triangulations} (Section~\ref{sec:delaunay_randomized}).
+  \item \textbf{Randomized trapezoidal maps}: expected $O(n\log n)$
+    construction, $O(\log n)$ point location via a history DAG
+    \cite{seidel1991}. \textbf{See} Chapter~\ref{ch:point_location}
+    (Sections~\ref{sec:pointloc_trapezoidal} and \ref{sec:pointloc_randomized}).
+  \item \textbf{Randomized linear programming}\index{randomized linear programming}
+    (Seidel): expected $O(n)$ for fixed dimension $d$. \textbf{See}
+    Chapter~\ref{ch:randomized_algorithms}
+    (Section~\ref{sec:randomized_linear_programming}) and
+    Chapter~\ref{ch:linear_programming} (Section~\ref{sec:low_dimensional_lp}).
+  \item \textbf{Welzl's algorithm}\index{smallest enclosing circle}:
+    expected $O(n)$ for the minimum enclosing circle (or ball) in fixed
+    dimension. \textbf{See} Chapter~\ref{ch:randomized_algorithms}
+    (Section~\ref{sec:welzls_algorithm}).
+  \item \textbf{Epsilon-nets}\index{epsilon-net}: a random sample of size
+    $O(\frac{1}{\varepsilon}\log\frac{1}{\varepsilon})$ is an
+    $\varepsilon$-net for points and half-planes with constant VC
+    dimension, with high probability. \textbf{See}
+    Chapter~\ref{ch:randomized_algorithms} (Section~\ref{sec:randomized_eps_nets}).
+  \item \textbf{Randomized sampling}\index{random sampling}:
+    \textbf{Notes} --- random samples give distribution-free bounds and
+    power randomized quicksort (Section~\ref{sec:app_alg_sorting}) and
+    randomized treaps. \textbf{See} Chapter~\ref{ch:randomized_algorithms}
+    (Section~\ref{sec:randomized_sampling}).
+\end{itemize}
+
+Table~\ref{tbl:appalgs_randomized} collects the expected-time bounds.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lllll}
+\toprule
+Algorithm & Expected time & Worst case & Space & See \\
+\midrule
+Incremental convex hull (2D/3D) & $O(n\log n)$ & $O(n^2)$ & $O(n)$ & \ref{sec:randomized_convex_hulls} \\
+Incremental Delaunay/Voronoi    & $O(n\log n)$ & $O(n^2)$ & $O(n)$ & \ref{sec:randomized_delaunay} \\
+Trapezoidal map + point location & $O(n\log n)$ & $O(n^2)$ & $O(n)$ & \ref{sec:pointloc_trapezoidal} \\
+Linear programming (Seidel)     & $O(n)$ (fixed $d$) & $O(n^{d+1})$ & $O(d^2)$ & \ref{sec:randomized_linear_programming} \\
+Smallest enclosing circle (Welzl) & $O(n)$ (fixed $d$) & $O(n^3)$ & $O(n)$ & \ref{sec:welzls_algorithm} \\
+\bottomrule
+\end{tabular}
+\caption{Expected versus worst-case performance of randomized
+incremental algorithms. Worst-case bounds occur only on pathological
+insertion orders that the randomization avoids.}
+\label{tbl:appalgs_randomized}
+\end{table}
+
+\index{randomized algorithm}\index{Las Vegas algorithm}\index{Monte Carlo algorithm}
+All algorithms in Table~\ref{tbl:appalgs_randomized} are Las Vegas: they
+always return the correct answer and the randomization affects only the
+running time. Monte Carlo algorithms, which allow a small probability of
+an incorrect answer, appear in the approximation chapters
+(Chapter~\ref{ch:approximation_algorithms}, Section~\ref{sec:approx_ann})
+in exchange for sublinear query time. For the deeper connection between
+these paradigms and the randomized structure of geometric problems, see
+Chapter~\ref{ch:randomized_algorithms}.

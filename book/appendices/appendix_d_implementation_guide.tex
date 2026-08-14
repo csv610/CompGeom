@@ -1,28 +1,549 @@
 \chapter{Implementation Guide}
 \label{app:implementation_guide}
-
-% Stub: outline only; content to be written.
-
+Chapter~\ref{ch:geometric_predicates} defines the exact-sign predicates that
+underpin the algorithms in this book; this appendix is the practical
+counterpart. It explains how to choose a numerical representation, how to
+implement the predicates so their signs are trustworthy, how to lay out
+memory for speed, how to test code that must fail rarely and crash never,
+and how to debug the failures that slip through. The advice is opinionated:
+for most applications the winning configuration is double precision for
+storage, exact-sign predicates protected by floating-point filters, and an
+extensive battery of degenerate and near-degenerate tests.
 \section{Designing a Geometry Kernel}
 \label{sec:app_impl_kernel}
+A \index{kernel!geometry}geometry kernel is the small set of types and
+operations every algorithm in the library is built on. Keep it small: a
+kernel with a dozen ``point-like'' types will contain at least one pair no
+one remembers is different, and the bugs will live in the conversions. Three
+structural decisions matter more than any individual function.
+\subsection{Predicate-First Design}
+\label{sec:appimpl_predicate_first}
+Every algorithm in this book reduces to a handful of sign tests. Design the
+kernel around those tests and let constructed objects (points, segments,
+triangles) be plain data:
 
+\begin{itemize}
+  \item Predicates return the sign $-,0,+$ (an \texttt{int} or enum), never
+        a distance or coordinate. Returning a determinant so callers
+        ``compare it against zero themselves'' is how epsilon thresholds
+        sneak in and rob the library of consistency.
+  \item Predicates take indices or pointers into coordinate arrays, not
+        freshly constructed point objects, so the hot path pays no
+        allocation or virtual dispatch.
+  \item Provide the canonical family $\operatorname{orient2d}$,
+        $\operatorname{orient3d}$, and $\operatorname{incircle}$, matching
+        Sections~\ref{sec:orientation_predicate},
+        \ref{sec:orientation3d_predicate}, and \ref{sec:incircle_predicate}.
+        Express everything else (between, on-segment, left-turn) through
+        these three so there is one sign definition to audit.
+  \item When an algorithm needs a real number --- an intersection point, a
+        Voronoi vertex --- construct it in a separate, clearly named layer.
+        This is the seam at which exactness is lost, and it should be
+        visible.
+\end{itemize}
+\subsection{Memory Layout and Cache Locality}
+\label{sec:appimpl_layout}
+For large inputs, geometric code is usually memory-bound: a predicate costs
+a few floating-point operations, and a modern core executes hundreds in the
+time it takes to miss the cache. Layout therefore frequently dominates
+wall-clock performance~\cite{ericson2004}.
+
+\index{array of structures}\textbf{Array-of-structures (AoS)} stores each
+point as one struct in a contiguous array; use it when the algorithm reads
+several fields of the \emph{same} point, as in traversals and walks.
+\index{structure of arrays}\textbf{Structure-of-arrays (SoA)} keeps one
+array per coordinate (\texttt{xs[]}, \texttt{ys[]}, \texttt{zs[]}); use it
+when the code sweeps many points doing the same operation on one field, as
+in bounding-box rejection. With an inline coordinate accessor both are
+easy to switch, so treat layout as a late, measured decision.
+
+Two rules apply to both. First, \index{cache locality}iterate in the order
+data was written: random access into a large array of arbitrary points is
+the most cache-hostile pattern in the field, and preprocessing (sorting,
+blocking, space-filling curves) often turns a cold loop into a warm one.
+Second, pack hot records to a cache line; a half-edge record padded past 64
+bytes wastes bandwidth on every traversal.
+\subsection{Half-Edge Layout: Index-Based versus Pointer-Based}
+\label{sec:appimpl_halfedge_layout}
+Section~\ref{sec:halfedge_comparison} compares representations at the
+interface level; the implementation choice between indices and pointers is
+driven by how the mesh grows~\cite{ericson2004}:
+
+\begin{itemize}
+  \item \index{half-edge!index-based}\textbf{Index-based} half-edges store
+        \texttt{next}, \texttt{prev}, \texttt{twin} as integers into one
+        array of records. Copies are cheap, records are relocatable, and
+        growth never invalidates references. The best default for
+        incremental construction, streaming, and editing.
+  \item \textbf{Pointer-based} half-edges traverse marginally faster, but
+        reallocation invalidates every pointer, so the mesh must be fully
+        built before it is exposed.
+  \item A common hybrid owns by index and caches
+        \texttt{next}/\texttt{twin} pointers rebuilt after growth; the
+        pointers pay for themselves only when traversal is measurably hot.
+  \item \index{64-bit index}Use 64-bit index types once the mesh can exceed
+        roughly two billion edges; each reference costs one extra word, so
+        keep 32-bit indices for meshes known to be small.
+\end{itemize}
+
+The storage analysis of Section~\ref{sec:halfedge_representation} and the
+incidence identities of Theorem~\ref{thm:hed_incidence} are the invariants
+a well-tested layout must preserve regardless of encoding.
+\subsection{Integration Patterns and Thread Safety}
+\label{sec:appimpl_integration}
+Different callers impose different requirements on the same kernel:
+\index{batch processing}\textbf{Batch} (offline) callers know all input up
+front: preallocate capacities, run in sorted order, never pay for dynamic
+growth --- the fastest configuration and the one to benchmark.
+\textbf{Streaming} callers supply elements continuously: prefer
+index-based references so growth never invalidates handles, and bound
+reallocation cost with geometric growth factors. \textbf{Interactive}
+callers edit between queries: keep an undo log of primitive operations
+(split, flip, insert) rather than re-snapshot meshes, and run invariant
+checks after each edit in debug builds.
+
+\textbf{Thread safety.} The common pattern is to build the structure on one
+thread, \index{immutable structure}then publish it immutable and let many
+threads read concurrently --- immutable structures are automatically
+thread-safe. Predicates that read only their arguments and write to
+per-thread scratch space are thread-safe; predicates that cache in global
+state are not. For incremental construction, serialize mutation or
+partition the domain so each thread owns a disjoint region, and freeze the
+kernel's numeric backend before the first parallel query.
 \section{Choosing Numeric Types}
 \label{sec:app_impl_numeric_types}
+The first decision in any geometric library is which number type the kernel
+is built on, and it is the most expensive one to change later, so it should
+be made consciously rather than by default.
+\subsection{The Trade-Off at a Glance}
+\label{sec:appimpl_representations}
+\begin{center}
+\begin{tabular}{p{3.2cm}p{2.2cm}p{2.2cm}p{3.0cm}p{4.0cm}}
+\hline
+\textbf{Type} & \textbf{Exact?} & \textbf{Speed} & \textbf{Input} & \textbf{Choose when} \\
+\hline
+\index{double precision}double & no & fastest & floats &
+measurements; tolerances acceptable \\
+single precision & no & very fast & floats & memory-bound 3D meshes \\
+64-bit integer & yes & fast & integer coords & indices, grids, integer
+data \\
+\index{rational arithmetic}rational & yes & moderate & integer/ratio &
+construction-heavy pipelines \\
+arbitrary precision & yes & slow & any & bit growth unavoidable; fallback \\
+\index{expansion arithmetic}expansions & yes & fast* & doubles &
+filtered predicates (Section~\ref{sec:appimpl_adaptive}) \\
+\hline
+\end{tabular}
+\end{center}
 
+*Fast in the common case; the exact fallback is slow. The starred entry is
+where robust libraries converge: ordinary doubles for storage, exact
+arithmetic only where a sign must be certified.
+\subsection{Double Precision First}
+\label{sec:appimpl_double}
+For measurements, sensor data, or coordinates that carry their own
+uncertainty, \index{double precision}double precision is the right default:
+it is hardware-supported, and any value more precise than the data is
+wasted. The discipline is that \emph{constructed} values are approximate:
+an intersection point computed in doubles has error on the order of the
+input's rounding error times a modest constant~\cite{higham2002,goldberg1991}.
+Use doubles when the algorithm must answer ``is this configuration
+plausible''; escalate when it must answer ``is this combinatorial relation
+true, exactly.''
+\subsection{Exact Integer and Rational Kernels}
+\label{sec:appimpl_integer}
+When input coordinates are integers or rationals, exactness is cheap and
+should be used. The key fact (Section~\ref{sec:exact_arithmetic}) is that
+predicate bit growth is bounded: for $\tau$-bit coordinates the 2D
+orientation determinant needs at most $2\tau+1$ bits and the in-circle
+determinant $O(\tau)$ bits, so 64-bit integers cover $\tau \le 31$ and
+arbitrary-precision integers cover the rest with predictable cost. Rational
+kernels add exact construction of new points
+(Section~\ref{sec:rational_arithmetic}); their cost is acceptable for
+engineering input, as the Delaunay experiments of Karasick, Lieber, and
+Nackman showed~\cite{karasick1991}. Fortune and Van Wyk's expression
+compiler pushes this further, generating unrolled evaluation code whose cost
+tracks the operand bit-length instead of general library
+overhead~\cite{fortune1993}.
+\subsection{The Cost of Exactness and Arbitrary-Precision Fallbacks}
+\label{sec:appimpl_cost}
+\index{arbitrary precision}Arbitrary-precision arithmetic is the correct
+fallback when constructed points keep growing, as in chains of intersection
+operations: the exact-sign framework of Section~\ref{sec:exact_arithmetic}
+shows the bit-length grows only by a constant per predicate, but a planar
+subdivision's coordinates grow with the depth of construction. Reserve it
+for the exact kernel behind a filter, never for the whole library.
+
+Measured costs are consistent: a naive exact predicate is one to two orders
+of magnitude slower than its floating-point twin, and an arbitrary-precision
+construction can be far worse. Users rarely see that cost, because an
+\index{floating-point filter}exact sign is needed only for nearly degenerate
+inputs, which are rare. A filtered predicate runs at roughly one to three
+times the speed of the plain floating-point version in the common
+case~\cite{shewchuk1997,bronnimann2001}. Spend the design effort on the
+filter, not on making the exact kernel fast.
 \section{Floating-Point Error}
 \label{sec:app_impl_floating_point}
+Predicates fail when rounding flips a sign. Understanding the size and the
+\emph{structure} of that error is prerequisite to designing filters, and
+the most useful numerical knowledge a geometric programmer needs
+~\cite{goldberg1991,higham2002}.
+\subsection{Machine Epsilon and Relative Error}
+\label{sec:appimpl_machine_eps}
+IEEE~754 doubles have a 53-bit significand and machine epsilon
+$\varepsilon = 2^{-53} \approx 1.11\times 10^{-16}$; each elementary
+operation is correctly rounded, so its relative error is at most
+$\varepsilon/2$. Error bounds are conventionally $k\varepsilon$ times a sum
+of magnitudes of intermediate values. The number of operations matters far
+less than the \emph{magnitudes}: a determinant of large coordinates
+accumulates absolute error proportional to the largest product, while its
+exact value may be tiny.
+\subsection{Where Geometric Computations Lose Accuracy}
+\label{sec:appimpl_loss_accuracy}
+Two effects dominate. \index{catastrophic cancellation}\textbf{Catastrophic
+cancellation} occurs when nearly equal values are subtracted: the leading
+digits cancel, the result is almost pure roundoff, and the \emph{relative}
+error explodes while the absolute error stays small. In the orientation
+predicate
+\[
+  \operatorname{orient2d}(A,B,C) =
+  (B_x-A_x)(C_y-A_y) - (B_y-A_y)(C_x-A_x),
+\]
+cancellation is mild for well-separated points but total for nearly
+collinear ones. Second, \textbf{error accumulation} compounds through
+intermediate steps: subtracting coordinates then multiplying roughly doubles
+the error bits, so a two-term product carries error of order a few
+$\varepsilon$ times its magnitude. This is the bound a static filter
+certifies against.
+\subsection{What Epsilon Can and Cannot Do}
+\label{sec:appimpl_epsilon}
+An epsilon threshold is a tolerance, not a correctness mechanism. It can
+legitimately express an application's notion of ``good enough'' --- snapping
+nearby vertices, merging close segments for display --- and it is the only
+tool for genuinely approximate input. It cannot provide a \emph{consistent
+combinatorial result}: a threshold that absorbs one near-degenerate case
+makes an algorithm accept a configuration that a neighboring, equally valid
+case rejects, and topology can change under rotation. As the robustness
+literature stresses (Section~\ref{sec:robustness_failures}), an algorithm
+whose decisions rest on thresholds can loop forever, crash, or emit
+inconsistent output that a consistent sign-based algorithm never
+would~\cite{kettner2008}.
 
+A practical hygiene checklist:
+
+\begin{itemize}
+  \item Never test \texttt{a == b} or \texttt{a <= 0} on a computed value
+        that involved subtraction. Compare against a \emph{relative}
+        tolerance derived from the data's scale, or better, use an exact
+        predicate.
+  \item When a tolerance is unavoidable, scale it by the operand magnitude
+        ($\varepsilon_{\mathrm{tol}} \approx k\varepsilon \cdot
+        \max(|a|,|b|)$) rather than using an absolute constant.
+  \item Do not write $\varepsilon$ into predicates that drive topology;
+        route topology decisions through the exact kernel.
+  \item If two computations must agree on which side of a line a point
+        lies, both must use the \emph{same} predicate --- recomputing with a
+        differently ordered formula invites disagreement.
+\end{itemize}
 \section{Exact Predicates}
 \label{sec:app_impl_exact_predicates}
+This section covers the two filter families and the adaptive machinery
+behind them (the theory is in Section~\ref{sec:floating_point_filters}):
+robustness comes from making the predicate sign exact, and the cheapest
+route makes it exact in the common case while retaining an exact fallback.
+\subsection{Only the Sign Matters}
+\label{sec:appimpl_sign}
+Every determinant-based predicate is a device for producing a sign; the
+magnitude is irrelevant to the algorithm, should never be consumed by it,
+and should never feed back into a construction (it carries the same roundoff
+as any computed float). The exact fallback therefore needs to compute only
+enough to fix the sign --- exactly what an \index{adaptive precision}adaptive
+algorithm does: each stage is a more accurate estimate, and the first stage
+whose sign is certified wins.
+\subsection{Static Filters}
+\label{sec:appimpl_static}
+\index{floating-point filter!static}A \textbf{static filter} bounds the
+ roundoff before the computation. For $\operatorname{orient2d}$ the classic
+ bound is
+\[
+  |\mathrm{error}| \le 3\varepsilon\,\bigl(
+  |(B_x-A_x)(C_y-A_y)| + |(B_y-A_y)(C_x-A_x)|\bigr),
+\]
+so the sign is certified whenever the computed determinant exceeds that
+bound --- one or two fused operations, then ``if clearly nonzero, trust
+it.'' Shewchuk's public-domain predicates ship exactly this way: a few
+floating-point checks in the fast path, exact arithmetic only in the
+tail~\cite{shewchuk1997}. The bound is pessimistic, but that is the price
+of a fixed, one-pass test.
+\subsection{Dynamic Filters and Interval Arithmetic}
+\label{sec:appimpl_dynamic}
+\index{floating-point filter!dynamic}A \textbf{dynamic filter} tightens the
+bound as the evaluation proceeds, typically wrapping each operation in an
+\index{interval arithmetic}interval so the result carries a running error
+interval: if the interval stays clear of zero, the sign is certified with
+the true error, not an a priori bound. Dynamic filters resolve a
+substantially larger fraction of cases than static filters at modest extra
+cost per operation~\cite{bronnimann2001}. The adaptive predicates below are
+the stronger version of the same idea: instead of intervals, recompute the
+determinant with progressively more accurate error-free arithmetic.
+\subsection{Adaptive Precision and Expansion Arithmetic}
+\label{sec:appimpl_adaptive}
+\index{expansion arithmetic}Expansion arithmetic represents an exact value
+as the sum of non-overlapping floating-point components. Its primitives are
+the error-free transformations \index{two-sum}\textbf{two-sum} and
+\index{two-product}\textbf{two-product}: given IEEE~754 inputs each returns
+the rounded result \emph{and} the exact rounding error, so an exact sum of
+arbitrary precision is built from ordinary floating-point operations
+(``What Every Computer Scientist...'' explains why the rounding is
+recoverable~\cite{goldberg1991,priest1991}). Two-sum, for example, is four
+operations:
 
+\begin{verbatim}
+s = a + b
+bp = s - b
+ap = s - bp
+err = (a - ap) + (b - bp)
+\end{verbatim}
+
+Here \texttt{err} is the exact error of the addition. Adaptive predicates
+rebuild a determinant as an expansion of length $3, 5, 7, \dots$ components,
+stopping at the first stage whose sign is certified; the exact stage on
+double inputs never needs more than a few dozen components, and the common
+case never leaves the first stage~\cite{shewchuk1997}. The result is the
+guarantee of exact arithmetic at a fraction of its cost, which is why the
+technique is the de facto standard. The same primitives compose into full
+exact arithmetic when a constructed value, not just a sign, must be exact
+(Section~\ref{sec:exact_arithmetic}).
+\subsection{Handling Degeneracies}
+\label{sec:appimpl_degeneracies}
+Degenerate configurations --- \index{collinear}collinear points,
+\index{cocircular}cocircular points, coincident points --- are ordinary
+inputs a correct library must answer, not edge cases to paper over. Three
+strategies exist, and they can be combined:
+
+\begin{itemize}
+  \item \index{general position}\textbf{General position as a contract.}
+        Many algorithms are proved only for general position. Document the
+        assumption, \emph{verify} it once at input time (scan for
+        duplicates, collinear triples, cocircular quadruples), then run the
+        fast path. Rejecting or snapping input is an application decision
+        and must not silently change an algorithm's answer.
+  \item \index{simulation of simplicity}\textbf{Symbolic perturbation.}
+        Simulation of Simplicity perturbs the input infinitesimally --- in
+        the predicates only, never in the data --- so tie-breaks resolve
+        consistently, in the manner of
+        Section~\ref{sec:simulation_of_simplicity}~\cite{edelsbrunner1990}.
+        It is elegant and cheap, but the tie-break order is symbolic, not
+        geometric: different perturbations yield different but internally
+        consistent answers.
+  \item \textbf{Explicit handling.} Deduplicate identical points, treat zero
+        orientation as an event (a point on a segment, a shared vertex),
+        and give the algorithm well-defined tie-break rules
+        (Section~\ref{sec:appimpl_pitfalls}). The most work, and the only
+        option when the degenerate answer carries geometric meaning, e.g.,
+        a mesh that must stay manifold across a shared edge.
+\end{itemize}
 \section{Testing Geometric Software}
 \label{sec:app_impl_testing}
+Geometric code fails in distinctive ways: wrong answers are rare, but when
+they occur they are crashes, hangs, or subtly inconsistent structures, and
+one bad predicate decision corrupts everything downstream. The strategy
+below is built around that reality.
+\subsection{Randomized and Property-Based Testing}
+\label{sec:appimpl_randomized}
+\index{randomized testing}Random inputs with a fixed seed find bugs
+hand-written examples never do, and the fixed seed makes failures
+reproducible. \index{property-based testing}Property-based testing pushes
+this further: the generator enumerates cases and the test asserts a
+\emph{property} that must hold for all of them. Properties for geometry
+include: the convex hull of any point set is convex and contains every input
+point; a triangulation satisfies Euler's formula $V-E+F=2$, and the
+half-edge structure satisfies $\operatorname{twin}(\operatorname{twin}(e))
+= e$ and the identities of Theorem~\ref{thm:hed_incidence}; flipping a
+Delaunay edge never destroys the triangulation property; and a point-location
+query agrees with a brute-force scan.
 
+Generators must hit \emph{structure}: uniform points in a square, points on
+a grid, points on a circle, degenerate families, and coordinates spanning
+many orders of magnitude. Uniform-random inputs almost never produce a
+collinear triple, so a suite that draws only uniform points is silently
+testing nothing about degeneracies.
+\subsection{Brute-Force Oracles for Small Inputs}
+\label{sec:appimpl_bruteforce}
+The most powerful oracle is a second, obviously-correct implementation
+written only for tiny inputs. Compare your fast algorithm against it on
+every random case of size $n \le 30$: check the Delaunay in-circle
+predicate against an $O(n^4)$ scan over all quadruples (or a reference
+library such as the one surveyed in Section~\ref{sec:app_soft_cgal});
+verify every convex-hull edge is a supporting line; compare the reported
+segment intersections against an $O(n^2)$ test using an exact predicate;
+and compare point-in-polygon against an \index{oracle}oracle built from the
+winding-number definition (Section~\ref{sec:point_in_polygon_winding}). The
+oracle is short and slow, so it is cheap to audit by hand; keep it
+permanently as a ``reference mode'' rather than deleting it once the
+algorithm ``passes.''
+\subsection{Invariant Checking}
+\label{sec:appimpl_invariant}
+\index{invariant}Invariants are the geometry library's analog of
+assertions. Run them on every mutation in debug builds and on random
+snapshots in release builds: \index{Euler's formula}Euler/incidence
+($V-E+F=2$ for a connected planar subdivision, and every half-edge's
+twin/next chains close); manifoldness (each edge shared by at most two
+faces, each vertex has a single cyclic link); orientation coherence
+(polygon faces have consistent orientation; the signed area is positive for
+a counter-clockwise boundary, by the determinant of
+Section~\ref{sec:math_orientation_determinants}); and no dangling or
+self-intersecting boundaries in polygon results.
+
+A failing invariant check is a bug report with a location; an algorithm that
+silently violates an invariant on the next input is a crash waiting for the
+input that matters.
+\subsection{Common Pitfalls and Bugs to Test For}
+\label{sec:appimpl_pitfalls}
+A large fraction of defects in geometric programs come from a short list,
+and each has a characteristic test:
+
+\begin{itemize}
+  \item \index{floating-point comparison}\textbf{Comparing floats with
+        \texttt{==}.} Equality on computed coordinates is false in practice.
+        Test that snapped or identical inputs produce identical keys, and
+        that non-identical inputs are never merged.
+  \item \textbf{Vertex ordering.} Mixing counter-clockwise and clockwise
+        polygons flips every signed-area and inside-outside decision. Test
+        each polygon family in both orientations.
+  \item \textbf{Boundary cases.} A point on an edge, a query at a vertex, a
+        segment touching another at its endpoint: define half-open rules
+        once (e.g., the ray-casting convention of
+        Section~\ref{sec:point_in_polygon_winding}) and test every boundary
+        case against them.
+  \item \textbf{Infinite loops.} Ray-casting that counts a vertex twice, or
+        a visibility walk that cycles, hangs forever. Test queries through
+        vertices and collinear edges, and assert every walk terminates in a
+        bounded number of steps (Section~\ref{sec:point_location_walking}).
+  \item \textbf{Sweep-line ordering.} The status of a sweep line
+        (Section~\ref{sec:segint_sweep_line}) is ordered by a comparator at
+        the current position; when segments share that position the
+        comparator must be total and stable or the event queue corrupts.
+        Test sweeps with vertical segments, coincident endpoints, and
+        segments meeting at endpoints (Section~\ref{sec:segint_degenerate}).
+  \item \textbf{Order-of-input dependence.} A permutation of the input must
+        not change the output \emph{topology}. Test by shuffling inputs and
+        diffing the combinatorial output.
+\end{itemize}
 \section{Generating Adversarial Test Cases}
 \label{sec:app_impl_adversarial}
-
+Degenerate and near-degenerate inputs are where robustness is won or lost.
+A dedicated generator that produces them by construction beats hoping random
+sampling stumbles on them.
+\subsection{Degenerate Configuration Factories}
+\label{sec:appimpl_degenerate_factories}
+Write small factories that emit the configurations every algorithm fears:
+\textbf{coincident points} (duplicates, and duplicates plus noise);
+\textbf{collinear sets} (points on a line, vertical and horizontal lines, a
+whole dataset collapsed to one line); \textbf{cocircular sets} (points on a
+circle, cocircular with a test point exactly on the circumcircle, and
+cocircular sets fed into a Delaunay edge flip); \textbf{grids and lattices}
+(integer-coordinate inputs that require exactness, including 31-bit
+coordinates that push the 64-bit integer bound of
+Section~\ref{sec:appimpl_integer}); and \textbf{wide dynamic range}
+(coordinates spanning $10^{-9}$ to $10^9$ in one dataset, which break
+absolute tolerances and exercise the filter bounds).
+\subsection{Near-Degenerate Construction}
+\label{sec:appimpl_near_degenerate}
+The most insidious inputs are nearly, but not exactly, degenerate. Build
+them deliberately: take an exactly degenerate configuration and perturb a
+single coordinate by one unit in the last place; rotate a dataset by tiny
+angles and verify the output topology is invariant under rigid motion (the
+rotation example of Section~\ref{sec:robustness_failures} is the canonical
+case~\cite{kettner2008}); scale a degenerate configuration by powers of two
+to move it across exponent boundaries. These inputs distinguish a filtered
+exact kernel from a threshold-based one.
+\subsection{Predicate Fuzzing}
+\label{sec:appimpl_fuzzing}
+\index{fuzzing}Predicates admit a direct fuzz test that needs no oracle:
+generate random point quadruples, evaluate the sign with your fast predicate
+and with a reference built on arbitrary-precision integers, and compare. Any
+disagreement is a filter bug. Vary the distribution to stress the filter:
+uniform points, points very close to a line, large and small coordinates
+mixed, and coordinates that are adversarially chosen products and
+differences. A predicate that agrees with the reference on $10^6$ cases is
+trustworthy; one that has never seen a near-degenerate case is not.
 \section{Benchmarking}
 \label{sec:app_impl_benchmarking}
-
+Performance work follows a strict order: measure before changing anything,
+change what the profiler points at, measure again. Optimizing a structure
+that is not the bottleneck makes programs both slow and complicated.
+\subsection{Profiling First}
+\label{sec:appimpl_profiling}
+\index{profiling}Run a sampling profiler on representative inputs before
+touching any code. The profile is usually obvious: some fraction of time in
+the predicate entry points, the rest in memory traffic around the mesh or
+spatial index. If predicates dominate, look at the filter's
+\index{floating-point filter!hit rate}hit rate (fraction of calls resolved
+without the exact path) and at inlining; if memory traffic dominates,
+change the layout (Section~\ref{sec:appimpl_layout}), not the algorithm. A
+filter with a 99\% hit rate that costs 4x per call is usually still right;
+a filter with a 50\% hit rate is the bottleneck.
+\subsection{Benchmarking Methodology}
+\label{sec:appimpl_method}
+Benchmarks are only as good as their protocol: use fixed, seeded datasets
+saved to disk so runs compare across versions; warm up caches, repeat, and
+report the median or minimum, not the first run; vary $n$ across orders of
+magnitude ($10^3$ to $10^7$) and report per-element cost so asymptotics are
+visible; distinguish CPU-bound from memory-bound by scaling (a memory-bound
+workload plateaus once data exceeds the cache); and compare against a
+known-good reference implementation when one exists
+(Section~\ref{sec:app_soft_cgal}) --- being 2x slower than a mature library
+is a finding, and so is being 2x faster with a different memory profile.
+\subsection{When to Optimize}
+\label{sec:appimpl_when}
+The right order is: correctness and robustness first, then measurement, then
+optimization of the measured bottleneck, then more measurement. Do not tune
+a predicate before its sign is certified correct; do not restructure a mesh
+layout before a profile shows memory traffic; do not introduce SoA, 64-bit
+indices, or parallelism on faith --- each is a complexity tax that should be
+paid only when a benchmark shows it buys back more than it costs.
 \section{Visualization and Debugging}
 \label{sec:app_impl_visualization}
+Geometric bugs are spatial, and the fastest way to find most of them is to
+look at the geometry. Visualization is a debugging tool as much as a
+presentation tool.
+\subsection{Visual Debugging}
+\label{sec:appimpl_visual}
+Build, once, a tiny rendering harness that draws points, segments, polygons,
+and mesh edges with colors per category: input points, output vertices,
+predicate-sign regions, edges flipped in this step. Two patterns are
+especially effective. First, \textbf{color by predicate sign}: plot the
+regions of the plane separated by a line and shade nearby points by
+$\operatorname{orient2d}$'s sign, so a misclassified near-collinear point is
+immediately visible. Second, \textbf{step-through rendering}: for
+incremental algorithms (Section~\ref{sec:randomized_incremental}) render
+each insertion or flip as a frame, and the first frame where the structure
+becomes inconsistent isolates the offending decision.
+\subsection{Minimal Reproducers}
+\label{sec:appimpl_reproducers}
+When a failure appears on a large input, shrink it: remove points and
+re-run until the failure disappears; the smallest input that still fails is
+the reproducer, and it is usually far more informative than the original
+dataset. Automate the search with a delta-debugging loop that splits the
+input in half, keeps whichever half still fails, and stops when neither half
+does. A reproducer of size three that crashes a Delaunay triangulation is a
+bug report; a reproducer of size ten thousand is a mystery. Many robustness
+failures are already documented, and matching a reproducer against the
+example families of Section~\ref{sec:robustness_failures} often identifies
+the root cause immediately~\cite{kettner2008}.
+\subsection{Deterministic Builds and Regression Output}
+\label{sec:appimpl_regression}
+Make the library deterministic: fixed seed for randomized algorithms,
+explicit tie-break rules, and no pointer or hash order leaking into output
+order. Then compare outputs byte-for-byte across runs and against golden
+files for the degenerate test sets of
+Section~\ref{sec:appimpl_degenerate_factories}. A golden file that changes
+without a corresponding code change is either a bug or an intentionally
+documented behavior change --- either way it deserves review, not silence.
+Render each golden case to an SVG or image alongside its textual output so
+a reviewer can see at a glance what changed and whether the new output is
+correct. With deterministic builds, a large randomized suite runs cheaply in
+continuous integration, and the combination of property tests, oracle tests,
+degenerate factories, and golden files is what keeps robust geometric
+libraries robust over years of evolution.
