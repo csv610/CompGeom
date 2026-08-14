@@ -1,43 +1,1345 @@
 \chapter{Geometry of Data and Machine Learning}
 \label{ch:geometry_data_ml}
 
-% Stub: outline only; content to be written.
-
 \section{Geometric View of Data}
 \label{sec:data_ml_geometric_view}
+
+Machine learning and data mining operate, at bottom, on \textbf{point
+sets}\index{point set}. A data record -- a document, an image, a sensor
+reading, a spatial object -- is represented as a vector of numeric features,
+and a data set is the finite collection of such vectors. The representation
+is chosen by the analyst, but once it is fixed the data becomes a geometric
+object: a cloud of $n$ points in a feature space $\mathbb{R}^d$, and every
+learning task becomes a geometric question about that cloud. Classification
+asks where a new point lies relative to the labeled points; clustering asks
+how the cloud decomposes into natural groups; regression asks how one
+coordinate varies with the others; and outlier detection asks which points
+lie far from the mass of the data. The vocabulary of this book -- distances,
+angles, convexity, hulls, proximity structures, decompositions -- is exactly
+the vocabulary in which modern learning is described.
+
+\begin{definition}[Feature Space and Feature Vector]\label{def:data_ml_feature}
+  A \textbf{feature space}\index{feature space} is a set of admissible data
+  records together with a distance function. Given $d$ numeric
+  \textbf{features}\index{feature} $x_1, \dots, x_d$, a record is encoded as
+  a \textbf{feature vector} $x = (x_1, \dots, x_d) \in \mathbb{R}^d$; the
+  standard feature space is the Euclidean space $\mathbb{R}^d$ with the
+  distance of choice (Section~\ref{sec:data_ml_metric_spaces}).
+\end{definition}
+
+\begin{definition}[Data Set as Point Cloud]\label{def:data_ml_pointcloud}
+  A \textbf{data set} of size $n$ is a multiset
+  $P = \{p_1, \dots, p_n\} \subset \mathbb{R}^d$ of feature vectors, usually
+  organized as an $n \times d$ \textbf{data matrix} whose rows are the
+  points. We call $P$ the \textbf{point cloud}\index{point cloud} of the
+  data. In supervised problems each $p_i$ carries an auxiliary
+  \textbf{label} $y(p_i)$ drawn from a finite set (classification) or a
+  real value (regression).
+\end{definition}
+
+The geometric view has immediate consequences. Every algorithm of this book
+is a candidate subroutine once data is seen as points:
+\begin{itemize}
+\item \textbf{Proximity} (Chapter~\ref{ch:proximity}): nearest neighbors
+  realize the intuition that nearby records behave alike, the hypothesis
+  behind $k$-nearest-neighbor classification
+  (Section~\ref{sec:data_ml_nn_classification}) and clustering
+  (Section~\ref{sec:data_ml_clustering}).
+\item \textbf{Spatial structures} (Chapter~\ref{ch:spatial_structures}):
+  $k$d-trees, quadtrees, and R-trees accelerate the repeated distance
+  queries that dominate learning pipelines (Section~\ref{sec:data_ml_ai}).
+\item \textbf{Hulls and halfspaces} (Chapter~\ref{ch:convex_hulls}):
+  linear classifiers are halfspaces, and their margins are governed by the
+  distance between convex hulls (Section~\ref{sec:data_ml_convex}).
+\item \textbf{High-dimensional geometry}
+  (Chapter~\ref{ch:high_dimensional}): when $d$ is large, concentration of
+  measure and the curse of dimensionality
+  (Section~\ref{sec:highdim_curse}) shape everything from distance
+  computation to generalization.
+\end{itemize}
+
+\begin{remark}[The choice of representation is a geometric act]
+  Normalization (rescaling each feature to unit range or unit variance),
+  whitening (decorrelating the axes), and the choice of a distance are all
+  geometric preprocessing. Standardizing axes is a linear map that replaces
+  the Euclidean metric by a Mahalanobis metric
+  (Definition~\ref{def:data_ml_mahalanobis}); learning a good metric is
+  itself a learning problem. The standard treatments of this pipeline are
+  \cite{bishop2006,duda2001,hastie2009}; the classical reference for the
+  algorithmic geometry is \cite{deberg2008,berg2008}.
+\end{remark}
+
+\begin{remark}[Labels and distances]
+  In unsupervised settings there are no labels and the geometry is all there
+  is: clustering and manifold learning
+  (Section~\ref{sec:data_ml_manifolds}) must reconstruct structure from
+  distances alone. The quality of the distance therefore limits the quality
+  of everything downstream.
+\end{remark}
+
+\index{data mining}\index{machine learning}
 
 \section{Metric Spaces}
 \label{sec:data_ml_metric_spaces}
 
+The first geometric primitive is the distance. A data set with a distance is
+a \textbf{metric space}\index{metric space}, and virtually all geometry in
+this chapter assumes at least the triangle inequality, which is what makes
+pruning, approximation, and geometric data structures work
+(Sections~\ref{sec:data_ml_nn_classification} and
+\ref{sec:data_ml_clustering}).
+
+\begin{definition}[Metric]\label{def:data_ml_metric}
+  A function $d : X \times X \to \mathbb{R}_{\geq 0}$ on a set $X$ is a
+  \textbf{metric} if for all $x, y, z \in X$: (i) $d(x,y) = 0$ iff $x = y$;
+  (ii) $d(x,y) = d(y,x)$; (iii) $d(x,z) \leq d(x,y) + d(y,z)$ (the
+  \textbf{triangle inequality}\index{triangle inequality}). If (i) is
+  relaxed to allow $d(x,y) = 0$ for $x \neq y$, $d$ is a
+  \textbf{pseudo-metric}.
+\end{definition}
+
+\begin{definition}[\texorpdfstring{$\ell_p$}{lp} Norms]\label{def:data_ml_lp}
+  For $p \geq 1$, the \textbf{$\ell_p$ norm} of $x \in \mathbb{R}^d$ is
+  \[
+    \|x\|_p = \Bigl( \sum_{i=1}^d |x_i|^p \Bigr)^{1/p},
+  \]
+  and $d_p(x,y) = \|x - y\|_p$ is the induced metric. The cases $p = 1$
+  (Manhattan), $p = 2$ (Euclidean), and $p = \infty$ (Chebyshev,
+  $\|x\|_\infty = \max_i |x_i|$) are the ones used in practice. The
+  \textbf{cosine distance} $1 - \frac{x \cdot y}{\|x\|\|y\|}$ measures
+  angular dissimilarity on the unit sphere.
+\end{definition}
+
+Distance-based learning and retrieval are only as good as the metric, so a
+substantial literature \textbf{learns} the distance from data.
+
+\begin{definition}[Mahalanobis Metric and Metric Learning]\label{def:data_ml_mahalanobis}
+  Let $M$ be a symmetric positive-semidefinite $d \times d$ matrix. The
+  \textbf{Mahalanobis distance}\index{Mahalanobis distance}
+  \[
+    d_M(x,y) = \sqrt{(x - y)^{\top} M (x - y)}
+  \]
+  is a pseudo-metric; if $M$ is positive definite it is a metric.
+  \textbf{Metric learning}\index{metric learning} is the problem of fitting
+  $M$ (subject to constraints such as $M \succeq 0$) so that prescribed
+  pairs are close and non-similar pairs are far.
+\end{definition}
+
+\begin{theorem}[PSD Matrices Give Metrics]\label{thm:data_ml_mahalanobis_metric}
+  For symmetric $M \succeq 0$, $d_M$ satisfies the triangle inequality, and
+  $d_M$ is a metric exactly when $M$ is positive definite. Writing
+  $M = L^{\top} L$ with a $k \times d$ factor $L$ gives
+  $d_M(x,y) = \|Lx - Ly\|_2$, i.e., Mahalanobis distance is Euclidean
+  distance after the linear embedding $x \mapsto Lx$.
+\end{theorem}
+
+\begin{proof}
+  The identity $d_M(x,y) = \|Lx - Ly\|_2$ for any square root $L$ of $M$
+  (which exists for $M \succeq 0$, e.g., the Cholesky factor or the
+  symmetric square root) is immediate from $x^{\top} M x = \|Lx\|_2^2$. The
+  triangle inequality follows from the Euclidean triangle inequality; if
+  $\ker M = \{0\}$ then $L$ is injective and $d_M(x,y) = 0$ iff $x = y$.
+\end{proof}
+
+\begin{example}[Metric learning for kNN]\label{ex:data_ml_lmnn}
+  The \textbf{large-margin nearest neighbor} (LMNN) method \cite{weinberger2006}
+  learns $M$ so that each point's $k$ target neighbors (same label) are
+  pulled in while differently labeled points inside the neighborhood margin
+  are pushed out. The result is a Mahalanobis metric under which
+  $k$-nearest-neighbor classification of
+  Section~\ref{sec:data_ml_nn_classification} is markedly more accurate.
+\end{example}
+
+\begin{remark}
+  Which metric to use is an algorithmic decision with algorithmic
+  consequences. The Euclidean metric admits Voronoi diagrams, $k$d-trees,
+  and the approximation machinery of Chapter~\ref{ch:approximation_algorithms};
+  an $\ell_1$ metric changes the shape of balls but preserves most
+  low-dimensional structures; a learned Mahalanobis metric keeps all of them
+  because it is Euclidean in a transformed space. Textbook treatments of
+  distances and their role in classifiers are \cite{bishop2006,duda2001,hastie2009}.
+\end{remark}
+
+\index{distance}\index{metric learning}
+
 \section{Nearest-Neighbor Classification}
 \label{sec:data_ml_nn_classification}
+
+\subsection{1. Overview}
+
+Nearest-neighbor classification is the direct geometric translation of the
+heuristic ``things that look alike are alike''. A query point is labeled by
+majority vote among the closest labeled points in the training set. The rule
+has no explicit training phase and no parameters beyond the metric and $k$,
+yet it is consistent: with enough data it approaches the best possible
+classifier. Its computational heart is the nearest-neighbor problem
+(Definition~\ref{def:nearest_neighbor}, Chapter~\ref{ch:proximity}), so the
+whole data-structure machinery of Chapters~\ref{ch:spatial_structures},
+\ref{ch:range_searching}, and \ref{ch:approximation_algorithms} -- and the
+high-dimensional analysis of Chapter~\ref{ch:high_dimensional}
+(Section~\ref{sec:highdim_nearest_neighbor}) -- becomes a machine-learning
+ingredient. The classical reference is Cover and Hart's 1967 analysis
+\cite{cover1967}; the applications to vision and learning are collected in
+\cite{shakhnarovich2006}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[$k$-Nearest-Neighbor Rule]\label{def:data_ml_knn}
+  Let $P$ be a labeled training set and $k \geq 1$ an integer. The
+  \textbf{$k$-nearest-neighbor rule}\index{nearest-neighbor classification}
+  labels a query $q$ by the majority class among the $k$ points of $P$
+  closest to $q$ under the chosen metric $d$, breaking ties by distance and
+  then arbitrarily.
+\end{definition}
+
+\begin{definition}[Bayes Risk]\label{def:data_ml_bayes_risk}
+  For a distribution $\mu$ over $X \times \{1, \dots, M\}$, the
+  \textbf{Bayes risk} $R^*$ is the misclassification probability of the
+  optimal rule that labels $x$ by the class maximizing the posterior
+  probability $\mu(y \mid x)$. It is the theoretical minimum over all
+  classifiers.
+\end{definition}
+
+For the 1-nearest-neighbor rule the decision boundary is the Voronoi diagram
+of the labeled points (Chapter~\ref{ch:voronoi_diagrams},
+Section~\ref{sec:voronoi_diagram}): the query is labeled as the site of the
+Voronoi cell containing it (Definition~\ref{def:voronoi_cell}). For $k > 1$
+the boundary is a subset of the arrangement of bisectors of pairs of
+differently labeled points.
+
+\subsection{3. Theory}
+
+The learning-theoretic content of the rule is the classical theorem of Cover
+and Hart \cite{cover1967}.
+
+\begin{theorem}[Cover--Hart]\label{thm:data_ml_cover_hart}
+  For suitably smooth distributions in $M$-class problems, the asymptotic
+  risk $R$ of the 1-nearest-neighbor rule satisfies
+  \[
+    R^* \;\leq\; R \;\leq\; R^* \Bigl(2 - \frac{M}{M-1} R^*\Bigr),
+  \]
+  and the bounds are tight. In particular for $M = 2$,
+  $R^* \leq R \leq 2 R^* (1 - R^*)$: the nearest-neighbor rule makes at most
+  twice as many errors as the Bayes-optimal classifier, in the limit of
+  infinite data.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  For a fixed query $x$, condition on the nearest neighbor
+  $p = p_n(x)$; under the smoothness assumptions the class of $p$ converges
+  in distribution to the class of $x$, so the asymptotic conditional error
+  is $1 - \sum_{y} \mu(y \mid x)^2$. This quadratic in the posterior vector
+  is bounded between $R^*(x)$ and $2 R^*(x)(1 - R^*(x))$, where
+  $R^*(x) = 1 - \max_y \mu(y \mid x)$; the general $M$-class bound follows
+  by maximizing the gap over the simplex of posteriors. Tightness is
+  exhibited by point-mass constructions attaining both extremes; the full
+  argument is in \cite{cover1967}.
+\end{proof}
+
+For $k > 1$ the risk decreases monotonically with $k$ toward the Bayes risk:
+as $n \to \infty$ with $k = k(n) \to \infty$ and $k(n)/n \to 0$, the
+$k$-nearest-neighbor rule is \textbf{consistent}\index{consistency}, i.e.,
+its risk converges to $R^*$, under weak conditions on the distribution
+\cite{duda2001,bishop2006}. Two caveats temper the guarantee.
+\begin{itemize}
+\item \textbf{Curse of dimensionality}: in high dimension the nearest
+  neighbors of a query are, with high probability, nearly as far as the
+  farthest points of the data (Section~\ref{sec:highdim_curse}), so the
+  local information the rule exploits is diluted. This is the geometric
+  reason that high-dimensional nearest-neighbor search is hard
+  (Chapter~\ref{ch:high_dimensional}, Section~\ref{sec:highdim_nearest_neighbor}).
+\item \textbf{Nonparametric bias}: the rule is a histogram-density
+  estimate in disguise; its error is governed by the bias--variance
+  trade-off, and the metric choice (Section~\ref{sec:data_ml_metric_spaces})
+  is the main lever on the bias.
+\end{itemize}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{$k$-Nearest-Neighbor Classification with a $k$d-Tree}
+\label{alg:data_ml_knn}
+\begin{algorithmic}[1]
+\Require Labeled training set $P \subset \mathbb{R}^d$; query $q$; integer $k \geq 1$; a $k$d-tree over $P$ (Algorithm~\ref{alg:kd_nn}).
+\Ensure The predicted label of $q$ under the $k$-nearest-neighbor rule.
+\Function{KNNClassify}{$q$, $k$}
+  \State $N \gets$ the $k$ nearest neighbors of $q$ in the $k$d-tree \Comment{Algorithm~\ref{alg:kd_nn}}
+  \For{each label $\ell$}
+    \State $c_\ell \gets |\{p \in N : y(p) = \ell\}|$
+  \EndFor
+  \State \Return the label $\ell$ maximizing $c_\ell$ \Comment{ties broken by smallest total distance}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{$k$}: small $k$ is sensitive to label noise, large $k$ blurs
+  the decision boundary; select $k$ by cross-validation over a range of odd
+  values. $k = 1$ coincides with the Voronoi-labeling rule.
+\item \textbf{Metric}: the Euclidean metric is the default; with features
+  of different units, standardize, or learn a Mahalanobis metric
+  (Section~\ref{sec:data_ml_metric_spaces}).
+\item \textbf{Weighting}: distance-weighted voting
+  ($1/d(q,p)$ weights) smooths ties and improves robustness
+  \cite{duda2001}.
+\item \textbf{Pruning}: the lazy-training view means every query does real
+  work; for large $n$ use the approximate structures of
+  Section~\ref{sec:approx_ann}, which trade a factor $c$ of distance for
+  speed.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Training}: $O(1)$ -- the rule stores the data; building the
+  $k$d-tree costs $O(dn \log n)$
+  (Theorem~\ref{thm:kd_build_complexity}, Chapter~\ref{ch:spatial_structures}).
+\item \textbf{Query}: $O(dn)$ by brute force; $O(d \log n)$ expected in low
+  dimension via the $k$d-tree (Theorem~\ref{thm:kd_nn_complexity},
+  Section~\ref{sec:kd_tree}); $O(c^d \log n)$ via box-decomposition ANN
+  (Theorem~\ref{thm:approx_ann_complexity}); and $O(d n^{\rho})$ via LSH in
+  high dimension (Theorem~\ref{thm:approx_lsh_quality},
+  Section~\ref{sec:approx_lsh}, Definition~\ref{def:approx_lsh_sensitive}).
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Content-based retrieval}: the rule \emph{is} similarity search
+  with a label; image and document retrieval pipelines
+  \cite{shakhnarovich2006}.
+\item \textbf{Recommendation}: collaborative filtering labels items by the
+  behavior of users with nearby feature vectors.
+\item \textbf{Geographic data}: spatial classification and map generalization
+  in GIS (Chapter~\ref{ch:applications_gis}) are natural nearest-neighbor
+  applications.
+\item \textbf{Baseline}: the rule is the standard sanity check that any
+  learned classifier must beat; its accuracy upper-bounds simple geometry.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item Verify classification accuracy against brute-force nearest-neighbor
+  computation for the same $k$ and metric, on random and adversarial
+  queries.
+\item Test ties on the decision boundary, duplicate points (they can fill
+  several of the $k$ slots), and the cases $k = 1$ and $k = n$.
+\item Test label noise: flipping labels of a fraction of the training set
+  must degrade accuracy gracefully.
+\item Cross-validate $k$; verify that accuracy as a function of $k$ is
+  unimodal, as the theory of Section~\ref{thm:data_ml_cover_hart} predicts
+  asymptotically.
+\end{itemize}
+
+\subsection{9. References}
+
+Cover and Hart's consistency and error bounds \cite{cover1967}; the
+treatment in the pattern-classification and statistical-learning textbooks
+\cite{duda2001,bishop2006,hastie2009}; the volume on nearest-neighbor
+methods in learning and vision \cite{shakhnarovich2006}; and the algorithmic
+core in Chapters~\ref{ch:proximity}, \ref{ch:spatial_structures}, and
+\ref{ch:approximation_algorithms} with the high-dimensional view in
+Chapter~\ref{ch:high_dimensional}.
+
+\index{k-nearest neighbor}\index{lazy learning}
 
 \section{Clustering Geometry}
 \label{sec:data_ml_clustering}
 
+\subsection{1. Overview}
+
+Clustering partitions a point cloud into groups of nearby points with no
+labels to guide it. Every concrete clustering algorithm is a geometric
+statement about how ``group'' should be defined: by a distance objective
+($k$-means, $k$-median, $k$-center), by a hierarchy of nested partitions, or
+by a local density criterion (DBSCAN). The approximation-theoretic view of
+these objectives is Chapter~\ref{ch:approximation_algorithms},
+Section~\ref{sec:approx_clustering} (with the $k$-center/$k$-median
+algorithms of Section~\ref{sec:approx_k_center_median} and the core-sets of
+Section~\ref{sec:approx_coresets}); this section emphasizes the geometric
+content that the practitioner needs: objective functions, algorithm
+structure, parameter sensitivity, and the geometry each method implicitly
+assumes about the data.
+
+\subsection{2. Definitions}
+
+\begin{definition}[$k$-Means]\label{def:data_ml_kmeans}
+  Let $P \subset \mathbb{R}^d$ and $k \geq 1$. The \textbf{$k$-means
+  problem}\index{k-means} asks for $k$ centers $C = \{c_1, \dots, c_k\}$
+  minimizing
+  \[
+    \Phi(C) = \sum_{p \in P} \min_{c \in C} \|p - c\|^2 .
+  \]
+  The optimum over all $k$-point center sets is $\Phi^*$. Each point is
+  assigned to its nearest center, inducing a Voronoi partition of $P$ (a
+  discrete Voronoi diagram in the sense of Chapter~\ref{ch:voronoi_diagrams}).
+\end{definition}
+
+\begin{definition}[$k$-Median and $k$-Center]\label{def:data_ml_kmedian}
+  \textbf{$k$-median} minimizes $\sum_{p \in P} \min_{c \in C} \|p - c\|$;
+  \textbf{$k$-center} minimizes $\max_{p \in P} \min_{c \in C} \|p - c\|$
+  (Definition~\ref{def:approx_kcenter}). The objectives differ in how they
+  weight outliers: $k$-center is dominated by the single farthest point,
+  $k$-means squares distances and emphasizes large clusters
+  (Section~\ref{sec:approx_clustering}).
+\end{definition}
+
+\begin{definition}[Single-Linkage Hierarchical Clustering]\label{def:data_ml_single_linkage}
+  \textbf{Agglomerative hierarchical clustering}\index{hierarchical
+  clustering} starts with each point as its own cluster and repeatedly merges
+  the two clusters at minimum \emph{linkage} distance. In
+  \textbf{single linkage} the distance between clusters is
+  $d(A,B) = \min_{a \in A, b \in B} \|a - b\|$, the nearest distance between
+  the two sets; the result is a \textbf{dendrogram}, a tree of nested
+  partitions that can be cut at any level.
+\end{definition}
+
+\begin{definition}[DBSCAN Clusters]\label{def:data_ml_dbscan}
+  Fix a radius $\varepsilon > 0$ and a threshold $\mathit{MinPts} \geq 1$.
+  A point $p$ is a \textbf{core point}\index{core point} if at least
+  $\mathit{MinPts}$ points of $P$ lie within distance $\varepsilon$ of $p$.
+  A point $p$ is \textbf{density-reachable} from a core point $o$ through a
+  chain of core points, each within $\varepsilon$ of the next. A
+  \textbf{cluster} is a maximal set of points pairwise connected by
+  density-reachability; every other point is \textbf{noise}.
+\end{definition}
+
+\subsection{3. Theory}
+
+All three objective-based problems are NP-hard even for points in the plane,
+and all three admit the approximation algorithms of Chapter~\ref{ch:approximation_algorithms}:
+Gonzalez's factor-$2$ $k$-center algorithm
+(Theorem~\ref{thm:approx_gonzalez_bound}), Lloyd-style iteration for
+$k$-means, and core-set reductions (Section~\ref{sec:approx_coresets}) that
+yield $(1 + \varepsilon)$-approximations in fixed dimension
+\cite{harpeled2011,gonzalez1985,lloyd1982}.
+
+\begin{theorem}[Lloyd Iteration is Monotone]\label{thm:data_ml_lloyd}
+  Lloyd's algorithm (Algorithm~\ref{alg:data_ml_kmeans}), which alternates
+  assigning points to nearest centers and moving each center to the centroid
+  of its assigned points, never increases the $k$-means objective and
+  converges to a fixed point. The fixed point need not be the global optimum
+  \cite{lloyd1982}; its quality depends on the seeding.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Each reassignment step moves every point to a center at least as close as
+  before, weakly decreasing $\Phi$. Each centroid step replaces, for every
+  cluster $P_i$, the cost $\sum_{p \in P_i}\|p - c\|^2$ by its minimum over
+  $c$, attained at the mean of $P_i$. Hence the two half-steps separately
+  reduce $\Phi$, and any convergent subsequence reaches a local fixed point
+  of both maps.
+\end{proof}
+
+Practical seeding runs the initialization several times and keeps the best
+run; the deterministic farthest-point seeding of
+Section~\ref{sec:approx_k_center_median} and randomized
+``$k$-means++''-style sampling are the standard choices.
+
+DBSCAN's cluster notion is well defined because density-reachability behaves
+like an equivalence relation among core points.
+
+\begin{theorem}[DBSCAN is Well-Defined]\label{thm:data_ml_dbscan_well_defined}
+  For fixed $\varepsilon$ and $\mathit{MinPts}$, the clusters of
+  Definition~\ref{def:data_ml_dbscan} form a partition of the non-noise
+  points, independently of the order in which points are scanned
+  \cite{ester1996}.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Two core points in the same connected component of the core-point graph
+  are density-reachable from a common core point (e.g., along a path in the
+  component), and density-reachability is transitive for core points, so
+  ``connected to a common core'' is an equivalence relation. Border points
+  attach to the unique cluster of their neighboring core point, and points
+  reachable from no core point are noise. Determinism follows because the
+  clusters are defined purely from $P$, $\varepsilon$, and
+  $\mathit{MinPts}$.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{$k$-Means via Lloyd Iteration}
+\label{alg:data_ml_kmeans}
+\begin{algorithmic}[1]
+\Require Point set $P \subset \mathbb{R}^d$; integer $k \geq 1$; initial centers $C = (c_1, \dots, c_k)$; tolerance $\delta$.
+\Ensure A locally optimal $k$-means clustering of $P$.
+\Function{KMeans}{$P$, $C$}
+  \Repeat
+    \State $C' \gets C$
+    \For{each $p \in P$} assign $p$ to the cluster $P_i$ of its nearest center in $C'$ \EndFor
+    \For{$i = 1$ \textbf{to} $k$}
+      \State $c_i \gets \frac{1}{|P_i|}\sum_{p \in P_i} p$ \Comment{centroid of cluster $P_i$}
+    \EndFor
+  \Until{$\max_i \|c_i - c'_i\| \leq \delta$}
+  \State \Return $C$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{DBSCAN}
+\label{alg:data_ml_dbscan}
+\begin{algorithmic}[1]
+\Require Point set $P$; radius $\varepsilon > 0$; threshold $\mathit{MinPts}$; a range-searching structure over $P$ (Chapter~\ref{ch:range_searching}).
+\Ensure A labeling of $P$ into clusters and noise.
+\Function{DBSCAN}{$P$, $\varepsilon$, $\mathit{MinPts}$}
+  \State mark all points of $P$ as unvisited
+  \For{each $p \in P$}
+    \If{$p$ is unvisited}
+      \State mark $p$ visited; $N \gets$ points within $\varepsilon$ of $p$
+      \If{$|N| < \mathit{MinPts}$}
+        \State mark $p$ as noise
+      \Else
+        \State start a new cluster with seed $p$; grow it over all
+               density-reachable points using range queries
+      \EndIf
+    \EndIf
+  \EndFor
+  \State \Return the cluster labels
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The range query is exactly the problem of Chapter~\ref{ch:range_searching};
+with a $k$d-tree (Section~\ref{sec:rangesearch_kd_trees}) or R-tree
+(Section~\ref{sec:r_tree}) the neighborhood tests are logarithmic per point.
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{$k$ (partitioning methods)}: the objectives
+  (Definition~\ref{def:data_ml_kmeans}) are nonincreasing in $k$, so $k$ is
+  chosen by heuristics -- the ``elbow'' of the cost curve, a silhouette
+  score, or domain knowledge; the approximation guarantees of
+  Chapter~\ref{ch:approximation_algorithms} hold for every $k$.
+\item \textbf{Seeding}: Lloyd's fixed point depends on the initial centers;
+  rerun from several seeds (farthest-point or random-sampling seeds) and
+  keep the run of smallest $\Phi$. The Gonzalez centers of
+  Algorithm~\ref{alg:approx_gonzalez_kcenter} make robust seeds.
+\item \textbf{$\varepsilon$ and $\mathit{MinPts}$ (DBSCAN)}: inspect the
+  sorted $k$-nearest-neighbor distance plot ($k$-distance graph); the ``knee''
+  separates the density of clusters from that of noise. $\mathit{MinPts}$
+  around $2d$ is the common default.
+\item \textbf{Linkage (hierarchical)}: single linkage finds elongated and
+  non-convex clusters but is sensitive to noise (a single bridge merges
+  clusters); complete and average linkage trade that sensitivity for
+  convexity assumptions.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{$k$-means}: $O(n k t)$ for $t$ iterations; $t$ is not bounded
+  polynomially in the worst case but is small in practice, and each
+  iteration costs one nearest-center computation per point.
+\item \textbf{DBSCAN}: $O(n \log n)$ expected with a spatial index (range
+  queries dominate), $O(n^2)$ with brute force; memory $O(n)$.
+\item \textbf{Hierarchical}: agglomerative single linkage is
+  $O(n^2)$ time and space for the full dendrogram; variants on $k$-nearest
+  neighbor graphs lower this at the cost of approximation.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Quantization and compression}: $k$-means centers are a
+  vector quantizer (Lloyd--Max design) \cite{lloyd1982}; the centers
+  approximate the data distribution.
+\item \textbf{Image and video segmentation}: pixel features clustered into
+  regions; geometric post-processing on the clusters.
+\item \textbf{Spatial data mining}: DBSCAN was designed for large spatial
+  databases, discovering arbitrarily shaped clusters and labeling noise
+  \cite{ester1996}; the spatial indexing needed for the range queries is the
+  material of Chapters~\ref{ch:spatial_structures} and \ref{ch:range_searching}.
+\item \textbf{Anomaly detection}: points classified as noise by DBSCAN, or
+  far from every $k$-means center, are natural outliers.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item Verify Lloyd's monotonicity (Theorem~\ref{thm:data_ml_lloyd}): the
+  objective must never increase between iterations; instrument and assert
+  it.
+\item Test empty clusters (a center loses all points), $k \geq n$, and
+  coincident points; define a deterministic convention (re-seed empty
+  clusters).
+\item For DBSCAN, test varying-density data (uniform density is assumed),
+  clusters connected by a thin bridge, and all-noise inputs; verify the
+  output is independent of scan order
+  (Theorem~\ref{thm:data_ml_dbscan_well_defined}).
+\item Compare clusterings against ground-truth labels with adjusted Rand or
+  mutual-information scores, not just the objective.
+\end{itemize}
+
+\subsection{9. References}
+
+Lloyd's quantization algorithm \cite{lloyd1982}, Gonzalez's farthest-point
+method \cite{gonzalez1985}, DBSCAN \cite{ester1996}, the core-set theory of
+Har-Peled \cite{harpeled2011}, and the textbook treatments
+\cite{hastie2009,bishop2006}; the approximation algorithms behind the
+guarantees are Chapter~\ref{ch:approximation_algorithms}.
+
+\index{clustering}\index{DBSCAN}\index{Voronoi diagram, discrete}
+
 \section{Convex Geometry in Machine Learning}
 \label{sec:data_ml_convex}
+
+Linear classifiers -- perceptrons, logistic regression, support vector
+machines -- are halfspaces, and the theory of how well they separate point
+sets is convex geometry. This section develops the geometric backbone: when
+two point sets are linearly separable, what the margin is, and how the
+maximum-margin separator can be characterized purely in terms of convex
+hulls.
+
+\begin{definition}[Linear Separability and Margin]\label{def:data_ml_separability}
+  A labeled point set $P$ with labels $y(p) \in \{-1, +1\}$ is
+  \textbf{linearly separable}\index{linear separability} if there is a
+  hyperplane $\{x : w \cdot x + b = 0\}$ with
+  $y(p)(w \cdot p + b) > 0$ for all $p \in P$. For a unit vector $w$, the
+  \textbf{geometric margin}\index{margin} of the separator is
+  \[
+    \gamma = \min_{p \in P} \frac{y(p)(w \cdot p + b)}{\|w\|},
+  \]
+  the minimum distance from a point to the hyperplane. The
+  \textbf{maximum-margin} separator maximizes $\gamma$.
+\end{definition}
+
+\begin{theorem}[Separating Hyperplane]\label{thm:data_ml_separating}
+  Two finite point sets $P^+, P^-$ are linearly separable if and only if
+  their convex hulls are disjoint: $\operatorname{conv}(P^+) \cap
+  \operatorname{conv}(P^-) = \emptyset$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  If a hyperplane $w \cdot x + b = 0$ strictly separates the points, then
+  every convex combination of points of $P^+$ has $w \cdot x + b > 0$ and
+  every convex combination from $P^-$ has $w \cdot x + b < 0$, so the hulls
+  cannot meet. Conversely, the classical separating hyperplane theorem for
+  disjoint compact convex sets (see \cite{cormen2009} for the algorithmic
+  formulation) supplies the separator; for point clouds it can be obtained
+  by computing the closest pair of points between the two hulls
+  (Section~\ref{sec:convexint_distance}).
+\end{proof}
+
+The maximum-margin separator is a pure convex-geometric object.
+
+\begin{theorem}[Margin as Hull Distance]\label{thm:data_ml_margin_hull}
+  Let $P^+$, $P^-$ be finite point sets with disjoint convex hulls, and let
+  $C^+ = \operatorname{conv}(P^+)$, $C^- = \operatorname{conv}(P^-)$. The
+  maximum-margin separating hyperplane is perpendicular to the segment
+  joining the closest pair of points between $C^+$ and $C^-$, and its margin
+  equals half the distance $\operatorname{dist}(C^+, C^-)$. In particular
+  the hard-margin support vector machine reduces to a closest-point problem
+  between two convex sets, the same reduction that underlies the
+  Minkowski-difference machinery of Chapter~\ref{ch:convex_intersection}
+  (Section~\ref{sec:convexint_minkowski_difference},
+  Theorem~\ref{thm:convexint_minkowski}, Section~\ref{sec:convexint_gjk}).
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  The margin of a unit-normal separator equals $\gamma = \frac{1}{2}(u \cdot
+  a - u \cdot b)$ for the two support points $a \in C^+$, $b \in C^-$ it
+  touches, maximized over unit directions $u$. The supporting function of a
+  convex set is maximized at its boundary, so the optimum pairs $a, b$ are
+  boundary points with $u$ normal to both supporting hyperplanes; the value
+  is maximized when $a$ and $b$ are closest points of the two hulls, giving
+  $\gamma = \frac{1}{2}\|a - b\|$. Existence of the closest pair is by
+  compactness; its computation is the Gilbert--Johnson--Keerthi style
+  iteration of Section~\ref{sec:convexint_gjk}.
+\end{proof}
+
+\begin{example}[Hard-margin SVM]\label{ex:data_ml_svm}
+  Two linearly separable clusters in the plane have their hulls separated by
+  a slab. The maximum-margin hyperplane runs down the middle of the slab;
+  the points that touch the slab boundaries are the \textbf{support
+  vectors}\index{support vector}. Only those points matter: the classifier
+  is $y = \operatorname{sign}(w \cdot x + b)$ with $w$ a linear combination
+  of the support vectors. This sparsity is exactly the statement that the
+  optimum of a linear program is at a vertex, the geometric dual of the
+  convex-geometry view \cite{bishop2006,muller2001}.
+\end{example}
+
+\begin{example}[Perceptron convergence]\label{ex:data_ml_perceptron}
+  The perceptron (Algorithm~\ref{alg:data_ml_perceptron}) is the simplest
+  learning algorithm for a linearly separable set. Its analysis is a pure
+  distance argument: if the separator $w^*$ has margin $\gamma$, then after
+  $t$ mistakes the angle between the current weight $w_t$ and $w^*$ shrinks,
+  and the process terminates after at most $(\|w^*\|^2 / \gamma^2)
+  \cdot \max_p \|p\|^2 / (w^* \cdot p)$ mistakes.
+\end{example}
+
+\begin{algorithm}[htbp]
+\caption{Perceptron on a Linearly Separable Set}
+\label{alg:data_ml_perceptron}
+\begin{algorithmic}[1]
+\Require Points $P \subset \mathbb{R}^d$ with labels $y(p) \in \{-1, +1\}$, linearly separable.
+\Ensure A separator $w$, $b$ with $y(p)(w \cdot p + b) > 0$ for all $p \in P$.
+\Function{Perceptron}{$P$}
+  \State $w \gets 0$; $b \gets 0$
+  \Repeat
+    \State find a point $p$ with $y(p)(w \cdot p + b) \leq 0$ \Comment{a mistake}
+    \If{no point is a mistake} \State break \EndIf
+    \State $w \gets w + y(p)\, p$; $b \gets b + y(p)$ \Comment{margin update}
+  \Until{no mistakes}
+  \State \Return $w$, $b$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+Real data is rarely exactly separable, and the convex geometry adapts in
+two ways. The \textbf{soft-margin} SVM allows a slack variable per point,
+penalizing violations of the margin; geometrically, the maximum-margin
+problem becomes one of pushing apart convex hulls after allowing a fraction
+of points to escape them. And \textbf{kernels}
+(Section~\ref{sec:data_ml_kernels}) move the whole separation problem to a
+feature space where the hulls separate linearly; the margin theorem above
+holds verbatim there. The geometric connection to convex-hull and
+convex-distance computations makes the material of
+Chapters~\ref{ch:convex_hulls}, \ref{ch:convex_intersection}, and
+\ref{ch:enclosure_convex_distance} (Section~\ref{sec:welzls_algorithm} for
+the one-class minimum-enclosing-ball problem) directly relevant; the
+learning-theoretic framing is in \cite{bishop2006,duda2001,hastie2009}.
+
+\index{support vector machine}\index{hyperplane}\index{convex hull, separation}
 
 \section{Kernel Geometry}
 \label{sec:data_ml_kernels}
 
+The \textbf{kernel trick}\index{kernel trick} lifts a linear method
+(Section~\ref{sec:data_ml_convex}) into a nonlinear one by moving the data
+through an implicit feature map and observing only inner products. Its
+geometric content is that the margin and separation theorems survive in a
+Hilbert space whose inner product is computed by a cheap function of the
+original coordinates. The standard introduction is \cite{muller2001}; the
+textbook treatments are \cite{bishop2006,hastie2009}.
+
+\begin{definition}[Kernel and Gram Matrix]\label{def:data_ml_kernel}
+  A function $k : X \times X \to \mathbb{R}$ is a \textbf{positive-definite
+  kernel}\index{kernel} if for every finite set $\{x_1, \dots, x_m\}$ the
+  \textbf{Gram matrix} $G$ with $G_{ij} = k(x_i, x_j)$ is symmetric positive
+  semidefinite. The \textbf{feature map}
+  $\phi : X \to \mathcal{H}$ into a Hilbert space realizes $k$ if
+  $k(x, x') = \langle \phi(x), \phi(x') \rangle$.
+\end{definition}
+
+\begin{theorem}[Mercer's Theorem]\label{thm:data_ml_mercer}
+  Let $X$ be compact with a Borel measure $\mu$ and let $k$ be a continuous
+  positive-definite kernel. Then there is an orthonormal basis
+  $\{\psi_j\}$ of $L^2(\mu)$ and nonnegative eigenvalues $\lambda_j$ with
+  \[
+    k(x, x') = \sum_{j=1}^{\infty} \lambda_j\, \psi_j(x)\, \psi_j(x'),
+  \]
+  the series converging absolutely, and the map
+  $x \mapsto (\sqrt{\lambda_j}\,\psi_j(x))_j$ is a feature map into
+  $\ell_2$. This is the kernel analogue of the separating-hyperplane
+  theorem: it certifies that the implicit geometry is a genuine Hilbert
+  geometry \cite{muller2001,bishop2006}.
+\end{theorem}
+
+\begin{example}[Common kernels]\label{ex:data_ml_kernels}
+  The polynomial kernel $k(x,x') = (x \cdot x' + c)^m$ corresponds to the
+  feature space of all monomials of degree at most $m$; the Gaussian kernel
+  $k(x,x') = \exp(-\frac{\|x - x'\|^2}{2\sigma^2})$ corresponds to an
+  infinite-dimensional feature space and is universal -- it can approximate
+  any continuous function on a compact set uniformly. Both are used with the
+  SVM of Section~\ref{sec:data_ml_convex}: the maximum-margin separator is
+  computed in feature space, so the decision boundary is a curved surface in
+  the original space.
+\end{example}
+
+\begin{remark}[Geometry survives the trick]
+  A kernel method is a linear method on the transformed points
+  $\phi(p)$, and every theorem of Section~\ref{sec:data_ml_convex} --
+  separability, margin-as-hull-distance, support-vector sparsity -- applies
+  verbatim, with the hulls taken in $\mathcal{H}$. The computational
+  geometry enters again at the data-structure level: exact nearest-neighbor
+  search on kernel features is expensive, and the approximate structures of
+  Chapter~\ref{ch:approximation_algorithms}
+  (Sections~\ref{sec:approx_ann} and \ref{sec:approx_lsh}) are the standard
+  accelerants for large kernel pipelines. Kernel $k$-means runs Lloyd's
+  iteration (Algorithm~\ref{alg:data_ml_kmeans}) on the implicit features;
+  kernel PCA diagonalizes the centered Gram matrix. Distance in feature
+  space is $\| \phi(x) - \phi(x') \|^2 = k(x,x) + k(x',x') - 2k(x,x')$, so
+  all of Section~\ref{sec:data_ml_metric_spaces} applies to the induced
+  pseudo-metric \cite{muller2001}.
+\end{remark}
+
+\index{RKHS}\index{Mercer kernel}\index{feature map}
+
 \section{Manifold Learning}
 \label{sec:data_ml_manifolds}
+
+The \textbf{manifold hypothesis}\index{manifold hypothesis} asserts that
+high-dimensional data concentrates near a low-dimensional manifold embedded
+in the ambient space: a $d$-dimensional point cloud that ``really'' lives on
+a $k$-dimensional surface with $k \ll d$. The geometry of curved surfaces
+(Chapter~\ref{ch:curves_surfaces}) and of shape spaces
+(Chapter~\ref{ch:spectral_geometry}) then becomes a modeling tool, and
+\textbf{manifold learning}\index{manifold learning} is the problem of
+recovering that intrinsic geometry from point samples.
+
+\begin{definition}[Intrinsic Dimension]\label{def:data_ml_intrinsic_dim}
+  A data set $P \subset \mathbb{R}^d$ has \textbf{intrinsic dimension} $k$
+  if $P$ lies approximately on a $k$-dimensional submanifold $M$ of
+  $\mathbb{R}^d$. A \textbf{manifold embedding} is a map
+  $f : P \to \mathbb{R}^k$ that preserves the relevant geometry of $M$ --
+  at minimum the local distances, and ideally the geodesic distances of $M$.
+\end{definition}
+
+\begin{definition}[ISOMAP]\label{def:data_ml_isomap}
+  \textbf{ISOMAP} embeds $P$ into $\mathbb{R}^k$ by (i) building the
+  $k$-nearest-neighbor graph on $P$, (ii) computing the shortest-path
+  distances $d_G(p, q)$ over the graph as a proxy for the geodesic distance
+  of $M$, and (iii) applying classical multidimensional scaling to the
+  distance matrix, i.e., finding the points of $\mathbb{R}^k$ whose pairwise
+  Euclidean distances best match $d_G$.
+\end{definition}
+
+The geometric content is a sampling theorem: on an isometrically embedded
+manifold, graph distances converge to geodesic distances as the sampling
+density grows, so the embedding converges to the true isometry. The
+\textbf{Laplacian eigenmaps} and \textbf{LLE} family replaces the geodesic
+distances by the eigenvectors of a discrete Laplacian built on the
+proximity graph, which is precisely the cotangent Laplacian and Laplace--
+Beltrami operator of Chapter~\ref{ch:spectral_geometry}
+(Definition~\ref{def:laplace_beltrami}); the two views -- shortest paths and
+spectra -- agree asymptotically because the graph Laplacian converges to the
+geodesic Laplacian as the mesh is refined.
+
+\begin{example}[Swiss roll]\label{ex:data_ml_swiss_roll}
+  Sampling a rolled strip in $\mathbb{R}^3$ gives a point cloud whose
+  Euclidean distance confuses nearby points across the roll with nearby
+  points along it. ISOMAP restores the flat intrinsic coordinates by routing
+  distances along the strip, undoing the fold; Laplacian eigenmaps and t-SNE
+  achieve the same unrolling while emphasizing local neighborhoods.
+\end{example}
+
+\begin{remark}[Data-structure costs]
+  The pipeline is algorithmic geometry: the neighborhood graph is a range or
+  nearest-neighbor construction (Chapters~\ref{ch:proximity} and
+  \ref{ch:spatial_structures}), the shortest paths are the algorithms of
+  Chapter~\ref{ch:distance_paths}, and the spectral step is the machinery of
+  Chapter~\ref{ch:spectral_geometry}. The connection to surface
+  reconstruction (Chapter~\ref{ch:shape_reconstruction},
+  Section~\ref{sec:shape_reconstruction_surface}) is direct: both fields
+  infer a surface from a point sample, one to reconstruct shape, the other
+  to reconstruct a coordinate chart. t-SNE and UMAP trade the global
+  isometry guarantee for a local-neighborhood emphasis that is more robust
+  on real data; see \cite{bishop2006,hastie2009} for the statistical view.
+\end{remark}
+
+\index{ISOMAP}\index{Laplacian eigenmaps}\index{t-SNE}
 
 \section{Geometric Embeddings}
 \label{sec:data_ml_embeddings}
 
+Learning is easier when the ambient dimension is small, and a whole family
+of results shows that geometry can be compressed into few dimensions with
+controlled distortion. The master tool is the Johnson--Lindenstrauss lemma,
+developed in Chapter~\ref{ch:high_dimensional}
+(Section~\ref{sec:highdim_jl}, with the random projections of
+Section~\ref{sec:highdim_random_projections} and the concentration machinery
+of Section~\ref{sec:highdim_concentration}).
+
+\begin{theorem}[Johnson--Lindenstrauss]\label{thm:data_ml_jl}
+  For any set of $n$ points in $\mathbb{R}^d$ and any $\varepsilon \in
+  (0,1)$, a random projection to $m = O(\varepsilon^{-2} \log n)$
+  dimensions preserves all pairwise distances within a factor $1 +
+  \varepsilon$, with high probability
+  (Chapter~\ref{ch:high_dimensional}, Section~\ref{sec:highdim_jl}).
+\end{theorem}
+
+\begin{remark}[Why $O(\log n)$ dimensions]\label{rem:data_ml_jl_dimension}
+  The bound is a concentration phenomenon: the projection of a single
+  unit vector onto $m$ standard directions has norm concentrated around
+  $\sqrt{m/d}$, and the union bound over the $n^2$ pairwise differences
+  forces $m = \Omega(\varepsilon^{-2} \log n)$. The number of points -- not
+  the ambient dimension -- sets the target dimension, which is why random
+  projections are a preprocessing standard in high-dimensional learning
+  pipelines (Chapter~\ref{ch:high_dimensional},
+  Section~\ref{sec:highdim_dimensionality_reduction}).
+\end{remark}
+
+Embeddings of different flavors serve different learning goals:
+\begin{itemize}
+\item \textbf{Random projections}: distance-preserving maps used before
+  clustering, $k$-means, and nearest-neighbor search; because they are
+  linear and data-oblivious they compose with the metric structures of
+  Sections~\ref{sec:data_ml_metric_spaces} and \ref{sec:data_ml_clustering}.
+\item \textbf{Locality-sensitive hashing}: the random projections of
+  Section~\ref{sec:highdim_random_projections} double as the hash functions
+  of Section~\ref{sec:approx_lsh}; LSH is a discrete, collision-based
+  embedding of a metric into a Hamming space that drives approximate
+  nearest-neighbor search and similarity retrieval \cite{indyk1998,andoni2006}.
+\item \textbf{Feature maps}: the kernel features of
+  Section~\ref{sec:data_ml_kernels} are themselves embeddings; explicit
+  finite-dimensional random feature maps approximate the infinite
+  RKHS geometry of \cite{muller2001} at the cost of a bounded distortion.
+\item \textbf{Dimensionality reduction as learning}: principal component
+  analysis embeds the data into the span of its top eigenvectors -- an
+  affine subspace best fit in the least-squares sense -- and its geometry is
+  the Eckart--Young optimality of the truncated data matrix; it is the
+  linear baseline against which Section~\ref{sec:data_ml_manifolds}'s
+  nonlinear embeddings are compared \cite{bishop2006,hastie2009}.
+\end{itemize}
+
+\begin{remark}
+  The geometric view of embeddings is one of guarantees: what distortion,
+  for what distance, at what cost. This is the vocabulary in which
+  dimension-reduction pipelines are analyzed, and it is exactly the
+  vocabulary of Chapter~\ref{ch:high_dimensional}; the practical tension
+  between worst-case guarantees and empirical behavior on real data is the
+  theme of Section~\ref{sec:data_ml_ai}.
+\end{remark}
+
+\index{Johnson--Lindenstrauss lemma}\index{random projection}\index{embedding}
+
 \section{Graph-Based Geometric Learning}
 \label{sec:data_ml_graphs}
+
+A proximity graph turns a point cloud into a combinatorial object on which
+the learning problem becomes a graph problem. The standard constructions --
+the $k$-nearest-neighbor graph, the $\varepsilon$-ball graph, and the
+Delaunay graph (Chapter~\ref{ch:delaunay_triangulations},
+Section~\ref{sec:delaunay_duality}) -- each encode a different notion of
+neighborhood, and their spectral theory (Chapter~\ref{ch:spectral_geometry})
+drives spectral clustering, label propagation, and graph neural networks.
+
+\begin{definition}[Proximity Graphs]\label{def:data_ml_proximity_graph}
+  For a point set $P \subset \mathbb{R}^d$: the \textbf{$k$-nearest-neighbor
+  graph}\index{k-nearest-neighbor graph} connects $p$ to $q$ if $q$ is among
+  the $k$ nearest neighbors of $p$; the \textbf{$\varepsilon$-ball graph}
+  connects $p, q$ if $\|p - q\| \leq \varepsilon$; the
+  \textbf{Delaunay graph} connects the pairs whose Voronoi cells share a
+  boundary (Chapter~\ref{ch:voronoi_diagrams}). All are proximity queries of
+  the kind built in Chapters~\ref{ch:proximity} and
+  \ref{ch:spatial_structures}.
+\end{definition}
+
+\begin{definition}[Graph Laplacian]\label{def:data_ml_laplacian}
+  For a graph $G = (V, E)$ with degree matrix $D$ and adjacency matrix $A$,
+  the \textbf{graph Laplacian} is $L = D - A$. For a point cloud with a
+  proximity graph it is the discrete analogue of the Laplace--Beltrami
+  operator of Chapter~\ref{ch:spectral_geometry}
+  (Definition~\ref{def:laplace_beltrami}).
+\end{definition}
+
+\begin{theorem}[Connectivity by Eigenvalue]\label{thm:data_ml_laplacian_components}
+  The graph Laplacian $L$ is positive semidefinite, and its kernel has
+  dimension equal to the number of connected components of $G$. In
+  particular $G$ is connected exactly when the second-smallest eigenvalue
+  $\lambda_2 > 0$, and the associated eigenvector is a real-valued embedding
+  whose sign already separates the two ``most separated'' parts of the graph.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  $L = D - A$ satisfies $x^{\top} L x = \sum_{(u,v) \in E} (x_u - x_v)^2 \geq
+  0$, so $L \succeq 0$. A vector in the kernel is constant on each connected
+  component (all adjacent entries equal), giving one independent kernel
+  vector per component. The Fiedler eigenvector of $\lambda_2$ is the
+  relaxed solution of the balanced-cut problem; see
+  \cite{bishop2006,hastie2009} for the derivation.
+\end{proof}
+
+\begin{example}[Spectral clustering]\label{ex:data_ml_spectral_clustering}
+  Two interleaved rings in the plane are inseparable by any distance-based
+  partition (Section~\ref{sec:data_ml_clustering}) yet separated by the
+  second eigenvector of the $k$-NN graph Laplacian: points on one ring have
+  near-constant Fiedler coordinate, and the two rings take opposite signs.
+  The pipeline -- build the proximity graph, compute eigenvectors, cluster
+  the embedded rows with $k$-means -- is spectral clustering.
+\end{example}
+
+\begin{remark}
+  The proximity-graph choice is a geometric modeling decision: the Delaunay
+  graph is the sparsest graph whose edges do not interfere (relative
+  neighborhood graph), the $k$-NN graph is denser but captures anisotropic
+  neighborhoods, and the $\varepsilon$-ball graph is controlled by a single
+  scale parameter -- the same scale that drives DBSCAN
+  (Definition~\ref{def:data_ml_dbscan}). The Delaunay graph's
+  proximity-preserving properties are the subject of
+  Chapter~\ref{ch:delaunay_triangulations} and the surveys
+  \cite{okabe2000,aurenhammer1991}. Diffusion and graph kernels on these
+  graphs define the similarity measures used in label propagation and in
+  graph-based semi-supervised learning \cite{hastie2009}.
+\end{remark}
+
+\index{graph Laplacian}\index{spectral clustering}\index{Fiedler vector}
 
 \section{Optimal Transport: A Geometric Introduction}
 \label{sec:data_ml_optimal_transport}
 
+Optimal transport (OT) measures the distance between two probability
+measures by the minimal cost of moving one into the other. It is at once a
+generalization of the assignment and matching problems of
+Chapter~\ref{ch:geometric_matching} and a geometry on the space of
+distributions that machine learning uses for comparing histograms, images,
+and point clouds \cite{peyre2019}.
+
+\begin{definition}[Transport Plan and Cost]\label{def:data_ml_transport}
+  Given two probability measures $\mu, \nu$ on metric spaces and a
+  nonnegative cost $c(x, y)$, a \textbf{transport plan} is a coupling $\pi$
+  of $(\mu, \nu)$ (a joint measure with marginals $\mu$ and $\nu$), and the
+  \textbf{transport cost} of $\pi$ is $\int c(x,y)\, d\pi(x,y)$. The
+  \textbf{Wasserstein distance} of order $p \geq 1$ is
+  \[
+    W_p(\mu, \nu) = \Bigl( \inf_{\pi} \int \|x - y\|^p\, d\pi(x,y) \Bigr)^{1/p},
+  \]
+  the $p$-th root of the minimal transport cost; for $p = 1$ this is the
+  \textbf{Earth mover's distance}.
+\end{definition}
+
+\begin{theorem}[Wasserstein is a Metric]\label{thm:data_ml_wasserstein}
+  For measures on $\mathbb{R}^d$ with finite moments of order $p$, the map
+  $(\mu, \nu) \mapsto W_p(\mu, \nu)$ is a metric on probability measures:
+  it is symmetric, $W_p(\mu, \nu) = 0$ iff $\mu = \nu$, and it satisfies the
+  triangle inequality (via the gluing of two optimal plans through a common
+  intermediate measure). Its geometry is the correct notion of distance for
+  measures -- unlike $L^2$ distances between densities, it is sensitive to
+  the underlying geometry of the data space.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  Symmetry is by transposing the plan. If $W_p(\mu,\nu) = 0$, a sequence of
+  plans with cost tending to zero converges weakly to a plan supported on
+  the diagonal $\{(x,x)\}$, forcing $\mu = \nu$. The triangle inequality
+  composes an optimal plan from $\mu$ to $\nu$ with an optimal plan from
+  $\nu$ to $\rho$ by disintegration through $\nu$; the resulting coupling
+  has cost at most $W_p(\mu,\nu) + W_p(\nu,\rho)$, and Minkowski's
+  inequality in $L^p$ finishes the argument.
+\end{proof}
+
+\begin{theorem}[Kantorovich Duality]\label{thm:data_ml_kantorovich}
+  For lower-semicontinuous costs, the OT optimum equals a dual supremum:
+  \[
+    W_1(\mu, \nu) = \sup_{\varphi} \Bigl( \int \varphi\, d\mu - \int \varphi\,
+    d\nu \Bigr),
+  \]
+  where $\varphi$ ranges over $1$-Lipschitz functions. This is a
+  supporting-function duality: it identifies the Wasserstein distance with a
+  difference of expectations, and it is the computational backbone of OT
+  algorithms \cite{peyre2019}.
+\end{theorem}
+
+For discrete measures, optimal transport is a combinatorial problem that
+the computational-geometry reader already knows. With
+$\mu = \sum_i a_i \delta_{x_i}$ and $\nu = \sum_j b_j \delta_{y_j}$, a plan
+is a nonnegative matrix $\pi_{ij}$ with row and column sums $a$ and $b$,
+and the cost $\sum_{ij} \pi_{ij} c(x_i, y_j)$ is minimized over the
+transport polytope. When $c$ is a metric on the points, the problem is the
+transportation problem of operations research; the case $n = m$, all
+weights $1$, reduces to the assignment problem (Chapter~\ref{ch:geometric_matching},
+Section~\ref{sec:matching_shape}, Definition~\ref{def:match_min_weight}),
+solved by Hungarian-type algorithms, and the geometric variants on point
+sets are exactly the matching objectives of Chapter~\ref{ch:geometric_matching}.
+
+\begin{remark}[Computational geometry meets OT]
+  The Wasserstein distance between two point clouds, restricted to measures
+  of equal mass, is a matching cost: the optimal plan pairs points and the
+  value is a weighted assignment cost, so the algorithms and approximation
+  ideas of Chapter~\ref{ch:geometric_matching} apply. Modern practice uses
+  \textbf{entropic regularization}: adding
+  $-\eta \sum_{ij} \pi_{ij} \log \pi_{ij}$ makes the problem strictly convex
+  and smooth, and the Sinkhorn algorithm iterates row and column
+  scalings of a kernel matrix -- a sequence of matrix multiplications that
+  scales to large data and approximates $W_1$ within a controlled entropy
+  bias \cite{peyre2019}. The resulting distances drive image registration,
+  distributional robustness in learning, and generative-model objectives.
+\end{remark}
+
+\index{optimal transport}\index{Wasserstein distance}\index{Earth mover's distance}
+
 \section{Computational Geometry for AI}
 \label{sec:data_ml_ai}
+
+\subsection{1. Overview}
+
+This section inverts the relationship of the rest of the chapter. Where the
+earlier sections imported geometric structures into learning, here learning
+imports computation: geometric algorithms serve as subroutines inside
+learned pipelines, and -- in the \textbf{learned data structures} program --
+the machine learns the data structure itself. The two directions share a
+methodology: understand the geometry of the data, then replace the
+worst-case-optimal structure by one tailored to the actual distribution.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Geometric Subroutine]\label{def:data_ml_subroutine}
+  A \textbf{geometric subroutine} is a fixed data structure or algorithm
+  called inside a learning pipeline: a $k$d-tree serving nearest-neighbor
+  queries for a $k$-NN classifier (Section~\ref{sec:data_ml_nn_classification},
+  Algorithm~\ref{alg:data_ml_knn}), an R-tree serving the range queries of
+  spatial data mining (Chapter~\ref{ch:spatial_structures},
+  Section~\ref{sec:r_tree}), or a Delaunay mesher feeding a geometric deep
+  model.
+\end{definition}
+
+\begin{definition}[Learned Index]\label{def:data_ml_learned_index}
+  A \textbf{learned index}\index{learned index} replaces a classical index
+  by a model of the data's key distribution. Kraska, Beutel, Chi, Dean, and
+  Polyzotis observed that an index is itself a function approximating
+  key-to-position maps: a B-tree is a model predicting the rank of a key
+  with bounded error, and a hash index predicts position in an unsorted
+  array \cite{kraska2018}. A learned index trains a model $f$ on the
+  cumulative distribution of the keys and answers lookups by evaluating $f$
+  and correcting locally within a bounded error window.
+\end{definition}
+
+\subsection{3. Theory}
+
+The theory of learned data structures is the theory of \textbf{algorithms
+with predictions}\index{algorithms with predictions}: preprocess the data
+with a learned model whose predictions may be imperfect, and give
+guarantees that interpolate between ``model perfect'' and ``model useless''.
+
+\begin{theorem}[Lookup with Bounded Prediction Error]\label{thm:data_ml_learned_lookup}
+  Let the sorted keys $x_1 < \cdots < x_n$ have cumulative distribution $F$,
+  and let $\hat{F}$ be a model with uniform error
+  $\|\hat{F} - F\|_\infty \leq \varepsilon$. Then a lookup of key $x$
+  reduces to a binary search on the predicted window
+  $[\hat{F}(x) - \varepsilon, \hat{F}(x) + \varepsilon] \cdot n$, costing
+  $O(\log(\varepsilon n))$ probes instead of $O(\log n)$. A model that is a
+  perfect rank predictor gives $O(1)$-time lookups; an adversarial model
+  degrades gracefully back to binary search \cite{kraska2018}.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  If the true rank satisfies
+  $|\operatorname{rank}(x) - \hat{F}(x) \cdot n| \leq \varepsilon n$, then
+  the key $x$, if present, lies inside the predicted window, and binary
+  search within a window of size $2 \varepsilon n$ uses
+  $O(\log(\varepsilon n))$ comparisons. The error bound is the model's
+  $\ell_\infty$ error against the empirical CDF; a hierarchical model
+  (recursive model index) reduces the per-level error geometrically.
+\end{proof}
+
+\begin{remark}[Range search under predictions]
+  Range queries use two lookups: predict the first key $\geq a$ and the
+  last key $\leq b$, then report the interval between the corrected
+  positions (Algorithm~\ref{alg:data_ml_learned_range}). This is the
+  learned analogue of the range-reporting structures of
+  Chapter~\ref{ch:range_searching}: the classical $k$d-tree
+  (Section~\ref{sec:rangesearch_kd_trees}) and R-tree report exactly with
+  worst-case guarantees, while the learned index trades a bounded error
+  for locality. The research program asks, systematically, which
+  worst-case guarantees survive prediction -- the theme of
+  Section~\ref{sec:data_ml_research}.
+\end{remark}
+
+\textbf{Learning geometric structures} is the mirror image: instead of
+learning a data structure, the models learn the geometric object itself.
+Neural networks are trained to predict triangulations and meshes -- a
+learned proxy for the Delaunay meshing and refinement algorithms of
+Chapters~\ref{ch:delaunay_triangulations} and \ref{ch:mesh_generation} --
+so that a trained model outputs a mesh in a forward pass rather than by
+running an incremental algorithm; surface reconstruction pipelines
+(Chapter~\ref{ch:shape_reconstruction}) likewise learn signed-distance
+proxies for the restricted-Delaunay reconstruction of
+Section~\ref{sec:shape_reconstruction_surface}. Graph and point-cloud
+neural networks consume proximity graphs and point coordinates directly,
+making the geometric subroutine (neighborhood computation, range queries)
+the rate-limiting step that the fixed structures of
+Chapters~\ref{ch:spatial_structures} and \ref{ch:range_searching} exist to
+serve.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Learned Range Search}
+\label{alg:data_ml_learned_range}
+\begin{algorithmic}[1]
+\Require Sorted keys $x_1 < \cdots < x_n$ with records; learned rank model $f$ with error bound $\varepsilon$; query interval $[a, b]$.
+\Ensure All records with keys in $[a, b]$.
+\Function{LearnedRange}{$f$, $a$, $b$}
+  \State $\hat{i} \gets \max(1, f(a) - \varepsilon n)$; $\hat{j} \gets \min(n, f(b) + \varepsilon n)$
+  \State $i \gets$ binary search for the first key $\geq a$ in $[\hat{i}, \hat{j}]$
+  \State $j \gets$ binary search for the last key $\leq b$ in $[\hat{i}, \hat{j}]$
+  \State \Return records $x_i, \dots, x_j$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+\item \textbf{Model granularity}: a recursive model index layers models so
+  that the residual error shrinks per level; the depth trades model-eval
+  cost against the window correction cost \cite{kraska2018}.
+\item \textbf{Error bound $\varepsilon$}: overestimating enlarges windows and
+  wastes probes; underestimating risks missing keys. Fit $\varepsilon$ from
+  held-out keys as the worst observed deviation.
+\item \textbf{Classical fallback}: combine the learned index with an
+  authoritative small structure (e.g., an R-tree for bulk operations) so
+  updates and distribution shifts do not silently corrupt lookups.
+\item \textbf{Updates}: learned indexes assume a static key distribution;
+  handle inserts by buffering or by hybrid model/tree layouts.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+\item \textbf{Learned lookup}: $O(\log(\varepsilon n))$ probes after
+  evaluating the model; a perfect model gives $O(1)$.
+\item \textbf{Classical baseline}: B-trees answer range searches in
+  $O(\log_B n + m)$ I/Os for $m$ reported records; $k$d-trees and R-trees
+  report in $O(\sqrt{n} + m)$ and $O(\log n + m)$ expected respectively
+  (Chapters~\ref{ch:range_searching} and \ref{ch:spatial_structures}).
+  Learned indexes win when the data distribution is learnable and the
+  geometry of the queries matches it.
+\item \textbf{Geometric subroutines in pipelines}: $k$-NN queries dominate
+  the cost of many learned models; the structures of
+  Chapter~\ref{ch:approximation_algorithms}
+  (Sections~\ref{sec:approx_ann} and \ref{sec:approx_lsh}) reduce the
+  constant at an approximation cost.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+\item \textbf{Database and storage systems}: learned indexes for key-value
+  stores and columnar analytics \cite{kraska2018}.
+\item \textbf{Machine-learning pipelines}: $k$d-trees and R-trees accelerate
+  the repeated proximity and range queries inside $k$-NN, clustering
+  (Section~\ref{sec:data_ml_clustering}), and DBSCAN
+  (Algorithm~\ref{alg:data_ml_dbscan}).
+\item \textbf{Geometric deep learning}: point-cloud and mesh neural
+  networks pair with the spatial structures and triangulation algorithms of
+  Chapters~\ref{ch:spatial_structures} and \ref{ch:delaunay_triangulations};
+  learned meshing predicts the mesh that refinement would build.
+\item \textbf{GIS}: range queries over spatial databases power map
+  generalization and spatial joins (Chapter~\ref{ch:applications_gis}).
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+\item Validate lookups against a ground-truth sorted array for keys on the
+  window boundary, duplicates, and keys not present in the data.
+\item Stress-test distribution shift: train on one key distribution and
+  query another; verify the error bound degrades gracefully rather than
+  failing silently.
+\item Compare learned and classical structures on the same workload and
+  measure both worst-case and average latency; the theoretical trade of
+  Theorem~\ref{thm:data_ml_learned_lookup} must be checked empirically.
+\item For geometric-subroutine usage, verify the subroutine's own edge
+  cases: empty queries, all-points-in-range, and adversarial point layouts
+  (Chapters~\ref{ch:spatial_structures} and \ref{ch:range_searching}).
+\end{itemize}
+
+\subsection{9. References}
+
+Kraska, Beutel, Chi, Dean, and Polyzotis on learned index structures
+\cite{kraska2018}; the classical structures in Chapters~\ref{ch:range_searching},
+\ref{ch:spatial_structures}, and \ref{ch:approximation_algorithms}; the
+textbooks \cite{cormen2009,deberg2008} for the baseline bounds.
+
+\index{learned data structure}\index{R-tree}\index{B-tree}
 
 \section{Research Directions}
 \label{sec:data_ml_research}
 
+The frontier of this chapter is the feedback loop between geometry and
+learning, and several research programs illustrate it.
+
+\begin{itemize}
+\item \textbf{Algorithms with predictions}. The learned-index program of
+  Section~\ref{sec:data_ml_ai} (see \cite{kraska2018}) generalizes to a
+  methodology: every algorithm -- caching, scheduling, routing,
+  range search -- may consume a prediction of the input distribution and
+  must be analyzed for how its performance interpolates between the
+  prediction-perfect and prediction-adversarial cases. The open question is
+  which worst-case guarantees (Chapter~\ref{ch:range_searching}) survive
+  prediction and which must be abandoned.
+\item \textbf{Generalization through geometry}. Deep networks generalize
+  despite having far more parameters than samples; one line of explanation
+  is that trained nets admit succinct geometric reparametrizations, and
+  compression-based generalization bounds of Arora, Ge, Neyshabur, and
+  Zhang show that a compressible model has bounded sample complexity
+  \cite{arora2018}. This mirrors the core-set philosophy of
+  Chapter~\ref{ch:approximation_algorithms}: a small representative
+  explains the behavior of the whole.
+\item \textbf{The geometry of attention}. Transformer architectures
+  compute pairwise similarity weights -- a geometric attention map -- and
+  their success in sequence and graph modeling has spawned geometric
+  attention mechanisms on point clouds and meshes; the self-attention
+  matrix is itself a proximity structure in the sense of
+  Chapters~\ref{ch:proximity} and \ref{ch:delaunay_triangulations}
+  \cite{vaswani2017}.
+\item \textbf{High-dimensional limits}. The curse of dimensionality
+  (Chapter~\ref{ch:high_dimensional}, Section~\ref{sec:highdim_curse}) and
+  the concentration phenomena of Section~\ref{sec:highdim_concentration}
+  set sharp limits on what any distance-based method can learn from data;
+  the interaction of these limits with the approximation theory of
+  Chapter~\ref{ch:approximation_algorithms}
+  (Section~\ref{sec:approx_high_dimensional}) is an active area.
+\item \textbf{Geometric deep learning}. Architectures that respect the
+  intrinsic geometry of their input -- convolution on manifolds and meshes,
+  equivariant networks on point clouds, graph neural networks on proximity
+  graphs -- fuse the material of Chapters~\ref{ch:spectral_geometry},
+  \ref{ch:computational_topology}, and \ref{ch:mesh_generation} with the
+  learning pipeline of this chapter.
+\end{itemize}
+
+These directions are part of the wider research frontier surveyed in
+Chapter~\ref{ch:research_frontiers}, in particular the machine-learning
+interfaces of Sections~\ref{sec:frontiers_ml} and
+\ref{sec:frontiers_deep_learning}. The statistical foundations remain those
+of \cite{bishop2006,hastie2009,duda2001}; the algorithmic geometry remains
+those of \cite{deberg2008,harpeled2011}.
+
+\index{algorithms with predictions}\index{geometric deep learning}
+
 \section{Project}
 \label{sec:data_ml_project}
+
+Build a small geometric machine-learning system that exercises the pipeline
+of this chapter end to end, then replace one of its geometric components by
+a learned one and quantify the change.
+\begin{enumerate}
+  \item \textbf{Data}: generate labeled random point sets
+    (Chapter~\ref{ch:sampling}, Section~\ref{sec:uniform_random_points}) in
+    $\mathbb{R}^2$ and $\mathbb{R}^d$ for $d = 2, 8, 32$ with $n = 10^3$ to
+    $10^5$, using two or more well-separated Gaussians plus a noise class;
+    load a real feature data set if available.
+  \item \textbf{Metric baseline}: implement brute-force $k$-nearest-neighbor
+    classification (Section~\ref{sec:data_ml_nn_classification}) as ground
+    truth; measure accuracy and query time.
+  \item \textbf{Structures}: implement a $k$d-tree
+    (Chapter~\ref{ch:spatial_structures}, Section~\ref{sec:kd_tree}) and an
+    R-tree (Section~\ref{sec:r_tree}), and use them for the $k$-NN queries
+    and for DBSCAN's range queries (Algorithm~\ref{alg:data_ml_dbscan}).
+    Record query times and verify identical results to the brute-force
+    baseline.
+  \item \textbf{Clustering}: run $k$-means
+    (Algorithm~\ref{alg:data_ml_kmeans}) with several seeds and DBSCAN on
+    the generated clouds; report objective values, cluster counts, and the
+    sensitivity to $k$, $\varepsilon$, and $\mathit{MinPts}$
+    (Section~\ref{sec:data_ml_clustering}).
+  \item \textbf{Convex view}: for a two-class subset, compute the
+    maximum-margin separator of Section~\ref{sec:data_ml_convex} by solving
+    the closest-point problem between the two convex hulls
+    (Section~\ref{sec:convexint_distance}) and compare its accuracy and
+    support vectors with a kernel version (Section~\ref{sec:data_ml_kernels}).
+  \item \textbf{Learned component}: fit a learned index
+    (Section~\ref{sec:data_ml_ai}, Algorithm~\ref{alg:data_ml_learned_range})
+    over the sorted keys of one feature, with an $\ell_\infty$ error bound
+    fit on held-out keys; compare lookup latency and range-query cost
+    against the classical $k$d-tree and R-tree, and test robustness to a
+    shifted query distribution.
+  \item \textbf{Verification}: plot accuracy, query time, and window size
+    against $n$ and $d$; explain the observed trade-offs using the bounds of
+    Sections~\ref{sec:data_ml_nn_classification} and
+    \ref{sec:data_ml_ai} and the curse of dimensionality
+    (Section~\ref{sec:highdim_curse}).
+\end{enumerate}
+The project ties the proximity, spatial-structure, convexity, and learned
+data-structure material of this chapter to the approximation and
+high-dimensional machinery of Chapters~\ref{ch:approximation_algorithms}
+and \ref{ch:high_dimensional}, and it surfaces the gap between worst-case
+guarantees and empirical behavior that defines the field.

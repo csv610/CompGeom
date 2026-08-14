@@ -1,40 +1,952 @@
 \chapter{Dynamic and Kinetic Geometry}
 \label{ch:dynamic_kinetic_geometry}
 
-% Stub: outline only; content to be written.
-
 \section{Dynamic Geometric Problems}
 \label{sec:dynamic_intro}
+
+Every data structure in the preceding chapters was built for a \emph{static}
+input: a set of points, segments, or polygons fixed once and for all. Real
+applications rarely respect that assumption: terrain vertices change as new
+survey data arrives, database entries are inserted and deleted, and the
+robots in a warehouse move continuously. This chapter studies geometric
+algorithms whose input \emph{changes}, and it distinguishes three regimes:
+
+\begin{description}
+  \item[Static] The input is fixed; queries are answered against a structure
+    built once (Chapter~\ref{ch:range_searching}).
+  \item[Dynamic] The input changes by discrete insertions and deletions
+    interleaved with queries (Sections~\ref{sec:dynamic_point_sets}--\ref{sec:dynamic_proximity}).
+  \item[Kinetic] The input changes \emph{continuously} along known
+    trajectories, and the answer is a function of time maintained by
+    \emph{kinetic data structures} (Sections~\ref{sec:dynamic_kds}--\ref{sec:dynamic_kinetic_closest}).
+\end{description}
+
+A dynamic structure is judged by its \textbf{update time}\index{update time},
+\textbf{query time}, and \textbf{storage}. A kinetic structure is judged by
+the additional quantities of Section~\ref{sec:dynamic_kds}: how many
+\emph{certificates} it holds, how fast it repairs a \emph{certificate
+failure}, and how the number of failures compares with the number of times
+the answer changes. The unifying theme is \textbf{coherence}\index{coherence}:
+between updates, or between small advances of time, the combinatorial answer
+barely changes, and a good structure changes only what it must. The dynamic
+results rest on the transform-and-conquer machinery of Overmars
+\cite{overmars1983}; the kinetic results rest on the kinetic data structure
+framework of Basch, Guibas, and Hershberger \cite{basch1999,guibas1998}.
+
+\index{dynamic data structure}\index{kinetic data structure}
 
 \section{Dynamic Point Sets}
 \label{sec:dynamic_point_sets}
 
+The simplest dynamic geometric object is a set of points supporting
+\textbf{insert} and \textbf{delete} operations interleaved with queries.
+Most point-based structures --- $k$-d trees, range trees, Voronoi diagrams
+--- have dynamic versions, and the classical framework for deriving them is
+the \textbf{transform-and-conquer} method of Overmars \cite{overmars1983}.
+
+\begin{definition}[Dynamic Point Structure]\label{def:dynamic_structure}
+  A \textbf{dynamic point structure} maintains a set $P \subseteq
+  \mathbb{R}^d$ under $\textsc{Insert}(p)$, $\textsc{Delete}(p)$, and a class
+  of queries. It is \textbf{semidynamic}\index{semidynamic} if it supports
+  only insertions and \textbf{fully dynamic} if it supports both.
+\end{definition}
+
+The two basic design strategies are:
+
+\begin{itemize}
+  \item \textbf{Partial rebuilding}\index{partial rebuilding}. The
+    \textbf{logarithmic method} partitions the points into $O(\log n)$
+    static structures of geometrically growing size: a new point enters the
+    smallest structure, and structures merge when their size doubles. A
+    query runs against all levels, so the update cost is an $O(\log n)$
+    factor times the static construction cost and the query cost an
+    $O(\log n)$ factor times the static query cost, both amortized.
+    Section~\ref{sec:rangesearch_dynamic} analyzes this for range searching.
+  \item \textbf{Balanced-tree dynamics}. The primary structure is kept
+    balanced, and each rotation repairs only local secondary structures. A
+    dynamic range tree costs $O(\log^2 n)$ per update in the plane
+    (Section~\ref{sec:rangesearch_dynamic}); a dynamic $k$-d tree
+    (Section~\ref{sec:kd_tree}) inserts by leaf attachment and deletes by
+    marking with periodic subtree rebuilds, at $O(\log n)$ amortized cost.
+\end{itemize}
+
+Two auxiliary problems recur. The \textbf{order maintenance}
+problem\index{order maintenance problem} --- maintain a sorted list so that
+the relative order of two elements is tested in $O(1)$ --- is solved by the
+order-maintenance structure of Dietz and Sleator \cite{dietzsleator1987},
+which gives each element a monotone label from a dense order. The second is
+\textbf{dynamic point location}, answered across updates at expected
+$O(\log n)$ per insertion and $O(\log^2 n)$ per deletion
+(Section~\ref{sec:pointloc_dynamic}, \cite{overmars1983}). Textbook
+treatments are \cite{overmars1983,berg2008} and the handbook chapters of
+\cite{mehta2005}; the priority search tree of
+Section~\ref{sec:rangesearch_priority_search} is the classic linear-storage
+structure for dynamic 3-sided queries.
+
+\index{order maintenance problem}
+
 \section{Dynamic Convex Hulls}
 \label{sec:dynamic_convex_hulls}
+
+\subsection{1. Overview}
+
+The dynamic convex hull problem maintains $\operatorname{conv}(P)$ under
+insertions and deletions while answering queries about the hull. The two
+classical milestones are the $O(\log^2 n)$-per-update structure of Overmars
+and van Leeuwen \cite{overmars1981} and the near-optimal structure of Brodal
+and Jacob \cite{brodal2002}, whose total cost over any sequence of $n$
+updates is $O(n\log n)$. This section develops the Overmars--van Leeuwen
+approach and states the Brodal--Jacob improvement.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Dynamic Convex Hull]\label{def:dyn_convex_hull}
+  A \textbf{dynamic convex hull} structure maintains $\operatorname{conv}(P)$
+  under $\textsc{Insert}(p)$ and $\textsc{Delete}(p)$, together with the
+  queries of the following definition.
+\end{definition}
+
+\begin{definition}[Hull Queries]\label{def:dyn_extreme_query}
+  For a direction $d$, the \textbf{extreme-point query} asks for a vertex of
+  $\operatorname{conv}(P)$ maximizing $p \cdot d$; the \textbf{membership
+  query} asks whether a given point lies inside the hull. Both are answered
+  in $O(\log n)$ by binary search over the cyclic hull order
+  (Chapter~\ref{ch:convex_hulls}).
+\end{definition}
+
+\subsection{3. Theory}
+
+The Overmars--van Leeuwen structure maintains the upper hull and the lower
+hull separately, each as a balanced binary tree over the vertices in
+$x$-order. The key idea is the \textbf{bridge}\index{bridge}: if a subtree's
+vertices are split at a median $x$-coordinate, the subtree's upper hull is
+the upper hull of the left part, one \emph{bridge edge} connecting it to the
+upper hull of the right part, and the right part's upper hull. A node stores
+its bridge, found in $O(\log n)$ time by a walk that advances a current
+vertex alternately on the two child chains.
+
+\begin{theorem}[Overmars--van Leeuwen]\label{thm:dyn_hull_overmars}
+  The convex hull of an $n$-point set can be maintained under insertions and
+  deletions in $O(\log^2 n)$ worst-case time per update, with extreme-point
+  and membership queries in $O(\log n)$ time and $O(n)$ storage.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  An update first rebalances the hull tree. The affected nodes lie on one
+  root-to-leaf path, and at each such node the bridge is recomputed from the
+  two child hull chains in $O(\log n)$ time; there are $O(\log n)$ nodes,
+  giving $O(\log^2 n)$. A direction query walks one path, spending $O(1)$
+  per level following bridges, hence $O(\log n)$; the same search supports
+  the membership test.
+\end{proof}
+
+The structure is the canonical \emph{two-level} dynamic structure, in the
+spirit of the multilevel structures of
+Section~\ref{sec:rangesearch_multilevel}. Brodal and Jacob \cite{brodal2002}
+improved the update bound by a more carefully amortized, partition-based
+representation of the hull and its bridges:
+
+\begin{theorem}[Brodal--Jacob]\label{thm:dyn_hull_brodal}
+  The convex hull of an $n$-point set can be maintained under insertions and
+  deletions in $O(\log n)$ amortized time per update and $O(\log n)$
+  worst-case time per query, using $O(n)$ storage. Any sequence of $n$
+  updates thus costs $O(n\log n)$ total, which is optimal up to logarithmic
+  factors for comparison-based exact structures.
+\end{theorem}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Dynamic Convex Hull Maintenance}
+\label{alg:dyn_convex_hull}
+\begin{algorithmic}[1]
+\Require A dynamic point set $P$ in general position.
+\Ensure Insertions, deletions, and direction queries on $\operatorname{conv}(P)$.
+\Function{DynHullInsert}{$p$}
+  \State insert $p$ into the $x$-ordered trees of the upper and lower hulls
+  \For{each node $v$ on the rebalanced paths}
+    \State $H[v] \gets \textsc{Bridge}(\text{left}(v), \text{right}(v))$
+  \EndFor
+\EndFunction
+\Function{DynHullDelete}{$p$}
+  \State delete $p$ from both hull trees; rebalance and recompute bridges as above
+\EndFunction
+\Function{ExtremePoint}{$d$}
+  \State $v \gets$ root of the upper-hull tree
+  \While{$v$ is not a leaf}
+    \State follow the bridge stored at $v$ toward the maximum of the dot product with $d$
+  \EndWhile
+  \State \Return the vertex reached; search the lower hull symmetrically for direction $d$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+  \item \textbf{Balancing}: any balanced binary search tree works; the
+    requirement is that an update touches only $O(\log n)$ nodes, so bridge
+    recomputations stay on one root-to-leaf path.
+  \item \textbf{Degenerate points}: vertical alignments, duplicate
+    $x$-coordinates, and collinear hull vertices are handled by a symbolic
+    perturbation (Section~\ref{sec:intro_symbolic_perturbation}) or by
+    storing, at each $x$, the interval of hull vertices at that $x$.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+  \item \textbf{Update}: $O(\log^2 n)$ worst case (Overmars--van Leeuwen),
+    $O(\log n)$ amortized (Brodal--Jacob).
+  \item \textbf{Query}: $O(\log n)$; \textbf{storage}: $O(n)$.
+  \item \textbf{Total}: $O(n\log^2 n)$ and $O(n\log n)$ over $n$ updates,
+    respectively. A comparison-based lower bound of $\Omega(\log n)$ per
+    operation makes the Brodal--Jacob bounds optimal up to constants.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+  \item \textbf{Kinetic convex hulls}: the structure of
+    Section~\ref{sec:dynamic_kinetic_hulls} uses a dynamic hull as a
+    subroutine when a point enters or leaves the hull.
+  \item \textbf{Motion planning}: maintaining obstacle hulls under updates
+    supports the queries of Chapter~\ref{ch:motion_planning}.
+  \item \textbf{Onion peeling}: repeated extreme-point queries with dynamic
+    deletion compute hull layers (Section~\ref{sec:convex_hull_peeling})
+    online.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+  \item \textbf{Brute-force oracle}: after every update, recompute the hull
+    statically and compare vertex sets over random update sequences.
+  \item \textbf{Direction queries}: verify \textsc{ExtremePoint}($d$) against
+    an $O(n)$ scan over a grid of directions.
+  \item \textbf{Degenerate hulls}: collinear points, duplicates, and
+    two-point hulls must not break the bridge search.
+\end{itemize}
+
+\subsection{9. References}
+
+The $O(\log^2 n)$ structure is due to Overmars and van Leeuwen
+\cite{overmars1981}; the dynamic-structure theory is \cite{overmars1983}.
+The $O(n\log n)$ total result is \cite{brodal2002}. Textbook treatments
+appear in \cite{berg2008,preparata1985} and \cite{mehta2005}.
 
 \section{Dynamic Proximity Structures}
 \label{sec:dynamic_proximity}
 
+Proximity queries --- nearest neighbor, closest pair, Voronoi cells,
+Delaunay adjacency --- are among the most important dynamic geometric
+problems. For \textbf{dynamic nearest neighbor}\index{dynamic nearest
+neighbor} the standard options are:
+
+\begin{itemize}
+  \item \textbf{Dynamic $k$-d tree}: leaf attachment with periodic rebuilds
+    gives $O(\log n)$ amortized updates and the branch-and-bound query of
+    Section~\ref{sec:kd_tree} (Chapter~\ref{ch:spatial_structures}).
+  \item \textbf{Dynamic Delaunay triangulation}: since the nearest neighbor
+    of a point is among the vertices of its Delaunay cell, the dynamic
+    Delaunay structure of Section~\ref{sec:dynamic_delaunay}
+    (Chapter~\ref{ch:delaunay_triangulations}) answers nearest-neighbor
+    queries in expected logarithmic time, with local-flip updates.
+  \item \textbf{Reduction to hulls}: in the plane, nearest-neighbor queries
+    lift to 3D convex hulls (Section~\ref{sec:delaunay_lifting}); the
+    dynamic 3D hull of Chan \cite{chan2006} thereby yields a dynamic planar
+    nearest-neighbor structure with polylogarithmic bounds.
+\end{itemize}
+
+The \textbf{dynamic closest pair}\index{dynamic closest pair} maintains the
+Delaunay triangulation together with a secondary structure reporting its
+shortest edge --- the static reduction of Chapter~\ref{ch:proximity}, made
+dynamic by updating both levels at each insertion or deletion. Dynamic
+\textbf{range searching} is developed in Section~\ref{sec:rangesearch_dynamic}
+(Chapter~\ref{ch:range_searching}), where the schemes of
+Section~\ref{sec:dynamic_point_sets} yield the $O(\log^2 n)$ and
+$O(n^{1-1/d})$ trade-offs. When the motion is continuous, the same problems
+reappear in kinetic form and the Delaunay triangulation becomes the central
+tool (Sections~\ref{sec:dynamic_kinetic_closest}--\ref{sec:dynamic_kinetic_hulls});
+the surveys \cite{guibas1998,mehta2005} collect the state of the art.
+
+\index{dynamic nearest neighbor}\index{dynamic closest pair}
+
 \section{Moving Geometric Objects}
 \label{sec:dynamic_moving_objects}
+
+Discrete updates are not the only way an input can change. In simulation,
+robotics, and tracking, objects are in \emph{continuous motion}, and the
+questions are about time: when do two points cross, when do robots collide,
+and how does the nearest-neighbor structure evolve?
+
+\begin{definition}[Trajectory]\label{def:kinetic_trajectory}
+  A \textbf{trajectory} for an object is a function $p: [0, T] \to
+  \mathbb{R}^d$ giving its position at time $t$. The motion is \textbf{linear}
+  (constant velocity) if $p(t) = p_0 + vt$, and \textbf{algebraic} if each
+  coordinate is a polynomial (or more generally an algebraic function) of
+  $t$. The interval $[0, T]$ is the \textbf{time horizon}.
+\end{definition}
+
+\begin{example}\label{ex:kinetic_motivating}
+  For $n$ points with linear trajectories, the relative order by
+  $x$-coordinate changes only at the finitely many times two points have
+  equal $x$-coordinate; between such times the order is fixed. Any quantity
+  --- sorted order, convex hull, closest pair --- that depends on the
+  configuration through order information is therefore \emph{piecewise
+  constant in time}, changing only at a discrete set of \emph{event times}
+  determined by the trajectories. This is the combinatorial core of kinetic
+  geometry: continuous motion, discrete change.
+\end{example}
+
+Two strategies are available. The \emph{sampling} strategy re-evaluates the
+answer at every step of a discretized clock; it costs a factor $T/\delta$
+in the number of samples and can miss events between samples (the classic
+\emph{tunneling} artifact of collision detection). The \emph{event-driven}
+strategy computes, for each condition that guarantees the current answer,
+the exact future time at which it fails, schedules these times in a priority
+queue, and processes the earliest failure; it never misses an event but must
+compute failure times exactly, which is feasible only for algebraic
+trajectories (Section~\ref{sec:dynamic_certificates}). When trajectories are
+known in advance (a ``flight plan''), event-driven structures dominate; when
+they are revealed on the fly, a hybrid of sampling and event prediction is
+used. The kinetic data structure framework of Section~\ref{sec:dynamic_kds}
+formalizes the event-driven strategy.
+
+\index{coherence}\index{event}
 
 \section{Kinetic Data Structures}
 \label{sec:dynamic_kds}
 
+The \textbf{kinetic data structure} (KDS)\index{kinetic data structure}
+framework of Basch, Guibas, and Hershberger \cite{basch1999,guibas1998}
+maintains a combinatorial attribute of moving objects by reducing correctness
+to a set of small \emph{certificates} whose validity guarantees the current
+answer, and scheduling the times at which the certificates fail.
+
+\begin{definition}[Kinetic Structure]\label{def:kinetic_structure}
+  A \textbf{kinetic data structure} for an attribute $A$ of $n$ moving
+  objects consists of (i) a combinatorial representation of $A$ correct for
+  the current configuration, (ii) a set of \textbf{certificates} --- boolean
+  tests on the object positions --- such that $A$ is guaranteed correct as
+  long as all certificates hold, and (iii) an \textbf{event queue} storing
+  the predicted failure time of each certificate.
+\end{definition}
+
+\begin{definition}[Certificate]\label{def:kinetic_certificate}
+  A \textbf{certificate} is a predicate $c(t)$ over the trajectories whose
+  truth at time $t$ is sufficient for the correctness of the maintained
+  attribute at $t$. It \textbf{fails} at the smallest $t' > t$ with $c(t')$
+  false; this is its \textbf{failure time}\index{failure time}.
+\end{definition}
+
+Certificates are elementary geometric tests: order comparisons,
+orientation tests, or in-circle tests. Since trajectories are algebraic,
+each certificate function is a polynomial in $t$ of constant degree, and its
+failure time is a root of that polynomial (at most degree four for an
+in-circle certificate under linear motion; Section~\ref{sec:dynamic_certificates}).
+\begin{definition}[KDS Quality Measures]\label{def:kinetic_properties}
+  Let $s$ be the number of certificates and $n$ the number of objects.
+  \begin{itemize}
+    \item \textbf{Compactness}: $s = O(n)$.
+    \item \textbf{Locality}\index{locality}: each object participates in
+      $O(\log n)$ (ideally $O(1)$) certificates.
+    \item \textbf{Responsiveness}: a certificate failure is repaired in
+      polylogarithmic time.
+    \item \textbf{Efficiency}: the number of certificate failures is within
+      a polylogarithmic factor of the number of times the maintained
+      attribute changes. The ratio separates \emph{internal} events
+      (failures that do not change the answer) from \emph{external} events
+      (changes of the answer).
+  \end{itemize}
+\end{definition}
+
+\begin{example}[Kinetic Tournament]\label{ex:kinetic_tournament}
+  Maintain the maximum of $n$ points moving on a line. Arrange the points
+  as leaves of a balanced tree; each internal node stores the larger child
+  and a certificate $c(t) : \text{left winner} \ge \text{right winner}$. As
+  long as every certificate holds, the root stores the maximum. When a
+  certificate fails, the loser has overtaken the winner: swap, reschedule
+  the node's and its predecessors' certificates, and continue. The structure
+  holds $O(n)$ certificates, each point is in $O(\log n)$ of them, and a
+  failure is repaired in $O(\log n)$ time --- compact, local, responsive. It
+  is the canonical first KDS and the model for the kinetic heaps of
+  Section~\ref{sec:dynamic_certificates}.
+\end{example}
+
+\begin{remark}
+  The KDS framework is a \emph{recipe}, not an algorithm: for a new attribute
+  one designs the certificate set (a correctness proof), the repair
+  procedure (a local update), and the failure-time computation (a root
+  solver) \cite{guibas1998}. The following sections apply the recipe to
+  sorting, convex hulls, closest pairs, and collision detection.
+\end{remark}
+
+\index{kinetic data structure}\index{certificate}\index{locality}
+
 \section{Certificates and Events}
 \label{sec:dynamic_certificates}
+
+A KDS is only as good as its event scheduling. This section develops the
+algorithmic support: computing failure times, storing them, and repairing
+failures reliably.
+
+\begin{definition}[Kinetic Event]\label{def:kinetic_event}
+  A \textbf{kinetic event}\index{kinetic event} at time $t$ is a set of one
+  or more certificate failures at $t$. It is \textbf{external} if the
+  maintained attribute changes and \textbf{internal} otherwise. The event
+  queue stores the predicted failure times of all future certificates.
+\end{definition}
+
+\subsection*{Computing failure times}
+
+For linear motion $p(t) = p_0 + vt$, an order or orientation certificate
+fails at a root of a degree-one polynomial, and an in-circle certificate
+(the determinant of the matrix with rows $(x_i, y_i, x_i^2+y_i^2, 1)$) is a
+polynomial of degree at most four in $t$. All such roots are computed in
+$O(1)$ arithmetic operations, so every certificate schedules its failure in
+constant time. This is why KDS implementations are practical: every
+predicted failure time is the root of a low-degree polynomial.
+
+\subsection*{Event scheduling with heaps}
+
+The event queue needs extract-min, insert, and decrease, each in $O(\log
+n)$; a binary heap delivers all three (Section~\ref{sec:app_alg_priority_queues},
+\cite{cormen2009}) and is the standard choice. The \textbf{kinetic
+heap}\index{kinetic heap} is a kinetic tournament over the keys to be
+minimized (here, the failure times), used to pick the earliest pending
+failure.
+
+\begin{definition}[Kinetic Heap]\label{def:kinetic_heap}
+  A \textbf{kinetic heap} is a kinetic tournament whose leaves hold the keys
+  (failure times or attribute values). Each internal node stores a winner
+  and a certificate that its key does not exceed its sibling's; the root
+  holds the minimum at all times.
+\end{definition}
+
+\subsection*{Repairing failures}
+
+When a certificate fails at time $t$, the repair has three steps: (i)
+\emph{verify} the failure with the exact predicates of
+Section~\ref{sec:robust_predicates} --- a floating-point evaluation at $t$
+can be inconclusive; (ii) \emph{apply} the local combinatorial update (a
+swap, a flip, or a tangent recomputation); and (iii) \emph{reschedule} the
+new certificates. Two issues dominate practice. First,
+\textbf{simultaneous events}: several certificates may fail together, and
+the queue must order them by a fixed secondary key or a symbolic
+perturbation must break the tie (Section~\ref{sec:intro_symbolic_perturbation}).
+Second, \textbf{numerical drift}: a failure time computed in floating point
+is slightly wrong, so the certificate is tested at the scheduled time rather
+than trusted; if it has not failed yet, the failure time is recomputed and
+the event rescheduled (``re-prediction'') \cite{guibas1998}.
+
+\begin{remark}
+  The event machinery is not specific to kinetics: the same pattern --- a
+  priority queue of events, local repairs, exact predicates --- drives the
+  sweep-line algorithms of Chapter~\ref{ch:segment_intersection}, where the
+  event queue is the identical heap structure (Section~\ref{sec:segint_events}).
+  The difference is that sweep-line events are \emph{discovered} from
+  adjacency, while kinetic events are \emph{predicted} from certificate
+  roots.
+\end{remark}
+
+\index{kinetic heap}\index{kinetic event}
 
 \section{Kinetic Sorting}
 \label{sec:dynamic_kinetic_sorting}
 
+\subsection{1. Overview}
+
+Kinetic sorting maintains the sorted order of $n$ points moving on a line,
+as a function of time. It is the simplest nontrivial KDS and the foundation
+of the kinetic hull and proximity structures, many of which reduce to
+maintaining one or more sorted orders (of points by a coordinate, or of
+directions by angle). The order can change $\Theta(n^2)$ times in the worst
+case even for constant-velocity motion.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Kinetic Sorted List]\label{def:kinetic_sorted_list}
+  A \textbf{kinetic sorted list} (KSL) maintains $n$ points moving on a line
+  in sorted order by position. The certificates are the $n-1$ adjacent-pair
+  inequalities $c_i(t) : p_{\sigma(i)}(t) \le p_{\sigma(i+1)}(t)$, where
+  $\sigma$ is the current order; an order change is exactly a certificate
+  failure.
+\end{definition}
+
+\begin{definition}[Order Maintenance Label]\label{def:kinetic_order_label}
+  An \textbf{order label} for each element is a value monotone in the sorted
+  order, comparable in $O(1)$; the order-maintenance structures of
+  \cite{dietzsleator1987} provide such labels with $O(1)$ amortized update
+  cost.
+\end{definition}
+
+\subsection{3. Theory}
+
+The KSL is the textbook KDS \cite{basch1999}: it holds $n-1$ certificates
+(compact), each point participates in at most two (locality $O(1)$), and a
+failure swaps two points, changing only two adjacencies (responsiveness
+$O(1)$). Its limitation is the number of events.
+
+\begin{theorem}[Kinetic Sorted List Bounds]\label{thm:kinetic_sort_events}
+  The sorted order of $n$ points on a line can change $\Theta(n^2)$ times in
+  the worst case, even for constant-velocity motion. The kinetic sorted list
+  maintains the order with $O(n)$ certificates and repairs each order change
+  in $O(1)$ time plus $O(\log n)$ for the event queue.
+\end{theorem}
+
+\begin{proof}
+  For the lower bound, take $n/2$ points far to the left moving right with
+  velocity $1$ and $n/2$ points on the right moving with velocity $0$. Every
+  moving--stationary pair crosses exactly once, reversing its relative order;
+  there are $(n/2)^2 = \Theta(n^2)$ such reversals, each forcing an order
+  change. For the upper bound, the certificates are the adjacent pairs; a
+  failure is a swap changing two adjacencies, and each new adjacency's
+  failure time is the root of a degree-one polynomial, computed in $O(1)$
+  (Section~\ref{sec:dynamic_certificates}).
+\end{proof}
+
+For random or bounded-velocity motions the number of changes is much
+smaller, and the KSL is the standard component of kinetic nearest-neighbor
+and range structures.
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Kinetic Sorted List}
+\label{alg:kinetic_sort}
+\begin{algorithmic}[1]
+\Require $n$ points $p_1, \dots, p_n$ on a line with trajectories $p_i(t)$.
+\Ensure The sorted order at all times in $[0, T]$.
+\Function{KineticSortedList}{$p_1, \dots, p_n$}
+  \State sort the points at $t = 0$; let $\sigma$ be the current order
+  \State $Q \gets$ empty kinetic heap
+  \For{$i = 1$ to $n-1$}
+    \State create certificate $c_i$ for the pair $(\sigma(i), \sigma(i+1))$
+    \State $Q.\text{insert}(\text{FailureTime}(c_i))$
+  \EndFor
+  \While{$Q$ is not empty and $Q.\text{min}() \le T$}
+    \State $t \gets Q.\text{extract-min}()$; advance the clock to $t$
+    \State verify the failing pair exactly; swap $\sigma(i)$ and $\sigma(i+1)$
+    \State remove the two certificates of the swapped pair; create the two new ones
+    \State push the new certificates' failure times into $Q$
+  \EndWhile
+  \State \Return $\sigma$ and the recorded change times
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+  \item \textbf{Trajectory form}: the failure-time computation assumes
+    polynomial trajectories; for arbitrary trajectories, roots are found
+    numerically and events are re-predicted on verification
+    (Section~\ref{sec:dynamic_certificates}).
+  \item \textbf{Simultaneous crossings}: order coincident failures by a fixed
+    secondary key so the swap sequence is deterministic.
+  \item \textbf{Order representation}: use order-maintenance labels
+    (\cite{dietzsleator1987}) so other structures test order in $O(1)$.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+  \item \textbf{Certificates}: $n-1$ (compact); locality $O(1)$.
+  \item \textbf{Responsiveness}: $O(\log n)$ per order change.
+  \item \textbf{Total}: $O((n^2 + k)\log n)$ worst case for $k$ order
+    changes, with $k \le \binom{n}{2}$; $\Theta(n^2)$ events already occur
+    for the two-velocity construction of Theorem~\ref{thm:kinetic_sort_events}.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+  \item \textbf{Kinetic nearest neighbor}: sorted orders by each coordinate
+    give candidate certificates for proximity structures
+    (Section~\ref{sec:dynamic_proximity}).
+  \item \textbf{Kinetic convex hulls}: the angular order of points around a
+    moving vantage point drives the hull structure of
+    Section~\ref{sec:dynamic_kinetic_hulls}.
+  \item \textbf{Event-driven simulation}: any simulation maintaining a set
+    of threshold-crossing times uses a kinetic sorted list over them.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+  \item \textbf{Oracle}: sort the positions by brute force at a dense grid of
+    times and at every event time; compare with the maintained order.
+  \item \textbf{Event validation}: verify with exact predicates that the
+    scheduled pair truly crossed and that no pair crossed earlier.
+  \item \textbf{Degeneracies}: coincident points and simultaneous crossings
+    must produce a consistent final order; floating-point drift must be
+    absorbed by the re-prediction rule of Section~\ref{sec:dynamic_certificates}.
+\end{itemize}
+
+\subsection{9. References}
+
+The kinetic sorted list is a central example of \cite{basch1999,guibas1998};
+the order-maintenance labels are due to \cite{dietzsleator1987}. Its use
+inside larger kinetic structures is surveyed in \cite{guibas1998,mehta2005}.
+
 \section{Kinetic Convex Hulls}
 \label{sec:dynamic_kinetic_hulls}
+
+\subsection{1. Overview}
+
+The kinetic convex hull problem maintains $\operatorname{conv}(P(t))$ for
+points moving along known trajectories. Its certificates are orientation
+tests of hull edges and containment tests of interior points; its events are
+the moments when a point enters or leaves the hull; and its repair
+recomputes the affected tangent chains. The KDS of Basch, Guibas, and
+Hershberger \cite{basch1999} is compact, local, responsive, and efficient.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Kinetic Convex Hull]\label{def:kinetic_convex_hull}
+  A \textbf{kinetic convex hull} structure maintains $\operatorname{conv}(P)$
+  of $n$ moving points. Its certificates are of two kinds: for every hull
+  edge $uv$, an orientation certificate asserting that all other points lie
+  on the same side of the line through $u$ and $v$; and, for every interior
+  point, a containment certificate asserting that it lies inside the hull.
+  The \textbf{external events} are the times at which a point enters or
+  leaves the hull.
+\end{definition}
+
+\subsection{3. Theory}
+
+The certificates are sufficient: while every hull edge is a supporting line
+and every interior point is contained, the stored hull is exact. A failure
+needs one of two repairs --- a hull vertex moves so a neighbor leaves the
+boundary (find a new tangent pair), or an interior point crosses a hull edge
+(find the two tangents from the point to the hull). Both are local and use
+the tangent routines of Chapter~\ref{ch:convex_hulls} on the dynamic hull of
+Section~\ref{sec:dynamic_convex_hulls}.
+
+\begin{theorem}[Kinetic Hull Bounds]\label{thm:kinetic_hull_bounds}
+  The convex hull of $n$ points moving with constant velocity along lines
+  can change $\Theta(n^2)$ times in the worst case. The kinetic convex hull
+  of Basch, Guibas, and Hershberger \cite{basch1999} is compact ($O(n)$
+  certificates), local (each point in $O(\log n)$), responsive (each event
+  in $O(\log^2 n)$), and efficient: the number of internal events is within
+  a constant factor of the number of external hull events.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  The lower bound adapts the crossing construction of
+  Theorem~\ref{thm:kinetic_sort_events} to the plane, making each of
+  $\Theta(n^2)$ pairwise crossings change the hull boundary. For the upper
+  bound, correctness holds until the first certificate failure; the repair
+  touches only the vertices of the failed edge and its neighbors, and the
+  new certificates' failure times are roots of constant-degree polynomials
+  (Section~\ref{sec:dynamic_certificates}). Each external event is triggered
+  by a distinct failure, and internal events are bounded by locality.
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Kinetic Convex Hull}
+\label{alg:kinetic_convex_hull}
+\begin{algorithmic}[1]
+\Require $n$ points with polynomial trajectories; a time horizon $[0, T]$.
+\Ensure The convex hull as a function of time.
+\Function{KineticHull}{$P$}
+  \State build $\operatorname{conv}(P(0))$; create edge and containment certificates
+  \State schedule each certificate's failure time in a kinetic heap $Q$
+  \While{$Q$ is not empty and $Q.\text{min}() \le T$}
+    \State $t \gets Q.\text{extract-min}()$; verify the failure exactly
+    \If{an interior point crossed a hull edge}
+      \State recompute the two tangents from the point to the hull; insert it
+    \ElsIf{a hull vertex moved out}
+      \State remove the vertex, connect its neighbors; recompute the local tangents
+    \EndIf
+    \State replace the certificates of the changed edges; reschedule their failure times
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+  \item \textbf{Interior maintenance}: interior points are tracked by
+    containment certificates so no point can exit without an event; only the
+    closest potential exit matters, so certificates fail in the right order.
+  \item \textbf{Degenerate events}: simultaneous entry/exit and collinear
+    triples are resolved by the ordering rules of
+    Section~\ref{sec:dynamic_certificates}.
+  \item \textbf{Exact predicates}: orientation and containment tests use the
+    adaptive exact methods of Section~\ref{sec:robust_predicates}; an
+    approximate test misorders the event sequence.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+  \item \textbf{Certificates}: $O(n)$; locality $O(\log n)$.
+  \item \textbf{Responsiveness}: $O(\log^2 n)$ per event.
+  \item \textbf{Events}: $\Theta(n^2)$ worst case for linear motion, so the
+    total time over the horizon is $O(n^2 \log^2 n)$ and proportional to the
+    number of hull changes plus polylogarithmic overhead.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+  \item \textbf{Motion planning}: hulls of moving obstacles support the
+    continuous collision checks of Chapter~\ref{ch:motion_planning}.
+  \item \textbf{Bounding volumes}: the hull of a moving cluster is the
+    tightest convex bounding volume and is maintained kinetically instead of
+    resampled.
+  \item \textbf{Peeling}: a kinetic hull yields kinetic hull layers of
+    Section~\ref{sec:convex_hull_peeling}.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+  \item \textbf{Static oracle}: at random times, recompute the hull from the
+    positions and compare vertex sets.
+  \item \textbf{Event oracle}: verify no point enters or leaves between
+    consecutive events by re-checking all certificates at sample times.
+  \item \textbf{Tangent correctness}: after each event, verify every point
+    lies on one side of every hull edge.
+\end{itemize}
+
+\subsection{9. References}
+
+The kinetic convex hull is developed in \cite{basch1999} and surveyed in
+\cite{guibas1998}; the dynamic-hull subroutine is the structure of
+Section~\ref{sec:dynamic_convex_hulls} (\cite{overmars1981,overmars1983}).
+Textbook discussions appear in \cite{berg2008,mehta2005}.
 
 \section{Kinetic Closest Pairs}
 \label{sec:dynamic_kinetic_closest}
 
+\subsection{1. Overview}
+
+The kinetic closest-pair problem maintains the pair of points with minimum
+mutual distance among moving points. The key observation is that the closest
+pair is always a Delaunay edge (Chapter~\ref{ch:proximity}), so the problem
+reduces to maintaining the Delaunay triangulation kinetically and reporting
+its shortest edge. The kinetic Delaunay structure uses in-circle
+certificates and edge flips, as discussed in the Voronoi chapter
+(Section~\ref{sec:kinetic_voronoi}, Chapter~\ref{ch:voronoi_diagrams}).
+
+\subsection{2. Definitions}
+
+\begin{definition}[Kinetic Closest Pair]\label{def:kinetic_closest_pair}
+  A \textbf{kinetic closest-pair} structure maintains, for each time $t$,
+  the pair of distinct points minimizing the Euclidean distance, together
+  with the minimum value. Its certificates are those of an underlying kinetic
+  Delaunay triangulation (in-circle tests) plus the tournament certificates
+  of Section~\ref{sec:dynamic_kds} used to select the shortest Delaunay
+  edge.
+\end{definition}
+
+\subsection{3. Theory}
+
+The reduction is exact: the closest pair is a Delaunay edge, and its length
+is the minimum over all Delaunay edge lengths. The kinetic structure
+maintains the Delaunay triangulation --- each edge carries an in-circle
+certificate asserting that the circumcircles of its adjacent triangles are
+empty --- and a kinetic tournament over the edge lengths. When an in-circle
+certificate fails, the two affected triangles are flipped; when the
+tournament's minimum changes, the closest pair changes.
+
+\begin{theorem}[Kinetic Delaunay Complexity]\label{thm:kinetic_delaunay_bounds}
+  The Delaunay triangulation (equivalently the Voronoi diagram) of $n$
+  points moving with constant velocity along lines can change $\Theta(n^2)$
+  times in the worst case \cite{albers1998}. For uniform linear motion, the
+  number of events of a kinetic Delaunay triangulation is near-quadratic
+  \cite{rubin2016}. Each event is an edge flip triggered by an in-circle
+  certificate and repaired in $O(\log n)$ time.
+\end{theorem}
+
+\begin{theorem}[Kinetic Closest Pair Bounds]\label{thm:kinetic_closest_pair_bounds}
+  The closest pair of $n$ points moving with constant velocity can change
+  $\Omega(n^2)$ times in the worst case \cite{basch1997proximity}. The
+  Delaunay-plus-tournament structure is compact ($O(n)$ certificates), local
+  (each point in $O(\log n)$), and responsive ($O(\log^2 n)$ per event).
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  The lower bound of \cite{basch1997proximity} adapts the crossing
+  construction of Theorem~\ref{thm:kinetic_sort_events} so that the closest
+  pair shifts among $\Theta(n^2)$ distinct pairs. For the upper bound, the
+  triangulation is exact while all in-circle certificates hold (the
+  empty-circle property of Chapter~\ref{ch:delaunay_triangulations}); a
+  failure flips one edge and reschedules the $O(1)$ affected certificates,
+  and the tournament adds $O(\log n)$ per minimum change. Each certificate
+  is a degree-at-most-four polynomial under linear motion
+  (Section~\ref{sec:dynamic_certificates}).
+\end{proof}
+
+\subsection{4. Pseudocode}
+
+\begin{algorithm}[htbp]
+\caption{Kinetic Closest Pair via Kinetic Delaunay}
+\label{alg:kinetic_closest_pair}
+\begin{algorithmic}[1]
+\Require $n$ points with polynomial trajectories; time horizon $[0, T]$.
+\Ensure The closest pair at all times in $[0, T]$.
+\Function{KineticClosestPair}{$P$}
+  \State build the Delaunay triangulation $DT$ of $P(0)$
+  \For{each edge $e$ of $DT$}
+    \State create an in-circle certificate for $e$; schedule its failure time
+  \EndFor
+  \State build a kinetic tournament $M$ over the edge lengths of $DT$
+  \While{time $\le T$ and the event queue is nonempty}
+    \State process the earliest event at time $t$
+    \If{an in-circle certificate fails on edge $e$}
+      \State flip $e$; remove the two old triangles, add the two new ones
+      \State create certificates for the new edges; update $M$ on the changed lengths
+    \EndIf
+    \State report the minimum-length edge of $M$ as the closest pair at $t$
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+\begin{itemize}
+  \item \textbf{In-circle polynomial}: under linear motion the certificate is
+    a degree-four polynomial in $t$; with approximate failure times,
+    re-prediction (Section~\ref{sec:dynamic_certificates}) keeps the
+    structure exact.
+  \item \textbf{All-nearest-neighbors}: the same Delaunay structure also
+    supports kinetic nearest-neighbor queries per vertex; the tournament is
+    replaced by a per-vertex report.
+  \item \textbf{Higher dimensions}: in $\mathbb{R}^3$ the closest pair is
+    not necessarily a Delaunay edge, so other certificate sets are used
+    \cite{basch1997proximity}.
+\end{itemize}
+
+\subsection{6. Complexity}
+
+\begin{itemize}
+  \item \textbf{Certificates}: $O(n)$ (one per Delaunay edge).
+  \item \textbf{Responsiveness}: $O(\log^2 n)$ per event.
+  \item \textbf{Events}: $\Theta(n^2)$ worst case for linear motion
+    \cite{albers1998}; near-quadratic for uniform linear motion
+    \cite{rubin2016}.
+\end{itemize}
+
+\subsection{7. Usages}
+
+\begin{itemize}
+  \item \textbf{Particle simulation}: the closest approaching pair, with its
+    distance used as a time-step safety bound.
+  \item \textbf{Tracking}: the pair of moving agents with minimal separation,
+    reported as a continuous function of time.
+  \item \textbf{Collision detection}: a threshold certificate on a pair's
+    distance fails exactly when a collision becomes possible.
+\end{itemize}
+
+\subsection{8. Testing Methods and Edge Cases}
+
+\begin{itemize}
+  \item \textbf{Brute-force oracle}: at dense sample times, compute the
+    closest pair by all-pairs scanning (Section~\ref{sec:closest_pair},
+    Chapter~\ref{ch:proximity}).
+  \item \textbf{Delaunay invariant}: after every flip, verify the
+    empty-circle property by exact in-circle predicates.
+  \item \textbf{Coincident points and ties}: two points meeting produce a
+    zero-distance closest pair (no division by zero in the failure-time
+    computation); equal minima are resolved by a fixed rule.
+\end{itemize}
+
+\subsection{9. References}
+
+The kinetic closest-pair structure and its lower bound are due to
+\cite{basch1997proximity}; the Delaunay complexity bounds are
+\cite{albers1998,rubin2016}; the framework is \cite{basch1999,guibas1998}.
+Kinetic Voronoi diagrams are also treated in Section~\ref{sec:kinetic_voronoi}
+of Chapter~\ref{ch:voronoi_diagrams}.
+
 \section{Applications to Tracking and Simulation}
 \label{sec:dynamic_applications}
 
+The dynamic and kinetic structures of this chapter are the algorithmic core
+of applications in which the world changes with time.
+
+\begin{description}
+  \item[Tracking] A moving target's position is sampled by sensors, and the
+    system answers proximity queries about the current configuration.
+    Dynamic range searching (Section~\ref{sec:rangesearch_dynamic},
+    Chapter~\ref{ch:range_searching}) and the dynamic nearest-neighbor
+    structures of Section~\ref{sec:dynamic_proximity} answer the queries;
+    when trajectories are known, kinetic versions \emph{predict} the queries
+    before they are asked.
+  \item[Collision detection] In robotics and animation, moving objects must
+    be checked for collisions, and the checks should run only when the
+    configuration changes. The kinetic free-space approach of Agarwal,
+    Basch, Guibas, Hershberger, and Zhang \cite{agarwal2002kinetic}
+    maintains a tiling of the free space whose cells' validity is certified;
+    a certificate failure signals a potential contact and triggers a local
+    repair. This is the continuous-motion companion of the static checks of
+    Chapter~\ref{ch:motion_planning}.
+  \item[Simulation] Particle and agent-based models advance in discrete
+    steps, but their combinatorial structure --- neighbors, hulls, closest
+    pairs --- is best maintained kinetically so the time step is chosen
+    adaptively from predicted events. The kinetic sorted list of
+    Section~\ref{sec:dynamic_kinetic_sorting} is the canonical scheduling
+    device for such simulations.
+  \item[Geographic information systems] Moving objects (vehicles, animals)
+    are queried over both space and time; kinetic range trees and the
+    proximity queries of Section~\ref{sec:dynamic_kinetic_closest} extend
+    the static GIS pipeline of Chapter~\ref{ch:applications_gis}.
+\end{description}
+
+Two lessons recur. First, the event-driven discipline of
+Section~\ref{sec:dynamic_certificates} is only as good as its exact
+predicates: a certificate that fails silently, or an event scheduled
+slightly too late, corrupts every later answer, so production systems couple
+the KDS with the adaptive exact predicates of
+Section~\ref{sec:robust_predicates} and with re-prediction. Second, the
+dynamic and kinetic views reinforce each other: a kinetic structure typically
+reduces to a dynamic structure (the hull of Section~\ref{sec:dynamic_convex_hulls}
+inside the kinetic hull of Section~\ref{sec:dynamic_kinetic_hulls}), so
+progress on the dynamic problem directly improves the kinetic one. Open
+problems --- robustness, event bounds for general motions, approximate
+kinetics --- are surveyed in Chapter~\ref{ch:research_frontiers}.
+
+\index{kinetic collision detection}\index{tracking}
+
 \section{Exercises}
 \label{sec:dynamic_exercises}
+
+\begin{enumerate}
+  \item Prove that the logarithmic method (Section~\ref{sec:dynamic_point_sets})
+    converts a static structure with query time $Q(n)$ and construction time
+    $C(n)$ into a semidynamic structure with amortized update cost
+    $O(C(n)\log n / n)$ and query cost $O(Q(n)\log n)$, and derive the bounds
+    for 2D orthogonal range counting.
+  \item Argue that the Overmars--van Leeuwen dynamic hull
+    (Section~\ref{sec:dynamic_convex_hulls}) answers a membership query in
+    $O(\log n)$ time by binary search on the hull tree, and give an input on
+    which a naive point-in-polygon test takes $O(n)$.
+  \item Show that a direction query in the dynamic hull is answered by a
+    single root-to-leaf walk using stored bridges, and explain why a node's
+    bridge must be recomputed after any update in its subtree.
+  \item Construct the two-velocity family of Theorem~\ref{thm:kinetic_sort_events}
+    explicitly for $n = 6$ and list the times at which the sorted order
+    changes; verify that the kinetic sorted list processes exactly those
+    events.
+  \item Prove the four quality measures (Definition~\ref{def:kinetic_properties})
+    for the kinetic sorted list: compactness, locality $O(1)$, responsiveness
+    $O(\log n)$ per event, and efficiency $O(1)$ relative to order changes.
+  \item Verify that the in-circle certificate under linear motion is a
+    polynomial of degree at most four by writing the certificate determinant
+    and counting degrees, and state the degree of an orientation certificate.
+  \item Design a kinetic structure maintaining the pair of points with
+    maximum distance (the kinetic diameter) using a kinetic tournament, and
+    discuss whether its event count can be quadratic in the worst case.
+  \item Modify the kinetic closest-pair algorithm
+    (Section~\ref{sec:dynamic_kinetic_closest}) to handle two points that
+    coincide at a time, and state what the exact predicates and the
+    failure-time computation must return.
+\end{enumerate}

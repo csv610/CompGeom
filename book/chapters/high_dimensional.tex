@@ -1,37 +1,1527 @@
 \chapter{High-Dimensional Computational Geometry}
 \label{ch:high_dimensional}
 
-% Stub: outline only; content to be written.
-
 \section{Geometry beyond Three Dimensions}
 \label{sec:highdim_intro}
+
+Almost every algorithm in this book was presented for the plane or for three
+dimensions, and its analysis relied on a geometric fact that quietly fails in
+high dimensions: a straight-line planar subdivision has only $O(n)$ edges, a
+triangulation of a point set in the plane has only $O(n)$ triangles, and two
+lines in the plane either meet or are parallel. When the dimension $d$ is no
+longer a fixed constant but a quantity comparable to $n$, or even larger, the
+combinatorial explosion of the objects that computational geometry studies
+changes the rules of the game. This chapter studies what happens to the
+fundamental structures of the book --- convex hulls, Delaunay triangulations,
+nearest-neighbor search, and range searching --- as the dimension grows, and it
+develops the two families of ideas that make high-dimensional computation
+tractable in practice: geometric reduction, led by the
+Johnson--Lindenstrauss lemma, and data-dependent hashing, led by
+locality-sensitive hashing. Along the way we meet the
+\index{curse of dimensionality}curse of dimensionality, the concentration of
+measure that concentrates volume and distance where intuition does not expect
+them, and the reasons why approximate answers, not exact ones, are the right
+target in high dimension.
+
+\begin{definition}[Dimension regime]
+\label{def:highdim_regime}
+The dimension $d$ is called
+\index{fixed dimension}\emph{fixed} when it is a constant independent of the
+input size $n$, so that constants of the form $O(d^{O(d)})$ or $O(2^d)$ may
+hide inside the big-$O$ of the running time. It is called \emph{growing} or
+\emph{high} when $d$ is an input parameter that may be comparable to $n$; the
+extreme case $d \approx n$ appears, for example, in the linear programming
+setting of Chapter~\ref{ch:linear_programming} and in statistical
+applications.
+\end{definition}
+
+The contrast with the rest of this book is sharpest when we count cells. In
+the plane the Voronoi diagram of $n$ points has $O(n)$ vertices, and the
+combinatorial complexity of the convex hull is $O(n)$ (Chapters
+\ref{ch:proximity} and \ref{ch:convex_hulls}). In $\mathbb{R}^d$ the analogous
+counts grow like $n^{\lfloor d/2 \rfloor}$, which is linear only for $d \le 3$.
+The complexity barrier is the subject of Section~\ref{sec:highdim_hulls} and
+Section~\ref{sec:highdim_voronoi_delaunay}.
+
+\begin{theorem}[Complexity of convex hulls]
+\label{thm:highdim_hull_complexity}
+The number of facets of the convex hull of $n$ points in $\mathbb{R}^d$ is at
+most $O(n^{\lfloor d/2 \rfloor})$, and this bound is tight: for every fixed
+$d$ there are point sets whose hull has
+$\Theta(n^{\lfloor d/2 \rfloor})$ facets. The same bound holds for the number
+of $d$-simplices of the Delaunay triangulation and for the number of cells of
+the Voronoi diagram.
+\end{theorem}
+
+Section~\ref{sec:highdim_concentration} explains the counterintuitive
+geometry of high-dimensional balls, Gaussians, and convex bodies, and
+Section~\ref{sec:highdim_curse} converts that geometry into an algorithm
+analysis: why nearest neighbors lose their meaning, why range trees and
+$k$d-trees degrade to linear scans, and why worst-case approximation is hard.
+The two positive threads run through Sections
+\ref{sec:highdim_dimensionality_reduction}, \ref{sec:highdim_jl}, and
+\ref{sec:highdim_random_projections} (random embeddings that compress the data
+while approximately preserving pairwise distances) and Sections
+\ref{sec:highdim_nearest_neighbor} and \ref{sec:highdim_curse} (hashing schemes
+whose query cost is a sublinear power of $n$). Section~\ref{sec:highdim_ml}
+ties the techniques to the machine learning pipeline: $k$-nearest-neighbor
+classifiers, feature maps, and the algorithmic geometry of learning.
+
+Throughout the chapter the norm $\|\cdot\|$ is the Euclidean norm unless stated
+otherwise, and a point set is written $P \subset \mathbb{R}^d$ with
+$|P| = n$.
+
+\index{high-dimensional computational geometry}
 
 \section{High-Dimensional Convex Hulls}
 \label{sec:highdim_hulls}
 
+\subsection{1. Overview}
+
+The convex hull problem is the most basic one in computational geometry, and
+its high-dimensional version is the cleanest illustration of why dimension is
+a cost parameter. Chapter~\ref{ch:convex_hulls} showed that the planar hull of
+$n$ points can be computed in $O(n \log n)$ time, matching the information
+theoretic lower bound, and that the hull has at most $2n$ vertices. In
+$\mathbb{R}^d$ the hull can have $\Theta(n^{\lfloor d/2 \rfloor})$ facets
+(Theorem~\ref{thm:highdim_hull_complexity}); for $d = 4$ this is quadratic in
+$n$, and for $d$ around $\log n$ it is $n^{\Omega(\log n / \log\log n)}$,
+larger than any polynomial. Any algorithm that writes the hull explicitly must
+therefore spend at least $n^{\lfloor d/2 \rfloor}$ time, so the only
+meaningful question is whether the combinatorial explosion of the output is
+the \emph{only} cost. The answer is yes: randomized incremental construction
+achieves expected time proportional to the output size, plus an $O(n \log n)$
+sorting term, for every fixed $d$.
+
+\begin{theorem}[Randomized incremental hulls]
+\label{thm:highdim_hull_randomized}
+For any fixed dimension $d$, the convex hull of $n$ points in general position
+in $\mathbb{R}^d$ can be computed in expected
+$O(n \log n + n^{\lfloor d/2 \rfloor})$ time. For $d \le 3$ the bound becomes
+$O(n \log n)$.
+\end{theorem}
+
+The proof of Theorem~\ref{thm:highdim_hull_randomized} is a high-dimensional
+version of the randomized incremental argument of
+Chapter~\ref{ch:randomized_algorithms}: insert the points one by one in random
+order, and amortize the cost of a point against the facets it destroys. The
+analysis depends on a critical fact called the \index{Clarkson--Shor
+technique}Clarkson--Shor technique: the expected number of facets destroyed by
+a random insertion equals, up to constant factors, the expected number of
+facets of a random sample, and the latter can be bounded directly.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Facet, ridge, horizon]
+\label{def:highdim_facet}
+A \emph{facet} of a $d$-dimensional convex polytope is a
+$(d-1)$-dimensional face. A \emph{ridge} is a $(d-2)$-dimensional face. In a
+simplicial polytope every facet is a simplex spanned by $d$ vertices and every
+ridge is spanned by $d-1$ vertices. Given a point $p$ outside a polytope
+$H$, a facet $f$ is \emph{visible from} $p$ if $p$ lies in the open
+halfspace outside the supporting hyperplane of $f$. The \emph{horizon} of $p$
+on $H$ is the set of ridges that belong to exactly one visible facet.
+\end{definition}
+
+In the plane the horizon of an outside point is a pair of vertices and the
+visible facets form a contiguous chain along the polygon boundary. In
+$\mathbb{R}^d$ the visible facets still form a topological disk on the hull,
+bounded by the horizon ridges; this is the only structural fact the algorithm
+needs.
+
+\begin{definition}[Cyclic polytope]
+\label{def:highdim_cyclic}
+The \index{cyclic polytope}\emph{cyclic polytope} $C_d(n)$ is the convex hull
+of $n$ points on the moment curve
+$\{ (t, t^2, \dots, t^d) : t \in \mathbb{R} \}$. It is \emph{neighborly}:
+every $\lfloor d/2 \rfloor$ vertices form a face. Its number of facets is
+$O(n^{\lfloor d/2 \rfloor})$, and it is the extremal polytope achieving the
+maximum number of facets among all $d$-polytopes with $n$ vertices.
+\end{definition}
+
+Cyclic polytopes show that the upper bound of
+Theorem~\ref{thm:highdim_hull_complexity} is attainable and that the answer to
+any algorithmic question about hulls in dimension $d \ge 4$ must be
+input-sensitive.
+
+\subsection{3. Theory}
+
+The high-dimensional hull inherits the polarity duality of
+Chapter~\ref{ch:convex_hulls}: facets of the hull of $P$ correspond to
+vertices of the polar polytope. The structural result underlying all exact
+algorithms is the upper bound theorem
+(Theorem~\ref{thm:highdim_hull_complexity}), and the algorithmic result is
+that the hull can be found within the output bound plus $O(n \log n)$.
+
+A word on lower bounds. Computing the hull of $n$ points in $\mathbb{R}^d$
+requires $\Omega(n \log n)$ time (sorting reduces to it) and
+$\Omega(n^{\lfloor d/2 \rfloor})$ time (the output may be that large). For
+fixed $d$ the randomized incremental algorithm matches both bounds in
+expectation; the deterministic algorithm of Chazelle achieves the same
+asymptotics and establishes that the problem has optimal worst-case
+complexity in every fixed dimension.
+
+\subsection{4. Pseudocode}
+
+Algorithm~\ref{alg:highdim_hull} is the randomized incremental algorithm in
+its full generality. It reduces to the planar incremental algorithm of
+Chapter~\ref{ch:convex_hulls} for $d = 2$.
+
+\begin{algorithm}[htbp]
+\caption{Randomized Incremental Convex Hull in $\mathbb{R}^d$}
+\label{alg:highdim_hull}
+\begin{algorithmic}[1]
+\Require A set $P$ of $n$ points in general position in $\mathbb{R}^d$.
+\Ensure The facets of the convex hull of $P$.
+\Function{IncrementalHull}{$P$}
+  \State shuffle the points of $P$ uniformly at random
+  \State let $H$ be the hull of the first $d+1$ points
+  \For{each remaining point $p$}
+    \State mark as visible every facet of $H$ that has $p$ on its outer side
+    \If{no facet of $H$ is visible from $p$}
+      \State \textbf{continue} \Comment{$p$ lies inside $H$}
+    \EndIf
+    \State collect the horizon: ridges of $H$ shared by one visible and one hidden facet
+    \For{each horizon ridge $r$}
+      \State add the new facet spanned by $r$ and $p$
+    \EndFor
+    \State delete all visible facets from $H$
+  \EndFor
+  \State \Return $H$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The inner loop over facets is the whole algorithm in the plane; the only
+genuinely $d$-dimensional bookkeeping is locating the visible facets and
+walking their boundary to extract the horizon. Both are handled by a facet
+incidence graph maintained incrementally. Each inserted point either lies
+inside (and is discarded) or destroys the visible facets and creates the cone
+of new facets over the horizon.
+
+\subsection{5. Parameter Selection}
+
+The algorithm has no numerical parameters, but its analysis depends on the
+assumption of general position: no $d+1$ points coplanar with a facet and no
+point lying on a supporting hyperplane. In practice one either perturbs the
+input symbolically or, better, works with an exact arithmetic layer that
+evaluates the orientation predicate of the facet with respect to $p$; this is
+the $d$-dimensional determinant
+$\operatorname{orient}(p_0,\dots,p_d)$, the natural generalization of the
+predicate used throughout this book. Exact computation is essential because a
+single misclassified visibility test invalidates the horizon walk and can
+destroy the combinatorial structure.
+
+\subsection{6. Complexity}
+
+Each point inserted destroys a set of facets and creates new ones; over the
+whole run the number of created facets is bounded by the expected output size.
+The Clarkson--Shor argument shows that the expected number of facets created
+by the $i$-th insertion is $O(i^{\lfloor d/2 \rfloor - 1})$, so the total
+expected number of created facets is $O(n^{\lfloor d/2 \rfloor})$, and each
+creation is charged a constant amount of work. The expected running time is
+therefore
+\[
+O(n \log n + n^{\lfloor d/2 \rfloor}),
+\]
+with the logarithmic term coming only from the initial shuffle and from
+accessing each point once. The space is proportional to the number of facets
+currently alive, $O(n^{\lfloor d/2 \rfloor})$ in the worst case.
+
+\subsection{7. Usages}
+
+The incremental hull is the engine behind fixed-dimensional Delaunay
+triangulations via lifting (Section~\ref{sec:highdim_voronoi_delaunay}),
+behind the computation of regular triangulations and secondary polytopes, and
+behind the fixed-dimensional linear programming algorithms studied in
+Chapter~\ref{ch:linear_programming}, whose randomized incremental structure is
+identical. It is also the standard route to the computation of the volume of
+convex polytopes in fixed dimension, where one triangulates the hull into
+$d$-simplices. For growing dimension the algorithm is unusable, since the
+output bound $n^{\lfloor d/2 \rfloor}$ is exponential in $d$; the remedies are
+linear programming duality when only a single linear functional is sought
+(Section~\ref{sec:highdim_concentration}) and approximation, which is the
+subject of the rest of this chapter.
+
+\subsection{8. Testing Methods and Edge Cases}
+
+Edge cases to test: points all inside a small cloud (interior insertions must
+be rejected by the visibility test without modifying the hull); points lying on
+facet supporting hyperplanes (requires symbolic perturbation); duplicate and
+coplanar points (handled by the general position convention); and the
+degenerate starting configuration when the first $d+1$ points are affinely
+dependent. A useful invariant-based test verifies, after every insertion, that
+every facet orientation is consistently outward and that the facet graph is
+manifold: every ridge bounds exactly two facets. For validation against
+brute force, enumerate all $d+1$-subsets and check that the facets computed are
+exactly the subsets whose supporting hyperplane leaves every other point on
+one side; this is exponential in $n$ and only feasible for $n \le 20$. The
+extremal cases are the cyclic polytopes of
+Definition~\ref{def:highdim_cyclic}, which exercise the upper-bound-size
+output and the horizon machinery maximally.
+
+\subsection{9. References}
+
+The incremental hull and its Clarkson--Shor analysis appear in
+\cite{mulmuley1994}; the deterministic optimal algorithm is due to
+\cite{chazelle1993}. The upper bound theorem and cyclic polytopes are treated
+in \cite{matousek2002}. The standard planar treatment appears in
+\cite{berg2008}, and the fixed-dimensional hull is surveyed in
+\cite{deberg2008}.
+
 \section{Voronoi and Delaunay Structures}
 \label{sec:highdim_voronoi_delaunay}
+
+\subsection{1. Overview}
+
+Chapter~\ref{ch:proximity} developed the planar Voronoi diagram and its dual,
+the Delaunay triangulation. Both objects remain well defined in
+$\mathbb{R}^d$: the Voronoi cell of a site is the set of points at least as
+close to that site as to any other, and the Delaunay complex connects two
+sites when there is a sphere through them with no other site inside. The
+combinatorial complexity, however, explodes from $O(n)$ to
+$n^{\lceil d/2 \rceil}$, and --- more dramatically --- the Delaunay complex is
+no longer necessarily a triangulation of the space. Beyond the plane the
+Delaunay complex may have missing cells, and its topology is not in general a
+ valid subdivision of $\mathbb{R}^d$. Understanding this failure is essential
+ for meshing and for the geometry processing algorithms of
+ Chapter~\ref{ch:mesh_analysis} scaled to higher dimensions.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Voronoi cell, Delaunay triangulation]
+\label{def:highdim_voronoi}
+For a finite site set $P \subset \mathbb{R}^d$ and a site $p \in P$ the
+\emph{Voronoi cell} of $p$ is
+\[
+\operatorname{vor}(p) = \{ x \in \mathbb{R}^d : \|x - p\| \le \|x - q\| \text{ for all } q \in P \}.
+\]
+The \emph{Delaunay complex} of $P$ is the collection of all subsets
+$S \subseteq P$ for which there exists a sphere passing through the points of
+$S$ and containing no point of $P$ in its interior. When every Delaunay cell
+is a $d$-simplex, the complex is a triangulation of
+$\operatorname{conv}(P)$ and is called the \emph{Delaunay triangulation}.
+\end{definition}
+
+The $k$-face $(k+1)$-dimensional Voronoi cells are in bijection with the
+$(d-k)$-dimensional Delaunay faces, exactly as in the plane, and the whole
+structure is captured by the lifting to the paraboloid.
+
+\begin{definition}[Lifting map]
+\label{def:highdim_lifting}
+The \index{lifting map}\emph{lifting map} sends $x \in \mathbb{R}^d$ to
+$\widehat{x} = (x, \|x\|^2) \in \mathbb{R}^{d+1}$, the point on the paraboloid
+$y = \|x\|^2$. A sphere with center $c$ and radius $r$ in $\mathbb{R}^d$
+lifts to a hyperplane in $\mathbb{R}^{d+1}$ that passes through the lifted
+images of all points of the sphere.
+\end{definition}
+
+\subsection{3. Theory}
+
+The lifting map is the master reduction. The Delaunay complex of $P$ in
+$\mathbb{R}^d$ is the projection of the lower hull of the lifted points
+$\{\widehat{p} : p \in P\}$ in $\mathbb{R}^{d+1}$: a $k$-simplex of the
+Delaunay complex corresponds to a $(k+1)$-facet of the lower hull. This is the
+statement proved in the plane in Chapter~\ref{ch:proximity}, and it extends
+verbatim to all dimensions. The consequence is an immediate transfer of every
+hull algorithm from Section~\ref{sec:highdim_hulls}:
+
+\begin{theorem}[Complexity of Delaunay and Voronoi]
+\label{thm:highdim_delaunay_complexity}
+For any fixed dimension $d$, the Delaunay complex of $n$ points in
+$\mathbb{R}^d$ has at most $O(n^{\lceil d/2 \rceil})$ $d$-simplices and can be
+computed in expected $O(n \log n + n^{\lceil d/2 \rceil})$ time. The Voronoi
+diagram has the same complexity up to constant factors.
+\end{theorem}
+
+Two structural warnings follow from the same theorem. First, for $d \ge 3$ the
+number of $d$-simplices can be superlinear, so the total work is dominated by
+the size of the output, which in turn can be made large by lifting cyclic
+polytopes. Second, the Delaunay complex need not be a triangulation of
+$\operatorname{conv}(P)$: some $d$-cells may be missing, and the complex may
+fail to be a manifold. The Delaunay triangulation in $\mathbb{R}^3$ (for
+example) exists only for point sets that are \index{inscribed
+polytope}inscribable in the right sense; this is a geometric obstruction with
+ no planar analogue and is the reason meshing in higher dimension is
+ qualitatively harder than the surface meshing of Chapter~\ref{ch:mesh_generation}.
+
+\subsection{4. Pseudocode}
+
+Algorithm~\ref{alg:highdim_delaunay} reduces the Delaunay computation to the
+incremental hull of Algorithm~\ref{alg:highdim_hull} applied to lifted points.
+It is the same strategy used in the plane, now without the help of the planar
+structure.
+
+\begin{algorithm}[htbp]
+\caption{Delaunay Complex in $\mathbb{R}^d$ by Lifting}
+\label{alg:highdim_delaunay}
+\begin{algorithmic}[1]
+\Require A set $P$ of $n$ points in general position in $\mathbb{R}^d$.
+\Ensure The Delaunay complex of $P$.
+\Function{Delaunay}{$P$}
+  \State compute $\widehat{P} = \{ (p, \|p\|^2) : p \in P \} \subset \mathbb{R}^{d+1}$
+  \State compute the convex hull $H$ of $\widehat{P}$ using \textsc{IncrementalHull}
+  \State collect the facets of $H$ whose outward normal has negative last coordinate \Comment{lower hull}
+  \State project those facets back to $\mathbb{R}^d$ by dropping the last coordinate
+  \State \Return the projected complex
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The orientation of the lower hull is decided by the sign of the last
+coordinate of the outward normal, which is computed from the facet vertices
+by the $d$-dimensional orientation predicate; this is the direct analogue of
+the empty-circle test used in the plane.
+
+\subsection{5. Parameter Selection}
+
+For exact construction one computes, for each candidate $(d+1)$-simplex, the
+sign of the determinant of the lifted coordinates, an empty-sphere test that
+is the $d$-dimensional generalization of the incircle test. In floating
+point the signs are unstable when the radius is much larger than the local
+scale of the sites; symbolic perturbation of the coordinates resolves ties.
+The relevant scale parameter is the minimum feature size of the site set,
+which any robust implementation must estimate before choosing the working
+precision.
+
+\subsection{6. Complexity}
+
+Lifting adds one dimension, so the hull bound
+$O(n \log n + n^{\lfloor (d+1)/2 \rfloor})$ of
+Theorem~\ref{thm:highdim_hull_randomized} becomes
+$O(n \log n + n^{\lceil d/2 \rceil})$, matching
+Theorem~\ref{thm:highdim_delaunay_complexity}. The Voronoi diagram is the
+dual cell complex and is computed in the same time. The constants hidden in
+the big-$O$ grow super-exponentially with $d$ (roughly $d^{d/2}$), so the
+algorithm is practical only for $d \le 6$ or so; beyond that the output itself
+is astronomically large and approximation replaces construction.
+
+\subsection{7. Usages}
+
+Delaunay triangulations in $\mathbb{R}^3$ are a standard tool in mesh
+generation, and in dimension four they appear in the regular triangulations
+used to compute volumes and mixed volumes. The lifting reduction is the
+template for the more general concept of \index{regular
+triangulation}regular triangulations, where the vertical shift of each lifted
+point is allowed to vary, and it underlies the theory of secondary polytopes.
+In statistical geometry, Delaunay complexes of point clouds appear as the
+combinatorial part of persistent homology computations.
+
+\subsection{8. Testing Methods and Edge Cases}
+
+The primary correctness check is the empty-sphere predicate: every returned
+simplex must admit a sphere through its vertices with no site strictly inside.
+The dual check verifies that the projection of the lower hull has exactly the
+combinatorial type of the Delaunay complex, which is provably the union of the
+top faces of the so-called power diagram. Test configurations include
+regularly spaced grids (maximal number of simplices), cocircular sites in a
+hyperplane (flat lower hull), and the lifted cyclic polytope, which produces
+the maximal Delaunay complex and stresses the manifold test. A hidden trap is
+that the lower hull may project to a complex that is not a triangulation; the
+implementation must not assume that every $d$-cell is a simplex.
+
+\subsection{9. References}
+
+The lifting construction and its properties are treated in \cite{berg2008}
+for the plane and in \cite{matousek2002} for general dimension; the Delaunay
+computations via hull are surveyed in \cite{deberg2008}. The randomized
+incremental analysis underlying Theorem~\ref{thm:highdim_delaunay_complexity}
+is in \cite{mulmuley1994}.
 
 \section{Nearest-Neighbor Search}
 \label{sec:highdim_nearest_neighbor}
 
+\subsection{1. Overview}
+
+Chapter~\ref{ch:proximity} solved planar nearest-neighbor queries with data
+structures of linear size and polylogarithmic query time, and
+Chapter~\ref{ch:range_searching} showed that range trees and $k$d-trees push
+the same paradigm into higher dimensions, at the cost of
+$O(n \log^{d-1} n)$ storage and $O(n^{1-1/d})$ query time. The degradation is
+structural: for $d$ comparable to $\log n$ these bounds become polynomial and
+the structure degenerates into a linear scan. The solution for growing
+dimension is to give up exactness and to solve the
+\index{approximate nearest neighbor}approximate nearest-neighbor problem, for
+which sublinear query time is provably achievable by
+\index{locality-sensitive hashing}locality-sensitive hashing (LSH). This
+section develops the LSH framework of Indyk and Motwani, its instantiation on
+Hamming and Euclidean spaces, and the near-optimal schemes built on top of it.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Approximate near neighbor]
+\label{def:highdim_ann}
+Fix a metric space, a radius $r > 0$ and an approximation factor $c > 1$. The
+$(r,c)$-\emph{near-neighbor} problem is: preprocess a set $P$ of $n$ points so
+that, given a query $q$, if there exists a point $p \in P$ with
+$\|p - q\| \le r$, the structure returns a point $p' \in P$ with
+$\|p' - q\| \le c r$. The answer is allowed to be any point within distance
+$c r$, and points within distance $r$ may be missed. The
+\emph{approximate nearest-neighbor} problem asks for a point within factor
+$c$ of the true nearest neighbor.
+\end{definition}
+
+\begin{definition}[Sensitive hash family]
+\label{def:highdim_lsh}
+A family $\mathcal{H}$ of hash functions on the point space is
+$(r, c r, p_1, p_2)$-\emph{sensitive} for $p_1 > p_2$ if for uniformly random
+$h \in \mathcal{H}$ and all points $p, q$,
+\[
+\Pr[h(p) = h(q)] \ge p_1 \quad\text{whenever}\quad \|p - q\| \le r,
+\]
+\[
+\Pr[h(p) = h(q)] \le p_2 \quad\text{whenever}\quad \|p - q\| \ge c r.
+\]
+\end{definition}
+
+The two probabilities are the workhorse parameters: close points collide
+often, far points collide rarely.
+
+\subsection{3. Theory}
+
+The LSH construction amplifies a single weak hash family into a data
+structure. Concatenate $k$ independent hash functions into
+$g(p) = (h_1(p),\dots,h_k(p))$ and build $L$ independent hash tables under
+independent concatenations $g_1,\dots,g_L$. A query hashes itself with each
+$g_i$ and inspects the points in the resulting buckets. The two design
+equations fix $k$ and $L$:
+
+\[
+k = \left\lceil \frac{\log n}{\log(1/p_2)} \right\rceil,
+\qquad
+L = n^{\rho},
+\qquad
+\rho = \frac{\log(1/p_1)}{\log(1/p_2)}.
+\]
+
+With these choices a fixed near neighbor $p^*$ collides with $q$ under a
+single $g_i$ with probability $p_1^k \approx 1/L$, so it is found across the
+$L$ tables with constant probability; meanwhile an arbitrary far point
+collides with probability at most $p_2^k = 1/n$, so the expected number of far
+candidates inspected in any one bucket is $1$.
+
+\begin{theorem}[Indyk--Motwani bound]
+\label{thm:highdim_lsh_bound}
+Let $P \subset \{0,1\}^D$ be a set of $n$ points and let
+$\mathcal{H}$ be the family of coordinate projections (each $h$ reads one
+coordinate). Then the $(r, cr)$-near-neighbor problem on the Hamming cube can
+be solved with a data structure of size $O(n^{1+\rho})$, query time
+$O(D \cdot n^{\rho} \cdot \log n)$ and constant success probability, where
+$\rho = \log(1/p_1)/\log(1/p_2)$ and $p_1 = 1 - r/D$, $p_2 = 1 - c r / D$.
+For small $r/D$ the exponent is $\rho \approx 1/c$.
+\end{theorem}
+
+The Euclidean analogue uses the $p$-stable families of
+Section~\ref{sec:highdim_random_projections}, which give
+$\rho < 1/c$, and the asymptotically optimal schemes
+reach $\rho = 1/c^2 + o(1)$. An exact nearest-neighbor query is reduced to
+$(r,c)$-near-neighbor queries by a distance-doubling search: guess the
+distance to the nearest neighbor as powers of two and run the near-neighbor
+query for each guess.
+
+\subsection{4. Pseudocode}
+
+Algorithm~\ref{alg:highdim_lsh} is the preprocessing and query template. The
+only free ingredients are the underlying family $\mathcal{H}$ and the
+parameter pair $(k, L)$.
+
+\begin{algorithm}[htbp]
+\caption{Locality-Sensitive Hashing for $(r,c)$-Near Neighbor}
+\label{alg:highdim_lsh}
+\begin{algorithmic}[1]
+\Require Points $P$, radius $r$, factor $c > 1$, and an
+$(r, cr, p_1, p_2)$-sensitive family $\mathcal{H}$.
+\Ensure A structure returning a point within distance $cr$ of $q$ if one is within $r$.
+\Function{LSHPreprocess}{$P$}
+  \State $k \gets \lceil \log_{1/p_2} n \rceil$ \Comment{concatenation length}
+  \State $\rho \gets \log(1/p_1) / \log(1/p_2)$
+  \State $L \gets n^{\rho}$ \Comment{number of tables}
+  \For{$i = 1, \dots, L$}
+    \State draw $h_{i,1}, \dots, h_{i,k}$ from $\mathcal{H}$
+    \State let $g_i(p) = (h_{i,1}(p), \dots, h_{i,k}(p))$
+    \State store every $p \in P$ in table $i$ under key $g_i(p)$
+  \EndFor
+\EndFunction
+\Function{LSHQuery}{$q$}
+  \State $seen \gets 0$
+  \For{$i = 1, \dots, L$}
+    \For{each point $p$ in bucket $g_i(q)$}
+      \State $seen \gets seen + 1$
+      \If{$\|p - q\| \le c r$} \State \Return $p$ \EndIf
+      \If{$seen > 3 L$} \State \Return \textbf{none} \EndIf
+    \EndFor
+  \EndFor
+  \State \Return \textbf{none}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{5. Parameter Selection}
+
+The family $\mathcal{H}$ must be chosen for the metric at hand. On the Hamming
+cube $\{0,1\}^D$ take coordinate projections; a point at distance $u$ collides
+with the query with probability $1 - u/D$, yielding
+$p_1 = 1 - r/D$ and $p_2 = 1 - c r/D$. For Euclidean space the $p$-stable
+families of Section~\ref{sec:highdim_random_projections} hash by
+$\lfloor (a \cdot x + b)/W \rfloor$ with a $p$-stable random vector $a$; the
+bucket width $W$ trades the two probabilities. Increasing $k$ decreases both
+probabilities but sharpens the ratio; increasing $L$ (equivalently increasing
+$\rho$) raises the success probability and the storage. In practice one
+chooses $W$ by a small grid search over a holdout set and raises $L$ until the
+empirical success probability is acceptable. The hash tables themselves are
+maintained as arrays indexed by $g_i$; a secondary collision hash on the
+concatenated keys handles their variable size.
+
+\subsection{6. Complexity}
+
+Storage is $O(n \cdot (d + L)) = O(dn + n^{1+\rho})$. Each query evaluates
+$L$ concatenations, each costing $O(dk)$ for the projections (or $O(k)$ per
+non-zero coordinate on sparse data), and inspects at most $O(L)$ candidate
+points, each verified in $O(d)$. The total query time is
+$O(d \cdot L \cdot k + dL) = O(d n^{\rho} \log n)$. The trade-off
+between the approximation factor and the exponent $\rho$ is the central
+quantitative fact: $\rho \approx 1/c$ for the basic families, $\rho < 1/c$ for
+the $p$-stable families, and $\rho = 1/c^2 + o(1)$ for the near-optimal
+schemes. Lower bounds for hashing-based schemes state that $\rho \ge 1/c^2$ is
+unavoidable, so the near-optimal schemes are optimal within the LSH framework.
+
+\subsection{7. Usages}
+
+LSH is the workhorse of high-dimensional similarity search in practice: near
+duplicate detection in web corpora, image and video retrieval, de-duplication
+in databases, and genome sequence search. It is also the standard subroutine
+inside $k$-means-like clustering over high-dimensional data, where exact
+nearest-neighbor structures are useless. Section~\ref{sec:highdim_ml} returns
+to the machine learning applications; the connection to
+\index{data structures}data structures for high-dimensional data is treated in
+the handbook \cite{mehta2006}.
+
+\subsection{8. Testing Methods and Edge Cases}
+
+The canonical test compares the structure against a brute-force nearest
+neighbor on small random data, measuring both the success probability and the
+observed approximation factor over many queries. Edge cases: queries far from
+all data (the structure must terminate, bounded by the $3L$ cutoff); clusters
+of nearly coincident points (collision probability near $1$ makes buckets
+large); and the parameter extremes $c \to 1^+$, where $\rho \to 1$, i.e. the
+structure degenerates to a linear scan. A robust implementation must also
+tolerate adversarial hash keys, where a secondary exact hash function
+collides, by comparing candidate points with the true distance rather than by
+trusting the bucket membership.
+
+\subsection{9. References}
+
+The framework and the Hamming analysis are due to \cite{indyk1998} and
+\cite{gionis1999}. The Euclidean instantiation via $p$-stable distributions is
+\cite{datar2004}, and the near-optimal schemes with $\rho = 1/c^2 + o(1)$ are
+\cite{andoni2006}. The distance-concentration phenomenon that motivates
+approximation is analyzed in \cite{beyer1999}. The modern practical HNSW
+graphs, which combine the LSH idea with greedy navigation, are presented in
+\cite{malkov2018}.
+
 \section{Dimensionality Reduction}
 \label{sec:highdim_dimensionality_reduction}
+
+\subsection{1. Overview}
+
+The recurring obstacle in Sections~\ref{sec:highdim_hulls} and
+\ref{sec:highdim_voronoi_delaunay} is that combinatorial objects in
+$\mathbb{R}^d$ have complexity exponential in $d$. The response of the field
+is \index{dimensionality reduction}\emph{dimensionality reduction}: replace
+the point set by a small set of sketches in a low-dimensional space, chosen so
+that the quantities the application actually cares about (pairwise distances,
+nearest neighbors, dot products) are approximately preserved. The guiding
+statement is the \index{Johnson--Lindenstrauss lemma}Johnson--Lindenstrauss
+lemma: $n$ points can be embedded into $\mathbb{R}^k$ with
+$k = O(\log n)$ while preserving all pairwise distances within a factor
+$1 \pm \varepsilon$. This section states the lemma, discusses the
+information-theoretic intuition behind its logarithmic bound, and positions it
+relative to the exact theory of metric embeddings and to the linear algebraic
+methods used in practice.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Distortion of an embedding]
+\label{def:highdim_distortion}
+A map $f: \mathbb{R}^d \to \mathbb{R}^k$ has \emph{distortion} at most
+$1 + \varepsilon$ on a set $P$ if for all $p, q \in P$,
+\[
+(1 - \varepsilon)\,\|p - q\|^2 \;\le\; \|f(p) - f(q)\|^2 \;\le\; (1 + \varepsilon)\,\|p - q\|^2.
+\]
+The squared normalization is a convention that removes square roots from the
+analysis; the equivalent statement for the un-squared distance holds with
+$(1 \pm \varepsilon)$ replaced by $(1 \pm 3\varepsilon)$.
+\end{definition}
+
+A linear embedding is a matrix $A \in \mathbb{R}^{k \times d}$; it is
+\emph{norm-preserving} for a unit vector $x$ if
+$\|A x\|^2$ is close to $1$. Random constructions draw $A$ entrywise from a
+zero-mean distribution scaled so each entry has variance $1/k$, in which case
+$\mathbb{E}[\|A x\|^2] = \|x\|^2$ for every $x$: the random map is unbiased in
+expectation, and the question becomes how tightly it concentrates.
+
+\subsection{3. Theory}
+
+Why is the target dimension logarithmic in $n$ and quadratic in
+$1/\varepsilon$? The lower bound is forced by two simple arguments. First, $n$
+equidistant points form a regular simplex in $\mathbb{R}^{n-1}$, and embedding
+it faithfully needs roughly $\log n$ dimensions once the distances may only
+be approximate. Second, the variance of the squared norm of a Gaussian
+projection of a unit vector is about $2/k$, so guaranteeing a $1\pm\varepsilon$
+multiplicative bound requires $k = \Omega(1/\varepsilon^2)$; concentration
+cannot do better. Both bounds are achieved, up to constants, by the Gaussian
+and Rademacher constructions of Section~\ref{sec:highdim_random_projections}.
+
+\begin{theorem}[Johnson--Lindenstrauss]
+\label{thm:highdim_jl_bound}
+Let $P$ be a set of $n$ points in $\mathbb{R}^d$ and let
+$\varepsilon \in (0,1)$. For any
+$k \ge c\,\varepsilon^{-2} \log n$ with an absolute constant $c$, a random
+$k \times d$ matrix with independent Gaussian or Rademacher entries of
+variance $1/k$ satisfies the distortion bound of
+Definition~\ref{def:highdim_distortion} on $P$ with probability at least
+$1 - 1/n$.
+\end{theorem}
+
+The dimension reduction view extends from points to subspaces. A random
+matrix with $k = O(d/\varepsilon^2)$ rows is a
+\index{subspace embedding}subspace embedding: it preserves, up to factor
+$1 \pm \varepsilon$, the norm of every vector lying in a fixed
+$d$-dimensional subspace. This single statement packages the whole of the
+modern randomized linear algebra (approximate SVD, least-squares regression,
+low-rank approximation), where the subspace is the one spanned by the data
+columns and the random map compresses the problem before a deterministic
+solver runs on the sketch.
+
+\subsection{4. Pseudocode}
+
+The embedding itself is a single matrix multiplication
+(Algorithm~\ref{alg:highdim_jl}); the data structure of this section is the
+selection of the matrix and the dimension, discussed next.
+
+\begin{algorithm}[htbp]
+\caption{Johnson--Lindenstrauss Embedding}
+\label{alg:highdim_jl}
+\begin{algorithmic}[1]
+\Require Points $p_1, \dots, p_n \in \mathbb{R}^d$, distortion $\varepsilon \in (0,1)$.
+\Ensure Sketches $q_1, \dots, q_n \in \mathbb{R}^k$ with $k = O(\varepsilon^{-2} \log n)$.
+\Function{JLEmbed}{$p_1, \dots, p_n$, $\varepsilon$}
+  \State $k \gets \lceil c \ln n / \varepsilon^2 \rceil$ \Comment{the constant from the theory}
+  \State draw a $k \times d$ matrix $A$ with i.i.d.\ entries of variance $1/k$
+  \For{$i = 1, \dots, n$}
+    \State $q_i \gets A p_i$
+  \EndFor
+  \State \Return $q_1, \dots, q_n$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The reduction in dimension is dramatic when the data is intrinsically
+low-rank: computing pairwise distances in $\mathbb{R}^k$ with
+$k \approx \log n$ instead of $\mathbb{R}^d$ with $d$ in the thousands is the
+difference between feasible and infeasible. The cost is a single
+$k \times d$ matrix multiplication per point, which on sparse data reduces to
+a sum over non-zero entries.
+
+\subsection{5. Parameter Selection}
+
+The two parameters are the distortion $\varepsilon$ and the constant
+$c$ hidden in the bound. For most applications $\varepsilon \in (0.05, 0.2)$
+is the practical range: smaller values push $k$ above $\approx 100$ even for
+moderate $n$, and larger values distort the metric enough to corrupt nearest
+neighbor or clustering results. The constant $c$ is implementation dependent;
+choosing $k = 2\,\varepsilon^{-2}\ln n$ is the common heuristic and works in
+practice because the union bound over pairs is loose. When the downstream task
+is clustering or $k$-NN classification, the distortion can often be larger
+than the theory suggests, since only the local metric needs preservation.
+
+\subsection{6. Complexity}
+
+Embedding $n$ points costs $O(n d k)$ time with a dense matrix and
+$O(\operatorname{nnz} \cdot k)$ on sparse data, where
+$\operatorname{nnz}$ is the number of non-zeros of the data matrix. The
+resulting sketch space is $O(n k) = O(n \varepsilon^{-2} \log n)$ words. A
+random projection can never reduce the intrinsic rank of the data, but it does
+compress the ambient dimension to the information-theoretic minimum
+$k = \Theta(\log n)$ for distance preservation. When a deterministic
+guarantee is required, one may verify the distortion empirically on the pair
+set and rerun with fresh randomness until the bound holds.
+
+\subsection{7. Usages}
+
+Dimensionality reduction is the standard preprocessing in machine learning
+pipelines: before running a $k$-means clustering, a $k$-NN classifier, or a
+Gaussian kernel method, the data is embedded into $O(\log n)$ dimensions with
+negligible loss (Section~\ref{sec:highdim_ml}). It is also the tool that makes
+high-dimensional range searching and nearest-neighbor structures
+(Sections~\ref{sec:highdim_nearest_neighbor} and
+\ref{sec:range_search}) usable at scale, because the data structures of
+Chapters~\ref{ch:range_searching} and \ref{ch:proximity} depend exponentially
+on the ambient dimension.
+
+\subsection{8. Testing Methods and Edge Cases}
+
+Validate by computing the maximum pairwise distortion of the sketch against
+the original over held-out pairs; the empirical maximum should be within
+$1 \pm 2\varepsilon$. Edge cases: points already in low dimension (the map
+should leave them essentially unchanged); nearly collinear clouds (the
+sketched distances concentrate at the diameter, hiding the internal
+structure); and points with a huge spread in norms, where multiplicative
+error is acceptable but additive error is not. A hidden trap is numerical
+noise: entries of variance $1/k$ are small when $k$ is large, and single
+precision can destroy the sketch; use double precision in the accumulation.
+
+\subsection{9. References}
+
+The foundational statement is \cite{johnson1984}. The standard textbook
+treatment, including the constant and the lower bounds, is
+\cite{matousek2002}. Practical surveys and the connections to nearest
+neighbor and learning appear in \cite{indyk1998} and \cite{harpeled2011}.
 
 \section{Johnson--Lindenstrauss Lemma}
 \label{sec:highdim_jl}
 
+\subsection{1. Overview}
+
+This section proves Theorem~\ref{thm:highdim_jl_bound}. The proof is a model
+for the rest of high-dimensional analysis: it is a concentration argument
+(one-dimensional, then union-bounded over pairs) wrapped around a linear map.
+We give the two standard constructions --- Gaussian entries and Rademacher
+entries --- and the concentration inequality behind each, and we discuss
+tightness. The material of Section~\ref{sec:highdim_concentration} supplies
+the probabilistic machinery, so this section may be read as its first
+application.
+
+\subsection{2. Definitions}
+
+Let $A$ be a $k \times d$ matrix with i.i.d.\ entries $A_{ij}$ of mean $0$ and
+variance $1/k$. For a fixed unit vector $x$, the vector $y = A x$ has
+independent coordinates
+\[
+y_i = \sum_{j=1}^{d} A_{ij} x_j,
+\]
+each of mean $0$ and variance
+$\sum_j (1/k) x_j^2 = 1/k$. Its squared norm
+$\|y\|^2 = \sum_i y_i^2$ has expectation $1$; the whole proof is the statement
+that $\|y\|^2$ is concentrated about $1$. For Gaussian entries, $k \|y\|^2$ is
+a chi-squared random variable with $k$ degrees of freedom. For Rademacher
+entries, a Hoeffding-type bound on $y_i$ followed by a sub-exponential tail on
+$y_i^2$ gives the same result.
+
+\subsection{3. Theory}
+
+\begin{theorem}[One-dimensional concentration]
+\label{thm:highdim_jl_vector}
+Let $y = A x$ for a fixed unit vector $x$ and a $k \times d$ matrix with
+independent Gaussian or Rademacher entries of variance $1/k$. For any
+$t \in (0, 1)$,
+\[
+\Pr\big[\,\|y\|^2 \ge 1 + t\,\big] \le e^{-c k t^2},
+\qquad
+\Pr\big[\,\|y\|^2 \le 1 - t\,\big] \le e^{-c k t^2},
+\]
+for an absolute constant $c > 0$.
+\end{theorem}
+
+Proof of Theorem~\ref{thm:highdim_jl_vector}. For Gaussian entries, write
+$y_i = g_i/\sqrt{k}$ with $g_i$ i.i.d.\ standard Gaussians, so
+$k \|y\|^2 = \sum_i g_i^2 \sim \chi^2_k$. The chi-squared tail bound
+\[
+\Pr\left[ \frac{1}{k}\sum_{i=1}^{k} g_i^2 - 1 \ge t \right]
+\le \exp\left( - \frac{k}{2}(t - \ln(1+t)) \right),
+\]
+together with $t - \ln(1+t) \ge t^2/4$ for $t \in (0,1)$, gives the upper
+tail; the lower tail is symmetric by the same argument on $-y$. For Rademacher
+entries, $y_i$ is a sum of independent bounded variables, so
+ Hoeffding's inequality gives a Gaussian tail on $y_i$, and summing the
+ truncated squares $y_i^2 \wedge M$ with a Bernstein bound yields the same
+ exponential tail.
+
+
+\begin{theorem}[Johnson--Lindenstrauss, proved]
+\label{thm:highdim_jl_proved}
+For $n \ge 2$, $\varepsilon \in (0,1)$, and
+$k \ge 8 \varepsilon^{-2} \ln n$, the map of
+Theorem~\ref{thm:highdim_jl_bound} satisfies the distortion bound on all
+$\binom{n}{2}$ pairs simultaneously with probability at least $1 - 1/n$.
+\end{theorem}
+
+Proof. For a fixed pair $(p, q)$, apply Theorem~\ref{thm:highdim_jl_vector} to
+the unit vector $x = (p - q)/\|p - q\|$, noting that
+$A(p - q) = A p - A q$ and that the squared norm scales by
+$\|p - q\|^2$. The two tails each cost at most $e^{-c k \varepsilon^2}$;
+union bound over the $\binom{n}{2}$ pairs gives failure probability at most
+$n^2 e^{-c k \varepsilon^2} \le 1/n$ for
+$k \ge (3/c) \varepsilon^{-2} \ln n$. Absorbing the constants yields the
+claimed bound.
+
+\subsection{4. Pseudocode}
+
+The construction is Algorithm~\ref{alg:highdim_jl}; its correctness follows
+from the two theorems. The Rademacher variant replaces each Gaussian by
+$\pm 1/\sqrt{k}$ with equal probability, which avoids random-number generation
+of continuous distributions and enables the hashed implementation of
+Section~\ref{sec:highdim_random_projections}.
+
+\subsection{5. Parameter Selection}
+
+The constant $8$ in the bound is an artifact of the union bound and the
+concentration constant; smaller values work in practice. Two practical
+refinements matter. First, centering: subtracting the mean point before
+embedding does not change distances but reduces the scale against which
+floating point error is measured. Second, when only $k$ can be chosen
+(not the constant), setting $k = \lceil 2 \ln n / \varepsilon^2 \rceil$ is the
+de facto standard; Section~\ref{sec:highdim_random_projections} discusses the
+consequences of the choice of the distribution.
+
+\subsection{6. Complexity}
+
+The embedding is a single dense multiplication, $O(n d k)$ time and $O(dk)$
+space for the matrix; with $k = O(\log n)$ this is $O(n d \log n / \varepsilon^2)$
+for the whole data set. The Rademacher version has the same complexity but
+faster constants, and the sparse variants of
+Section~\ref{sec:highdim_random_projections} reduce the multiplication cost to
+the number of non-zeros.
+
+\subsection{7. Usages}
+
+The lemma is invoked wherever a high-dimensional metric is to be preserved at
+logarithmic cost: before any nearest-neighbor or clustering computation
+(Section~\ref{sec:highdim_ml}), inside kernel methods via random features, and
+as the standard tool in data stream sketching, where only the projection of
+each incoming point is stored. It also underlies the theoretical reduction of
+many high-dimensional problems to their $d = O(\log n)$ instances.
+
+\subsection{8. Testing Methods and Edge Cases}
+
+Verify the embedding empirically on random Gaussian point sets with
+$n = 10^5$, $d = 10^3$, $\varepsilon = 0.1$: the maximum distortion should
+stay below $1 + 0.1$ with high probability. Edge cases: nearly identical
+points (their difference is a near-unit vector, still concentrated); points at
+the origin (trivially preserved); adversarial points chosen after the matrix
+is fixed (the union bound fails, and one must either resample or verify
+deterministically). Numerical care is required: the entries of $A$ scale as
+$1/\sqrt{k}$ and the products $A p$ accumulate round-off proportional to
+$\|p\| \sqrt{k}$.
+
+\subsection{9. References}
+
+The lemma is from \cite{johnson1984}; the modern proof via concentration is
+standard and is presented in \cite{matousek2002}. The chi-squared tail bound
+used in the proof is derived in Section~\ref{sec:highdim_concentration}, and
+the Rademacher and sparse constructions are \cite{achlioptas2003}. The
+dimension bound is essentially optimal, as discussed in
+\cite{matousek2002}.
+
 \section{Random Projections}
 \label{sec:highdim_random_projections}
+
+\subsection{1. Overview}
+
+A random projection is a concrete matrix distribution with the property that
+every norm is approximately preserved. Section~\ref{sec:highdim_jl} proved
+that Gaussian and Rademacher matrices work; this section is about the
+engineering: which distributions are used in practice, how to hash them so
+that a dense matrix is never materialized, how to use them for
+\index{subspace embedding}subspace embeddings and approximate linear algebra,
+and how the same idea instantiates the $p$-stable hash families of
+Section~\ref{sec:highdim_nearest_neighbor}.
+
+\subsection{2. Definitions}
+
+\begin{definition}[Random projection matrix]
+\label{def:highdim_random_projection}
+A \emph{random projection} is a random $k \times d$ matrix $A$ whose entries
+are independent, of mean $0$ and variance $1/k$, drawn from one of the
+distributions below. Applying $A$ to a point set is
+\emph{random projection}; the image points are called \emph{sketches}.
+\end{definition}
+
+The three classical entry distributions are:
+\begin{itemize}
+\item \emph{Gaussian}: $A_{ij} \sim \mathcal{N}(0, 1/k)$. Optimal constants,
+costs one normal draw per entry.
+\item \emph{Rademacher}: $A_{ij} \in \{+1/\sqrt{k}, -1/\sqrt{k}\}$ each with
+probability $1/2$. No continuous sampling; supports hashing.
+\item \emph{Sparse (Achlioptas)}: $A_{ij} \in \{0, \pm \sqrt{3/k}\}$ with
+$\Pr[\pm] = 1/6$ and $\Pr[0] = 2/3$. Each entry has variance
+$(3/k) \cdot (1/3) = 1/k$; only one third of the entries are non-zero.
+\end{itemize}
+
+A \emph{$p$-stable} random vector $a \in \mathbb{R}^d$ is one such that
+$a \cdot x$ has the same distribution as $\|x\|_p \, X$ for a fixed
+$p$-stable random variable $X$; Gaussians are $2$-stable, Cauchy variables are
+$1$-stable.
+
+\subsection{3. Theory}
+
+The subspace embedding theorem packages the norm-preservation guarantee
+uniformly over a subspace rather than over a finite set of points.
+
+\begin{theorem}[Subspace embedding]
+\label{thm:highdim_subspace_embedding}
+Let $V \subseteq \mathbb{R}^d$ be a linear subspace of dimension $D$ and let
+$A$ be a $k \times d$ matrix with independent Gaussian entries of variance
+$1/k$ and $k = O(D / \varepsilon^2)$. Then with probability at least
+$1 - \exp(-\Omega(D))$,
+\[
+(1 - \varepsilon)\, \|x\|^2 \;\le\; \|A x\|^2 \;\le\; (1 + \varepsilon)\, \|x\|^2
+\qquad \text{for all } x \in V.
+\]
+\end{theorem}
+
+The proof is an $\varepsilon$-net argument: a bounded net of
+$O(2^{O(D)})$ points in the unit sphere of $V$ carries the norm of every
+vector up to an additive error of $\varepsilon$, and the union bound over the
+net absorbs the exponential dependence on $D$. The Gaussian distribution is
+rotation-invariant, which is what makes it the right choice for the uniform
+statement; the Rademacher version holds with slightly more rows.
+
+The $p$-stable families are the bridge to LSH. Hash with
+\[
+h_{a,b}(x) = \left\lfloor \frac{a \cdot x + b}{W} \right\rfloor,
+\qquad a \sim p\text{-stable},\; b \sim \mathrm{Uniform}[0, W].
+\]
+For two points at Euclidean distance $u$, the difference $a \cdot (x - y)$ is
+$u X$ for a $p$-stable $X$, so the collision probability is
+\[
+p(u) = \mathbb{E}\left[ \left(1 - \frac{|u X|}{W}\right)_+ \right],
+\]
+a decreasing function of $u$ with $p(0) = 1$ and $p(u) \to 0$. Choosing
+$W \approx r$ makes $p_1 = p(r)$ and $p_2 = p(c r)$ small together, which
+yields $\rho < 1/c$ for the $2$-stable (Gaussian) case.
+
+\subsection{4. Pseudocode}
+
+Algorithm~\ref{alg:highdim_random_projection} gives the generic application
+step; the distribution is a parameter.
+
+\begin{algorithm}[htbp]
+\caption{Random Projection}
+\label{alg:highdim_random_projection}
+\begin{algorithmic}[1]
+\Require Points $p_1, \dots, p_n \in \mathbb{R}^d$, target dimension $k$.
+\Ensure Sketches $q_1, \dots, q_n \in \mathbb{R}^k$.
+\Function{RandomProject}{$P$, $k$}
+  \State choose an entry distribution (Gaussian, Rademacher, or sparse Achlioptas)
+  \State draw a $k \times d$ matrix $A$ from that distribution, scaled to variance $1/k$
+  \For{$i = 1, \dots, n$}
+    \State $q_i \gets A p_i$
+  \EndFor
+  \State \Return $q_1, \dots, q_n$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The hashed implementation avoids materializing $A$: instead of storing the
+matrix, store for each row a pseudo-random hash of the input coordinate into
+$\{+1, -1, 0\}$ (for the sparse family) together with the $p$-stable sample
+value (for the Gaussian family), and accumulate $q_i$ coordinate by coordinate.
+This reduces the storage from $O(dk)$ to $O(k)$ words.
+
+\subsection{5. Parameter Selection}
+
+The target dimension $k$ is set by the application: $\varepsilon^{-2}\log n$
+for distance preservation, $O(D/\varepsilon^2)$ for a known subspace of
+dimension $D$, or a fixed budget in streaming settings. The bucket width $W$
+of the $p$-stable hash is chosen by grid search so that the ratio
+$p_1/p_2$ is maximized at the operating radius $r$; in practice $W$ a few
+times $r$ balances the collision probability against the bucket noise. The
+sparse Achlioptas family is preferred over the dense Gaussian when
+$d$ is large and the data is sparse, because the expected number of non-zero
+products per output coordinate is $d/3$ rather than $d$.
+
+\subsection{6. Complexity}
+
+Dense application costs $O(n d k)$; the sparse family costs
+$O(n \cdot \operatorname{nnz})$ regardless of $k$ when the hashed form is
+used, since each non-zero input coordinate touches at most one entry per
+output coordinate. The $p$-stable hash evaluates in $O(d)$ per query (one dot
+product per table), which is why the query time of
+Algorithm~\ref{alg:highdim_lsh} carries the factor $d$. The subspace embedding
+compresses any $n \times d$ data matrix to $k \times d$ (or $n \times k$,
+whichever is smaller) before the expensive linear algebra runs, changing the
+dominant term of an SVD or least-squares solve from cubic in the ambient
+dimension to cubic in the sketch dimension.
+
+\subsection{7. Usages}
+
+Random projections are used for approximate SVD and principal component
+analysis, for least-squares regression on wide matrices, for $k$-means
+clustering at scale, for kernel methods via random features, and for
+similarity search on text and image data through the $p$-stable LSH families.
+The sparse matrix products that appear when sketching Gram matrices are
+sped up by the algorithms of \cite{yuster2004}.
+
+\subsection{8. Testing Methods and Edge Cases}
+
+Test that $\mathbb{E}[\|A x\|^2] = \|x\|^2$ on random unit vectors for each
+distribution (a statistical check of the scaling) and that the empirical
+distortion over the data set stays below $1 + \varepsilon$. Edge cases: the
+zero vector (preserved exactly, do not divide by it in normalized checks);
+points with non-zero mean (center first, as in
+Section~\ref{sec:highdim_jl}); and the pathological case where the data
+itself has an adversarial sparse structure aligned with the sampled
+coordinates, which the hashed implementation can under-save. Whenever the
+guarantee must be deterministic, run the map twice with independent randomness
+and keep the better sketch.
+
+\subsection{9. References}
+
+The entry distributions are analyzed in \cite{achlioptas2003}; the
+$p$-stable families are \cite{datar2004}; the subspace embedding view and its
+applications to randomized linear algebra are developed in
+\cite{harpeled2011}. The classical statements appear in \cite{johnson1984}
+and \cite{matousek2002}.
 
 \section{Concentration of Measure}
 \label{sec:highdim_concentration}
 
+The probabilistic machinery behind every random construction of this chapter
+is the \index{concentration of measure}concentration of measure: in high
+dimension, smooth functions of many independent (or independent-looking)
+variables are essentially constant. This section develops the phenomenon in
+its geometric forms --- the Gaussian annulus, the volume of balls, Levy's
+lemma on the sphere --- and then shows how the same principle rescues
+algorithms whose worst-case analysis is catastrophic: the average-case and
+smoothed behavior of the simplex method, and the sampling-based computation of
+volumes of convex bodies.
+
+\begin{theorem}[Gaussian annulus]
+\label{thm:highdim_gaussian_annulus}
+Let $g \sim \mathcal{N}(0, I_d)$. Then with probability at least
+$1 - 2 e^{-c d \varepsilon^2}$,
+\[
+(1 - \varepsilon)\sqrt{d} \;\le\; \|g\| \;\le\; (1 + \varepsilon)\sqrt{d},
+\]
+for an absolute constant $c > 0$.
+\end{theorem}
+
+The theorem says that a high-dimensional Gaussian vector is almost surely at
+distance $\sqrt{d}$ from the origin, within a multiplicative error that
+shrinks with $d$. The intuition is a variance computation: each coordinate
+contributes variance $1$ to $\|g\|^2$, which has expectation $d$ and standard
+deviation $\sqrt{2d}$, so the relative deviation $\sqrt{2d}/d = \sqrt{2/d}$
+tends to zero. The proof is the chi-squared tail of
+Section~\ref{sec:highdim_jl}: $\|g\|^2$ is a chi-squared variable with $d$
+degrees of freedom, and
+\[
+\Pr\left[ \|g\|^2 \ge (1+t)d \right] \le e^{-c d t^2}
+\]
+follows from the exponential Markov inequality applied to
+$e^{\lambda g^2}$. This is exactly the one-dimensional statement
+(Theorem~\ref{thm:highdim_jl_vector}) that powered the
+Johnson--Lindenstrauss lemma, in its pure form.
+
+The same phenomenon concentrates the volume of the unit ball. Writing
+\[
+\operatorname{vol}(B^d) = \frac{\pi^{d/2}}{\Gamma(d/2 + 1)},
+\]
+the fraction of the volume lying within distance $\delta$ of the boundary of
+the unit ball is
+\[
+1 - (1 - \delta)^d,
+\]
+which tends to $1$ exponentially fast. Equivalently, the ball of radius
+$1 - \delta$ contains an exponentially small fraction of the volume: high
+dimensions are empty in their interior and populated on their boundary shell.
+This is why a uniform grid with spacing $\varepsilon$ in the unit cube needs
+$\varepsilon^{-d}$ points --- the volume-sampling version of the curse of
+dimensionality (Section~\ref{sec:highdim_curse}).
+
+\begin{theorem}[Levy's lemma]
+\label{thm:highdim_levy}
+Let $f: S^{d-1} \to \mathbb{R}$ be $L$-Lipschitz with respect to geodesic
+distance on the unit sphere. Then
+\[
+\Pr\left[ |f - \mathbb{E}[f]| \ge t \right] \le 2 \exp\left( - \frac{c d t^2}{L^2} \right)
+\]
+for an absolute constant $c > 0$.
+\end{theorem}
+
+Levy's lemma is the general concentration statement for the sphere: every
+Lipschitz function is nearly constant on most of the sphere. The proof passes
+through the isoperimetric inequality on the sphere, which says that among all
+sets of a given measure the caps minimize the boundary; integrating the
+isoperimetric profile along the level sets of $f$ yields the exponential
+tail. The two corollaries most used in this chapter are the Gaussian annulus
+and the concentration of Lipschitz functions on the sphere, which together
+imply the one-dimensional concentration of
+Theorem~\ref{thm:highdim_jl_vector} and hence the Johnson--Lindenstrauss
+lemma. A further corollary is that a random point on the sphere is within
+$O(1/\sqrt{d})$ of any fixed equator with overwhelming probability ---
+high-dimensional spheres are concentrated near every great circle, a fact
+with no analogue in the plane.
+
+\begin{remark}
+Concentration is a double-edged sword. It makes random maps and random
+estimators reliable, which is what makes the algorithms of this chapter
+work, but it is also exactly the force that destroys nearest neighbors
+(Section~\ref{sec:highdim_curse}): when all points of a Gaussian cloud are at
+distance $\sqrt{d}$ from one another up to a factor $1 + O(1/\sqrt{d})$, the
+distinction between "nearest" and "far" collapses.
+\end{remark}
+
+\subsection{Sampling convex bodies}
+
+The same concentration phenomenon, in its algorithmic form, is the engine of
+modern convex geometry. Consider the problem of approximating the volume of a
+convex body given only by a membership oracle --- the generalization of the
+polyhedron volume computations of Chapter~\ref{ch:convex_polytopes} to
+implicit bodies.
+
+\begin{theorem}[Approximate volume of convex bodies]
+\label{thm:highdim_volume}
+There is a randomized algorithm that, given a membership oracle for a convex
+body $K \subset \mathbb{R}^d$ of positive volume and an approximation factor
+$1 + \varepsilon$, outputs in time polynomial in $d$, $1/\varepsilon$, and
+the bit complexity of the input a value within a factor $1 \pm \varepsilon$ of
+$\operatorname{vol}(K)$, with high probability. Computing the volume exactly
+is \#P-hard.
+\end{theorem}
+
+The algorithm is the paradigm of randomized geometric integration. It samples
+nearly uniform points from $K$ using a random walk --- the hit-and-run
+walk, which moves from the current point along a random direction to a random
+point inside $K$ on that chord --- and it combines the samples with a
+multiphase decomposition: $K$ is intersected with a growing sequence of balls
+of radius $r_1 < r_2 < \dots < r_m = R$ such that each shell has bounded
+volume ratio, and the volume ratios are estimated by counting samples in the
+successive shells. The product of the ratios telescopes to
+$\operatorname{vol}(K)$, and the concentration of the counts around their
+means is the only error source. The key analytic fact is that the hit-and-run
+walk mixes in $O(d^3)$ steps from a warm start --- polynomial in the
+dimension, in stark contrast with the naive grid, which needs
+$\varepsilon^{-d}$ points. This is concentration working in favor of the
+algorithm: it makes the sampled estimators reliable.
+
+The same sampling machinery computes integrals over convex bodies and,
+via rejection, the probabilities of events in convex sets; it is the geometric
+core of the Monte Carlo methods in Bayesian statistics and of the counting
+problems reducible to volume computation.
+
+\subsection{Average case and smoothed analysis of the simplex method}
+
+The linear programming algorithms of Chapter~\ref{ch:linear_programming} are
+polynomial for fixed dimension but the simplex method has exponential
+worst-case behavior on the Klee--Minty cubes. High-dimensional geometry
+explains why the simplex method works anyway in practice: the average case is
+benign because the combinatorial objects that would make it slow --- long
+chains of pivots --- are exponentially unlikely under natural random models.
+
+\begin{theorem}[Borgwardt's average-case bound]
+\label{thm:highdim_borgwardt}
+Under a rotationally symmetric distribution on the coefficients, the simplex
+method performs an expected number of pivot steps that is polynomial in $n$
+and $d$.
+\end{theorem}
+
+Borgwardt's analysis shows that a random linear program has, with high
+probability, a shadow-vertex pivot path of polynomial length: projecting the
+feasible polyhedron onto the plane spanned by the objective and a fixed
+direction yields a polygon whose size is the number of pivots, and the
+spherical concentration of the coefficients keeps that projected polygon
+small. The geometry is pure concentration of measure on the sphere: the
+relevant pivots are those whose normal vectors lie in a thin band, and the
+probability that the band contains many of them is exponentially small.
+
+\begin{theorem}[Smoothed analysis of the simplex method]
+\label{thm:highdim_simplex_smoothed}
+Let a linear program be obtained by perturbing an arbitrary instance with
+independent Gaussian noise of standard deviation $\sigma$. The expected number
+of simplex pivots (under the shadow-vertex rule) is polynomial in $n$, $d$,
+and $1/\sigma$.
+\end{theorem}
+
+Spielman--Teng's smoothed analysis is the definitive resolution of the
+paradox: no instance is hard in the worst case once it is perturbed, and the
+perturbation need be only polynomially small. The proof analyzes the expected
+number of changes of the optimal basis under perturbation and again exploits
+that the expected number of vertices of a random projection of a polytope is
+polynomial. The simplex method and its smoothed behavior are treated in
+detail in Chapter~\ref{ch:linear_programming}; the point here is that
+concentration, which wrecks nearest-neighbor search, is the very mechanism
+that makes the simplex method fast. The worst-case exponential examples are
+artifacts of a negligible set of adversarial inputs.
+
+\begin{remark}
+The three theorems of this section --- Gaussian concentration, polynomial
+volume computation, and polynomial smoothed pivoting --- share a single
+methodological message: in high dimension, the space of inputs is dominated by
+typical inputs, and typical geometry is tractable. Algorithm design for high
+dimensions must therefore be \emph{average-case} or \emph{smoothed}, or it
+must be \emph{approximate} with a randomized guarantee, as in
+Sections~\ref{sec:highdim_nearest_neighbor} and \ref{sec:highdim_jl}.
+\end{remark}
+
+The references for this section are \cite{matousek2002} (Gaussian annulus,
+Levy's lemma, volumes), \cite{dyerfriezekannan1991} (volume computation),
+\cite{borgwardt1987} (average case of the simplex method), and
+\cite{spielteng2004} (smoothed analysis).
+
 \section{Curse of Dimensionality}
 \label{sec:highdim_curse}
+
+\begin{definition}[Curse of dimensionality]
+\label{def:highdim_curse}
+The \index{curse of dimensionality}\emph{curse of dimensionality} is the
+collection of phenomena, observed in Section~\ref{sec:highdim_concentration},
+in which the running time or storage of an algorithm, or the sample complexity
+of a statistical estimator, grows like a quantity exponential in the
+dimension --- $n^{\lfloor d/2 \rfloor}$, $\varepsilon^{-d}$, $2^d$, or
+$\exp(c d)$ --- even when the dependence on the number of points $n$ is
+benign. It manifests in three distinct forms for this book: combinatorial
+(complexity of geometric structures), volumetric (the grid bound), and
+metric (the collapse of distance information).
+\end{definition}
+
+\subsection{The combinatorial curse}
+
+The combinatorial form is Theorem~\ref{thm:highdim_hull_complexity}: hulls,
+Voronoi diagrams, and Delaunay complexes have
+$n^{\Theta(d/2)}$ cells. This is not an artifact of the specific structure;
+it is the number of cells of any arrangement of $n$ hyperplanes in
+$\mathbb{R}^d$, which is $\Theta(n^d)$, and the number of facets of the
+polar polytope, which is the same count. The complexity is intrinsic: even
+just listing the Delaunay complex of a cyclic-polytope sample requires
+$n^{\lceil d/2 \rceil}$ output, so no exact data structure in high dimension
+can beat a linear scan on the input of its own output. Section
+\ref{sec:highdim_voronoi_delaunay} and Section~\ref{sec:highdim_hulls} pay the
+price in their complexity analyses; here we note that the bound is optimal
+and that approximation is the only escape.
+
+The same combinatorial explosion governs the data structures of
+Chapter~\ref{ch:range_searching}: a $k$d-tree answering orthogonal range
+queries in time $O(n^{1-1/d} + k)$ degrades to $O(n)$ as soon as $d$ grows,
+and a range tree storing $n \log^{d-1} n$ points is pointless when $d \ge
+\log n$. Section~\ref{sec:rangesearch_curse} documented the transition, and
+Section~\ref{sec:rangesearch_simplex} proved that the transition is
+unavoidable: any data structure with near-linear space must spend
+$\Omega(n^{1-1/d})$ time per simplex range query in the worst case. In high
+dimension, $n^{1-1/d}$ is $n$; range searching in high dimensions is a linear
+scan.
+
+\subsection{The volumetric curse}
+
+The volumetric form is the grid bound derived in
+Section~\ref{sec:highdim_concentration}: covering the unit cube with boxes of
+side $\varepsilon$ needs $\varepsilon^{-d}$ boxes, and the fraction of the
+volume of the unit ball within distance $\delta$ of the boundary is
+$1 - (1-\delta)^d$. Every algorithm that partitions space must pay this cost,
+because the volume itself is concentrated near the surface. This is the 
+mechanism behind the $\varepsilon^{-d}$ sample complexity of nonparametric
+statistics and behind the failure of uniform grid methods, and it is why
+Section~\ref{sec:highdim_dimensionality_reduction} embeds before
+partitioning. The dimensionality reduction escape works because the
+\emph{intrinsic} dimension of the data (the dimension of the manifold or
+subspace it occupies) is typically far smaller than the ambient dimension;
+the grid bound is a bound on the ambient dimension alone.
+
+\subsection{The metric curse}
+
+The metric form is the most damaging for machine learning, because it attacks
+the very meaning of similarity.
+
+\begin{theorem}[Distance concentration]
+\label{thm:highdim_distance_concentration}
+Let $P$ be a set of $n$ i.i.d.\ points from a distribution supported in
+$\mathbb{R}^d$, and let $q$ be an independent point. Under mild moment and
+concentration conditions (satisfied by Gaussian data), for every fixed
+$n$ the ratio
+\[
+\operatorname{rel}(q) = \frac{\min_{p \in P} \|p - q\|}{\max_{p \in P} \|p - q\|}
+\]
+converges to $1$ in probability as $d \to \infty$.
+\end{theorem}
+
+The statement is the analysis of the phenomenon noticed in
+Section~\ref{sec:highdim_concentration}: all pairwise distances are within a
+relative window of width $O(1/\sqrt{d})$ around a common scale, so the
+nearest neighbor is only marginally closer than the farthest point. A
+nearest-neighbor classifier whose discrimination rests on the gap between
+nearest and second-nearest loses its meaning: there is no signal left.
+The practical consequence is not that high-dimensional nearest-neighbor search
+is impossible --- Section~\ref{sec:highdim_nearest_neighbor} shows sublinear
+queries are achievable --- but that the \emph{queries} must be approximate and
+that the \emph{data} must first be embedded so that the effective dimension of
+the distance is small. The results are due to \cite{beyer1999}, who also give
+the precise conditions under which the relative contrast degenerates, and the
+phenomenon is discussed further in Section~\ref{sec:highdim_ml}.
+
+\subsection{Hardness of worst-case high-dimensional problems}
+
+Beyond the geometric and metric barriers sit the computational ones. The
+worst-case version of exact nearest-neighbor search is as hard as brute force:
+in a cell-probe model, any data structure answering exact queries in the
+Hamming cube requires near-linear query time in the worst case, so the
+approximation guarantee of Section~\ref{sec:highdim_nearest_neighbor} is not
+a convenience but a necessity. More broadly, the PCP framework --- the
+\index{probabilistically checkable proofs}PCP machinery developed to prove
+hardness of approximation --- established that many optimization problems over
+high-dimensional inputs are hard to approximate even approximately, in the
+worst case. The connection runs through the same high-dimensional geometry:
+a proof-checker verifies a witness by reading a few randomly chosen
+coordinates, and the soundness of the scheme rests on the concentration of
+the acceptance probability over the random coordinate choices. The
+foundational references are \cite{arora1994} and the survey in
+\cite{harpeled2011}. The message for algorithm design is the same as in
+Section~\ref{sec:highdim_concentration}: the tractable regime in high
+dimensions is the typical case and the approximate case, not the worst exact
+case.
+
+\subsection{The escapes}
+
+Three complementary escapes from the curse run through this chapter:
+\begin{itemize}
+\item \emph{Dimensionality reduction} (Sections
+\ref{sec:highdim_dimensionality_reduction}, \ref{sec:highdim_jl},
+\ref{sec:highdim_random_projections}): reduce the ambient dimension to the
+intrinsic one; the cost is a small relative distortion, which many downstream
+tasks tolerate.
+\item \emph{Approximate and randomized queries} (Section
+\ref{sec:highdim_nearest_neighbor}): replace the exact answer by one that is
+correct up to a factor $c$ with constant probability; the query cost drops from
+$n$ to $n^{\rho}$ with $\rho < 1$.
+\item \emph{Data-dependent and worst-case-intrinsic algorithms}: exploit the
+\index{intrinsic dimension}intrinsic dimension or the 
+\index{smoothed analysis}smoothed complexity of the instance
+(Section~\ref{sec:highdim_concentration}), where the typical behavior is
+polynomial even though the worst case is exponential.
+\end{itemize}
 
 \section{Applications to Machine Learning}
 \label{sec:highdim_ml}
 
+The pipeline of modern machine learning --- a high-dimensional feature vector,
+a similarity or kernel, and an optimization or search step --- is, from the
+point of view of this chapter, a high-dimensional computational geometry
+problem with $n$ points in $\mathbb{R}^d$, and nearly every technique of the
+preceding sections appears in it. This section walks through the pipeline and
+maps each stage to the geometric tool. The statistical and algorithmic
+foundations of the geometric view of learning are developed in
+Chapter~\ref{ch:geometry_data_ml} and in the approximation chapter's
+treatment of high-dimensional algorithms
+(Section~\ref{sec:approx_high_dimensional}).
+
+\subsection{$k$-nearest-neighbor classifiers}
+
+The $k$-nearest-neighbor classifier labels a query by the majority label among
+its $k$ nearest neighbors in the training set. Its accuracy depends
+completely on the geometry of the metric: if the nearest neighbor is not
+meaningfully closer than the rest, the classifier degenerates to the majority
+class. The distance-concentration analysis of Section~\ref{sec:highdim_curse}
+(\cite{beyer1999}) makes the failure precise: on high-dimensional data with no
+intrinsic structure, the relative contrast between nearest and farthest points
+tends to $1$, and the classifier has no signal. The remedies are the escapes
+of Section~\ref{sec:highdim_curse}: embed the data first
+(Section~\ref{sec:highdim_dimensionality_reduction}), or use an approximate
+nearest-neighbor structure (Section~\ref{sec:highdim_nearest_neighbor}).
+This is why, in practice, high-dimensional $k$-NN pipelines run a random
+projection (or a learned linear map) before the search: the projection is not
+a loss of information but a denoising of the metric. The state of the art in
+production systems combines these ideas in the graph-based HNSW structures of
+\cite{malkov2018}, whose greedy navigation over a proximity graph replaces the
+exact structures that the curse kills.
+
+\subsection{Dimensionality reduction as preprocessing}
+
+The same argument applies to clustering, outlier detection, and kernel
+methods. Before a Gaussian-kernel SVM on $d$-dimensional features, one can
+replace the exact kernel by a random-feature map: draw a random projection
+$A$ and use the finite-dimensional feature map
+$\phi(x) = (\cos, \sin)$-features derived from $A x$, which by the 
+Johnson--Lindenstrauss lemma approximates the kernel's geometry
+(Section~\ref{sec:highdim_random_projections}). This is a direct application
+of the lemmas of Sections~\ref{sec:highdim_jl} and
+\ref{sec:highdim_random_projections} and is one of the few places where the
+concentration theorems pay for themselves twice: once for the map's
+faithfulness and once for the kernel's approximation. The data management side
+of these pipelines --- indexing the sketches, hashing the features, and
+maintaining the tables --- is surveyed in the handbook \cite{mehta2006}.
+
+\subsection{Sparse data and fast linear algebra}
+
+Real feature vectors are sparse: each example has a handful of non-zero
+coordinates out of millions. Sparse random projections
+(Section~\ref{sec:highdim_random_projections}) exploit this directly, and the
+matrix multiplications that build Gram matrices and covariance estimates from
+sparse inputs are accelerated by the sparse matrix product algorithms of
+\cite{yuster2004}. The interplay between sparsity and geometry is itself a
+high-dimensional phenomenon: the concentration results of
+Section~\ref{sec:highdim_concentration} govern how many samples are needed to
+estimate inner products and distances from sketches, and the same machinery
+bounds the statistical error of the random-feature approximations.
+
+\subsection{The geometric picture of learning}
+
+The geometric reading of learning theory is the one this chapter makes
+natural. A data set is a point cloud; the tasks are geometric queries
+(nearest neighbors, kernels, clustering, projections); the sample complexity
+of a hypothesis class is governed by the combinatorial complexity of the
+geometry --- the VC dimension of ranges in $\mathbb{R}^d$ is $O(d)$ and
+$\varepsilon$-nets of size $O(\frac{d}{\varepsilon}\log\frac{1}{\varepsilon})$
+exist (Section~\ref{sec:rangesearch_kd_trees} and the related material in
+Chapter~\ref{ch:range_searching}), which is the polynomial-in-$d$ side of the
+curse. The exponential side is the sample complexity of volume-based
+estimators (Section~\ref{sec:highdim_concentration}). Learning in high
+dimensions is possible exactly when the data has low intrinsic dimension, and
+dimensionality reduction is the algorithmic expression of that belief. The
+standard reference for the geometric viewpoint is
+Chapter~\ref{ch:geometry_data_ml}; the approximation algorithms that make
+learning tractable in high dimensions are covered in
+Section~\ref{sec:approx_high_dimensional} of the approximation chapter.
+
+\begin{remark}
+The most common mistake in high-dimensional practice is to assume that
+Euclidean distance on raw features is a meaningful measure of similarity. The
+analysis of Section~\ref{sec:highdim_curse} shows when it is not, and the
+techniques of this chapter show how to fix it: normalize, embed, and
+approximate. Each step is justified by a theorem in this chapter, and each
+step is cheap enough for production systems.
+\end{remark}
+
 \section{Exercises}
 \label{sec:highdim_exercises}
+
+\begin{enumerate}
+\item Prove that computing the convex hull of $n$ points in $\mathbb{R}^d$
+requires $\Omega(n \log n)$ time even when the hull has $O(n)$ facets, by
+reducing sorting to a hull computation in a plane contained in
+$\mathbb{R}^d$.
+\item Show that the expected number of facets created by the
+randomized incremental hull algorithm (Algorithm~\ref{alg:highdim_hull}) on a
+random sample is $O(n^{\lfloor d/2 \rfloor})$, and derive the running time of
+Theorem~\ref{thm:highdim_hull_randomized} from the Clarkson--Shor charging
+argument.
+\item Prove the lifting statement of Section~\ref{sec:highdim_voronoi_delaunay}
+in full generality: a sphere in $\mathbb{R}^d$ with center $c$ and radius $r$
+corresponds to a hyperplane through the lifted points, and a point lies inside
+the sphere iff its lift lies below the hyperplane. Conclude the empty-sphere
+test from the orientation of the lifted simplex.
+\item Let $\mathcal{H}$ be the family of coordinate projections on
+$\{0,1\}^D$. Compute $p_1$, $p_2$, and $\rho$ for the $(r, cr)$-near-neighbor
+problem and verify the exponent $\rho \approx 1/c$ for small $r/D$ in
+Theorem~\ref{thm:highdim_lsh_bound}. Show that the query of
+Algorithm~\ref{alg:highdim_lsh} inspects $O(L)$ points in expectation and
+terminates with constant success probability.
+\item Prove the chi-squared tail bound used in
+Theorem~\ref{thm:highdim_jl_vector} by applying the exponential Markov
+inequality to $\exp(\lambda \|g\|^2)$ and optimizing over $\lambda$. Derive
+the Gaussian annulus of Theorem~\ref{thm:highdim_gaussian_annulus} from it.
+\item Give an $\varepsilon$-net proof of the subspace embedding theorem
+(Theorem~\ref{thm:highdim_subspace_embedding}): cover the unit sphere of a
+$D$-dimensional subspace by $O((3/\varepsilon)^D)$ points, apply the
+pointwise distortion bound, and take a union bound. Explain where the
+exponential dependence on $D$ goes.
+\item Derive the collision probability $p(u)$ of the $p$-stable hash family
+of Section~\ref{sec:highdim_random_projections}, and show that it is
+decreasing in $u$. For the Cauchy ($1$-stable) case compute $p(u)$ explicitly
+and bound $\rho$ for the $(r, cr)$-near-neighbor problem.
+\item Argue from Theorem~\ref{thm:highdim_distance_concentration} that a
+$k$-nearest-neighbor classifier has error approaching the majority class on
+high-dimensional Gaussian data, and design a random-projection
+preprocessing that restores meaningful nearest neighbors on data lying on a
+$k$-dimensional affine subspace of $\mathbb{R}^d$. Justify the target
+dimension with Theorem~\ref{thm:highdim_jl_bound} and analyze the resulting
+classification accuracy.
+\end{enumerate}
